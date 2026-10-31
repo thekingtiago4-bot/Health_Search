@@ -3539,7 +3539,7 @@ function nexAbrirNotif(){ const n=nexS(); const a=nexAvisos(); const f=document.
 /* ================= NUVEM · Supabase: login, usuários (Admin) e dados compartilhados =================
    Preencha URL e chave "anon" do projeto (Supabase → Project Settings → API). A chave anon é pública por natureza:
    quem protege os dados são as regras (RLS) do script SQL. Sem configuração, o programa funciona offline como antes. */
-const HS_NUVEM={url:'',chave:''};
+const HS_NUVEM={url:'https://mwzmhyncxkuzsedekadw.supabase.co',chave:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13em1oeW5jeGt1enNlZGVrYWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NjU4MTcsImV4cCI6MjEwOTA0MTgxN30.YWqofFbrR2IICcd-GTyyQOlcIhXS0X7qct1UbyFlV5c'};
 const NV={cli:null,user:null,perfil:null,origem:Math.random().toString(36).slice(2),tSalvar:0,salvando:false,canal:null};
 function nvCfg(){ if(HS_NUVEM.url&&HS_NUVEM.chave) return HS_NUVEM; try{ const c=JSON.parse(localStorage.getItem('healthSearch.nuvem')||'null'); if(c&&c.url&&c.chave) return c; }catch(e){} return null; }
 function nvLib(){ return new Promise((ok,er)=>{ if(window.supabase) return ok(); const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'; s.onload=()=>ok(); s.onerror=()=>er(new Error('Sem internet para carregar o login.')); document.head.appendChild(s); }); }
