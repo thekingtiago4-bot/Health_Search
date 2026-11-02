@@ -4017,7 +4017,7 @@ function ctDentro(p,pol){ let ins=false; for(let i=0,j=pol.length-1;i<pol.length
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='5.1', HS_DATA='01/11/2026';
+const HS_VERSAO='5.2', HS_DATA='01/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4028,9 +4028,12 @@ const HS_VERSAO='5.1', HS_DATA='01/11/2026';
   $('#app-att-ok').onclick=async()=>{ try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k); const rg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration(); if(rg) await rg.update(); }catch(e){} location.reload(); };
   setTimeout(checar,4000); setInterval(checar,5*60*1000); window.addEventListener('focus',checar);
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
-  let pedido=null; window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); pedido=e; const b=$('#app-inst'); if(b) b.hidden=false; });
-  const box2=document.querySelector('.autoria'); if(box2) box2.insertAdjacentHTML('beforebegin','<button type="button" id="app-inst" class="tema" hidden>⬇ Instalar no computador</button>');
-  document.addEventListener('click',async e=>{ if(e.target.closest&&e.target.closest('#app-inst')&&pedido){ pedido.prompt(); await pedido.userChoice; pedido=null; $('#app-inst').hidden=true; } });
+  let pedido=null; window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); pedido=e; }); window.addEventListener('appinstalled',()=>{ const b=$('#app-inst'); if(b) b.hidden=true; toast('Health Search instalado.'); });
+  const box2=document.querySelector('.autoria'); const jaApp=matchMedia('(display-mode: standalone)').matches||navigator.standalone; if(box2&&!jaApp) box2.insertAdjacentHTML('beforebegin','<button type="button" id="app-inst" class="tema">⬇ Instalar no computador</button>');
+  document.addEventListener('click',async e=>{ if(!(e.target.closest&&e.target.closest('#app-inst'))) return; if(pedido){ pedido.prompt(); const r=await pedido.userChoice; pedido=null; if(r.outcome==='accepted') $('#app-inst').hidden=true; return; }
+    const edge=/Edg\//.test(navigator.userAgent), chrome=/Chrome\//.test(navigator.userAgent)&&!edge; const f=document.createElement('div'); f.className='fundo';
+    f.innerHTML=`<div class="modal"><h2>Instalar o Health Search</h2>${edge?'<p>No Edge: clique em <b>…</b> (canto superior direito) → <b>Aplicativos</b> → <b>Instalar este site como um aplicativo</b>.</p>':chrome?'<p>No Chrome: clique em <b>⋮</b> (canto superior direito) → <b>Transmitir, salvar e compartilhar</b> → <b>Instalar página como app…</b> → <b>Instalar</b>.</p><p>Ou clique no ícone de instalar que aparece no fim da barra de endereço (um monitor com uma seta).</p>':'<p>Este navegador não instala aplicativos de site. Abra o link no <b>Google Chrome</b> ou no <b>Microsoft Edge</b>.</p>'}<p>Se o Health Search já estiver instalado, ele abre pelo ícone na área de trabalho ou no menu Iniciar.</p><div class="botoes"><button class="btn pri" type="button" data-a="x">Entendi</button></div></div>`;
+    document.body.appendChild(f); f.addEventListener('click',ev=>{ if(ev.target.closest('[data-a]')) f.remove(); }); });
 })();
 
 /* ---------- Geolocalização: só o administrador alimenta, ensina ou corrige ---------- */
