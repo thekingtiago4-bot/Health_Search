@@ -678,6 +678,10 @@ body.mapa-cheia .geo-mapa canvas{height:calc(100vh - 54px);height:calc(100dvh - 
 body.mapa-cheia.ged-on .geo-mapa{padding-right:min(380px,100vw)}
 body.so-mapa .rail,body.so-mapa #nx-sino,body.so-mapa #mapa-janela{display:none!important}
 body.so-mapa .app{grid-template-columns:1fr}
+.ged-zerar{margin-top:14px;padding-top:10px;border-top:1px dashed var(--linha)}
+.fer-map{display:flex;align-items:center;gap:5px;font-size:var(--fs-sm)}.fer-map i{width:12px;height:12px;border-radius:3px;background:#E03131;display:inline-block}
+#fer-map-ate{border:1px solid var(--linha);border-radius:var(--r);padding:4px 6px;background:var(--sup);font-size:var(--fs-sm)}
+.fundo{z-index:110}
 .app-ver{margin-bottom:4px;color:rgba(195,226,224,.75)}.app-ver b{color:#fff}
 #app-att{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:12px;background:var(--teal);color:#fff;padding:10px 12px 10px 16px;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.3);max-width:calc(100vw - 32px);font-size:var(--fs-sm)}
 #app-att[hidden]{display:none}
@@ -698,6 +702,7 @@ body.so-mapa .app{grid-template-columns:1fr}
 .vm-tr .cheg{color:var(--ok);font-weight:600;font-size:var(--fs-sm);white-space:nowrap}
 @media (max-width:760px){.vm-tr{grid-template-columns:auto 1fr auto}.vm-tr .mot{grid-column:1/-1}}
 .vm-cheg-chip{color:var(--ok);font-weight:600;font-size:var(--fs-sm)}
+.bk-auto{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-sm);color:var(--tinta2)}
 /* ---------- ROTEIRIZAÇÃO ---------- */
 .rt-topo,.rt-topo2{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:6px 0 14px}
 .rt-topo label,.rt-topo2 label{display:flex;flex-direction:column;gap:5px;font-size:var(--fs-sm);font-weight:600;color:var(--tinta2)}
@@ -3912,7 +3917,7 @@ function edAbrir(){ if(!nvAdmin()){ toast('Só o administrador edita as regiões
 function edFechar(){ ED.on=false; ED.pts=[]; document.body.classList.remove('ged-on'); const p=$('#ged-painel'); if(p) p.remove(); setTimeout(()=>{ window.dispatchEvent(new Event('resize')); renderGeo(); },30); }
 function edListas(){ return S.geo.listas.filter(l=>l.tipo===GEO.tipo).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')); }
 function edPainel(){ const p=$('#ged-painel'); if(!p) return; const tipoN=GEO.tipo==='base'?'base':'região', ls=edListas();
-  if(ED.alvo&&ED.alvo!=='__nova'&&!geoLista(ED.alvo)) ED.alvo=''; const alvo=ED.alvo&&geoLista(ED.alvo);
+  if(ED.alvo&&ED.alvo!=='__nova'&&ED.alvo!=='-'&&!geoLista(ED.alvo)) ED.alvo=''; const alvo=ED.alvo&&geoLista(ED.alvo);
   let mud=0, ja=0; if(alvo) for(const c of ED.dentro){ const r=geoClass(c,GEO.tipo); if(r.fonte==='lista'&&r.ids.length===1&&r.ids[0]===alvo.id) ja++; else mud++; }
   p.innerHTML=`<div class="ged-topo"><b>Editor de ${GEO.tipo==='base'?'bases':'regiões'}</b><button class="btn mini" type="button" id="ged-sair">Fechar editor</button></div>
    <section><h3>Delimitar</h3><p>Clique, em ordem, nas cidades que formam o <b>limite</b> da ${tipoN} (contorno). Também dá para digitar a cidade na busca. Tudo que ficar dentro passa a ser dessa ${tipoN}.</p>
@@ -4036,11 +4041,12 @@ function ctPoligonos(tipo){ if(CT.em!==S.geo.em){ CT.em=S.geo.em; CT.pol={}; } i
   const C=geoCoords(), out=[]; for(const l of S.geo.listas) if(l.tipo===tipo) for(const pts of (l.poligonos||[])){ const pol=pts.map(c=>C.get(+c)).filter(Boolean); if(pol.length>=3) out.push({id:l.id,pol}); }
   return CT.pol[tipo]=out; }
 function ctDentro(p,pol){ let ins=false; for(let i=0,j=pol.length-1;i<pol.length;j=i++){ const a=pol[i],b=pol[j]; if(((a.lat>p.lat)!==(b.lat>p.lat))&&(p.lon<(b.lon-a.lon)*(p.lat-a.lat)/(b.lat-a.lat)+a.lon)) ins=!ins; } return ins; }
-{ const _gc=geoClass; geoClass=function(c,tipo){ const r=_gc(c,tipo); if(r.fonte!=='auto'&&r.fonte!=='fora') return r;
+const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático por contorno */
+{ const _gc=geoClass; geoClass=function(c,tipo){ const r=_gc(c,tipo); if(HS_SO_CLICADAS||(r.fonte!=='auto'&&r.fonte!=='fora')) return r;
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='5.7', HS_DATA='01/11/2026';
+const HS_VERSAO='6.0', HS_DATA='01/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4095,6 +4101,112 @@ if(!HS_ROTEIRIZACAO){ document.documentElement.dataset.semRotas='1';
     const outras=new Set(S.geo.listas.filter(l=>l.tipo==='base'&&l!==bh).flatMap(l=>l.cidades)); let q=0;
     for(const c of NM){ if(!bh.cidades.includes(c)&&!outras.has(c)){ bh.cidades.push(c); q++; } }
     S.geo.migr.norteMinas=new Date().toISOString(); geoMudou(); try{ renderTudo(); }catch(e){} if(q) toast(q+' cidade(s) do Norte de Minas incluída(s) na Base de Contagem.'); },500); })();
+
+/* ================= EDITOR: modo pintar (só a cidade clicada muda) + ZERAR com senha do admin ================= */
+{ const ga=$('#geo-auto'); if(ga){ ga.checked=false; } }
+function edPintar(c){ const alvo=ED.alvo; if(!alvo||alvo==='__nova'){ toast('Escolha no painel a '+(GEO.tipo==='base'?'base':'região')+' que vai receber as cidades.'); return; }
+  c=+c; const l=geoLista(alvo); if(!l) return; const antes=JSON.stringify(S.geo); const o=geoMun(c);
+  if(l.cidades.includes(c)){ l.cidades=l.cidades.filter(x=>x!==c); ED.desfazer=antes; geoMudou(); renderTudo(); edPainel(); desenharGeo(); toast(`${o?o.n:'Cidade'} saiu de ${l.nome}.`); return; }
+  const de=[]; for(const x of S.geo.listas) if(x.tipo===l.tipo&&x!==l&&x.cidades.includes(c)){ x.cidades=x.cidades.filter(y=>y!==c); de.push(x.nome); }
+  l.cidades.push(c); if(S.geo.aprend[c]){ delete S.geo.aprend[c][l.tipo]; if(!Object.keys(S.geo.aprend[c]).length) delete S.geo.aprend[c]; }
+  ED.desfazer=antes; geoMudou(); renderTudo(); edPainel(); desenharGeo(); toast(`${o?o.n:'Cidade'} → ${l.nome}${de.length?' (saiu de '+de.join(', ')+')':''}.`); }
+{ const _ge2=geoEscolher; geoEscolher=function(c,centrar){ if(ED.on){ edPintar(c); return; } return _ge2(c,centrar); }; }
+{ const _ep=edPainel; edPainel=function(){ _ep(); const p=$('#ged-painel'); if(!p) return; const sec=p.querySelector('section'); if(!sec) return; const tipoN=GEO.tipo==='base'?'base':'região', ls=edListas();
+    sec.innerHTML=`<h3>Pintar cidades</h3><p>Escolha a ${tipoN} e <b>clique em cada cidade</b> no mapa (ou digite na busca). Só a cidade clicada muda: ela entra nesta ${tipoN} e sai das outras. Clicar de novo numa cidade que já é dela tira a cidade.</p>
+      <label class="ged-l">${tipoN==='base'?'Base':'Região'} que recebe<select id="ged-alvo"><option value="">— escolha —</option>${ls.map(l=>`<option value="${esc(l.id)}"${l.id===ED.alvo?' selected':''}>${esc(l.nome)} (${l.cidades.length})</option>`).join('')}<option value="__nova"${ED.alvo==='__nova'?' selected':''}>+ Nova ${tipoN}…</option></select></label>
+      ${ED.alvo==='__nova'?`<div class="nx-nova"><input id="ged-novo" placeholder="Nome da nova ${tipoN}" autocomplete="off"><button class="btn mini pri" type="button" id="ged-criar">Criar</button></div>`:''}
+      ${ED.desfazer?`<button class="btn mini" type="button" id="ged-desfaz">Desfazer última mudança</button>`:''}
+      <div class="ged-zerar"><button class="btn mini perigo" type="button" id="ged-zerar">Zerar e refazer do zero…</button></div>`; }; }
+document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t.closest('#ged-painel')) return;
+  if(t.id==='ged-criar'){ const nm=($('#ged-novo')||{}).value; if(!nm||!nm.trim()){ toast('Digite o nome.'); return; } let id=geoSlug(nm.trim()); while(geoLista(id)) id+='-2'; const usadas=new Set(S.geo.listas.map(x=>x.cor));
+    S.geo.listas.push({id,nome:nm.trim(),tipo:GEO.tipo,alias:[],cidades:[],cor:GEO_CORES.find(c=>!usadas.has(c))||'#3A86C8',fonte:'editor',em:new Date().toISOString()}); ED.alvo=id; geoMudou(); renderTudo(); edPainel(); toast('Criada. Agora clique nas cidades dela.'); return; }
+  if(t.id==='ged-zerar') return edZerar(); },true);
+async function edZerar(){ if(!nvAdmin()){ toast('Só o administrador pode zerar.'); return; } const nuvem=Store.modo==='nuvem'&&NV.cli&&NV.user;
+  const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal"><h2>Zerar e refazer do zero</h2><p>O programa esquece em quais regiões/bases cada cidade está (os nomes e as cores ficam) e você pinta tudo de novo. As cidades ensinadas e os contornos também são apagados.</p>
+    <label class="ged-chk"><input type="checkbox" id="zr-reg" checked> Zerar as <b>regiões</b> (rotas)</label><label class="ged-chk"><input type="checkbox" id="zr-base"> Zerar as <b>bases</b></label>
+    <label class="nx-lbl">${nuvem?'Sua senha de login (administrador)':'Digite ZERAR para confirmar'}<input id="zr-senha" type="${nuvem?'password':'text'}" autocomplete="${nuvem?'current-password':'off'}"></label><div class="nv-msg" id="zr-msg"></div>
+    <p class="sec">Dá para voltar: o servidor guarda cópias (Usuários → Cópias de segurança).</p><div class="botoes"><button class="btn" data-a="x" type="button">Cancelar</button><button class="btn perigo" data-a="ok" type="button">Zerar</button></div></div>`;
+  document.body.appendChild(f); f.querySelector('#zr-senha').focus();
+  f.addEventListener('click',async e=>{ const b=e.target.closest('[data-a]'); if(!b) return; if(b.dataset.a!=='ok'){ f.remove(); return; } const msg=f.querySelector('#zr-msg');
+    const tipos=[f.querySelector('#zr-reg').checked&&'regiao',f.querySelector('#zr-base').checked&&'base'].filter(Boolean); if(!tipos.length){ msg.textContent='Marque o que zerar.'; msg.classList.add('erro'); return; }
+    const v=f.querySelector('#zr-senha').value;
+    if(nuvem){ b.disabled=true; msg.textContent='Conferindo a senha…'; msg.classList.remove('erro'); const {error}=await NV.cli.auth.signInWithPassword({email:NV.user.email,password:v}); b.disabled=false; if(error){ msg.textContent='Senha incorreta. Nada foi apagado.'; msg.classList.add('erro'); return; } }
+    else if(v.trim().toUpperCase()!=='ZERAR'){ msg.textContent='Digite ZERAR para confirmar.'; msg.classList.add('erro'); return; }
+    ED.desfazer=JSON.stringify(S.geo); let n=0;
+    for(const l of S.geo.listas) if(tipos.includes(l.tipo)){ n+=l.cidades.length; l.cidades=[]; l.poligonos=[]; }
+    for(const k of Object.keys(S.geo.aprend)){ for(const tp of tipos) delete S.geo.aprend[k][tp]; if(!Object.keys(S.geo.aprend[k]).length) delete S.geo.aprend[k]; }
+    S.geo.migr=S.geo.migr||{}; S.geo.migr.norteMinas=S.geo.migr.norteMinas||new Date().toISOString();
+    try{ nexLog('Admin zerou '+tipos.map(x=>x==='base'?'bases':'regiões').join(' e ')+' ('+n+' vínculos).'); }catch(err){}
+    f.remove(); geoMudou(); renderTudo(); renderGeo(); edPainel(); toast('Zerado. Escolha a '+(GEO.tipo==='base'?'base':'região')+' e clique nas cidades para refazer.'); }); }
+
+/* ---------- feriados em vermelho no mapa da Geolocalização ---------- */
+const FERMAP={dia:null,set:null,on:true,ate:0};
+function ferMapaCidades(){ const ate=FERMAP.ate||0, chave=hojeISO()+'|'+ate; if(FERMAP.dia===chave&&FERMAP.set) return FERMAP.set; const m=new Map();
+  for(const [c] of malha().m){ const o=geoMun(c); if(!o) continue; for(let i=0;i<=ate;i++){ const iso=diaMais(i); let fs=[]; try{ fs=feriadosDoDia(iso,{uf:o.u,c,key:''}).filter(x=>x.tipo!=='Nacional'); }catch(e){} if(fs.length){ m.set(c,{iso,n:fs[0].n}); break; } } }
+  FERMAP.dia=chave; FERMAP.set=m; return m; }
+{ const _dg2=desenharGeoAgora; desenharGeoAgora=function(){ _dg2(); if(!FERMAP.on||$('#t-geo').hidden) return; try{
+    const cv=$('#geo-canvas'), ctx=cv.getContext('2d'), dpr=window.devicePixelRatio||1, W=cv.width/dpr, H=cv.height/dpr; ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0);
+    const M=malha(), fs=ferMapaCidades(), a=geoLatLon(0,0), b=geoLatLon(W,H); const anel=r=>{ r.forEach(([x,y],i)=>{ const [px,py]=geoXY({lon:x,lat:y}); i?ctx.lineTo(px,py):ctx.moveTo(px,py); }); ctx.closePath(); };
+    for(const [c,f] of fs){ const o=M.m.get(c); if(!o||o.b[2]<a.lon||o.b[0]>b.lon||o.b[3]<b.lat||o.b[1]>a.lat) continue; ctx.beginPath(); for(const r of o.rings) anel(r);
+      ctx.fillStyle=f.iso===hojeISO()?'rgba(224,49,49,.85)':'rgba(224,49,49,.45)'; ctx.fill(); ctx.strokeStyle='#C92A2A'; ctx.lineWidth=1.6; ctx.stroke(); }
+    ctx.restore(); }catch(e){ console.error(e); } }; }
+{ const _gp2=geoPerto; geoPerto=function(x,y){ return _gp2(x,y); }; }
+/* controle na barra do mapa + legenda */
+{ const fbar=$('.geo-mapa .ferr'); if(fbar) fbar.insertAdjacentHTML('beforeend',`<label class="fer-map"><input type="checkbox" id="fer-map-on" checked> <i></i>Feriados</label><select id="fer-map-ate" aria-label="Feriados de quais dias"><option value="0">hoje</option><option value="1">hoje + amanhã</option><option value="3">próximos 3 dias</option><option value="7">próximos 7 dias</option></select>`); }
+document.addEventListener('change',e=>{ if(e.target.id==='fer-map-on'){ FERMAP.on=e.target.checked; desenharGeo(); } if(e.target.id==='fer-map-ate'){ FERMAP.ate=+e.target.value; FERMAP.set=null; desenharGeo(); } });
+/* hover mostra o feriado */
+document.addEventListener('pointermove',e=>{ if(e.target.id!=='geo-canvas'||!FERMAP.on) return; setTimeout(()=>{ const h=$('#geo-hover'); if(!h||h.hidden) return; const r=e.target.getBoundingClientRect(); const p=geoPerto(e.clientX-r.left,e.clientY-r.top); if(!p) return; const f=ferMapaCidades().get(p.c); if(f&&!h.textContent.includes('Feriado')) h.textContent+=` · Feriado ${fmtData(f.iso).slice(0,5)}: ${f.n}`; },0); });
+
+/* ---------- "Não fazemos": cidade marcada fica cinza escuro ---------- */
+const NAO_FAZEMOS='-';
+const naoFazemos=(c,tipo)=>((S.geo.aprend[+c]||{})[tipo])===NAO_FAZEMOS;
+{ const _mc=mapaCorCidade; mapaCorCidade=function(c,tipo,auto){ if(naoFazemos(c,tipo)) return {cor:mapaEscuro()?'#3B4A4E':'#8A979A',id:'__nf'}; return _mc(c,tipo,auto); }; }
+{ const _pin=edPintar; edPintar=function(c){ if(ED.alvo!==NAO_FAZEMOS) return _pin(c); c=+c; const tipo=GEO.tipo, o=geoMun(c), antes=JSON.stringify(S.geo);
+    if(naoFazemos(c,tipo)){ delete S.geo.aprend[c][tipo]; if(!Object.keys(S.geo.aprend[c]).length) delete S.geo.aprend[c]; ED.desfazer=antes; geoMudou(); renderTudo(); edPainel(); desenharGeo(); toast(`${o?o.n:'Cidade'}: desmarcada (volta a ficar sem ${tipo==='base'?'base':'região'}).`); return; }
+    for(const l of S.geo.listas) if(l.tipo===tipo&&l.cidades.includes(c)) l.cidades=l.cidades.filter(x=>x!==c);
+    S.geo.aprend[c]=S.geo.aprend[c]||{}; S.geo.aprend[c][tipo]=NAO_FAZEMOS; ED.desfazer=antes; geoMudou(); renderTudo(); edPainel(); desenharGeo(); toast(`${o?o.n:'Cidade'}: marcada como “Não fazemos”.`); }; }
+{ const _ep2=edPainel; edPainel=function(){ _ep2(); const sel=$('#ged-alvo'); if(!sel) return; const tipoN=GEO.tipo==='base'?'base':'região';
+    const nf=Object.values(S.geo.aprend).filter(v=>v&&v[GEO.tipo]===NAO_FAZEMOS).length;
+    sel.insertAdjacentHTML('beforeend',`<option value="${NAO_FAZEMOS}"${ED.alvo===NAO_FAZEMOS?' selected':''}>⛔ Não fazemos — fica cinza (${nf})</option>`);
+    const nova=sel.querySelector('option[value="__nova"]'); if(nova) sel.appendChild(nova);
+    if(!$('#ged-nova-bt')) sel.closest('label').insertAdjacentHTML('afterend',`<div class="ged-bts"><button class="btn mini" type="button" id="ged-nova-bt">+ Nova ${tipoN}</button><span class="sec" style="font-size:.75rem">Para criar ${GEO.tipo==='base'?'região':'base'}, troque em “Regiões / Bases” no mapa.</span></div>`); }; }
+document.addEventListener('click',e=>{ if(e.target.id==='ged-nova-bt'){ ED.alvo='__nova'; edPainel(); setTimeout(()=>{ const i=$('#ged-novo'); if(i) i.focus(); },0); } },true);
+/* troca Regiões/Bases com o editor aberto: atualiza o painel */
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-geo-tipo]')&&ED.on){ ED.alvo=''; setTimeout(edPainel,0); } });
+/* legenda do cinza */
+{ const _rl=renderGeoLeg; renderGeoLeg=function(){ _rl(); const el=$('#geo-leg'); if(el&&!el.querySelector('.leg-nf')) el.insertAdjacentHTML('beforeend','<span class="simb leg-nf"><b style="background:#8A979A"></b>não fazemos</span><span class="simb"><b style="background:#E03131"></b>feriado</span>'); }; }
+
+/* ================= BACKUP COMPLETO (todos os dados) + lembrete diário ================= */
+const BK_TIPO='healthSearch.backup.completo';
+async function bkMontar(){ let ops=[]; try{ if(Store.modo==='nuvem'&&NV.cli){ const {data}=await NV.cli.from('nex_operacoes').select('*'); ops=data||[]; } else ops=JSON.parse(localStorage.getItem('healthSearch.rotas')||'[]'); }catch(e){}
+  return {tipo:BK_TIPO,versao:1,app:HS_VERSAO,geradoEm:new Date().toISOString(),por:(NV.perfil&&NV.perfil.nome)||'',dados:{s:S,re:RE.ler(),operacoes:ops}}; }
+function bkResumo(b){ const s=b.dados.s||{}, re=b.dados.re||{dias:{}}; return {rom:(s.romaneios||[]).length,ag:(s.agendamentos||[]).length,re:Object.values(re.dias||{}).reduce((t,l)=>t+l.length,0),reg:((s.geo||{}).listas||[]).length,ops:(b.dados.operacoes||[]).length}; }
+async function bkBaixar(auto){ const b=await bkMontar(), r=bkResumo(b); const nome='Backup_HealthSearch_'+reHoje()+'.json';
+  nexBaixar(JSON.stringify(b),nome,'application/json'); try{ localStorage.setItem('healthSearch.ultimoBackup',new Date().toISOString()); }catch(e){}
+  try{ const D=RE.ler(); D.ultimoBackup=new Date().toISOString(); }catch(e){}
+  toast(`${auto?'Backup automático do dia':'Backup completo'} salvo em Downloads (${nome}): ${r.rom} romaneio(s), ${r.re} reentrega(s), ${r.ag} agendamento(s), ${r.reg} região(ões)/base(s), ${r.ops} operação(ões).`); nexBadges&&nexBadges(); }
+async function bkRestaurarCompleto(b){ const r=bkResumo(b);
+  const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal"><h2>Restaurar backup completo</h2><p>Backup de <b>${esc(new Date(b.geradoEm).toLocaleString('pt-BR'))}</b>${b.por?' feito por '+esc(b.por):''}: ${r.rom} romaneio(s), ${r.re} reentrega(s), ${r.ag} agendamento(s), ${r.reg} região(ões)/base(s), ${r.ops} operação(ões).</p>
+    <p><b>Todos os dados atuais serão trocados pelos do backup</b>${Store.modo==='nuvem'?', para toda a equipe':''}. O estado de agora vira uma cópia de segurança no servidor, então dá para voltar.</p>
+    <div class="botoes"><button class="btn" data-a="x" type="button">Cancelar</button><button class="btn perigo" data-a="ok" type="button">Restaurar tudo</button></div></div>`;
+  document.body.appendChild(f); f.addEventListener('click',async e=>{ const x=e.target.closest('[data-a]'); if(!x) return; f.remove(); if(x.dataset.a!=='ok') return;
+    for(const k of Object.keys(S)) if(k!=='tema'&&k!=='introOff') delete S[k]; Object.assign(S,b.dados.s||{}); RE.d=b.dados.re||{dias:{},atual:null,apiKey:''}; try{ localStorage.setItem(RE.chave,JSON.stringify(RE.d)); }catch(err){}
+    if(Store.modo==='nuvem'&&NV.cli&&(b.dados.operacoes||[]).length){ const {error}=await NV.cli.from('nex_operacoes').upsert(b.dados.operacoes); if(error) toast('Operações não restauradas: '+nvTraduz(error.message)); }
+    else if((b.dados.operacoes||[]).length){ try{ localStorage.setItem('healthSearch.rotas',JSON.stringify(b.dados.operacoes)); }catch(err){} }
+    montarDicionario(); geoInit(); GEO.idx={}; GEO.cls={}; salvar(); renderTudo(); try{ reTela(); }catch(err){} toast('Backup completo restaurado.'); }); }
+/* o botão "Fazer backup" agora salva tudo; "Restaurar" aceita os dois formatos */
+{ const bt=$('#re-bkp'); if(bt){ const novo=bt.cloneNode(true); bt.replaceWith(novo); novo.textContent='Fazer backup completo'; novo.title='Baixa um arquivo com TODOS os dados do programa'; novo.addEventListener('click',()=>bkBaixar(false)); } }
+{ const _rr2=reRestaurar; reRestaurar=async function(f){ let b=null; try{ b=JSON.parse(await f.text()); }catch(e){} if(b&&b.tipo===BK_TIPO&&b.dados) return bkRestaurarCompleto(b); return _rr2(f); }; }
+/* lembrete diário + opção de baixar sozinho todo dia */
+function bkUltimo(){ try{ return localStorage.getItem('healthSearch.ultimoBackup')||''; }catch(e){ return ''; } }
+const bkAtrasado=()=>{ const u=bkUltimo(); return !u||u.slice(0,10)<hojeISO(); };
+{ const _av2=nexAvisos; nexAvisos=function(){ const a=_av2(); if(nvAdmin()&&bkAtrasado()) a.unshift({cor:'#1C7ED6',txt:'<b>Backup de hoje</b> ainda não foi feito — Reentregas → Fazer backup completo',acao:'bk'}); return a; }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="bk"]'); if(b) setTimeout(()=>bkBaixar(false),50); });
+{ const bar=$('#re-bkp'); if(bar) bar.insertAdjacentHTML('afterend',`<label class="bk-auto" title="Na primeira vez que abrir o programa no dia, baixa o backup completo sozinho (neste computador)"><input type="checkbox" id="bk-auto"> backup automático diário</label>`);
+  try{ $('#bk-auto').checked=localStorage.getItem('healthSearch.bkAuto')==='1'; }catch(e){} }
+document.addEventListener('change',e=>{ if(e.target.id==='bk-auto'){ try{ localStorage.setItem('healthSearch.bkAuto',e.target.checked?'1':'0'); }catch(err){} toast(e.target.checked?'Todo dia, ao abrir, o programa baixa o backup completo neste computador.':'Backup automático desligado.'); } });
+(function(){ let n=0; const t=setInterval(()=>{ n++; const pronto=S.geo&&!(document.getElementById('nv-tela')&&!document.getElementById('nv-tela').hidden)&&(Store.modo!=='nuvem'||NV.perfil); if(!pronto){ if(n>200) clearInterval(t); return; } clearInterval(t);
+  let auto=false; try{ auto=localStorage.getItem('healthSearch.bkAuto')==='1'; }catch(e){} if(auto&&bkAtrasado()) setTimeout(()=>bkBaixar(true),3000); else if(nvAdmin()&&bkAtrasado()) setTimeout(()=>{ try{ nexBadges(); }catch(e){} },1500); },500); })();
 
 /* ================= SEGURANÇA ================= */
 /* cópias de segurança (admin) */
