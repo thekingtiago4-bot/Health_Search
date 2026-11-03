@@ -2878,7 +2878,7 @@ $('#arq').addEventListener('change',e=>importar(e.target.files));
 sol.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('#arq').click(); } });
 ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(!$('#t-romaneios').hidden) sol.classList.add('sobre'); const xs=$('#xl-soltar'); if(xs && !$('#t-excel').hidden) xs.classList.add('sobre'); }));
 ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='dragleave' && e.relatedTarget) return; sol.classList.remove('sobre'); const xs=$('#xl-soltar'); if(xs) xs.classList.remove('sobre'); }));
-document.addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs&&fs.length){ if(window.RomExcel && !$('#t-excel').hidden){ RomExcel.converter(fs); return; } irPara('romaneios'); importar(fs); } });
+document.addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs&&fs.length&&$('#t-rotas').hidden&&$('#t-geo').hidden){ if(window.RomExcel && !$('#t-excel').hidden){ RomExcel.converter(fs); return; } irPara('romaneios'); importar(fs); } });
 
 /* ---------- tela de introdução ---------- */
 function abrirIntro(){ const el=$('#intro'); $('#intro-nao').checked=!!S.introOff; el.hidden=false; setTimeout(()=>$('#bt-intro').focus(),30); }
@@ -3829,7 +3829,7 @@ document.addEventListener('change',async e=>{ const t=e.target; if(t.dataset&&t.
   const h1=rom.querySelector('h1'); h1.insertAdjacentHTML('afterend',`<span class="seg rom-sub" role="tablist" aria-label="Romaneios"><button type="button" data-rom-sub="carregados" aria-pressed="true">Carregados</button><button type="button" data-rom-sub="excel" aria-pressed="false">Foto/PDF → Excel</button></span>`);
   const a=document.createElement('div'); a.id='rom-carregados'; const b=document.createElement('div'); b.id='rom-excel'; b.hidden=true;
   [...rom.children].filter(el=>el!==h1&&!el.classList.contains('rom-sub')).forEach(el=>a.appendChild(el));
-  [...xl.children].filter(el=>el.tagName!=='H1').forEach(el=>b.appendChild(el)); rom.append(a,b); xl.remove();
+  [...xl.children].filter(el=>el.tagName!=='H1').forEach(el=>b.appendChild(el)); rom.append(a,b); xl.remove(); b.id='t-excel'; /* o código antigo usa #t-excel para saber se a aba do Excel está aberta */
   window.romSub=t=>{ $$('[data-rom-sub]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.romSub===t))); a.hidden=t!=='carregados'; b.hidden=t!=='excel'; };
   rom.addEventListener('click',e=>{ const s=e.target.closest('[data-rom-sub]'); if(s) romSub(s.dataset.romSub); });
   const _ir3=irPara; irPara=function(t){ if(t==='excel'){ _ir3('romaneios'); romSub('excel'); return; } _ir3(t); };
@@ -4017,7 +4017,7 @@ function ctDentro(p,pol){ let ins=false; for(let i=0,j=pol.length-1;i<pol.length
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='5.2', HS_DATA='01/11/2026';
+const HS_VERSAO='5.3', HS_DATA='01/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4069,13 +4069,13 @@ if(/github\.io$/.test(location.hostname)&&window.top!==window.self){ try{ window
 const NXOP={lista:[],abertos:new Set()};
 async function nxopCarregar(){ if(Store.modo!=='nuvem'||!NV.cli) return; const desde=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
   const {data,error}=await NV.cli.from('nex_operacoes').select('id,dia,rotulo,dados,atualizado_em,atualizado_por').gte('dia',desde).order('dia',{ascending:false}).limit(40);
-  if(error) return; NXOP.lista=data||[]; nxopRender(); }
+  if(error) return; NXOP.lista=(data||[]).filter(o=>!(o.dados&&o.dados.rt&&o.dados.rt.arquivada)); nxopRender(); }
 function nxopRender(){ const alvo=$('#rom-carregados'); if(!alvo) return; let el=$('#nxop'); if(!el){ alvo.insertAdjacentHTML('beforeend','<div id="nxop"></div>'); el=$('#nxop'); }
   if(!NXOP.lista.length){ el.innerHTML=''; return; }
   el.innerHTML=`<div class="barra"><h2>Operações de rota</h2><span class="sec">últimos 14 dias · aba Roteirização</span></div>`+NXOP.lista.map(o=>{ const d=o.dados||{}, ns=d.notas||[], ab=NXOP.abertos.has(o.id);
     const peso=ns.reduce((s,n)=>s+(+n.peso_kg||0),0), val=ns.reduce((s,n)=>s+(+n.valor_centavos||0),0)/100;
     return `<div class="rom nxop"><div class="topo"><div class="numero">${esc(o.rotulo)}<small>Roteirização</small></div><div class="meta"><span>Dia <b>${esc(fmtData(o.dia))}</b></span><span>Notas <b>${fmtN(ns.length)}</b></span><span>Volumes <b>${fmtN(d.total_volumes||0)}</b></span>${peso?`<span>Peso <b>${nexFmt(peso,1)} kg</b></span>`:''}<span>Carros <b>${fmtN((d.carros||[]).length)}</b></span><span>Valor <b>${reMoeda(val)}</b></span><span class="sec">enviada por ${esc(o.atualizado_por||'')} · ${esc(new Date(o.atualizado_em).toLocaleString('pt-BR').slice(0,17))}</span></div>
-      <div class="acoes" style="margin:0"><button class="btn mini" type="button" data-nxop="${esc(o.id)}">${ab?'Fechar':'Ver notas'}</button></div></div>
+      <div class="acoes" style="margin:0"><button class="btn mini" type="button" data-nxop="${esc(o.id)}">${ab?'Fechar':'Ver notas'}</button><button class="btn mini perigo" type="button" data-nxop-del="${esc(o.id)}">Excluir</button></div></div>
       ${ab?`<div class="corpo"><div class="rolagem"><table><thead><tr><th>NF</th><th>Cliente</th><th>Cidade</th><th>UF</th><th>Carro</th><th class="num">Vol</th><th class="num">Peso</th><th>Região</th><th>Etiquetas</th></tr></thead><tbody>${ns.map(n=>{ const r=resolverCidade(n.cidade,n.uf); const rg=r.o?geoClass(r.o.c,'regiao'):{ids:[]}; const k=String(n.nf).replace(/^0+/,'');
         return `<tr class="${nexPrio(k)?'nx-prio':''}"><td class="nf">${esc(n.nf)}</td><td>${esc(n.cliente)}</td><td>${esc(n.cidade)}</td><td>${esc(n.uf)}</td><td>${esc(n.carro)}</td><td class="num">${esc(n.volumes??'')}</td><td class="num">${n.peso_kg!=null?nexFmt(n.peso_kg,1):''}</td><td>${rg.ids[0]?esc(geoNome(rg.ids[0])):'—'}</td><td class="nx-etqs">${nexTags(k).map(nexChip).join('')}</td></tr>`; }).join('')}</tbody></table></div></div>`:''}</div>`; }).join(''); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nxop]'); if(!b) return; const id=b.dataset.nxop; NXOP.abertos.has(id)?NXOP.abertos.delete(id):NXOP.abertos.add(id); nxopRender(); });
@@ -4087,6 +4087,15 @@ function nxopAchar(nf){ const k=String(nf||'').replace(/\D/g,'').replace(/^0+/,'
 /* carrega ao entrar e quando o NexRoute envia algo novo */
 (function(){ let tent=0; const t=setInterval(()=>{ tent++; if(Store.modo==='nuvem'&&NV.cli&&NV.perfil){ clearInterval(t); nxopCarregar();
     try{ NV.cli.channel('nx-ops').on('postgres_changes',{event:'*',schema:'public',table:'nex_operacoes'},()=>{ nxopCarregar(); 0; }).subscribe(); }catch(e){} } if(tent>120) clearInterval(t); },1000); })();
+
+document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-nxop-del]'); if(!b) return; const o=NXOP.lista.find(x=>x.id===b.dataset.nxopDel); if(!o) return;
+  const adm=NV.perfil&&NV.perfil.papel==='admin';
+  if(!await confirmar(`Excluir a operação ${o.rotulo}?`,adm?'Ela sai da lista para todos. Você pode escolher apagar de vez na próxima pergunta.':'Ela vai para Excluídas (Roteirização → Operações). O administrador pode restaurar.','Excluir')) return;
+  let error=null;
+  if(adm&&await confirmar('Apagar de vez?','Sim: some definitivamente. Não: vai para Excluídas e dá para restaurar.','Apagar de vez')) ({error}=await NV.cli.from('nex_operacoes').delete().eq('id',o.id));
+  else { const d=Object.assign({},o.dados); d.rt=Object.assign({},d.rt||{carros:[],notas:[]},{arquivada:true}); ({error}=await NV.cli.from('nex_operacoes').update({dados:d,atualizado_em:new Date().toISOString()}).eq('id',o.id)); }
+  if(error){ toast('Não excluí: '+nvTraduz(error.message)); return; }
+  NXOP.lista=NXOP.lista.filter(x=>x.id!==o.id); try{ const r=RT.ops.find(x=>x.id===o.id); if(r) r.arquivada=true; if(RT.op&&RT.op.id===o.id) RT.op=null; }catch(err){} nxopRender(); toast('Operação excluída.'); });
 
 /* ================= ROTEIRIZAÇÃO COMPLETA (código próprio do Health Search) =================
    Abas: Conferência · Montagem · Mapa · Impressões · Dashboard · Calendário · Operações.
