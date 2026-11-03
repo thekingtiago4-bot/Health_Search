@@ -688,6 +688,16 @@ body.so-mapa .app{grid-template-columns:1fr}
 .nxop .numero small{color:var(--acento)}
 .nxop-busca{margin-top:12px}.nxop-hit{padding:8px 14px;border-top:1px solid var(--linha2);font-size:var(--fs-sm)}
 :root[data-sem-rotas="1"] .nav [data-tela="rotas"],:root[data-sem-rotas="1"] #nxop,:root[data-sem-rotas="1"] .nxop-busca{display:none!important}
+#vm-transf{margin:0 0 14px;background:var(--sup);border:1px solid var(--linha);border-radius:var(--r);padding:12px 14px}
+.vm-tr-cab{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-bottom:8px}.vm-tr-cab span{font-size:var(--fs-sm);color:var(--tinta2)}
+.vm-tr-lista{display:flex;flex-direction:column;gap:6px}
+.vm-tr{display:grid;grid-template-columns:auto auto 1fr auto auto auto;gap:10px;align-items:center;padding:7px 10px;border:1px solid var(--linha);border-radius:var(--r);border-left:4px solid var(--ag)}
+.vm-tr.ok{border-left-color:var(--ok);opacity:.75}
+.vm-tr .base{font:600 .75rem "Barlow Semi Condensed",sans-serif;background:var(--tealBg);color:var(--teal);border-radius:4px;padding:2px 6px}
+.vm-tr .num{font-weight:700;font-variant-numeric:tabular-nums}.vm-tr .mot{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vm-tr .cheg{color:var(--ok);font-weight:600;font-size:var(--fs-sm);white-space:nowrap}
+@media (max-width:760px){.vm-tr{grid-template-columns:auto 1fr auto}.vm-tr .mot{grid-column:1/-1}}
+.vm-cheg-chip{color:var(--ok);font-weight:600;font-size:var(--fs-sm)}
 /* ---------- ROTEIRIZAÇÃO ---------- */
 .rt-topo,.rt-topo2{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:6px 0 14px}
 .rt-topo label,.rt-topo2 label{display:flex;flex-direction:column;gap:5px;font-size:var(--fs-sm);font-weight:600;color:var(--tinta2)}
@@ -3272,7 +3282,7 @@ function geoBloco(c,tipo){ const r=geoClass(c,tipo); const rot=tipo==='base'?'Ba
   else { corpo='<span class="geo-et">—</span><p class="geo-expl">Sem coordenadas desta cidade.</p>'; }
   const ops=S.geo.listas.filter(l=>l.tipo===tipo).sort((a,b)=>(a.id.startsWith('matriz')?-1:b.id.startsWith('matriz')?1:a.nome.localeCompare(b.nome,'pt-BR')));
   const atual=r.fonte==='lista'?null:(r.ids[0]||r.sug||'');
-  const ens= r.fonte==='lista' ? '' : `<div class="geo-ensinar">${r.fonte==='auto'?`<button class="btn mini pri" type="button" data-geo-conf="${c}" data-tipo="${tipo}">Confirmar</button>`:''}
+  const ens= r.fonte==='lista' ? geoMoverHTML(c,tipo,r,ops) : `<div class="geo-ensinar">${r.fonte==='auto'?`<button class="btn mini pri" type="button" data-geo-conf="${c}" data-tipo="${tipo}">Confirmar</button>`:''}
       <select data-geo-sel="${tipo}" aria-label="Corrigir ${rot}"><option value="">Corrigir para…</option>${ops.map(l=>`<option value="${esc(l.id)}"${l.id===atual&&r.fonte!=='auto'?' selected':''}>${esc(l.nome)}</option>`).join('')}<option value="-">Nenhuma</option></select>
       <button class="btn mini" type="button" data-geo-salvar="${tipo}" data-c="${c}">Ensinar</button>${r.fonte==='aprendido'?` <button class="btn mini" type="button" data-geo-esq="${tipo}" data-c="${c}">Esquecer</button>`:''}</div>`;
   return `<div class="geo-linha"><div class="rotulo">${rot} ${fonte}</div>${corpo}${ens}</div>`; }
@@ -3451,7 +3461,7 @@ function cidadesMG(){ /* cidades da região Via Minas (Minas Gerais e Região), 
     c.roms=[...porRom.values()].sort((a,b)=>(a.rom.base===VIA_MINAS?0:1)-(b.rom.base===VIA_MINAS?0:1)||String(a.rom.numero).localeCompare(String(b.rom.numero)));
     c.cont=contar(c.linhas.map(h=>h.row));
     c.porBase={}; for(const x of c.roms){ const b=x.rom.base||'?'; c.porBase[b]=(c.porBase[b]||0)+contar(x.linhas.map(h=>h.row)).notas; }
-    c.fora=c.roms.filter(x=>x.rom.base!==VIA_MINAS); c.pronta=!c.fora.length;
+    c.fora=c.roms.filter(x=>x.rom.base!==VIA_MINAS&&!vmChegou(x.rom)); c.chegaram=c.roms.filter(x=>x.rom.base!==VIA_MINAS&&vmChegou(x.rom)); c.pronta=!c.fora.length;
   }
   return [...mapa.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
 }
@@ -3462,9 +3472,9 @@ function renderViaMinas(){
   const qt=$('#qt-vm'); qt.textContent=lista.length; qt.hidden=!lista.length;
   const nVM=S.romaneios.filter(r=>r.base===VIA_MINAS);
   const prontas=lista.filter(c=>c.pronta).length;
-  $('#vm-topo').innerHTML=S.romaneios.length?`<span>Cidades da região <b>${fmtN(lista.length)}</b></span><span>Prontas (só no Via Minas) <b style="color:var(--ok)">${fmtN(prontas)}</b></span><span>Esperando outro romaneio <b style="color:var(--ag)">${fmtN(lista.length-prontas)}</b></span><span>Romaneios Via Minas: ${nVM.length?nVM.map(r=>`<b>${esc(r.numero||'?')}</b>`).join(', '):'<b>nenhum carregado</b>'}</span>`:'';
+  $('#vm-topo').innerHTML=S.romaneios.length?`<span>Cidades da região <b>${fmtN(lista.length)}</b></span><span>Prontas para soltar <b style="color:var(--ok)">${fmtN(prontas)}</b></span><span>Esperando transferência <b style="color:var(--ag)">${fmtN(lista.length-prontas)}</b></span><span>Romaneios Via Minas: ${nVM.length?nVM.map(r=>`<b>${esc(r.numero||'?')}</b>`).join(', '):'<b>nenhum carregado</b>'}</span>`:'';
   const vis=lista.filter(c=>!f||normCid(c.nome).includes(f));
-  let html=vis.map(c=>`<button type="button" class="vm-cid" data-vm="${esc(c.k)}" aria-pressed="${c.k===VM_SEL}"><i class="pt ${c.pronta?'ok':'esp'}" title="${c.pronta?'Todas as notas estão no Via Minas':'Tem nota em romaneio de outra filial'}"></i><span class="nm">${esc(c.nome)}</span><span class="n">${fmtN(c.cont.notas)} nota(s)</span><span class="bs">${chipsBase(c.porBase)}</span></button>`).join('');
+  let html=vis.map(c=>`<button type="button" class="vm-cid" data-vm="${esc(c.k)}" aria-pressed="${c.k===VM_SEL}"><i class="pt ${c.pronta?'ok':'esp'}" title="${c.pronta?'Pronta: tudo no Via Minas ou transferência já chegou':'Esperando transferência que ainda não chegou'}"></i><span class="nm">${esc(c.nome)}</span><span class="n">${fmtN(c.cont.notas)} nota(s)</span><span class="bs">${chipsBase(c.porBase)}</span></button>`).join('');
   if(f){ const tem=new Set(lista.map(c=>c.k)); const extra=regiaoVMSemNotas(f,tem);
     if(extra.length) html+=`<div class="vm-sep">Da região, sem notas nos romaneios carregados</div>`+extra.map(o=>`<button type="button" class="vm-cid sem" data-vm="${o.c}" aria-pressed="${String(o.c)===VM_SEL}"><i class="pt"></i><span class="nm">${esc(o.n)}${o.u!=='MG'?'/'+o.u:''}</span><span class="n">0</span></button>`).join(''); }
   $('#vm-cids').innerHTML=html||`<div class="vazio-lista">${S.romaneios.length?(f?'Nenhuma cidade da região com esse nome.':'Nenhuma nota da região Minas Gerais e Região nos romaneios carregados.'):'Nenhum romaneio carregado. Coloque os PDFs na aba Romaneios.'}</div>`;
@@ -3478,11 +3488,11 @@ function renderVMDetalhe(lista){
     el.innerHTML=`<h2>${esc(o?o.n+'/'+o.u:VM_SEL)}</h2><div class="vm-veredito esp" style="background:var(--sup2);color:var(--tinta2)">Nenhuma nota desta cidade nos romaneios carregados.</div>`; return; }
   const fora=[...new Set(c.fora.map(x=>x.rom.base||'?'))];
   const ver=c.pronta
-    ? `<div class="vm-veredito ok">Pode soltar a rota.<span>Todas as ${fmtN(c.cont.notas)} nota(s) estão no romaneio do Via Minas.</span></div>`
+    ? `<div class="vm-veredito ok">Pode soltar a rota.<span>${c.chegaram&&c.chegaram.length?'Todas as transferências desta cidade já chegaram ('+esc([...new Set(c.chegaram.map(x=>x.rom.base||'?'))].join(', '))+').':'Todas as '+fmtN(c.cont.notas)+' nota(s) estão no romaneio do Via Minas.'}</span></div>`
     : `<div class="vm-veredito esp">Ainda falta caminhão.<span>${fmtN(c.fora.reduce((t,x)=>t+contar(x.linhas.map(h=>h.row)).notas,0))} nota(s) estão em romaneio de ${esc(fora.join(', '))}${c.roms.length>c.fora.length?'; o resto já está no Via Minas':''}.</span></div>`;
   el.innerHTML=`<h2>${esc(c.nome.includes('/')?c.nome:c.nome+'/MG')}</h2>${c.auto?'<p class="geo-expl" style="margin:2px 0 0">Cidade fora da lista, colocada na região pela etiqueta automática (veja a aba Geolocalização).</p>':''}<div class="vm-topo" style="margin:0">${totaisTxt(c.cont)}</div>${ver}`+
     c.roms.map(x=>{ const ct=contar(x.linhas.map(h=>h.row)); const r=x.rom;
-      return `<div class="vm-rom"><header><span class="num">${esc(r.numero||'?')}</span><span class="base${r.base===VIA_MINAS?' vm':''}">${esc(r.base||'?')}</span>${r.motorista?`<span>Motorista <b>${esc(r.motorista)}</b></span>`:''}${r.dataViagem?`<span>Viagem <b>${esc(r.dataViagem)}</b></span>`:''}<span>Notas <b>${fmtN(ct.notas)}</b></span><span>Volumes <b>${fmtN(ct.vol)}</b></span></header>
+      return `<div class="vm-rom"><header><span class="num">${esc(r.numero||'?')}</span><span class="base${r.base===VIA_MINAS?' vm':''}">${esc(r.base||'?')}</span>${r.motorista?`<span>Motorista <b>${esc(r.motorista)}</b></span>`:''}${r.dataViagem?`<span>Viagem <b>${esc(r.dataViagem)}</b></span>`:''}<span>Notas <b>${fmtN(ct.notas)}</b></span><span>Volumes <b>${fmtN(ct.vol)}</b></span>${r.base!==VIA_MINAS?(vmChegou(r)?'<span class="vm-cheg-chip">✓ chegou</span><button type="button" class="btn mini" data-vm-cheg="'+esc(r.id)+'" data-v="0">Desfazer</button>':'<button type="button" class="btn mini pri" data-vm-cheg="'+esc(r.id)+'" data-v="1">Chegou</button>'):''}</header>
       <div class="rolagem"><table><thead><tr><th>NF</th><th>Pedido</th><th class="vol">Vol</th><th>Remetente</th><th>Destinatário</th></tr></thead><tbody>${
         x.linhas.map(h=>`<tr><td class="nf">${esc(h.row.nf||'—')}</td><td class="nf">${esc(h.row.ped||'—')}</td><td class="vol">${volTxt(h.row.vol)}</td><td class="forte">${esc(h.row.rem||'')}</td><td>${esc(h.row.dest||'')}</td></tr>`).join('')}</tbody></table></div></div>`; }).join('');
 }
@@ -4008,6 +4018,18 @@ function corAlias(k,c){ const e=S.cidAtend[k]; if(!e) return; S.cidAlias=S.cidAl
 { const _ir4=irPara; irPara=function(t){ if(t==='correcao'){ if(!nvAdmin()){ toast('Só o administrador acessa a Correção.'); return; } if(ED.on) edFechar(); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); $$('.tela').forEach(s=>s.hidden=s.id!=='t-correcao'); fecharSug(); renderCorrecao(); return; } if(ED.on&&t!=='geo') edFechar(); _ir4(t); };
   const _rt2=renderTudo; renderTudo=function(){ _rt2(); try{ corBadge(); if(!$('#t-correcao').hidden) renderCorrecao(); if(ED.on) edPainel(); const ab=$('#ged-abrir'); if(ab) ab.hidden=!nvAdmin(); const nc=document.querySelector('.nav [data-tela="correcao"]'); if(nc) nc.hidden=!nvAdmin(); const ng=document.getElementById('nav-grupo-adm'); if(ng) ng.hidden=!nvAdmin(); }catch(e){ console.error(e); } }; }
 
+/* ---------- cartão da cidade: admin move para a região/base certa (tira das outras do mesmo tipo) ---------- */
+function geoMoverHTML(c,tipo,r,ops){ if(!nvAdmin()) return ''; const atual=r.ids.length===1?r.ids[0]:'';
+  return `<div class="geo-ensinar geo-mover"><select data-geo-mover="${tipo}" data-c="${c}" aria-label="Mover para outra ${tipo==='base'?'base':'região'}"><option value="">${r.ids.length>1?'Está em '+r.ids.length+' listas — deixar só em…':'Mover para…'}</option>${ops.map(l=>`<option value="${esc(l.id)}"${l.id===atual&&r.ids.length===1?' disabled':''}>${esc(l.nome)}</option>`).join('')}<option value="-">Nenhuma (tirar das listas)</option></select><button class="btn mini pri" type="button" data-geo-mover-ok="${tipo}" data-c="${c}">Mover</button></div>`; }
+function geoMover(c,tipo,id){ if(!nvAdmin()){ toast('Só o administrador muda a região.'); return; } c=+c; const antes=JSON.stringify(S.geo); let de=[];
+  for(const l of S.geo.listas) if(l.tipo===tipo&&l.cidades.includes(c)&&l.id!==id){ l.cidades=l.cidades.filter(x=>x!==c); de.push(l.nome); }
+  if(id&&id!=='-'){ const l=geoLista(id); if(l&&!l.cidades.includes(c)) l.cidades.push(c); }
+  if(S.geo.aprend[c]){ delete S.geo.aprend[c][tipo]; if(!Object.keys(S.geo.aprend[c]).length) delete S.geo.aprend[c]; }
+  if(id==='-'){ S.geo.aprend[c]=S.geo.aprend[c]||{}; S.geo.aprend[c][tipo]='-'; }
+  ED.desfazer=antes; geoMudou(); renderTudo(); renderGeo(); const o=geoMun(c);
+  toast(`${o?o.n:'Cidade'}: ${id==='-'?'tirada das listas':'agora em '+geoNome(id)}${de.length?' (saiu de '+de.join(', ')+')':''}. Já vale em todo o programa.`); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-geo-mover-ok]'); if(!b) return; const sel=b.parentElement.querySelector('select'); if(!sel.value){ toast('Escolha para onde mover.'); return; } geoMover(b.dataset.c,b.dataset.geoMoverOk,sel.value); });
+
 /* ================= CONTORNO: cidade dentro de um contorno desenhado entra sozinha na região/base ================= */
 const CT={em:null,pol:{}};
 function ctPoligonos(tipo){ if(CT.em!==S.geo.em){ CT.em=S.geo.em; CT.pol={}; } if(CT.pol[tipo]) return CT.pol[tipo];
@@ -4018,7 +4040,7 @@ function ctDentro(p,pol){ let ins=false; for(let i=0,j=pol.length-1;i<pol.length
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='5.5', HS_DATA='01/11/2026';
+const HS_VERSAO='5.7', HS_DATA='01/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4123,6 +4145,19 @@ document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.
   else { const d=Object.assign({},o.dados); d.rt=Object.assign({},d.rt||{carros:[],notas:[]},{arquivada:true}); ({error}=await NV.cli.from('nex_operacoes').update({dados:d,atualizado_em:new Date().toISOString()}).eq('id',o.id)); }
   if(error){ toast('Não excluí: '+nvTraduz(error.message)); return; }
   NXOP.lista=NXOP.lista.filter(x=>x.id!==o.id); try{ const r=RT.ops.find(x=>x.id===o.id); if(r) r.arquivada=true; if(RT.op&&RT.op.id===o.id) RT.op=null; }catch(err){} nxopRender(); toast('Operação excluída.'); });
+
+/* ================= VIA MINAS: transferências que já chegaram ================= */
+const vmChegou=r=>!!((S.vmChegou||{})[r.id]);
+function vmMarcar(id,on){ S.vmChegou=S.vmChegou||{}; if(on) S.vmChegou[id]=new Date().toISOString(); else delete S.vmChegou[id]; salvar(); renderViaMinas(); }
+function vmTransf(lista){ const m=new Map(); for(const c of lista) for(const x of c.roms){ const r=x.rom; if(r.base===VIA_MINAS) continue; if(!m.has(r.id)) m.set(r.id,{r,cid:new Set(),notas:0}); const e=m.get(r.id); e.cid.add(c.nome); e.notas+=contar(x.linhas.map(h=>h.row)).notas; }
+  return [...m.values()].sort((a,b)=>vmChegou(a.r)-vmChegou(b.r)||String(a.r.base).localeCompare(String(b.r.base))||String(a.r.numero).localeCompare(String(b.r.numero))); }
+const vmHora=iso=>{ const d=new Date(iso); return d.toLocaleDateString('pt-BR').slice(0,5)+' '+d.toLocaleTimeString('pt-BR').slice(0,5); };
+{ const _rv=renderViaMinas; renderViaMinas=function(){ _rv(); try{ const lista=cidadesMG(), ts=vmTransf(lista); let el=$('#vm-transf'); if(!el){ $('#vm-topo').insertAdjacentHTML('afterend','<div id="vm-transf"></div>'); el=$('#vm-transf'); }
+    const falta=ts.filter(t=>!vmChegou(t.r));
+    el.innerHTML=ts.length?`<div class="vm-tr-cab"><b>Transferências para o Via Minas</b><span>${falta.length?`<b style="color:var(--ag)">${falta.length}</b> ainda não chegaram`:'<b style="color:var(--ok)">todas chegaram</b>'} · marque quando o motorista chegar</span></div><div class="vm-tr-lista">${ts.map(t=>{ const ok=vmChegou(t.r);
+      return `<div class="vm-tr${ok?' ok':''}"><span class="base">${esc(t.r.base||'?')}</span><span class="num">${esc(t.r.numero||'?')}</span><span class="mot">${esc(t.r.motorista||'Motorista não informado')}</span><span class="sec">${t.notas} nota(s) · ${t.cid.size} cidade(s)</span>${ok?`<span class="cheg">✓ chegou ${esc(vmHora(S.vmChegou[t.r.id]))}</span><button type="button" class="btn mini" data-vm-cheg="${esc(t.r.id)}" data-v="0">Desfazer</button>`:`<button type="button" class="btn mini pri" data-vm-cheg="${esc(t.r.id)}" data-v="1">Chegou</button>`}</div>`; }).join('')}</div>`:'';
+  }catch(e){ console.error(e); } }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-vm-cheg]'); if(!b) return; vmMarcar(b.dataset.vmCheg,b.dataset.v==='1'); toast(b.dataset.v==='1'?'Chegada marcada. As cidades que só dependiam dele foram liberadas.':'Chegada desfeita.'); });
 
 /* ================= ROTEIRIZAÇÃO COMPLETA (código próprio do Health Search) =================
    Abas: Conferência · Montagem · Mapa · Impressões · Dashboard · Calendário · Operações.
