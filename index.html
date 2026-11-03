@@ -4830,7 +4830,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
   <details class="op-xml" id="op-xml"><summary><b>Conteúdo das caixas (XML das notas)</b> <span class="tag" id="op-xml-qt">0 notas</span></summary>
     <p class="sub">Arraste os XMLs das notas. Com eles o bipe também diz <b>🧊 Gelado (isopor)</b> ou <b>📦 Caixa seca</b> e <b>Medicamento</b> ou <b>Material</b>. Item com <b>G</b> no código é gelado.</p>
     <label class="soltar" id="op-xml-soltar" tabindex="0"><div><b>Arraste os XMLs para cá</b><span>ou clique para escolher (pode vários de uma vez)</span></div><input type="file" id="op-xml-arq" accept=".xml,text/xml,application/xml" multiple class="sr"></label>
-    <div class="op-topo"><span id="op-xml-res" class="tag"></span><button class="btn mini" type="button" id="op-xml-limpar" hidden>Apagar XMLs com mais de 7 dias</button></div>
+    <div class="op-topo"><span id="op-xml-res" class="tag"></span><label id="op-alto-box" hidden>Alto valor a partir de R$ <input type="number" id="op-alto" min="0" step="100" style="width:110px;border:1.5px solid var(--linha);border-radius:var(--r);padding:5px 8px;background:var(--sup);color:inherit"></label><button class="btn mini" type="button" id="op-xml-limpar" hidden>Apagar XMLs com mais de 7 dias</button></div>
   </details>
   <div class="barra"><h2 id="op-tit-lista">Bipes</h2><input id="op-filtro" class="filtro" placeholder="Filtrar pedido, NF, cliente, cidade ou usuário" autocomplete="off">
     <button class="btn mini" type="button" id="op-csv">Exportar Excel (CSV)</button></div>
@@ -4845,6 +4845,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
   $('#op-campo').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=e.target.value.trim(); e.target.value=''; if(v) opLer([v],'leitor'); } });
   $('#op-cards').onclick=e=>{ const b=e.target.closest('[data-f]'); if(!b) return; OP.filtro=OP.filtro===b.dataset.f?'todos':b.dataset.f; opRender(); };
   $('#op-lista').onclick=async e=>{ const b=e.target.closest('[data-del]'); if(!b||!opAdmin()) return; if(!await confirmar('Apagar bipe','Esse registro sai do histórico da operação.','Apagar')) return; opApagar(b.dataset.del); };
+  $('#op-alto').onchange=e=>{ const v=Math.max(0,+e.target.value||0); S.opAlto=v; salvar(); opRender(); toast('Alto valor: a partir de '+opMoeda(v)+'.'); };
   $('#op-xml-arq').onchange=e=>{ opXmlImportar([...e.target.files]); e.target.value=''; };
   const sz=$('#op-xml-soltar'); ['dragover','dragenter'].forEach(ev=>sz.addEventListener(ev,e=>{ e.preventDefault(); sz.classList.add('sobre'); })); ['dragleave','drop'].forEach(ev=>sz.addEventListener(ev,()=>sz.classList.remove('sobre')));
   sz.addEventListener('drop',e=>{ e.preventDefault(); opXmlImportar([...e.dataTransfer.files]); });
@@ -4895,11 +4896,11 @@ function opLer(textos,origem){
   else if(!nf) status='semnota';
   else status='ok';
   const b={local_id:Date.now().toString(36)+Math.random().toString(36).slice(2,8),dia:OP.dia||hojeISO(),codigo:prin.codigo,tipo:prin.tipo+(origem?':'+origem:''),ped,nf,vol,tot,pallet,
-    conteudo:(opConteudo(ped,nf)||{}).cod||'',romaneio:it?String(it.r.numero||''):'',dest:x?String(x.dest||''):'',cid:x?String(x.cid||''):'',status,usuario:opEu(),criado_em:new Date().toISOString(),chave};
+    conteudo:(opConteudo(ped,nf)||{}).cod||'',valor:opValor(ped,nf,x)||null,romaneio:it?String(it.r.numero||''):'',dest:x?String(x.dest||''):'',cid:x?String(x.cid||''):'',status,usuario:opEu(),criado_em:new Date().toISOString(),chave};
   if(b.dia!==hojeISO()){ b.dia=hojeISO(); if(OP.dia!==b.dia){ $('#op-dia').value=b.dia; OP.dia=b.dia; OP.bipes=opLocalLer(b.dia); } }
   OP.bipes.unshift(b); opLocalGravar(); opEnviar(b);
   const conf=x?opContagem(ped,nf):null; const ct=opConteudo(ped,nf);
-  opMostrar({status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
+  const vv=b.valor||0; opMostrar({status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
   opRender(); }
 
 function opContagem(ped,nf){ const rows=[]; const idx=opIndice(); for(const it of (ped&&idx.ped.get(ped))||(nf&&idx.nf.get(nf))||[]) rows.push(it.x);
@@ -4917,7 +4918,7 @@ function opXmlLer(txt,nome){ const d=new DOMParser().parseFromString(txt,'text/x
     return {c:cp,d:xp.slice(0,70),ncm,q:+tx('qCom',pr)||0,g,med}; });
   const vols=[...(inf.getElementsByTagName('transp')[0]||inf).getElementsByTagName('vol')].map(v=>({q:parseInt(tx('qVol',v))||0,esp:tx('esp',v)}));
   return {chave:(inf.getAttribute('Id')||'').replace(/^NFe/,''),nf:opK(tx('nNF')),ped:opK(ped),cli:tx('xNome',inf.getElementsByTagName('dest')[0]).toUpperCase(),
-    g:itens.some(i=>i.g),s:itens.some(i=>!i.g),med:itens.some(i=>i.med),mat:itens.some(i=>!i.med),vols,itens:itens.slice(0,40),em:hojeISO()}; }
+    valor:+tx('vNF',inf.getElementsByTagName('ICMSTot')[0])||0,g:itens.some(i=>i.g),s:itens.some(i=>!i.g),med:itens.some(i=>i.med),mat:itens.some(i=>!i.med),vols,itens:itens.slice(0,40),em:hojeISO()}; }
 async function opXmlImportar(files){ const xs=files.filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); if(!xs.length){ toast('Escolha arquivos .xml das notas.'); return; }
   S.opXml=S.opXml||{}; let ok=0,rep=0; const erros=[];
   for(const f of xs){ try{ const n=opXmlLer(await f.text(),f.name); if(!n.nf) throw new Error(f.name+': sem número de NF.'); if(S.opXml[n.nf]) rep++; S.opXml[n.nf]=n; ok++; }catch(e){ erros.push(e.message); } }
@@ -4925,7 +4926,12 @@ async function opXmlImportar(files){ const xs=files.filter(f=>/\.xml$/i.test(f.n
   const g=Object.values(S.opXml).filter(n=>n.g).length;
   $('#op-xml-res').textContent=`${ok} XML(s) lido(s)${rep?` (${rep} atualizado(s))`:''}${erros.length?` · ${erros.length} com erro`:''} · ${g} nota(s) com gelado`;
   if(erros.length) toast(erros.slice(0,2).join(' ')); }
-function opXmlInfo(){ const n=Object.keys(S.opXml||{}).length; const q=$('#op-xml-qt'); if(q) q.textContent=fmtN(n)+' nota'+(n===1?'':'s'); const l=$('#op-xml-limpar'); if(l) l.hidden=!n; }
+function opXmlInfo(){ const n=Object.keys(S.opXml||{}).length; const q=$('#op-xml-qt'); if(q) q.textContent=fmtN(n)+' nota'+(n===1?'':'s'); const l=$('#op-xml-limpar'); if(l) l.hidden=!n; const ab=$('#op-alto-box'); if(ab){ ab.hidden=!(opAdmin()||!opOnline()); $('#op-alto').value=opAlto(); } }
+/* valor da nota: XML primeiro, depois o valor do romaneio */
+const OP_ALTO_PAD=5000; const opAlto=()=>+(S.opAlto||OP_ALTO_PAD);
+function opValor(ped,nf,x){ const c=opConteudo(ped,nf); if(c&&c.nota.valor) return c.nota.valor; const v=x&&String(x.valor||'').replace(/\./g,'').replace(',','.'); return +v||0; }
+const opMoeda=v=>v?v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'';
+const opValHtml=v=>v?`<span style="white-space:nowrap;${v>=opAlto()?'font-weight:800;color:#B45309':''}">${v>=opAlto()?'💰 ':''}${opMoeda(v)}</span>`:'<span style="color:var(--mudo)">—</span>';
 /* código curto guardado no bipe: G=gelado S=seco M=medicamento T=material */
 function opConteudo(ped,nf){ const X=S.opXml||{}; let n=(nf&&X[opK(nf)])||null; if(!n&&ped){ const p=opK(ped); n=Object.values(X).find(v=>v.ped===p)||null; } if(!n) return null;
   const cod=(n.g?'G':'')+(n.s?'S':'')+'|'+(n.med?'M':'')+(n.mat?'T':'');
@@ -5021,28 +5027,28 @@ function opVisiveis(){ return OP.usuario?OP.bipes.filter(b=>b.usuario===OP.usuar
 function opPendentes(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[];
   for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; const esp=volNum(x.vol); if(esp===0) continue;
     const lidos=new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
-    if(lidos<(esp||1)) out.push({r,x,ped,nf,esp:esp||1,lidos}); }
-  return out; }
+    if(lidos<(esp||1)) out.push({r,x,ped,nf,esp:esp||1,lidos,valor:opValor(ped,nf,x)}); }
+  return out.sort((a,b)=>b.valor-a.valor); }
 function opBadge(){ const q=$('#qt-op'); if(!q) return; const n=OP.bipes.filter(b=>b.status==='fora'||b.status==='dup').length; q.textContent=n; q.hidden=!n; }
 function opRender(){ if(!$('#op-cards')) return; const vis=opVisiveis(); const c={todos:vis.length,ok:0,semnota:0,fora:0,dup:0}; for(const b of vis) c[b.status]=(c[b.status]||0)+1;
   const pend=opPendentes(), us=[...new Set(OP.bipes.map(b=>b.usuario).filter(Boolean))].sort();
   const sel=$('#op-usu'); sel.innerHTML='<option value="">Todos os usuários</option>'+us.map(u=>`<option ${u===OP.usuario?'selected':''}>${esc(u)}</option>`).join('');
   const card=(f,n,t,cor)=>`<button class="op-card" type="button" data-f="${f}" aria-pressed="${OP.filtro===f}"><b>${fmtN(n)}</b><span>${cor?`<i style="background:${cor}"></i>`:''}${t}</span></button>`;
-  $('#op-cards').innerHTML=card('todos',c.todos,'Bipes')+card('ok',c.ok,'Conferidos',OP_ST.ok.c)+card('falta',pend.length,OP.dia===hojeISO()?'Notas faltando':'Faltando (só hoje)','var(--mudo)')+card('semnota',c.semnota,'Sem nota',OP_ST.semnota.c)+card('fora',c.fora,'Fora do romaneio',OP_ST.fora.c)+card('dup',c.dup,'Duplicados',OP_ST.dup.c);
+  $('#op-cards').innerHTML=card('todos',c.todos,'Bipes')+card('ok',c.ok,'Conferidos',OP_ST.ok.c)+card('falta',pend.length,OP.dia===hojeISO()?'Notas faltando':'Faltando (só hoje)','var(--mudo)')+card('alto',pend.filter(it=>it.valor>=opAlto()).length,'💰 Alto valor faltando','#B45309')+card('semnota',c.semnota,'Sem nota',OP_ST.semnota.c)+card('fora',c.fora,'Fora do romaneio',OP_ST.fora.c)+card('dup',c.dup,'Duplicados',OP_ST.dup.c);
   opBadge(); opSinc(); opRenderLista(); }
 function opRenderLista(){ const el=$('#op-lista'); if(!el) return; const q=($('#op-filtro').value||'').toLowerCase().trim();
   const cas=s=>!q||String(s).toLowerCase().includes(q);
-  if(OP.filtro==='falta'){ const p=opPendentes().filter(it=>cas([it.ped,it.nf,it.x.dest,it.x.cid,it.r.numero].join(' ')));
-    $('#op-tit-lista').textContent='Notas do romaneio que ainda não foram bipadas';
-    el.innerHTML=p.length?`<table class="op-tab"><thead><tr><th>Romaneio</th><th>Pedido</th><th>NF</th><th>Volumes</th><th>Conteúdo</th><th class="m-oc">Cliente</th><th class="m-oc">Cidade</th></tr></thead><tbody>${p.slice(0,800).map(it=>`<tr><td>${esc(it.r.numero)}</td><td>${esc(it.ped)}</td><td>${esc(it.nf)}</td><td>${it.lidos} de ${it.esp}</td><td>${opCtHtml((opConteudo(it.ped,it.nf)||{}).cod)}</td><td class="m-oc">${esc(it.x.dest)}</td><td class="m-oc">${esc(it.x.cid)}</td></tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.dia===hojeISO()?(S.romaneios.length?'Nada faltando. Tudo dos romaneios foi bipado. ✔':'Carregue os romaneios do dia para ver o que falta.'):'O que falta só é calculado para a operação de hoje.'}</div>`;
+  if(OP.filtro==='falta'||OP.filtro==='alto'){ const p=opPendentes().filter(it=>OP.filtro!=='alto'||it.valor>=opAlto()).filter(it=>cas([it.ped,it.nf,it.x.dest,it.x.cid,it.r.numero].join(' ')));
+    $('#op-tit-lista').textContent='Notas que ainda não foram bipadas (mais caras primeiro)';
+    el.innerHTML=p.length?`<table class="op-tab"><thead><tr><th>Romaneio</th><th>Pedido</th><th>NF</th><th>Volumes</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Cliente</th><th class="m-oc">Cidade</th></tr></thead><tbody>${p.slice(0,800).map(it=>`<tr><td>${esc(it.r.numero)}</td><td>${esc(it.ped)}</td><td>${esc(it.nf)}</td><td>${it.lidos} de ${it.esp}</td><td>${opCtHtml((opConteudo(it.ped,it.nf)||{}).cod)}</td><td>${opValHtml(it.valor)}</td><td class="m-oc">${esc(it.x.dest)}</td><td class="m-oc">${esc(it.x.cid)}</td></tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.dia===hojeISO()?(S.romaneios.length?'Nada faltando. Tudo dos romaneios foi bipado. ✔':'Carregue os romaneios do dia para ver o que falta.'):'O que falta só é calculado para a operação de hoje.'}</div>`;
     return; }
   const lista=opVisiveis().filter(b=>OP.filtro==='todos'||b.status===OP.filtro).filter(b=>cas([b.ped,b.nf,b.dest,b.cid,b.usuario,b.romaneio,b.codigo].join(' ')));
   $('#op-tit-lista').textContent=OP.filtro==='todos'?'Bipes':OP_ST[OP.filtro].t;
   const hora=iso=>{ const d=new Date(iso); return isNaN(d)?'':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
-  el.innerHTML=lista.length?`<table class="op-tab"><thead><tr><th>Hora</th><th>Situação</th><th>Pedido</th><th>NF</th><th>Vol.</th><th>Conteúdo</th><th class="m-oc">Romaneio</th><th class="m-oc">Cliente / cidade</th><th>Usuário</th>${opAdmin()?'<th></th>':''}</tr></thead><tbody>${lista.slice(0,1500).map(b=>`<tr><td>${hora(b.criado_em)}</td><td class="st" style="color:${OP_ST[b.status].c}">${OP_ST[b.status].t}</td><td>${esc(b.ped||'')}</td><td>${esc(b.nf||'—')}</td><td>${b.vol&&b.tot?b.vol+'/'+b.tot:''}</td><td>${opCtHtml(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod)}</td><td class="m-oc">${esc(b.romaneio||'')}</td><td class="m-oc">${esc([b.dest,b.cid].filter(Boolean).join(' · '))}</td><td>${esc(b.usuario||'')}</td>${opAdmin()?`<td><button class="op-x" type="button" title="Apagar" data-del="${esc(b.id||b.local_id)}">✕</button></td>`:''}</tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.carregando?'Carregando…':'Nenhum bipe aqui ainda.'}</div>`; }
-function opCSV(){ const linhas=[['Data','Hora','Situação','Pedido','NF','Volume','Total','Pallet','Romaneio','Cliente','Cidade','Usuário','Código lido','Conteúdo']];
-  for(const b of opVisiveis()){ const d=new Date(b.criado_em); linhas.push([b.dia,d.toLocaleTimeString('pt-BR'),OP_ST[b.status].t,b.ped,b.nf,b.vol||'',b.tot||'',b.pallet||'',b.romaneio,b.dest,b.cid,b.usuario,b.codigo,opCtTexto(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod)]); }
-  if(OP.dia===hojeISO()) for(const it of opPendentes()) linhas.push([OP.dia,'','Não bipado',it.ped,it.nf,it.lidos,it.esp,'',it.r.numero,it.x.dest,it.x.cid,'','',opCtTexto((opConteudo(it.ped,it.nf)||{}).cod)]);
+  el.innerHTML=lista.length?`<table class="op-tab"><thead><tr><th>Hora</th><th>Situação</th><th>Pedido</th><th>NF</th><th>Vol.</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Romaneio</th><th class="m-oc">Cliente / cidade</th><th>Usuário</th>${opAdmin()?'<th></th>':''}</tr></thead><tbody>${lista.slice(0,1500).map(b=>`<tr><td>${hora(b.criado_em)}</td><td class="st" style="color:${OP_ST[b.status].c}">${OP_ST[b.status].t}</td><td>${esc(b.ped||'')}</td><td>${esc(b.nf||'—')}</td><td>${b.vol&&b.tot?b.vol+'/'+b.tot:''}</td><td>${opCtHtml(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod)}</td><td>${opValHtml(+b.valor||opValor(b.ped,b.nf))}</td><td class="m-oc">${esc(b.romaneio||'')}</td><td class="m-oc">${esc([b.dest,b.cid].filter(Boolean).join(' · '))}</td><td>${esc(b.usuario||'')}</td>${opAdmin()?`<td><button class="op-x" type="button" title="Apagar" data-del="${esc(b.id||b.local_id)}">✕</button></td>`:''}</tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.carregando?'Carregando…':'Nenhum bipe aqui ainda.'}</div>`; }
+function opCSV(){ const linhas=[['Data','Hora','Situação','Pedido','NF','Volume','Total','Pallet','Romaneio','Cliente','Cidade','Usuário','Código lido','Conteúdo','Valor (R$)']];
+  for(const b of opVisiveis()){ const d=new Date(b.criado_em); linhas.push([b.dia,d.toLocaleTimeString('pt-BR'),OP_ST[b.status].t,b.ped,b.nf,b.vol||'',b.tot||'',b.pallet||'',b.romaneio,b.dest,b.cid,b.usuario,b.codigo,opCtTexto(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod),String((+b.valor||opValor(b.ped,b.nf)).toFixed(2)).replace('.',',')]); }
+  if(OP.dia===hojeISO()) for(const it of opPendentes()) linhas.push([OP.dia,'','Não bipado',it.ped,it.nf,it.lidos,it.esp,'',it.r.numero,it.x.dest,it.x.cid,'','',opCtTexto((opConteudo(it.ped,it.nf)||{}).cod),String(it.valor.toFixed(2)).replace('.',',')]);
   const csv='﻿'+linhas.map(l=>l.map(v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(';')).join('\r\n');
   baixar(new Blob([csv],{type:'text/csv;charset=utf-8'}),`Operacao_${OP.dia}.csv`); }
 
