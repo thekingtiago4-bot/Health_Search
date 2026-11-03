@@ -15,11 +15,13 @@ create table if not exists public.hs_bipagens (
   romaneio    text,
   dest        text,
   cid         text,
+  conteudo    text,                           -- G=gelado S=seco | M=medicamento T=material (do XML)
   status      text not null check (status in ('ok','semnota','fora','dup')),
   usuario     text,
   usuario_id  uuid not null default auth.uid() references auth.users(id),
   criado_em   timestamptz not null default now()
 );
+alter table public.hs_bipagens add column if not exists conteudo text;
 create index if not exists hs_bipagens_dia on public.hs_bipagens (dia, criado_em desc);
 
 alter table public.hs_bipagens enable row level security;
