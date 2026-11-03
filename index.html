@@ -4900,7 +4900,7 @@ function opLer(textos,origem){
   if(b.dia!==hojeISO()){ b.dia=hojeISO(); if(OP.dia!==b.dia){ $('#op-dia').value=b.dia; OP.dia=b.dia; OP.bipes=opLocalLer(b.dia); } }
   OP.bipes.unshift(b); opLocalGravar(); opEnviar(b);
   const conf=x?opContagem(ped,nf):null; const ct=opConteudo(ped,nf);
-  const vv=b.valor||0; opMostrar({status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
+  const vv=b.valor||0; opMostrar({_ped:ped,_nf:nf,_dest:b.dest,status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
   opRender(); }
 
 function opContagem(ped,nf){ const rows=[]; const idx=opIndice(); for(const it of (ped&&idx.ped.get(ped))||(nf&&idx.nf.get(nf))||[]) rows.push(it.x);
@@ -4949,9 +4949,9 @@ function opCtHtml(cod){ if(!cod) return '<span style="color:var(--mudo)">—</sp
 /* ---------- retorno: cor, som, vibração ---------- */
 let OP_AC=null;
 function opSom(st){ try{ OP_AC=OP_AC||new (window.AudioContext||window.webkitAudioContext)(); const ac=OP_AC; if(ac.state==='suspended') ac.resume();
-  const seq={ok:[[1400,.09]],semnota:[[900,.1],[0,.06],[900,.1]],fora:[[220,.45]],dup:[[700,.08],[0,.04],[1100,.08],[0,.04],[700,.08]],info:[[600,.08]]}[st]||[[600,.08]];
+  const seq={ok:[[1400,.09]],semnota:[[900,.1],[0,.06],[900,.1]],fora:[[220,.45]],dup:[[700,.08],[0,.04],[1100,.08],[0,.04],[700,.08]],info:[[600,.08]],reent:[[1200,.12],[0,.05],[800,.12],[0,.05],[1200,.12]]}[st]||[[600,.08]];
   let t=ac.currentTime; for(const [f,d] of seq){ if(f){ const o=ac.createOscillator(), g=ac.createGain(); o.type=st==='fora'?'sawtooth':'square'; o.frequency.value=f; g.gain.setValueAtTime(.18,t); g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t+d); } t+=d; } }catch(e){}
-  try{ if(navigator.vibrate) navigator.vibrate({ok:60,semnota:[80,60,80],fora:[300],dup:[50,40,50,40,50]}[st]||40); }catch(e){} }
+  try{ if(navigator.vibrate) navigator.vibrate({ok:60,semnota:[80,60,80],fora:[300],dup:[50,40,50,40,50],reent:[120,60,120,60,120]}[st]||40); }catch(e){} }
 function opMostrar(r){ opSom(r.status); const cor=(OP_ST[r.status]||{c:'#555'}).c;
   const el=$('#op-res'); el.style.background=cor; el.style.color='#fff'; el.innerHTML=`<b>${esc(r.titulo)}</b><small>${esc(r.linha||'')}</small>`; el.classList.add('pisca'); setTimeout(()=>el.classList.remove('pisca'),160);
   const m=document.querySelector('#op-cam .msg'); if(m){ m.style.background=cor; m.innerHTML=`<b>${esc(r.titulo)}</b>${esc(r.linha||'')}`; const mi=document.querySelector('#op-cam .mira'); if(mi){ mi.style.borderColor=cor; setTimeout(()=>mi.style.borderColor='',700); } } }
@@ -5064,6 +5064,103 @@ async function nvEntrarPacote(){
   nvFechar(); NV.pacote=true;
   const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||nvExibe(NV.user.email))}</b><small>${NV.perfil.papel==='admin'?'Administrador':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
   const s=$('#nv-sair'); if(s) s.onclick=async()=>{ await NV.cli.auth.signOut(); location.reload(); }; }
+
+/* ================= v6.3.1 · histórico por PEDIDO e por reentrega lançada → alerta de reentrega (romaneio, bipe e mural) ================= */
+function reVarrerPed(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
+  /* tudo que já foi lançado em Reentregas, por NF e por pedido (com a data) */
+  const lanc={nf:new Map(),ped:new Map()}; try{ for(const [d,ls] of Object.entries(RE.ler().dias||{})) for(const l of ls){ const a=z(l.nf), b=z(l.ped); if(a&&(!lanc.nf.has(a)||lanc.nf.get(a)<d)) lanc.nf.set(a,d); if(b&&(!lanc.ped.has(b)||lanc.ped.get(b)<d)) lanc.ped.set(b,d); } }catch(e){}
+  for(const r of S.romaneios||[]){ const d=nexDataRom(r);
+    for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped); if(!k&&!p) continue;
+      let ant=null, via='';
+      if(p){ const h=n.histPed[p]=n.histPed[p]||[];
+        if(!h.some(e=>e.d===d&&e.rom===r.id)){ ant=h.filter(e=>e.d<d).sort((a,b)=>b.d.localeCompare(a.d))[0]||null; if(ant) via='pedido'; h.push({d,rom:r.id,num:r.numero||'',nf:k}); if(h.length>20) h.splice(0,h.length-20); } }
+      if(!ant){ const dl=(k&&lanc.nf.get(k))||(p&&lanc.ped.get(p)); if(dl&&dl<d){ ant={d:dl,num:'Reentregas'}; via='lancada'; } }
+      const kk=k||('P'+p);
+      if(ant&&!(n.reent[kk]&&n.reent[kk].d===d)){ n.reent[kk]={d,rom:r.id,num:r.numero||'',anterior:ant.d,romAnt:ant.num||'',status:'suspeita',motivo:'',via,ped:p,nfAnt:ant.nf||'',em:new Date().toISOString()}; novas++; } } }
+  return novas; }
+{ const _nv=nexVarrer; nexVarrer=function(){ const a=_nv.apply(this,arguments); let b=0; try{ b=reVarrerPed(); }catch(e){ console.error(e); } return (a||0)+b; }; }
+
+/* reentrega ativa para uma nota/pedido dos romaneios carregados */
+function reAtiva(ped,nf){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); const e=(nf&&n.reent[z(nf)])||(ped&&n.reent['P'+z(ped)])||(ped&&Object.values(n.reent).find(x=>x.ped===z(ped)&&ids.has(x.rom)))||null;
+  return e&&e.status!=='ignorada'&&ids.has(e.rom)?e:null; }
+function reNoDia(){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); const out=[];
+  for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const e=reAtiva(z(row.ped),z(row.nf)); if(e) out.push({r,row,e}); }
+  const vis=new Set(); return out.filter(x=>{ const k=z(x.row.nf)||z(x.row.ped); if(vis.has(k)) return false; vis.add(k); return true; }); }
+const reTxt=e=>`↻ REENTREGA · já veio em ${fmtData(e.anterior)}${e.romAnt&&e.romAnt!=='Reentregas'?' (romaneio '+e.romAnt+')':e.via==='lancada'?' (lançada em Reentregas)':''}`;
+
+/* ================= Agendamentos · exigências por cliente (PBR, paletização por SKU, altura máxima…) ================= */
+const CLI_CAMPOS=[['pbr','Palete PBR'],['sku','Paletização por SKU'],['film','Filmar / stretch'],['etq','Etiqueta em todas as caixas'],['nmisto','Não aceita palete misto'],['agend','Só com agendamento']];
+function cliS(){ return S.clientesReq=S.clientesReq||[]; }
+function cliAcha(nome){ const t=N(nome||''); if(!t) return null; let best=null; for(const c of cliS()){ const a=N(c.nome); if(!a) continue; if(t===a||t.includes(a)||(a.length>=6&&a.includes(t))){ if(!best||a.length>N(best.nome).length) best=c; } } return best; }
+function cliResumo(c){ if(!c) return ''; const t=CLI_CAMPOS.filter(([k])=>c[k]).map(([,l])=>l); if(c.alt) t.push('altura máx. '+c.alt+' cm'); if(c.peso) t.push('peso máx. '+c.peso+' kg/palete'); if(c.hora) t.push('recebe '+c.hora); for(const x of c.extras||[]) if(x.n) t.push(x.n+(x.v?': '+x.v:'')); if(c.obs) t.push(c.obs); return t.join(' · '); }
+function cliHoje(){ const m=new Map(); for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const c=cliAcha(row.dest); if(!c) continue; const o=m.get(c.id)||{c,notas:0,vol:0,rom:new Set()}; o.notas++; o.vol+=volNum(row.vol)||0; o.rom.add(r.numero||''); m.set(c.id,o); } return [...m.values()]; }
+
+(function cliMontar(){
+  const st=document.createElement('style'); st.textContent=`
+.cli-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px;border:1.5px solid var(--linha);border-radius:12px;padding:14px;background:var(--sup);margin:6px 0 10px}
+.cli-form label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-sm);font-weight:600;color:var(--tinta2)}
+.cli-form input[type=text],.cli-form input[type=number],.cli-form input[type=time]{border:1.5px solid var(--linha);border-radius:var(--r);padding:7px 9px;background:var(--sup);color:inherit;font:inherit;font-weight:400}
+.cli-form .chks{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 18px}.cli-form .chks label{flex-direction:row;align-items:center;font-weight:500}
+.cli-form .extras{grid-column:1/-1;display:flex;flex-direction:column;gap:6px}.cli-form .extra{display:flex;gap:8px}.cli-form .extra input{flex:1}
+.cli-form .fim{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+.cli-item{border:1px solid var(--linha);border-radius:10px;padding:10px 12px;margin:6px 0;background:var(--sup);display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.cli-item b{display:block}.cli-item small{color:var(--mudo)}.cli-tag{display:inline-block;font-size:.75rem;font-weight:700;border-radius:6px;padding:1px 7px;margin:3px 4px 0 0;background:#FFF1D6;color:#8A4B00}
+.cli-aviso{display:block;margin-top:4px;font-size:.8rem;font-weight:600;color:#8A4B00}`;
+  document.head.appendChild(st);
+  const sec=document.getElementById('t-agenda'); if(!sec) return;
+  sec.insertAdjacentHTML('beforeend',`<div class="barra"><h2>Clientes · exigências de entrega</h2><input id="cli-filtro" class="filtro" placeholder="Buscar cliente" autocomplete="off"></div>
+  <p class="sub" style="margin:0 0 6px">Cadastre o que cada cliente exige. Quando ele aparecer nos romaneios, o aviso sai no mural e no bipe da Operação.</p>
+  <form class="cli-form" id="cli-form" autocomplete="off"><input type="hidden" id="cli-id">
+    <label>Cliente (nome como vem no romaneio)<input type="text" id="cli-nome" required placeholder="Ex.: SOUZA GOMES ESTETICA"></label>
+    <label>CNPJ (opcional)<input type="text" id="cli-doc" inputmode="numeric"></label>
+    <label>Altura máxima do palete (cm)<input type="number" id="cli-alt" min="0" step="1" placeholder="Ex.: 160"></label>
+    <label>Peso máximo por palete (kg)<input type="number" id="cli-peso" min="0" step="1"></label>
+    <label>Horário de recebimento<input type="text" id="cli-hora" placeholder="Ex.: 08h às 15h, seg a sex"></label>
+    <div class="chks">${CLI_CAMPOS.map(([k,l])=>`<label><input type="checkbox" data-cli="${k}"> ${l}</label>`).join('')}</div>
+    <div class="extras"><span style="font-size:var(--fs-sm);font-weight:600;color:var(--tinta2)">Outras exigências (campo livre)</span><div id="cli-extras"></div><button class="btn mini" type="button" id="cli-mais" style="align-self:flex-start">+ Adicionar exigência</button></div>
+    <label style="grid-column:1/-1">Observação<input type="text" id="cli-obs" placeholder="Ex.: descarregar só na doca 2, falar com Márcia"></label>
+    <div class="fim"><button class="btn" type="button" id="cli-limpar">Limpar</button><button class="btn pri" type="submit" id="cli-ok">Salvar cliente</button></div>
+  </form>
+  <div class="lista" id="cli-lista"></div>`);
+  const extra=(n='',v='')=>{ const d=document.createElement('div'); d.className='extra'; d.innerHTML=`<input type="text" placeholder="Exigência (ex.: Nota dentro da caixa 1)" value="${esc(n)}" data-en><input type="text" placeholder="Detalhe (opcional)" value="${esc(v)}" data-ev><button class="btn mini" type="button" title="Tirar">✕</button>`; d.querySelector('button').onclick=()=>d.remove(); $('#cli-extras').appendChild(d); };
+  const limpar=()=>{ $('#cli-form').reset(); $('#cli-id').value=''; $('#cli-extras').innerHTML=''; $('#cli-ok').textContent='Salvar cliente'; };
+  $('#cli-mais').onclick=()=>extra();
+  $('#cli-limpar').onclick=limpar;
+  $('#cli-filtro').oninput=cliRender;
+  $('#cli-form').onsubmit=e=>{ e.preventDefault(); const nome=$('#cli-nome').value.trim(); if(!nome){ toast('Informe o nome do cliente.'); return; }
+    const id=$('#cli-id').value||Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const c={id,nome:nome.toUpperCase(),doc:z($('#cli-doc').value),alt:+$('#cli-alt').value||null,peso:+$('#cli-peso').value||null,hora:$('#cli-hora').value.trim(),obs:$('#cli-obs').value.trim(),
+      extras:[...$('#cli-extras').children].map(d=>({n:d.querySelector('[data-en]').value.trim(),v:d.querySelector('[data-ev]').value.trim()})).filter(x=>x.n),em:new Date().toISOString(),por:(NV.perfil&&NV.perfil.nome)||''};
+    for(const [k] of CLI_CAMPOS) c[k]=document.querySelector(`[data-cli="${k}"]`).checked;
+    const L=cliS(), i=L.findIndex(x=>x.id===id); if(i>=0) L[i]=c; else L.push(c);
+    salvar(); limpar(); cliRender(); toast(i>=0?'Cliente atualizado.':'Cliente cadastrado.'); };
+  $('#cli-lista').onclick=async e=>{ const b=e.target.closest('[data-cli-ed],[data-cli-del]'); if(!b) return; const L=cliS(), c=L.find(x=>x.id===(b.dataset.cliEd||b.dataset.cliDel)); if(!c) return;
+    if(b.dataset.cliDel){ if(!await confirmar('Excluir cliente',`Tirar as exigências de <b>${esc(c.nome)}</b>?`,'Excluir')) return; S.clientesReq=L.filter(x=>x!==c); salvar(); cliRender(); return; }
+    limpar(); $('#cli-id').value=c.id; $('#cli-nome').value=c.nome; $('#cli-doc').value=c.doc||''; $('#cli-alt').value=c.alt||''; $('#cli-peso').value=c.peso||''; $('#cli-hora').value=c.hora||''; $('#cli-obs').value=c.obs||'';
+    for(const [k] of CLI_CAMPOS) document.querySelector(`[data-cli="${k}"]`).checked=!!c[k]; for(const x of c.extras||[]) extra(x.n,x.v);
+    $('#cli-ok').textContent='Salvar alterações'; $('#cli-form').scrollIntoView({behavior:'smooth',block:'start'}); $('#cli-nome').focus(); };
+  const _ir=irPara; irPara=function(t){ _ir(t); if(t==='agenda') cliRender(); };
+})();
+function cliRender(){ const el=$('#cli-lista'); if(!el) return; const q=N($('#cli-filtro').value||''); const hoje=new Map(cliHoje().map(o=>[o.c.id,o]));
+  const L=cliS().filter(c=>!q||N(c.nome).includes(q)).sort((a,b)=>(hoje.has(b.id)-hoje.has(a.id))||a.nome.localeCompare(b.nome));
+  el.innerHTML=L.length?L.map(c=>{ const h=hoje.get(c.id); const tags=CLI_CAMPOS.filter(([k])=>c[k]).map(([,l])=>l).concat(c.alt?['Altura máx. '+c.alt+' cm']:[],c.peso?['Peso máx. '+c.peso+' kg']:[],(c.extras||[]).map(x=>x.n+(x.v?': '+x.v:'')));
+    return `<div class="cli-item"><div><b>${esc(c.nome)}</b>${c.doc?`<small>CNPJ ${esc(c.doc)}</small> `:''}${c.hora?`<small>· recebe ${esc(c.hora)}</small>`:''}<div>${tags.map(t=>`<span class="cli-tag">${esc(t)}</span>`).join('')}</div>${c.obs?`<small>${esc(c.obs)}</small>`:''}${h?`<span class="cli-aviso">📦 Nos romaneios de hoje: ${h.notas} nota(s), ${h.vol} vol. (romaneio ${esc([...h.rom].join(', '))})</span>`:''}<small style="display:block">Alterado ${esc(fmtQuando(c.em))}${c.por?' por '+esc(c.por):''}</small></div>
+      <div style="display:flex;gap:6px"><button class="btn mini" type="button" data-cli-ed="${esc(c.id)}">Editar</button><button class="btn mini" type="button" data-cli-del="${esc(c.id)}">Excluir</button></div></div>`; }).join(''):'<div class="vazio-lista">Nenhum cliente com exigência cadastrada.</div>'; }
+
+/* ---------- alertas no bipe da Operação ---------- */
+{ const _ml=opMostrar; opMostrar=function(r){ if(r&&r._ped!==undefined){ const e=reAtiva(r._ped,r._nf), c=cliAcha(r._dest);
+      if(e){ r.titulo='↻ REENTREGA · '+r.titulo; r.linha=reTxt(e).replace('↻ REENTREGA · ','')+' — leve para o local de reentregas · '+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='reent'; }
+      if(c) r.linha=(r.linha||'')+' — 📋 '+cliResumo(c); }
+    _ml(r); }; }
+OP_ST.reent={t:'Reentrega',c:'#AE3EC9'};
+
+/* ---------- mural: reentregas do dia e clientes com exigência ---------- */
+{ const _ma=muralAbrir; muralAbrir=function(){ _ma(); const g=document.querySelector('#mural .mural-g'); if(!g) return;
+    const re=reNoDia(), cl=cliHoje();
+    const c1=`<div class="mural-c" style="${re.length?'border:2px solid #AE3EC9':''}"><h3>↻ Reentregas nos romaneios de hoje</h3><b class="big">${re.length}</b> nota(s) que já vieram antes${re.length?`<ul>${re.slice(0,8).map(x=>`<li><b>NF ${esc(z(x.row.nf)||'—')}</b> · ped. ${esc(z(x.row.ped)||'—')} · ${esc(x.row.dest||'')} · antes em ${esc(fmtData(x.e.anterior))}${x.e.via==='lancada'?' (lançada em Reentregas)':''}</li>`).join('')}${re.length>8?`<li>+ ${re.length-8} nota(s)</li>`:''}</ul><p class="sub">Separe direto no local de reentregas.</p>`:'<p class="sub">Nenhuma nota repetida nos romaneios carregados.</p>'}<button class="btn mini" data-mural-ir="operacao" type="button">Abrir Operação</button></div>`;
+    const c2=`<div class="mural-c" style="${cl.length?'border:2px solid #E8A33D':''}"><h3>📋 Clientes com exigência hoje</h3><b class="big">${cl.length}</b> cliente(s)${cl.length?`<ul>${cl.slice(0,8).map(o=>`<li><b>${esc(o.c.nome)}</b> · ${o.notas} nota(s) · ${esc(cliResumo(o.c))}</li>`).join('')}</ul>`:'<p class="sub">Nenhum cliente com exigência nos romaneios de hoje.</p>'}<button class="btn mini" data-mural-ir="agenda" type="button">Abrir clientes</button></div>`;
+    g.insertAdjacentHTML('afterbegin',c1+c2);
+    g.querySelectorAll('[data-mural-ir="operacao"],[data-mural-ir="agenda"]').forEach(b=>b.addEventListener('click',ev=>{ ev.stopPropagation(); muralFechar(); irPara(b.dataset.muralIr); },{once:true})); }; }
 
 /* ---------- início ---------- */
 (async function(){
