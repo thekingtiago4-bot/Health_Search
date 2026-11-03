@@ -4900,7 +4900,7 @@ function opLer(textos,origem){
   if(b.dia!==hojeISO()){ b.dia=hojeISO(); if(OP.dia!==b.dia){ $('#op-dia').value=b.dia; OP.dia=b.dia; OP.bipes=opLocalLer(b.dia); } }
   OP.bipes.unshift(b); opLocalGravar(); opEnviar(b);
   const conf=x?opContagem(ped,nf):null; const ct=opConteudo(ped,nf);
-  const vv=b.valor||0; opMostrar({_ped:ped,_nf:nf,_dest:b.dest,status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
+  const vv=b.valor||0; opMostrar({_ped:ped,_nf:nf,_dest:b.dest,_cid:b.cid,status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
   opRender(); }
 
 function opContagem(ped,nf){ const rows=[]; const idx=opIndice(); for(const it of (ped&&idx.ped.get(ped))||(nf&&idx.nf.get(nf))||[]) rows.push(it.x);
@@ -5091,9 +5091,9 @@ const reTxt=e=>`↻ REENTREGA · já veio em ${fmtData(e.anterior)}${e.romAnt&&e
 /* ================= Agendamentos · exigências por cliente (PBR, paletização por SKU, altura máxima…) ================= */
 const CLI_CAMPOS=[['pbr','Palete PBR'],['sku','Paletização por SKU'],['film','Filmar / stretch'],['etq','Etiqueta em todas as caixas'],['nmisto','Não aceita palete misto'],['agend','Só com agendamento']];
 function cliS(){ return S.clientesReq=S.clientesReq||[]; }
-function cliAcha(nome){ const t=N(nome||''); if(!t) return null; let best=null; for(const c of cliS()){ const a=N(c.nome); if(!a) continue; if(t===a||t.includes(a)||(a.length>=6&&a.includes(t))){ if(!best||a.length>N(best.nome).length) best=c; } } return best; }
+function cliAcha(nome,cid){ const t=N(nome||''), cc=N(cid||''); if(!t) return null; let best=null; for(const c of cliS()){ const a=N(c.nome); if(!a) continue; if((c.cids||[]).length&&!c.cids.some(x=>{ const y=N(x); return y&&(cc===y||cc.startsWith(y+' ')||cc.includes(y)); })) continue; if(t===a||t.includes(a)||(a.length>=6&&a.includes(t))){ if(!best||a.length>N(best.nome).length) best=c; } } return best; }
 function cliResumo(c){ if(!c) return ''; const t=CLI_CAMPOS.filter(([k])=>c[k]).map(([,l])=>l); if(c.alt) t.push('altura máx. '+c.alt+' cm'); if(c.peso) t.push('peso máx. '+c.peso+' kg/palete'); if(c.hora) t.push('recebe '+c.hora); for(const x of c.extras||[]) if(x.n) t.push(x.n+(x.v?': '+x.v:'')); if(c.obs) t.push(c.obs); return t.join(' · '); }
-function cliHoje(){ const m=new Map(); for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const c=cliAcha(row.dest); if(!c) continue; const o=m.get(c.id)||{c,notas:0,vol:0,rom:new Set()}; o.notas++; o.vol+=volNum(row.vol)||0; o.rom.add(r.numero||''); m.set(c.id,o); } return [...m.values()]; }
+function cliHoje(){ const m=new Map(); for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const c=cliAcha(row.dest,row.cid); if(!c) continue; const o=m.get(c.id)||{c,notas:0,vol:0,rom:new Set()}; o.notas++; o.vol+=volNum(row.vol)||0; o.rom.add(r.numero||''); m.set(c.id,o); } return [...m.values()]; }
 
 (function cliMontar(){
   const st=document.createElement('style'); st.textContent=`
@@ -5113,6 +5113,7 @@ function cliHoje(){ const m=new Map(); for(const r of S.romaneios||[]) for(const
   <form class="cli-form" id="cli-form" autocomplete="off"><input type="hidden" id="cli-id">
     <label>Cliente (nome como vem no romaneio)<input type="text" id="cli-nome" required placeholder="Ex.: SOUZA GOMES ESTETICA"></label>
     <label>CNPJ (opcional)<input type="text" id="cli-doc" inputmode="numeric"></label>
+    <label>Só nestas cidades (opcional)<input type="text" id="cli-cid" placeholder="Ex.: BAURU  ·  vazio = todas"></label>
     <label>Altura máxima do palete (cm)<input type="number" id="cli-alt" min="0" step="1" placeholder="Ex.: 160"></label>
     <label>Peso máximo por palete (kg)<input type="number" id="cli-peso" min="0" step="1"></label>
     <label>Horário de recebimento<input type="text" id="cli-hora" placeholder="Ex.: 08h às 15h, seg a sex"></label>
@@ -5129,14 +5130,14 @@ function cliHoje(){ const m=new Map(); for(const r of S.romaneios||[]) for(const
   $('#cli-filtro').oninput=cliRender;
   $('#cli-form').onsubmit=e=>{ e.preventDefault(); const nome=$('#cli-nome').value.trim(); if(!nome){ toast('Informe o nome do cliente.'); return; }
     const id=$('#cli-id').value||Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    const c={id,nome:nome.toUpperCase(),doc:z($('#cli-doc').value),alt:+$('#cli-alt').value||null,peso:+$('#cli-peso').value||null,hora:$('#cli-hora').value.trim(),obs:$('#cli-obs').value.trim(),
+    const c={id,nome:nome.toUpperCase(),cids:$('#cli-cid').value.split(/[,;\/]+/).map(x=>x.trim().toUpperCase()).filter(Boolean),doc:z($('#cli-doc').value),alt:+$('#cli-alt').value||null,peso:+$('#cli-peso').value||null,hora:$('#cli-hora').value.trim(),obs:$('#cli-obs').value.trim(),
       extras:[...$('#cli-extras').children].map(d=>({n:d.querySelector('[data-en]').value.trim(),v:d.querySelector('[data-ev]').value.trim()})).filter(x=>x.n),em:new Date().toISOString(),por:(NV.perfil&&NV.perfil.nome)||''};
     for(const [k] of CLI_CAMPOS) c[k]=document.querySelector(`[data-cli="${k}"]`).checked;
     const L=cliS(), i=L.findIndex(x=>x.id===id); if(i>=0) L[i]=c; else L.push(c);
     salvar(); limpar(); cliRender(); toast(i>=0?'Cliente atualizado.':'Cliente cadastrado.'); };
   $('#cli-lista').onclick=async e=>{ const b=e.target.closest('[data-cli-ed],[data-cli-del]'); if(!b) return; const L=cliS(), c=L.find(x=>x.id===(b.dataset.cliEd||b.dataset.cliDel)); if(!c) return;
     if(b.dataset.cliDel){ if(!await confirmar('Excluir cliente',`Tirar as exigências de <b>${esc(c.nome)}</b>?`,'Excluir')) return; S.clientesReq=L.filter(x=>x!==c); salvar(); cliRender(); return; }
-    limpar(); $('#cli-id').value=c.id; $('#cli-nome').value=c.nome; $('#cli-doc').value=c.doc||''; $('#cli-alt').value=c.alt||''; $('#cli-peso').value=c.peso||''; $('#cli-hora').value=c.hora||''; $('#cli-obs').value=c.obs||'';
+    limpar(); $('#cli-id').value=c.id; $('#cli-nome').value=c.nome; $('#cli-doc').value=c.doc||''; $('#cli-cid').value=(c.cids||[]).join(', '); $('#cli-alt').value=c.alt||''; $('#cli-peso').value=c.peso||''; $('#cli-hora').value=c.hora||''; $('#cli-obs').value=c.obs||'';
     for(const [k] of CLI_CAMPOS) document.querySelector(`[data-cli="${k}"]`).checked=!!c[k]; for(const x of c.extras||[]) extra(x.n,x.v);
     $('#cli-ok').textContent='Salvar alterações'; $('#cli-form').scrollIntoView({behavior:'smooth',block:'start'}); $('#cli-nome').focus(); };
   const _ir=irPara; irPara=function(t){ _ir(t); if(t==='agenda') cliRender(); };
@@ -5144,23 +5145,69 @@ function cliHoje(){ const m=new Map(); for(const r of S.romaneios||[]) for(const
 function cliRender(){ const el=$('#cli-lista'); if(!el) return; const q=N($('#cli-filtro').value||''); const hoje=new Map(cliHoje().map(o=>[o.c.id,o]));
   const L=cliS().filter(c=>!q||N(c.nome).includes(q)).sort((a,b)=>(hoje.has(b.id)-hoje.has(a.id))||a.nome.localeCompare(b.nome));
   el.innerHTML=L.length?L.map(c=>{ const h=hoje.get(c.id); const tags=CLI_CAMPOS.filter(([k])=>c[k]).map(([,l])=>l).concat(c.alt?['Altura máx. '+c.alt+' cm']:[],c.peso?['Peso máx. '+c.peso+' kg']:[],(c.extras||[]).map(x=>x.n+(x.v?': '+x.v:'')));
-    return `<div class="cli-item"><div><b>${esc(c.nome)}</b>${c.doc?`<small>CNPJ ${esc(c.doc)}</small> `:''}${c.hora?`<small>· recebe ${esc(c.hora)}</small>`:''}<div>${tags.map(t=>`<span class="cli-tag">${esc(t)}</span>`).join('')}</div>${c.obs?`<small>${esc(c.obs)}</small>`:''}${h?`<span class="cli-aviso">📦 Nos romaneios de hoje: ${h.notas} nota(s), ${h.vol} vol. (romaneio ${esc([...h.rom].join(', '))})</span>`:''}<small style="display:block">Alterado ${esc(fmtQuando(c.em))}${c.por?' por '+esc(c.por):''}</small></div>
+    return `<div class="cli-item"><div><b>${esc(c.nome)}</b>${(c.cids||[]).length?`<small>só em ${esc(c.cids.join(', '))}</small> `:'<small>todas as cidades</small> '}${c.doc?`<small>CNPJ ${esc(c.doc)}</small> `:''}${c.hora?`<small>· recebe ${esc(c.hora)}</small>`:''}<div>${tags.map(t=>`<span class="cli-tag">${esc(t)}</span>`).join('')}</div>${c.obs?`<small>${esc(c.obs)}</small>`:''}${h?`<span class="cli-aviso">📦 Nos romaneios de hoje: ${h.notas} nota(s), ${h.vol} vol. (romaneio ${esc([...h.rom].join(', '))})</span>`:''}<small style="display:block">Alterado ${esc(fmtQuando(c.em))}${c.por?' por '+esc(c.por):''}</small></div>
       <div style="display:flex;gap:6px"><button class="btn mini" type="button" data-cli-ed="${esc(c.id)}">Editar</button><button class="btn mini" type="button" data-cli-del="${esc(c.id)}">Excluir</button></div></div>`; }).join(''):'<div class="vazio-lista">Nenhum cliente com exigência cadastrada.</div>'; }
 
 /* ---------- alertas no bipe da Operação ---------- */
-{ const _ml=opMostrar; opMostrar=function(r){ if(r&&r._ped!==undefined){ const e=reAtiva(r._ped,r._nf), c=cliAcha(r._dest);
-      if(e){ r.titulo='↻ REENTREGA · '+r.titulo; r.linha=reTxt(e).replace('↻ REENTREGA · ','')+' — leve para o local de reentregas · '+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='reent'; }
+{ const _ml=opMostrar; opMostrar=function(r){ if(r&&r._ped!==undefined){ const e=reAtiva(r._ped,r._nf), c=cliAcha(r._dest,r._cid), ag=agNaoVai(r._ped,r._nf);
+      if(e&&e.div){ r.titulo='📦 DIVERGÊNCIA · CAIXA QUE FALTOU · '+r.titulo; r.linha=`em ${fmtData(e.div.d)} vieram ${e.div.antes} vol.; agora chegou ${e.div.agora} — junte com a carga da nota, não é reentrega · `+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='div'; }
+      else if(e){ r.titulo='↻ REENTREGA · '+r.titulo; r.linha=reTxt(e).replace('↻ REENTREGA · ','')+' — leve para o local de reentregas · '+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='reent'; }
+      if(ag){ r.titulo='✋ AGENDADA · NÃO VAI PARA OPERAÇÃO · '+r.titulo; r.linha='separe e entregue fisicamente ao responsável pelos agendamentos — '+(r.linha||''); r.status='agend'; }
       if(c) r.linha=(r.linha||'')+' — 📋 '+cliResumo(c); }
     _ml(r); }; }
-OP_ST.reent={t:'Reentrega',c:'#AE3EC9'};
+OP_ST.reent={t:'Reentrega',c:'#AE3EC9'}; OP_ST.agend={t:'Agendada (fora da rota)',c:'#E8590C'}; OP_ST.div={t:'Divergência (caixa que faltou)',c:'#0B7285'};
 
 /* ---------- mural: reentregas do dia e clientes com exigência ---------- */
 { const _ma=muralAbrir; muralAbrir=function(){ _ma(); const g=document.querySelector('#mural .mural-g'); if(!g) return;
-    const re=reNoDia(), cl=cliHoje();
+    const tudo=reNoDia(), re=tudo.filter(x=>!x.e.div), dv=tudo.filter(x=>x.e.div), cl=cliHoje();
     const c1=`<div class="mural-c" style="${re.length?'border:2px solid #AE3EC9':''}"><h3>↻ Reentregas nos romaneios de hoje</h3><b class="big">${re.length}</b> nota(s) que já vieram antes${re.length?`<ul>${re.slice(0,8).map(x=>`<li><b>NF ${esc(z(x.row.nf)||'—')}</b> · ped. ${esc(z(x.row.ped)||'—')} · ${esc(x.row.dest||'')} · antes em ${esc(fmtData(x.e.anterior))}${x.e.via==='lancada'?' (lançada em Reentregas)':''}</li>`).join('')}${re.length>8?`<li>+ ${re.length-8} nota(s)</li>`:''}</ul><p class="sub">Separe direto no local de reentregas.</p>`:'<p class="sub">Nenhuma nota repetida nos romaneios carregados.</p>'}<button class="btn mini" data-mural-ir="operacao" type="button">Abrir Operação</button></div>`;
     const c2=`<div class="mural-c" style="${cl.length?'border:2px solid #E8A33D':''}"><h3>📋 Clientes com exigência hoje</h3><b class="big">${cl.length}</b> cliente(s)${cl.length?`<ul>${cl.slice(0,8).map(o=>`<li><b>${esc(o.c.nome)}</b> · ${o.notas} nota(s) · ${esc(cliResumo(o.c))}</li>`).join('')}</ul>`:'<p class="sub">Nenhum cliente com exigência nos romaneios de hoje.</p>'}<button class="btn mini" data-mural-ir="agenda" type="button">Abrir clientes</button></div>`;
-    g.insertAdjacentHTML('afterbegin',c1+c2);
+    const c3=dv.length?`<div class="mural-c" style="border:2px solid #0B7285"><h3>📦 Caixas que faltaram chegando</h3><b class="big">${dv.length}</b> nota(s) com divergência de volume<ul>${dv.slice(0,8).map(x=>`<li><b>NF ${esc(z(x.row.nf)||'—')}</b> · ped. ${esc(z(x.row.ped)||'—')} · ${esc(x.row.dest||'')} · em ${esc(fmtData(x.e.div.d))} vieram ${x.e.div.antes} vol., agora ${x.e.div.agora}</li>`).join('')}</ul><p class="sub">Junte com a carga da nota. Não é reentrega.</p></div>`:'';
+    g.insertAdjacentHTML('afterbegin',c1+c3+c2);
     g.querySelectorAll('[data-mural-ir="operacao"],[data-mural-ir="agenda"]').forEach(b=>b.addEventListener('click',ev=>{ ev.stopPropagation(); muralFechar(); irPara(b.dataset.muralIr); },{once:true})); }; }
+
+
+/* ================= v6.3.1 · MESA = rota dos agendados · agendadas em outros romaneios = pedir fisicamente · 1ª aparição na MESA não é reentrega ================= */
+const romMesa=r=>!!r&&(String(r.base||'').toUpperCase()==='MESA'||nexTxtRom(r).includes('MESA'));
+/* nota agendada: agendamento cadastrado (NF, pedido ou cliente) ou cliente marcado "Só com agendamento" (respeitando a cidade) */
+function linhaAgendada(row){ if(agDaLinha(row)) return true; const c=cliAcha(row.dest,row.cid); return !!(c&&c.agend); }
+function agFora(){ const out=[], vis=new Set(); for(const r of S.romaneios||[]){ if(romMesa(r)) continue;
+    for(const row of r.rows||[]){ if(volNum(row.vol)===0) continue; if(!linhaAgendada(row)) continue; const k=z(row.nf)||'P'+z(row.ped); if(vis.has(k)) continue; vis.add(k); out.push({r,row}); } }
+  return out; }
+/* a MESA já é o romaneio dos agendados: tudo dela segue rota hoje */
+function agMesa(){ const out=[]; for(const r of S.romaneios||[]) if(romMesa(r)) for(const row of r.rows||[]) if(volNum(row.vol)!==0) out.push({r,row}); return out; }
+function agNaoVai(ped,nf){ ped=z(ped); nf=z(nf); return agFora().some(({row})=>(nf&&z(row.nf)===nf)||(ped&&z(row.ped)===ped)); }
+/* marca no histórico quais aparições foram na MESA e aplica a regra da 1ª aparição */
+function reRegraMesa(){ const n=nexS(); n.histPed=n.histPed||{};
+  for(const r of S.romaneios||[]){ const m=romMesa(r); for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped);
+      const v=volNum(row.vol); for(const e of (k&&n.hist[k])||[]) if(e.rom===r.id){ e.m=m; if(v!=null) e.v=v; } for(const e of (p&&n.histPed[p])||[]) if(e.rom===r.id){ e.m=m; if(v!=null) e.v=v; } } }
+  let tiradas=0;
+  for(const r of S.romaneios||[]){ if(!romMesa(r)) continue; const d=nexDataRom(r);
+    for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada') continue;
+      const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(x=>x.d<d);
+      if(!ant.some(x=>x.m)){ e.status='ignorada'; e.motivo='Agendamento: 1ª aparição na MESA'; tiradas++; } } }
+  /* divergência: voltou com MENOS volumes que da vez anterior = caixa que faltou chegando, não reentrega */
+  for(const r of S.romaneios||[]){ const d=nexDataRom(r);
+    for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada'||e.divOk) continue;
+      const v=volNum(row.vol); const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(x=>x.d<d&&x.v!=null).sort((a,b)=>b.d.localeCompare(a.d))[0];
+      if(ant&&v!=null&&v<ant.v){ e.div={antes:ant.v,agora:v,d:ant.d,rom:ant.num||''}; e.motivo=e.motivo||'Divergência: caixa que faltou'; } else delete e.div; e.divOk=1; } }
+  return tiradas; }
+{ const _nv2=nexVarrer; nexVarrer=function(){ const a=_nv2.apply(this,arguments); try{ reRegraMesa(); }catch(e){ console.error(e); } return a; }; }
+function agForaHtml(lista,max){ return lista.length?`<table class="op-tab"><thead><tr><th>Remetente</th><th>Cliente</th><th>Pedido</th><th>NF</th><th class="m-oc">Cidade</th><th class="m-oc">Romaneio</th></tr></thead><tbody>${lista.slice(0,max||9999).map(({r,row})=>`<tr><td>${esc(row.rem||'')}</td><td>${esc(row.dest||'')}</td><td>${esc(z(row.ped)||'—')}</td><td>${esc(z(row.nf)||'—')}</td><td class="m-oc">${esc(row.cid||'')}</td><td class="m-oc">${esc(r.numero||'')} ${r.base?'<span class="base">'+esc(r.base)+'</span>':''}</td></tr>`).join('')}</tbody></table>`:''; }
+/* lista na tela de Agendamentos */
+(function(){ const sec=document.getElementById('t-agenda'); if(!sec) return; const alvo=sec.querySelector('.barra');
+  alvo.insertAdjacentHTML('beforebegin',`<div class="barra"><h2>✋ Agendadas fora da MESA · pedir fisicamente</h2><span class="tag" id="agf-qt">0</span><button class="btn mini" type="button" id="agf-copiar">Copiar lista</button></div>
+  <p class="sub" style="margin:0 0 6px">Notas de clientes que agendam e que vieram em romaneios que <b>não são da MESA</b>: não vão para a operação de hoje. Peça as notas físicas.</p><div id="agf-lista"></div>`);
+  $('#agf-copiar').onclick=()=>{ const l=agFora(); const t='Notas agendadas para separar (não vão para operação):\n'+l.map(({row})=>`• ${row.rem||''} → ${row.dest||''} · ped. ${z(row.ped)||'—'} · NF ${z(row.nf)||'—'}`).join('\n'); navigator.clipboard.writeText(t).then(()=>toast('Lista copiada. Cole no WhatsApp.'),()=>toast('Não consegui copiar.')); };
+  const _ir=irPara; irPara=function(t){ _ir(t); if(t==='agenda') agfRender(); }; })();
+function agfRender(){ const el=$('#agf-lista'); if(!el) return; const l=agFora(); $('#agf-qt').textContent=l.length+' nota(s)'; el.innerHTML=l.length?agForaHtml(l):'<div class="vazio-lista">Nenhuma nota agendada fora da MESA nos romaneios carregados.</div>'; }
+/* mural: card "Seguem rota hoje (MESA)" e "Pedir fisicamente" */
+{ const _ma2=muralAbrir; muralAbrir=function(){ _ma2(); const g=document.querySelector('#mural .mural-g'); if(!g) return;
+    const fo=agFora(), me=agMesa(); const cs=new Map(); for(const {row} of me){ const k=N(row.dest); const o=cs.get(k)||{nome:row.dest,notas:0,c:cliAcha(row.dest,row.cid)}; o.notas++; cs.set(k,o); }
+    const c1=`<div class="mural-c" style="${fo.length?'border:2px solid #E8590C':''}"><h3>✋ Agendadas fora da MESA · pedir fisicamente</h3><b class="big">${fo.length}</b> nota(s) que não vão para a operação${fo.length?`<ul>${fo.slice(0,10).map(({row})=>`<li>${esc(row.rem||'')} → <b>${esc(row.dest||'')}</b> · ped. ${esc(z(row.ped)||'—')} · NF ${esc(z(row.nf)||'—')}</li>`).join('')}${fo.length>10?`<li>+ ${fo.length-10} nota(s)</li>`:''}</ul>`:'<p class="sub">Nenhuma agendada fora da MESA.</p>'}<button class="btn mini" data-mural-ir2="agenda" type="button">Ver lista completa</button></div>`;
+    const c2=`<div class="mural-c"><h3>🚚 Agendados que seguem rota hoje (MESA)</h3><b class="big">${me.length}</b> nota(s) · ${cs.size} cliente(s)${cs.size?`<ul>${[...cs.values()].slice(0,8).map(o=>`<li><b>${esc(o.nome)}</b> · ${o.notas} nota(s)${o.c?' · 📋 '+esc(cliResumo(o.c)):''}</li>`).join('')}</ul>`:'<p class="sub">Sem romaneio da MESA hoje.</p>'}</div>`;
+    const ex=[...g.querySelectorAll('.mural-c')].find(c=>/Clientes com exigência/i.test(c.textContent)); if(ex) ex.insertAdjacentHTML('afterend',c2+c1); else g.insertAdjacentHTML('afterbegin',c1+c2);
+    g.querySelectorAll('[data-mural-ir2]').forEach(b=>b.addEventListener('click',ev=>{ ev.stopPropagation(); muralFechar(); irPara('agenda'); },{once:true})); }; }
 
 /* ---------- início ---------- */
 (async function(){
