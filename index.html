@@ -5813,7 +5813,7 @@ function txtOnde(w){ const out=[]; for(const r of S.romaneios||[]){ for(const k 
     for(const x of r.rows||[]) for(const k of TXT_CAMPOS) if(String(x[k]||'').includes(w)) out.push({rom:r.numero,nf:x.nf,ped:x.ped,campo:TXT_NOMES[k]||k,txt:x[k],arq:r.arquivo,row:x}); } return out; }
 (function(){ const st=document.createElement('style'); st.textContent=`.v61-onde{display:block;font-size:.78rem;color:var(--mudo);margin:4px 0 0;line-height:1.4}.v61-onde b.qb{background:#e03131;color:#fff;border-radius:3px;padding:0 3px}.v61-onde .tx{color:var(--tinta);font-weight:600}`; document.head.appendChild(st); })();
 { const _rc7=renderCorrecao; renderCorrecao=function(){ _rc7.apply(this,arguments); try{ for(const inp of document.querySelectorAll('#cor-corpo [data-v61-tx]')){ const w=inp.dataset.v61Tx; if(inp.parentElement.querySelector('.v61-onde')) continue; const os=txtOnde(w);
-      const marca=t=>esc(t).replace(/�/g,'<b class="qb">?</b>');
+      const marca=t=>esc(t).replace(/\uFFFD/g,'<b class="qb">?</b>');
       inp.insertAdjacentHTML('afterend',`<span class="v61-onde">${os.slice(0,3).map(o=>`${esc(o.campo)}: <span class="tx">${marca(o.txt)}</span> · rom. ${esc(o.rom||'?')}${o.nf?' · NF '+esc(z(o.nf)):''}${o.row&&o.row.cid&&o.campo!=='Cidade'?' · '+esc(o.row.cid):''}`).join('<br>')}${os.length>3?`<br>+ ${os.length-3} lugar(es)`:''}</span>`); } }catch(e){ console.error(e); } }; }
 
 /* ---------- início ---------- */
