@@ -2718,7 +2718,9 @@ async function reBuscarChave(chave){
   return {per,nf:String(+t('ide>nNF')),ped:ped?String(ped).replace(/^0+/,''):'',cli:t('dest>xNome').toUpperCase(),cid:t('dest>enderDest>xMun').toUpperCase(),uf:t('dest>enderDest>UF').toUpperCase(),qtd,val:+t('total>ICMSTot>vNF')||0};
 }
 async function reLancar(txt){
-  txt=String(txt||'').trim(); if(!txt) return; const dig=txt.replace(/\D/g,''); const linhas=reDia();
+  txt=String(txt||'').trim(); if(!txt) return; const dig=txt.replace(/\D/g,'');
+  if(dig.length!==44&&(/\d{1,2}\s*\/\s*\d{1,2}/.test(txt)||/[A-Za-zÀ-ÿ]/.test(txt.replace(/^(nf|n|ped|pedido)\s*[:.\-]?\s*/i,'')))){ reStatus('Isso parece uma data ou um texto, não uma NF. Bipe a DANFE ou digite só o número da nota.','erro'); opSom&&opSom('fora'); return; }
+  const linhas=reDia();
   const nova={nf:'',ped:'',cli:'',cid:'',uf:'',qtd:1,obs:'',per:'Não',val:0,chave:''};
   if(dig.length===44){
     const ja=Object.entries(RE.ler().dias).flatMap(([d,ls])=>ls.map(l=>[d,l])).find(([d,l])=>l.chave===dig);
@@ -4080,7 +4082,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.14', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.15', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
