@@ -4086,7 +4086,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.12', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.13', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4845,7 +4845,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
     <label id="op-modo-box" class="tag" style="cursor:pointer" title="Desligado: um bipe confere a nota inteira"><input type="checkbox" id="op-modo"> Conferir volume a volume</label><span id="op-sinc" class="tag"></span></div>
   <div class="op-bip"><button class="btn pri grande" type="button" id="op-bt-cam">📷 Abrir câmera</button>
     <input id="op-campo" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Bipe a nota (DANFE) ou digite pedido / NF e Enter" aria-label="Código bipado"></div>
-  <details class="op-leg" open><summary><b>Como conferir</b> (toque para esconder)</summary><ol><li>Toque em <b>📷 Abrir câmera</b> e aponte para a etiqueta inteira, dentro da moldura.</li><li>Segure firme até ouvir o bipe. A tela muda de cor com o resultado.</li><li>Espere 4 segundos e passe a próxima caixa. Um bipe por nota já basta: conte os volumes físicos.</li><li>Leitor vermelho: bipe o código de barras da nota (DANFE) no campo acima.</li></ol><div id="op-leg-cores"></div></details>
+  <details class="op-leg" open><summary><b>Como conferir</b> (toque para esconder)</summary><ol><li>Toque em <b>📷 Abrir câmera</b> e aponte para a etiqueta inteira, dentro da moldura.</li><li>Segure firme até ouvir o bipe. A tela muda de cor com o resultado.</li><li>Espere 1,5 segundo e passe a próxima caixa. Um bipe por nota já basta: conte os volumes físicos.</li><li>Leitor vermelho: bipe o código de barras da nota (DANFE) no campo acima.</li></ol><div id="op-leg-cores"></div></details>
   <div class="op-res" id="op-res" style="background:var(--sup2);color:var(--mudo)"><b>Pronto para conferir</b><small>Os romaneios carregados hoje são a base da conferência.</small></div>
   <div class="op-cards" id="op-cards"></div>
   <details class="op-xml" id="op-xml"><summary><b>Conteúdo das caixas (XML das notas)</b> <span class="tag" id="op-xml-qt">0 notas</span></summary>
@@ -4978,9 +4978,9 @@ function opMostrar(r){ opSom(r.status); const cor=(OP_ST[r.status]||{c:'#555'}).
   const el=$('#op-res'); el.style.background=cor; el.style.color='#fff'; el.innerHTML=`<b>${esc(r.titulo)}</b><small>${esc(r.linha||'')}</small>`; el.classList.add('pisca'); setTimeout(()=>el.classList.remove('pisca'),160);
   const m=document.querySelector('#op-cam .msg'); if(m){ m.style.background=cor; m.innerHTML=`<b>${esc(r.titulo)}</b>${esc(r.linha||'')}`; const mi=document.querySelector('#op-cam .mira'); if(mi){ mi.style.borderColor=cor; setTimeout(()=>mi.style.borderColor='',700); } } }
 
-const OP_LEG=`<b>Como bipar:</b> 1) coloque a etiqueta inteira dentro da moldura · 2) segure firme até o bipe · 3) espere 4 s e passe a próxima.<br>
+const OP_LEG=`<b>Como bipar:</b> 1) coloque a etiqueta inteira dentro da moldura · 2) segure firme até o bipe · 3) espere 1,5 s e passe a próxima.<br>
 <span class="pt" style="background:#16a34a"></span>Conferido <span class="pt" style="background:#eab308"></span>Sem nota <span class="pt" style="background:#dc2626"></span>Fora do romaneio (separe) <span class="pt" style="background:#AE3EC9"></span>Reentrega <span class="pt" style="background:#E8590C"></span>Agendada (não vai) <span class="pt" style="background:#C2255C"></span>Divergência <span class="pt" style="background:#0B7285"></span>Caixa que faltou <span class="pt" style="background:#4F7CF7"></span>Duplicado`;
-function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el) return; let n=4; el.hidden=false; el.querySelector('b').textContent=n; clearInterval(opCamPausa.t); opCamPausa.t=setInterval(()=>{ n--; if(n<=0){ clearInterval(opCamPausa.t); el.hidden=true; return; } el.querySelector('b').textContent=n; },1000); }
+function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el) return; el.hidden=false; el.querySelector('b').textContent='1,5'; clearTimeout(opCamPausa.t); opCamPausa.t=setTimeout(()=>{ el.hidden=true; },1500); }
 
 /* v6.4.11: câmera — tenta configurações mais simples e explica o motivo real quando não abre */
 function opCamErro(e){ const n=e&&e.name||'', dentro=window.top!==window.self; let msg;
@@ -5011,7 +5011,7 @@ async function opCamAbrir(){
   try{ OP.det=OP.det||await opDetector(); }catch(e){ stream.getTracks().forEach(t=>t.stop()); toast(e.message); return; }
   opSom('info');
   const f=document.createElement('div'); f.id='op-cam'; f.innerHTML=`<video playsinline muted autoplay></video><div class="mira"></div><div class="msg"><b>Aponte para a etiqueta</b>Leio os QR Codes sozinho, não precisa apertar nada.</div>
-    <div class="op-camleg">${OP_LEG}</div><div class="pausa" hidden>Próxima leitura em <b>4</b> s…</div><div class="bar"><button class="btn" type="button" data-a="luz">🔦 Lanterna</button><button class="btn pri" type="button" data-a="sair">Fechar</button></div>`;
+    <div class="op-camleg">${OP_LEG}</div><div class="pausa" hidden>Próxima leitura em <b>1,5</b> s…</div><div class="bar"><button class="btn" type="button" data-a="luz">🔦 Lanterna</button><button class="btn pri" type="button" data-a="sair">Fechar</button></div>`;
   document.body.appendChild(f); const v=f.querySelector('video'); v.srcObject=stream; OP.cam=stream; try{ await v.play(); }catch(e){}
   const tr=stream.getVideoTracks()[0]; let luz=false;
   try{ const c=tr.getCapabilities&&tr.getCapabilities(); if(c&&c.focusMode&&c.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}); if(!(c&&c.torch)) f.querySelector('[data-a="luz"]').hidden=true; }catch(e){}
@@ -5020,7 +5020,7 @@ async function opCamAbrir(){
   let ocupado=false, ult=0;
   const passo=async ts=>{ if(!OP.cam) return; OP.loop=requestAnimationFrame(passo); if(ocupado||ts-ult<90||v.readyState<2) return; ocupado=true; ult=ts;
     try{ const lidos=[...new Set(await OP.det(v))].filter(Boolean); if(lidos.length){ const prin=lidos.find(t=>t.includes('@'))||lidos.find(t=>t.replace(/\D/g,'').length===44)||lidos[0];
-        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=4000&&agora-vez>4000){ OP.visto.set(prin,agora); OP.ultLeitura=agora; if(OP.destino){ const fn=OP.destino; opCamFechar(); fn(lidos); return; } opLer(lidos,'camera'); opCamPausa(); } else OP.visto.set(prin,agora); } }catch(e){}
+        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=1500&&agora-vez>1500){ OP.visto.set(prin,agora); OP.ultLeitura=agora; if(OP.destino){ const fn=OP.destino; opCamFechar(); fn(lidos); return; } opLer(lidos,'camera'); opCamPausa(); } else OP.visto.set(prin,agora); } }catch(e){}
     ocupado=false; };
   OP.loop=requestAnimationFrame(passo); }
 function opCamFechar(){ OP.destino=null; cancelAnimationFrame(OP.loop); if(OP.cam) OP.cam.getTracks().forEach(t=>t.stop()); OP.cam=null; const f=$('#op-cam'); if(f) f.remove(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
