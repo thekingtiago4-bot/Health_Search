@@ -2155,6 +2155,7 @@ function iniciarTela(){
   });
   renderXL();
 }
+root.HS_OCR=OCR; root.HS_OCR_PAL=palavrasOCR;
 root.RomExcel={_i:{vizinhos,deitada,cinzaDe,reduzir,clarear,acharFolha,endireitar,girar,inclinacao,grayParaCanvas,escalar},converter,planilhaXLSX,planilhaXML,montarPagina,lerMeta,numBR,OCR,prepararImagem,acharFolha,XL,juntarPaginas,conferir,renderXL,cardDoRomaneio,nomeArquivo,ativa:()=>!document.getElementById('t-excel').hidden};
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciarTela); else setTimeout(iniciarTela,0);
 })(window);
@@ -4086,7 +4087,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.13', HS_DATA='04/11/2026';
+const HS_VERSAO='6.5.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4845,7 +4846,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
     <label id="op-modo-box" class="tag" style="cursor:pointer" title="Desligado: um bipe confere a nota inteira"><input type="checkbox" id="op-modo"> Conferir volume a volume</label><span id="op-sinc" class="tag"></span></div>
   <div class="op-bip"><button class="btn pri grande" type="button" id="op-bt-cam">📷 Abrir câmera</button>
     <input id="op-campo" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Bipe a nota (DANFE) ou digite pedido / NF e Enter" aria-label="Código bipado"></div>
-  <details class="op-leg" open><summary><b>Como conferir</b> (toque para esconder)</summary><ol><li>Toque em <b>📷 Abrir câmera</b> e aponte para a etiqueta inteira, dentro da moldura.</li><li>Segure firme até ouvir o bipe. A tela muda de cor com o resultado.</li><li>Espere 1,5 segundo e passe a próxima caixa. Um bipe por nota já basta: conte os volumes físicos.</li><li>Leitor vermelho: bipe o código de barras da nota (DANFE) no campo acima.</li></ol><div id="op-leg-cores"></div></details>
+  <details class="op-leg" open><summary><b>Como conferir</b> (toque para esconder)</summary><ol><li>Toque em <b>📷 Abrir câmera</b> e aponte para a etiqueta inteira, dentro da moldura.</li><li>Segure firme até ouvir o bipe. A tela muda de cor com o resultado.</li><li>Espere meio segundo e passe a próxima caixa. Um bipe por nota já basta: conte os volumes físicos.</li><li>Leitor vermelho: bipe o código de barras da nota (DANFE) no campo acima.</li></ol><div id="op-leg-cores"></div></details>
   <div class="op-res" id="op-res" style="background:var(--sup2);color:var(--mudo)"><b>Pronto para conferir</b><small>Os romaneios carregados hoje são a base da conferência.</small></div>
   <div class="op-cards" id="op-cards"></div>
   <details class="op-xml" id="op-xml"><summary><b>Conteúdo das caixas (XML das notas)</b> <span class="tag" id="op-xml-qt">0 notas</span></summary>
@@ -4978,9 +4979,9 @@ function opMostrar(r){ opSom(r.status); const cor=(OP_ST[r.status]||{c:'#555'}).
   const el=$('#op-res'); el.style.background=cor; el.style.color='#fff'; el.innerHTML=`<b>${esc(r.titulo)}</b><small>${esc(r.linha||'')}</small>`; el.classList.add('pisca'); setTimeout(()=>el.classList.remove('pisca'),160);
   const m=document.querySelector('#op-cam .msg'); if(m){ m.style.background=cor; m.innerHTML=`<b>${esc(r.titulo)}</b>${esc(r.linha||'')}`; const mi=document.querySelector('#op-cam .mira'); if(mi){ mi.style.borderColor=cor; setTimeout(()=>mi.style.borderColor='',700); } } }
 
-const OP_LEG=`<b>Como bipar:</b> 1) coloque a etiqueta inteira dentro da moldura · 2) segure firme até o bipe · 3) espere 1,5 s e passe a próxima.<br>
+const OP_LEG=`<b>Como bipar:</b> 1) coloque a etiqueta inteira dentro da moldura · 2) segure firme até o bipe · 3) espere 0,5 s e passe a próxima. Sem QR Code? Eu leio o texto (NF) sozinho.<br>
 <span class="pt" style="background:#16a34a"></span>Conferido <span class="pt" style="background:#eab308"></span>Sem nota <span class="pt" style="background:#dc2626"></span>Fora do romaneio (separe) <span class="pt" style="background:#AE3EC9"></span>Reentrega <span class="pt" style="background:#E8590C"></span>Agendada (não vai) <span class="pt" style="background:#C2255C"></span>Divergência <span class="pt" style="background:#0B7285"></span>Caixa que faltou <span class="pt" style="background:#4F7CF7"></span>Duplicado`;
-function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el) return; el.hidden=false; el.querySelector('b').textContent='1,5'; clearTimeout(opCamPausa.t); opCamPausa.t=setTimeout(()=>{ el.hidden=true; },1500); }
+function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el) return; el.hidden=false; el.querySelector('b').textContent='0,5'; clearTimeout(opCamPausa.t); opCamPausa.t=setTimeout(()=>{ el.hidden=true; },OP_ESPERA); }
 
 /* v6.4.11: câmera — tenta configurações mais simples e explica o motivo real quando não abre */
 function opCamErro(e){ const n=e&&e.name||'', dentro=window.top!==window.self; let msg;
@@ -5011,7 +5012,7 @@ async function opCamAbrir(){
   try{ OP.det=OP.det||await opDetector(); }catch(e){ stream.getTracks().forEach(t=>t.stop()); toast(e.message); return; }
   opSom('info');
   const f=document.createElement('div'); f.id='op-cam'; f.innerHTML=`<video playsinline muted autoplay></video><div class="mira"></div><div class="msg"><b>Aponte para a etiqueta</b>Leio os QR Codes sozinho, não precisa apertar nada.</div>
-    <div class="op-camleg">${OP_LEG}</div><div class="pausa" hidden>Próxima leitura em <b>1,5</b> s…</div><div class="bar"><button class="btn" type="button" data-a="luz">🔦 Lanterna</button><button class="btn pri" type="button" data-a="sair">Fechar</button></div>`;
+    <div class="op-camleg">${OP_LEG}</div><div class="pausa" hidden>Próxima leitura em <b>0,5</b> s…</div><div class="bar"><button class="btn" type="button" data-a="luz">🔦 Lanterna</button><button class="btn pri" type="button" data-a="sair">Fechar</button></div>`;
   document.body.appendChild(f); const v=f.querySelector('video'); v.srcObject=stream; OP.cam=stream; try{ await v.play(); }catch(e){}
   const tr=stream.getVideoTracks()[0]; let luz=false;
   try{ const c=tr.getCapabilities&&tr.getCapabilities(); if(c&&c.focusMode&&c.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}); if(!(c&&c.torch)) f.querySelector('[data-a="luz"]').hidden=true; }catch(e){}
@@ -5020,7 +5021,7 @@ async function opCamAbrir(){
   let ocupado=false, ult=0;
   const passo=async ts=>{ if(!OP.cam) return; OP.loop=requestAnimationFrame(passo); if(ocupado||ts-ult<90||v.readyState<2) return; ocupado=true; ult=ts;
     try{ const lidos=[...new Set(await OP.det(v))].filter(Boolean); if(lidos.length){ const prin=lidos.find(t=>t.includes('@'))||lidos.find(t=>t.replace(/\D/g,'').length===44)||lidos[0];
-        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=1500&&agora-vez>1500){ OP.visto.set(prin,agora); OP.ultLeitura=agora; if(OP.destino){ const fn=OP.destino; opCamFechar(); fn(lidos); return; } opLer(lidos,'camera'); opCamPausa(); } else OP.visto.set(prin,agora); } }catch(e){}
+        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=OP_ESPERA&&agora-vez>OP_ESPERA){ OP.visto.set(prin,agora); OP.ultLeitura=agora; if(OP.destino){ const fn=OP.destino; opCamFechar(); fn(lidos); return; } ocupado=false; await opCamTratar(lidos,v); } else OP.visto.set(prin,agora); } else if(!OP.destino){ ocupado=false; opCamSemCodigo(v); } }catch(e){}
     ocupado=false; };
   OP.loop=requestAnimationFrame(passo); }
 function opCamFechar(){ OP.destino=null; cancelAnimationFrame(OP.loop); if(OP.cam) OP.cam.getTracks().forEach(t=>t.stop()); OP.cam=null; const f=$('#op-cam'); if(f) f.remove(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
@@ -5093,9 +5094,9 @@ function opRenderLista(){ const el=$('#op-lista'); if(!el) return; const q=($('#
   const lista=opVisiveis().filter(b=>OP.filtro==='todos'||b.status===OP.filtro).filter(b=>cas([b.ped,b.nf,b.dest,b.cid,b.usuario,b.romaneio,b.codigo].join(' ')));
   $('#op-tit-lista').textContent=OP.filtro==='todos'?'Bipes':OP_ST[OP.filtro].t;
   const hora=iso=>{ const d=new Date(iso); return isNaN(d)?'':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
-  el.innerHTML=lista.length?`<table class="op-tab"><thead><tr><th>Hora</th><th>Situação</th><th>Pedido</th><th>NF</th><th>Vol.</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Romaneio</th><th class="m-oc">Cliente / cidade</th><th>Usuário</th>${opAdmin()?'<th></th>':''}</tr></thead><tbody>${lista.slice(0,1500).map(b=>`<tr><td>${hora(b.criado_em)}</td><td class="st" style="color:${OP_ST[b.status].c}">${OP_ST[b.status].t}</td><td>${esc(b.ped||'')}</td><td>${esc(b.nf||'—')}</td><td>${b.vol&&b.tot?b.vol+'/'+b.tot:''}</td><td>${opCtHtml(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod)}</td><td>${opValHtml(+b.valor||opValor(b.ped,b.nf))}</td><td class="m-oc">${esc(b.romaneio||'')}</td><td class="m-oc">${esc([b.dest,b.cid].filter(Boolean).join(' · '))}</td><td>${esc(b.usuario||'')}</td>${opAdmin()?`<td><button class="op-x" type="button" title="Apagar" data-del="${esc(b.id||b.local_id)}">✕</button></td>`:''}</tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.carregando?'Carregando…':'Nenhum bipe aqui ainda.'}</div>`; }
+  el.innerHTML=lista.length?`<table class="op-tab"><thead><tr><th>Hora</th><th>Situação</th><th>Pedido</th><th>NF</th><th>Vol.</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Romaneio</th><th class="m-oc">Cliente / cidade</th><th>Usuário</th>${opAdmin()?'<th></th>':''}</tr></thead><tbody>${lista.slice(0,1500).map(b=>`<tr><td>${hora(b.criado_em)}</td><td class="st" style="color:${(OP_ST[b.status]||OP_ST.fora).c}">${(OP_ST[b.status]||OP_ST.fora).t}</td><td>${esc(b.ped||'')}</td><td>${esc(b.nf||'—')}</td><td>${b.vol&&b.tot?b.vol+'/'+b.tot:(b.tot?b.tot+' vol.':'')}</td><td>${opCtHtml(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod)}</td><td>${opValHtml(+b.valor||opValor(b.ped,b.nf))}</td><td class="m-oc">${esc(b.romaneio||'')}</td><td class="m-oc">${esc([b.dest,b.cid].filter(Boolean).join(' · '))}</td><td>${esc(b.usuario||'')}</td>${opAdmin()?`<td><button class="op-x" type="button" title="Apagar" data-del="${esc(b.id||b.local_id)}">✕</button></td>`:''}</tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.carregando?'Carregando…':'Nenhum bipe aqui ainda.'}</div>`; }
 function opCSV(){ const linhas=[['Data','Hora','Situação','Pedido','NF','Volume','Total','Pallet','Romaneio','Cliente','Cidade','Usuário','Código lido','Conteúdo','Valor (R$)']];
-  for(const b of opVisiveis()){ const d=new Date(b.criado_em); linhas.push([b.dia,d.toLocaleTimeString('pt-BR'),OP_ST[b.status].t,b.ped,b.nf,b.vol||'',b.tot||'',b.pallet||'',b.romaneio,b.dest,b.cid,b.usuario,b.codigo,opCtTexto(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod),String((+b.valor||opValor(b.ped,b.nf)).toFixed(2)).replace('.',',')]); }
+  for(const b of opVisiveis()){ const d=new Date(b.criado_em); linhas.push([b.dia,d.toLocaleTimeString('pt-BR'),(OP_ST[b.status]||OP_ST.fora).t,b.ped,b.nf,b.vol||'',b.tot||'',b.pallet||'',b.romaneio,b.dest,b.cid,b.usuario,b.codigo,opCtTexto(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod),String((+b.valor||opValor(b.ped,b.nf)).toFixed(2)).replace('.',',')]); }
   if(OP.dia===hojeISO()) for(const it of opPendentes()) linhas.push([OP.dia,'','Não bipado',it.ped,it.nf,it.lidos,it.esp,'',it.r.numero,it.x.dest,it.x.cid,'','',opCtTexto((opConteudo(it.ped,it.nf)||{}).cod),String(it.valor.toFixed(2)).replace('.',',')]);
   const csv='﻿'+linhas.map(l=>l.map(v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(';')).join('\r\n');
   baixar(new Blob([csv],{type:'text/csv;charset=utf-8'}),`Operacao_${OP.dia}.csv`); }
@@ -5926,6 +5927,116 @@ function camLiberar(){ const info=`seguro=${window.isSecureContext} · mediaDevi
   (async()=>{ try{ const st=await permEstado(); if(st==='granted'){ $('#cam-liberar').hidden=true; } }catch(e){} })(); })();
 /* o "Permitir câmera" do aviso de permissões também chama direto no toque */
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#perm-sheet [data-p="ok"]'); if(!b) return; e.stopPropagation(); const sh=$('#perm-sheet'); if(sh) sh.remove(); camLiberar(); },true);
+
+/* ================= v6.5.0 · leitura de texto (OCR) por modelo de etiqueta, dia isolado, relatório XML Softlog ================= */
+OP_ST.pit={t:'Fora · Pitágoras',c:'#E8590C'};
+const OP_ESPERA=500;
+
+/* ---- dia da operação: só os romaneios do dia ---- */
+function opDiaRom(r){ return rbDataDoNome(r.arquivo||'')||String(r.importadoEm||'').slice(0,10); }
+function opRelDia(){ const R=S.opRel||{}; return R[hojeISO()]||{}; }
+function opRomsDoDia(){ const hoje=hojeISO(); const out=(S.romaneios||[]).filter(r=>opDiaRom(r)===hoje);
+  const rel=Object.values(opRelDia()); if(rel.length) out.push({id:'rel-'+hoje,numero:'XML',arquivo:'relatório XML',rows:rel.map(n=>({nf:n.nf,ped:'',dest:n.dest,cid:n.cid,vol:String(n.vol||''),valor:n.valor?String(n.valor).replace('.',','):''}))});
+  return out; }
+opIndice=function(){ const ped=new Map(), nf=new Map();
+  for(const r of opRomsDoDia()) for(const x of r.rows||[]){ const it={r,x};
+    const p=opK(x.ped), n=opK(x.nf); if(p){ if(!ped.has(p)) ped.set(p,[]); ped.get(p).push(it); } if(n){ if(!nf.has(n)) nf.set(n,[]); nf.get(n).push(it); } }
+  return {ped,nf}; };
+opPendentes=function(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[], visto=new Set();
+  for(const r of opRomsDoDia()) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; if(r.numero==='XML'&&visto.has(nf)) continue; if(nf) visto.add(nf); const esp=volNum(x.vol); if(esp===0) continue;
+    const lidos=new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size; const fa=opFaltaAnt(ped,nf); const espF=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
+    if(lidos<espF) out.push({r,x,ped,nf,esp:espF,lidos,valor:opValor(ped,nf,x),falta:fa}); }
+  return out.sort((a,b)=>b.valor-a.valor); };
+
+/* ---- relatório XML do Softlog (Relatório de notas fiscais para conferência) ---- */
+function relEhSoftlog(txt){ return /urn:schemas-microsoft-com:office:spreadsheet/.test(txt)&&/MERO\s*NF/i.test(txt); }
+function relLer(txt){ const d=new DOMParser().parseFromString(txt,'text/xml'); const rows=[...d.getElementsByTagName('Row')].map(r=>[...r.getElementsByTagName('Cell')].map(c=>c.textContent.trim()));
+  const h=rows.findIndex(r=>/MERO\s*NF/i.test(r[0]||'')); if(h<0) throw new Error('não achei o cabeçalho NÚMERO NF');
+  const H=rows[h].map(t=>t.normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase()); const ix=n=>H.findIndex(t=>t.includes(n));
+  const c={nf:ix('MERO NF'),rem:ix('REMETENTE'),doc:ix('CNPJ'),dest:H.findIndex(t=>t.includes('DESTINAT')&&!t.includes('CNPJ')),cep:ix('CEP'),cid:ix('CIDADE'),uf:ix('UF'),vol:ix('VOLUMES'),peso:ix('PESO'),valor:ix('VALOR NF'),vp:ix('VALOR PRODUTOS'),chave:ix('CHAVE')};
+  const out=[]; for(const r of rows.slice(h+1)){ const nf=opK(r[c.nf]); if(!nf) continue; const num=i=>i<0?0:+String(r[i]||'').replace(',','.')||0;
+    out.push({nf,rem:r[c.rem]||'',doc:r[c.doc]||'',dest:r[c.dest]||'',cep:r[c.cep]||'',cid:r[c.cid]||'',uf:r[c.uf]||'',vol:num(c.vol),peso:num(c.peso),valor:num(c.valor)||num(c.vp),chave:r[c.chave]||''}); }
+  return out; }
+async function relImportar(files){ let ok=0, er=0; const dia=hojeISO(); S.opRel=S.opRel||{}; const D=S.opRel[dia]=S.opRel[dia]||{};
+  for(const f of files){ try{ const txt=new TextDecoder('iso-8859-1').decode(await f.arrayBuffer()); for(const n of relLer(txt)){ D[n.nf]=n; ok++; } }catch(e){ er++; toast(f.name+': '+e.message); } }
+  for(const k of Object.keys(S.opRel)) if(k<new Date(Date.now()-10*864e5).toISOString().slice(0,10)) delete S.opRel[k];
+  salvar(); if(ok) toast(`Relatório XML: ${ok} nota(s) entraram na conferência de hoje (com volumes, valor e cidade).`); if(typeof opRender==='function') try{ opRender(); }catch(e){} return ok; }
+async function relSeparar(files){ const rel=[], resto=[]; for(const f of files){ if(/\.xml$/i.test(f.name)){ const t=new TextDecoder('iso-8859-1').decode(await f.slice(0,4000).arrayBuffer()); if(/urn:schemas-microsoft-com:office:spreadsheet/.test(t)){ rel.push(f); continue; } } resto.push(f); } return {rel,resto}; }
+{ const _xi=opXmlImportar; opXmlImportar=async function(files){ const {rel,resto}=await relSeparar([...files]); if(rel.length) await relImportar(rel); if(resto.length) return _xi(resto); }; }
+{ const _imp=importar; importar=async function(files){ const {rel,resto}=await relSeparar([...files]); if(rel.length) await relImportar(rel); if(resto.length||!rel.length) return _imp(resto); };
+  try{ const a=$('#arq'); if(a&&!/xml/.test(a.accept||'')) a.accept=(a.accept?a.accept+',':'')+'.xml'; }catch(e){} }
+{ const _ov=opValor; opValor=function(ped,nf,x){ const v=_ov(ped,nf,x); if(v) return v; const n=nf&&opRelDia()[opK(nf)]; return n?n.valor:0; }; }
+
+/* ---- nota fora do romaneio: procura cliente, cidade e volumes no relatório e no banco de romaneios ---- */
+function opInfoFora(ped,nf){ const P=opK(ped), N=opK(nf);
+  for(const d of Object.keys(S.opRel||{}).sort().reverse()){ const n=(N&&S.opRel[d][N])||(P&&S.opRel[d][P]); if(n) return {dest:n.dest,cid:n.cid,tot:n.vol,valor:n.valor,nf:n.nf}; }
+  try{ const L=rbLocalLer(); for(const d of Object.keys(L).sort().reverse()) for(const reg of Object.values(L[d])) for(const x of reg.rows||[]){ if((N&&opK(x.nf)===N)||(P&&opK(x.ped)===P)) return {dest:x.dest,cid:x.cid,tot:volNum(x.vol),nf:opK(x.nf),ped:opK(x.ped),dia:d,num:reg.numero}; } }catch(e){}
+  for(const r of S.romaneios||[]) for(const x of r.rows||[]) if((N&&opK(x.nf)===N)||(P&&opK(x.ped)===P)) return {dest:x.dest,cid:x.cid,tot:volNum(x.vol),nf:opK(x.nf),ped:opK(x.ped),dia:opDiaRom(r),num:r.numero};
+  return null; }
+OP.extra=null; OP.silencio=false;
+{ const _env=opEnviar; opEnviar=function(b){ const ex=OP.extra; OP.extra=null;
+    if(ex){ for(const k of Object.keys(ex)) if(ex[k]!=null&&ex[k]!==''&&!(k!=='status'&&b[k])) b[k]=ex[k]; }
+    if(b.status==='fora'||b.status==='pit'){ const i=opInfoFora(b.ped,b.nf); if(i){ b.dest=b.dest||String(i.dest||''); b.cid=b.cid||String(i.cid||''); b.tot=b.tot||i.tot||null; if(!b.valor&&i.valor) b.valor=i.valor; } OP.ultFora=i; }
+    try{ opLocalGravar(); }catch(e){} return _env(b); }; }
+{ const _ms=opMostrar; opMostrar=function(r){ if(OP.silencio) return; if(r&&r.status==='fora'){ const b=OP.bipes[0]; if(b&&(b.dest||b.cid||b.tot)) r.linha=(r.linha||'')+' · '+[b.dest,b.cid,b.tot?b.tot+' vol.':''].filter(Boolean).join(' · '); } _ms(r); }; }
+
+/* ---- leitura do texto da etiqueta ---- */
+const OCRK={ocupado:false,ult:0,ultCod:0};
+function etqLinhas(ws){ const ls=[]; for(const w of ws.slice().sort((a,b)=>(a.y0+a.y1)-(b.y0+b.y1))){ const cy=(w.y0+w.y1)/2, hh=w.y1-w.y0; let l=ls.find(l=>Math.abs(l.cy-cy)<Math.max(6,hh*.6)); if(!l){ l={cy,ws:[]}; ls.push(l); } l.ws.push(w); }
+  return ls.sort((a,b)=>a.cy-b.cy).map(l=>l.ws.sort((a,b)=>a.x0-b.x0).map(w=>w.text).join(' ')); }
+function etqInterpretar(linhas){ const L=linhas.map(l=>l.toUpperCase().replace(/[|]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean); const T=L.join('\n');
+  const dig=s=>String(s||'').replace(/[OQ]/g,'0').replace(/[IL]/g,'1').replace(/\D/g,'');
+  const r={pit:/MAFRA\s*HOSP/.test(T),nfs:[],nums:[],vol:null,tot:null,cid:'',dest:'',modelo:''};
+  if(/9\s*DE\s*JULHO|MAFRA|ESPECIALIDADES|DRACENA/.test(T)&&!r.pit) r.modelo='9 de Julho'; else if(/CEI\s*COM/.test(T)) r.modelo='CEI Comércio'; else if(/MACROMED/.test(T)) r.modelo='Macromed'; else if(/HEALTH\s*QUALITY/.test(T)) r.modelo='Health Quality'; else if(r.pit) r.modelo='Pitágoras';
+  const re=/(?:\bN\s*[F\.]\s*[:\-.º°]?|NOTA\s*FISCAL\s*[:\-.º°]?)\s*([0-9OQIL][0-9OQIL .]{3,12})/g; let m;
+  while((m=re.exec(T))){ const d=dig(m[1]); if(d.length>=4&&d.length<=9) r.nfs.push(d); }
+  L.forEach((l,i)=>{ if(/NOTA\s*FISCAL/.test(l)&&!/\d{4}/.test(l)&&L[i+1]){ const n=(L[i+1].match(/\b\d{5,9}\b/)||[])[0]; if(n) r.nfs.push(n); } });
+  r.nums=[...new Set((T.match(/\b\d{5,9}\b/g)||[]))];
+  m=T.match(/VOL(?:UME)?S?\.?\s*[:.]?\s*(\d{1,3})\s*(?:\/|DE)\s*(\d{1,3})/); if(!m){ const i=L.findIndex(l=>/VOLUME/.test(l)); if(i>=0&&L[i+1]) m=L[i+1].match(/(\d{1,3})\s*\/\s*(\d{1,3})\s*$/); }
+  if(!m) m=T.match(/\b(\d{1,3})\s*\/\s*(\d{1,3})\b/); if(m){ r.vol=+m[1]; r.tot=+m[2]; }
+  m=T.match(/CIDADE\s*[:.]?\s*([A-ZÀ-Ü' ]{3,40})/); if(m) r.cid=m[1].trim(); else { m=T.match(/([A-ZÀ-Ü' ]{3,40}?)\s*-\s*(SP|MG|RJ|GO|PR|DF|MS|MT|BA)\b/); if(m) r.cid=m[1].trim(); }
+  const i=L.findIndex(l=>/DESTIN/.test(l)); if(i>=0){ const resto=L[i].replace(/.*DESTIN[A-ZÁ]*\s*[:.]?\s*\d*/,'').trim(); r.dest=resto.length>3?resto:(L[i+1]||''); }
+  r.nfs=[...new Set(r.nfs)]; return r; }
+function opFrame(v){ const w=Math.min(1600,v.videoWidth), h=Math.round(v.videoHeight*w/v.videoWidth); const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d',{willReadFrequently:true}); cx.filter='grayscale(1) contrast(1.4)'; cx.drawImage(v,0,0,w,h); return cv; }
+async function opOcr(v){ const OCR=window.HS_OCR; if(!OCR||!OCR.tem()||!OCR.suportado()) return null; OCRK.ocupado=true; OCRK.ult=Date.now();
+  const msg=document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; if(msg) msg.innerHTML='<b>🔤 Lendo o texto da etiqueta…</b>Segure firme.';
+  try{ const ws=await OCR.ler(opFrame(v)); return etqInterpretar(etqLinhas(ws.filter(w=>w.conf>35))); }catch(e){ console.error(e); return null; }
+  finally{ OCRK.ocupado=false; OCRK.ult=Date.now(); if(msg&&ant) msg.innerHTML=ant; } }
+/* registra uma etiqueta lida por texto */
+function opLerEtiqueta(p){ if(!p) return false; const idx=opIndice(); const ext={dest:p.dest,cid:p.cid,tot:p.tot};
+  if(p.pit){ const ped=p.nums.find(n=>n.length===6)||p.nums[0]||''; OP.extra=Object.assign(ext,{status:'pit',ped,nf:''}); OP.silencio=true; try{ opLer([ped||'000000'],'texto'); }finally{ OP.silencio=false; }
+    const b=OP.bipes[0]; opMostrar({status:'pit',titulo:'Fora do romaneio · PITÁGORAS'+(ped?' · Pedido '+ped:''),linha:'Etiqueta dupla com MAFRA HOSPITALAR: o pedido está no rodapé da nota. '+[b&&b.dest,b&&b.cid].filter(Boolean).join(' · ')}); opRender(); return true; }
+  const cand=[...p.nfs,...p.nums.filter(n=>!p.nfs.includes(n))]; const ach=cand.find(n=>idx.nf.has(opK(n))||idx.ped.has(opK(n)));
+  if(ach){ OP.extra={tot:p.tot||null}; opLer([ach],'texto'); return true; }
+  const nfF=p.nfs[0]||(p.modelo&&p.nums.find(n=>n.length===6));
+  if(nfF){ OP.extra=Object.assign(ext,{nf:opK(nfF),ped:''}); opLer([nfF],'texto'); return true; }
+  return false; }
+/* Health Quality / Cordis: código de barras = CNPJ(14) + NF(9) + volume(4) + total(4) */
+{ const _oi=opInterpretar; opInterpretar=function(txt){ const d=String(txt||'').replace(/\D/g,''); if(d.length===31&&!String(txt).includes('@')) return {tipo:'danfe',codigo:d,nf:opK(d.slice(14,23)),vol:parseInt(d.slice(23,27),10)||null,tot:parseInt(d.slice(27,31),10)||null}; return _oi(txt); }; }
+/* CREMER e outros: o número da NF/pedido vem no meio de um texto maior (chave de 44 dígitos, URL, campos colados) */
+function opSubNum(lidos,idx){ for(const t of lidos){ const s=String(t||'');
+    const ch=(s.match(/\d{44}/)||[])[0]; if(ch){ const nf=opK(ch.slice(25,34)); if(idx.nf.has(nf)) return ch; }
+    const d=s.replace(/\D/g,''); for(let i=0;i+44<=d.length&&d.length>44;i++){ const nf=opK(d.slice(i+25,i+34)); if(/^\d{2}\d{4}\d{14}55/.test(d.slice(i,i+22))&&idx.nf.has(nf)) return d.slice(i,i+44); }
+    for(const g of (s.match(/\d{4,12}/g)||[])){ const k=opK(g); if(idx.nf.has(k)||idx.ped.has(k)) return k; } }
+  return null; }
+/* decide o que fazer com os códigos lidos pela câmera */
+async function opCamTratar(lidos,v){ OCRK.ultCod=Date.now(); const idx=opIndice(); const it=lidos.map(opInterpretar).filter(Boolean);
+  const bom=it.find(l=>l.tipo==='volume'||l.tipo==='danfe'||(l.tipo==='numero'&&(idx.ped.has(l.num)||idx.nf.has(l.num))));
+  const dentro=bom&&((bom.tipo==='volume'&&idx.ped.has(bom.ped))||(bom.tipo==='danfe'&&idx.nf.has(bom.nf))||bom.tipo==='numero');
+  if(dentro){ opLer(lidos,'camera'); opCamPausa(); return; }
+  const sub=opSubNum(lidos,idx); if(sub){ opLer([sub],'camera'); opCamPausa(); return; }
+  if(OCRK.ocupado) return;
+  const p=await opOcr(v); if(!OP.cam) return;
+  if(p&&p.pit){ opLerEtiqueta(p); opCamPausa(); return; }
+  if(bom){ if(p) OP.extra={dest:p.dest,cid:p.cid}; opLer(lidos,'camera'); opCamPausa(); return; }
+  if(p&&opLerEtiqueta(p)){ opCamPausa(); return; }
+  OP.ultLeitura=0; }
+/* sem nenhum código na imagem: tenta o texto (9 de Julho, Macromed, etiquetas só com NF) */
+async function opCamSemCodigo(v){ const ag=Date.now(); if(OCRK.ocupado||ag-OCRK.ultCod<900||ag-OCRK.ult<1200||ag-(OP.ultLeitura||0)<OP_ESPERA) return;
+  const p=await opOcr(v); if(!OP.cam||!p) return; const chave=(p.nfs[0]||p.nums[0]||'')+(p.pit?'P':''); if(!chave) return;
+  const vez=OP.visto.get('t'+chave)||0; if(Date.now()-vez<4000) return; if(opLerEtiqueta(p)){ OP.visto.set('t'+chave,Date.now()); OP.ultLeitura=Date.now(); opCamPausa(); } }
+/* coluna Vol.: mostra o total mesmo quando a nota foi conferida por um bipe só */
+(function(){ const st=document.createElement('style'); st.textContent='.op-tab td.st[data-pit]{color:#E8590C}'; document.head.appendChild(st); })();
 
 /* ---------- início ---------- */
 (async function(){
