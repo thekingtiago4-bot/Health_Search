@@ -4075,7 +4075,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.6', HS_DATA='03/11/2026';
+const HS_VERSAO='6.3.7', HS_DATA='03/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5498,6 +5498,26 @@ async function permVerificar(forcar){
 { const _ir2=irPara; let primeira=true; irPara=function(t){ _ir2(t);
     if(primeira&&(TOQUE||matchMedia('(max-width:860px)').matches)){ primeira=false; setTimeout(()=>permVerificar(false),1200); }
     if(t==='operacao') setTimeout(async()=>{ const st=await permEstado(); if(st!=='granted'&&(TOQUE||matchMedia('(max-width:860px)').matches)) permVerificar(true); },300); }; }
+
+
+/* ================= v6.3.7 · celular: aviso de "versão para computador", botão de instalar o app, permissão garantida ================= */
+let PWA_PEDIDO=null; addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); PWA_PEDIDO=e; mbInstalarAviso(); });
+const mbInstalado=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const mbCelular=()=>matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<=820;
+const mbIOS=()=>/iPhone|iPad|iPod/i.test(navigator.userAgent);
+function mbFaixa(id,html){ if(document.getElementById(id)) return; const d=document.createElement('div'); d.id=id; d.className='mb-faixa'; d.innerHTML=html; document.body.appendChild(d); return d; }
+(function(){ const st=document.createElement('style'); st.textContent=`.mb-faixa{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:1400;background:#0f3d40;color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.35);font-size:15px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.mb-faixa b{display:block;font-size:16px}.mb-faixa .txt{flex:1;min-width:200px}.mb-faixa button{all:unset;cursor:pointer;background:#5fd3c4;color:#05282b;font-weight:700;border-radius:10px;padding:10px 14px}.mb-faixa button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
+#mb-pc{top:calc(10px + env(safe-area-inset-top,0px));bottom:auto;background:#b45309;font-size:28px}#mb-pc b{font-size:34px}#mb-pc button{font-size:28px;padding:18px 24px}`; document.head.appendChild(st); })();
+/* celular aberto em "versão para computador": a tela fica minúscula; avisa como desligar */
+function mbChecarPC(){ if(mbCelular()&&innerWidth>=900){ const f=mbFaixa('mb-pc',`<div class="txt"><b>Desligue a "Versão para computador"</b>No Chrome, toque em <b>⋮</b> (canto de cima) e <b>desmarque "Site para computador"</b>. O Health Search já se ajusta ao celular.</div><button type="button">Entendi</button>`); if(f) f.querySelector('button').onclick=()=>f.remove(); } else { const f=$('#mb-pc'); if(f) f.remove(); } }
+function mbInstalarAviso(){ if(mbInstalado()||!mbCelular()) return; if(document.getElementById('perm-sheet')){ clearTimeout(mbInstalarAviso.t); mbInstalarAviso.t=setTimeout(mbInstalarAviso,3000); return; } let n=''; try{ n=localStorage.getItem('healthSearch.instAviso')||''; }catch(e){} if(n&&Date.now()-(+n)<3*864e5) return;
+  const f=mbFaixa('mb-inst',`<div class="txt"><b>📲 Instalar o Health Search</b>${PWA_PEDIDO?'Fica com ícone na tela inicial, abre em tela cheia e guarda a permissão da câmera.':mbIOS()?'No Safari, toque em <b>Compartilhar</b> (□↑) e depois em <b>Adicionar à Tela de Início</b>.':'No Chrome, toque em <b>⋮</b> e depois em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.'}</div>${PWA_PEDIDO?'<button type="button" data-i="ok">Instalar</button>':''}<button type="button" class="sec" data-i="x">Agora não</button>`);
+  if(!f) return; f.onclick=async e=>{ const b=e.target.closest('[data-i]'); if(!b) return; if(b.dataset.i==='ok'&&PWA_PEDIDO){ PWA_PEDIDO.prompt(); try{ await PWA_PEDIDO.userChoice; }catch(er){} PWA_PEDIDO=null; } else { try{ localStorage.setItem('healthSearch.instAviso',String(Date.now())); }catch(er){} } f.remove(); }; }
+addEventListener('resize',()=>{ clearTimeout(mbChecarPC.t); mbChecarPC.t=setTimeout(mbChecarPC,300); });
+/* depois que o programa abre: checa modo computador, permissão da câmera e instalação (também quando o mural fecha) */
+{ const _ir3=irPara; let vez=0; irPara=function(t){ _ir3(t); if(vez++===0) setTimeout(()=>{ mbChecarPC(); if(mbCelular()) permVerificar(false); setTimeout(mbInstalarAviso,4000); },1500); }; }
+{ const _mf=muralFechar; muralFechar=function(){ _mf(); if(mbCelular()) setTimeout(()=>permVerificar(false),500); }; }
 
 /* ---------- início ---------- */
 (async function(){
