@@ -3397,7 +3397,7 @@ function desenharGeoAgora(){ if($('#t-geo').hidden||!geoAjustar()) return;
     else { ctx.fillStyle=geoCor(id); ctx.fill(); if(r.fonte==='aprendido'){ ctx.strokeStyle=corTx; ctx.lineWidth=1.2; ctx.stroke(); } } }
   // nomes das regiões no centro de cada área
   ctx.font='700 13px "Barlow",sans-serif'; ctx.lineJoin='round';
-  for(const [id,l] of grupos){ if(l.length<3) continue; let sx=0,sy=0; for(const p of l){ sx+=p.x; sy+=p.y; } const x=sx/l.length, y=sy/l.length; const t=(geoLista(id)?.alias||[])[0]||geoNome(id);
+  for(const [id,l] of grupos){ if(l.length<3||String(id).startsWith('__')) continue; let sx=0,sy=0; for(const p of l){ sx+=p.x; sy+=p.y; } const x=sx/l.length, y=sy/l.length; const t=(geoLista(id)?.alias||[])[0]||geoNome(id);
     ctx.lineWidth=4; ctx.strokeStyle=corSup; ctx.strokeText(t,x,y); ctx.fillStyle=geoCor(id); ctx.fillText(t,x,y); }
   // nomes das cidades quando bem perto
   if(v.z>v.z0*4){ ctx.font='500 11px "Barlow",sans-serif'; ctx.textAlign='left'; for(const p of vis){ if(p.x<0||p.y<0||p.x>W||p.y>H) continue; ctx.lineWidth=3; ctx.strokeStyle=corSup; ctx.strokeText(p.o.n,p.x+pr+3,p.y); ctx.fillStyle=corMudo; ctx.fillText(p.o.n,p.x+pr+3,p.y); } ctx.textAlign='center'; }
@@ -3905,7 +3905,7 @@ desenharGeoAgora=function(){ if($('#t-geo').hidden||!geoAjustar()) return;
   if(GEO.sel){ const o=M.m.get(+GEO.sel); if(o){ ctx.beginPath(); for(const r of o.rings) anel(r); ctx.lineWidth=3; ctx.strokeStyle=esc_?'#FFFFFF':'#0F2E33'; ctx.stroke(); } }
   // nomes das regiões em etiqueta
   ctx.font='700 13px "Barlow",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; const postos=[];
-  for(const [id,g] of grupos){ if(g.n<3) continue; const l=geoLista(id); const t=(l&&(l.alias||[])[0])||geoNome(id); let [x,y]=geoXY({lon:g.x/g.n,lat:g.y/g.n}); const w=ctx.measureText(t).width+18; for(let k=0;k<6&&postos.some(q=>Math.abs(q.x-x)<(q.w+w)/2+4&&Math.abs(q.y-y)<28);k++) y+=28; postos.push({x,y,w});
+  for(const [id,g] of grupos){ if(g.n<3||String(id).startsWith('__')) continue; const l=geoLista(id); const t=(l&&(l.alias||[])[0])||geoNome(id); let [x,y]=geoXY({lon:g.x/g.n,lat:g.y/g.n}); const w=ctx.measureText(t).width+18; for(let k=0;k<6&&postos.some(q=>Math.abs(q.x-x)<(q.w+w)/2+4&&Math.abs(q.y-y)<28);k++) y+=28; postos.push({x,y,w});
     ctx.fillStyle=esc_?'rgba(7,30,34,.82)':'rgba(15,46,51,.82)'; ctx.beginPath(); ctx.roundRect(x-w/2,y-12,w,24,7); ctx.fill(); ctx.fillStyle='#fff'; ctx.fillText(t,x,y+.5); }
   // nomes das cidades de perto
   if(v.z>v.z0*5){ ctx.font='500 11px "Barlow",sans-serif'; ctx.lineWidth=3; for(const [c,o] of M.m){ const [x,y]=geoXY({lon:o.cx,lat:o.cy}); if(x<0||y<0||x>W||y>H) continue; const mu=geoMun(c); if(!mu) continue; ctx.strokeStyle=esc_?'rgba(7,30,34,.8)':'rgba(255,255,255,.85)'; ctx.strokeText(mu.n,x,y); ctx.fillStyle=TX; ctx.fillText(mu.n,x,y); } }
@@ -4071,7 +4071,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.1', HS_DATA='03/11/2026';
+const HS_VERSAO='6.3.2', HS_DATA='03/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5222,6 +5222,26 @@ function agfRender(){ const el=$('#agf-lista'); if(!el) return; const l=agFora()
     const c2=`<div class="mural-c"><h3>🚚 Agendados que seguem rota hoje (MESA)</h3><b class="big">${me.length}</b> nota(s) · ${cs.size} cliente(s)${cs.size?`<ul>${[...cs.values()].slice(0,8).map(o=>`<li><b>${esc(o.nome)}</b> · ${o.notas} nota(s)${o.c?' · 📋 '+esc(cliResumo(o.c)):''}</li>`).join('')}</ul>`:'<p class="sub">Sem romaneio da MESA hoje.</p>'}</div>`;
     const ex=[...g.querySelectorAll('.mural-c')].find(c=>/Clientes com exigência/i.test(c.textContent)); if(ex) ex.insertAdjacentHTML('afterend',c2+c1); else g.insertAdjacentHTML('afterbegin',c1+c2);
     g.querySelectorAll('[data-mural-ir2]').forEach(b=>b.addEventListener('click',ev=>{ ev.stopPropagation(); muralFechar(); irPara('agenda'); },{once:true})); }; }
+
+
+/* ================= v6.3.1 · mural: feriados dos próximos 3 dias (nacionais, estaduais, municipais e cadastrados) ================= */
+{ const _md=muralDados; muralDados=function(){ const d=_md();
+    try{ const cid=new Map(); // cidades atendidas (regiões) + cidades dos romaneios carregados
+      for(const l of (S.geo&&S.geo.listas)||[]) if(l.tipo==='regiao'&&!String(l.id).startsWith('__')) for(const c of l.cidades||[]) cid.set(+c,{rom:false});
+      for(const {row} of todasLinhas()){ const r=regDaLinha(row.cid,row.uf); if(r&&r.c) cid.set(+r.c,{rom:true,key:r.key}); }
+      const fer=[], nac=[], vis=new Set();
+      for(let i=0;i<=3;i++){ const iso=diaMais(i);
+        try{ for(const x of feriadosDoDia(iso,{uf:'SP',c:0,key:''})) if(x.tipo==='Nacional'&&!vis.has(iso+x.n)){ vis.add(iso+x.n); nac.push({iso,n:x.n,o:'Nacional'}); } }catch(e){}
+        for(const [c,info] of cid){ const o=geoMun(c); if(!o) continue; let fs=[]; try{ fs=feriadosDoDia(iso,{uf:o.u,c,key:info.key||''}).filter(x=>x.tipo!=='Nacional'); }catch(e){}
+          for(const x of fs){ const k=c+'|'+iso; if(vis.has(k)) continue; vis.add(k); fer.push({nome:o.n,uf:o.u,iso,n:x.n,tipo:x.tipo,rom:info.rom}); } } }
+      fer.sort((a,b)=>(b.rom-a.rom)||a.iso.localeCompare(b.iso)||a.nome.localeCompare(b.nome));
+      d.fer=nac; d.ferCid=fer; }catch(e){ console.error(e); }
+    return d; }; }
+{ const _ma3=muralAbrir; muralAbrir=function(){ _ma3(); const c=[...document.querySelectorAll('#mural .mural-c')].find(x=>/Feriados/i.test(x.querySelector('h3')?.textContent||'')); if(!c) return;
+    const d=muralDados(), fd=iso=>iso.split('-').reverse().slice(0,2).join('/');
+    const semCache=!Object.keys(S.ferCache||{}).length;
+    c.innerHTML=`<h3>Feriados (próximos 3 dias)</h3>${d.fer.length||d.ferCid.length?`<ul>${d.fer.map(f=>`<li><b>${fd(f.iso)}</b> ${esc(f.n)} (nacional)</li>`).join('')}${d.ferCid.slice(0,12).map(f=>`<li><b>${fd(f.iso)}</b> ${esc(f.nome)}/${esc(f.uf)} · ${esc(f.n)}${f.tipo==='Estadual'?' (estadual)':''}${f.rom?' <b style="color:var(--no)">· tem nota hoje</b>':''}</li>`).join('')}${d.ferCid.length>12?`<li>+ ${d.ferCid.length-12} cidade(s)</li>`:''}</ul>`:`<p class="sub">${semCache?'Feriados ainda não baixados. Abra a aba Feriados com internet para atualizar.':'Nenhum feriado nas cidades que atendemos.'}</p>`}<button class="btn mini" type="button" data-mural-fer="1">Abrir feriados</button>`;
+    c.querySelector('[data-mural-fer]').addEventListener('click',ev=>{ ev.stopPropagation(); muralFechar(); irPara('feriados'); }); }; }
 
 /* ---------- início ---------- */
 (async function(){
