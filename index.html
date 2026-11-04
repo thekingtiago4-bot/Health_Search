@@ -4083,7 +4083,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.19', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.20', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5187,7 +5187,7 @@ function cliRender(){ const el=$('#cli-lista'); if(!el) return; const q=N($('#cl
       else if(e&&e.div){ r.titulo='📦 DIVERGÊNCIA · CAIXA QUE FALTOU · '+r.titulo; r.linha=`em ${fmtData(e.div.d)} vieram ${e.div.antes} vol.; agora chegou ${e.div.agora} — junte com a carga da nota, não é reentrega · `+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='div'; }
       else if(e){ r.titulo='↻ REENTREGA · '+r.titulo; r.linha=reTxt(e).replace('↻ REENTREGA · ','')+' — leve para o local de reentregas · '+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='reent'; }
       if(ag){ r.titulo='✋ AGENDADA · NÃO VAI PARA OPERAÇÃO · '+r.titulo; r.linha='separe e entregue fisicamente ao responsável pelos agendamentos — '+(r.linha||''); r.status='agend'; }
-      if(c) r.linha=(r.linha||'')+' — 📋 '+cliResumo(c); }
+      if(c&&cliResumo(c)) r.linha=(r.linha||'')+' — 📋 '+cliResumo(c); }
     _ml(r); }; }
 OP_ST.reent={t:'Reentrega',c:'#AE3EC9'}; OP_ST.agend={t:'Agendada (fora da rota)',c:'#E8590C'}; OP_ST.div={t:'Divergência (caixa que faltou)',c:'#0B7285'};
 
@@ -5205,12 +5205,13 @@ OP_ST.reent={t:'Reentrega',c:'#AE3EC9'}; OP_ST.agend={t:'Agendada (fora da rota)
 /* ================= v6.3.1 · MESA = rota dos agendados · agendadas em outros romaneios = pedir fisicamente · 1ª aparição na MESA não é reentrega ================= */
 const romMesa=r=>!!r&&(String(r.base||'').toUpperCase()==='MESA'||nexTxtRom(r).includes('MESA'));
 /* nota agendada: agendamento cadastrado (NF, pedido ou cliente) ou cliente marcado "Só com agendamento" (respeitando a cidade) */
-function linhaAgendada(row){ if(agDaLinha(row)) return true; const c=cliAcha(row.dest,row.cid); return !!(c&&c.agend); }
+/* v6.3.20: agendamento = cliente cadastrado em Agendamentos (nome e cidade) ou agendamento lançado para a NF/pedido; fora disso não é agendamento */
+function linhaAgendada(row){ if(agDaLinha(row)) return true; return !!cliAcha(row.dest,row.cid); }
 function agFora(){ const out=[], vis=new Set(); for(const r of S.romaneios||[]){ if(romMesa(r)) continue;
     for(const row of r.rows||[]){ if(volNum(row.vol)===0) continue; if(!linhaAgendada(row)) continue; const k=z(row.nf)||'P'+z(row.ped); if(vis.has(k)) continue; vis.add(k); out.push({r,row}); } }
   return out; }
 /* a MESA já é o romaneio dos agendados: tudo dela segue rota hoje */
-function agMesa(){ const out=[]; for(const r of S.romaneios||[]) if(romMesa(r)) for(const row of r.rows||[]) if(volNum(row.vol)!==0) out.push({r,row}); return out; }
+function agMesa(){ const out=[]; for(const r of S.romaneios||[]) if(romMesa(r)) for(const row of r.rows||[]) if(volNum(row.vol)!==0&&linhaAgendada(row)) out.push({r,row}); return out; }
 function agNaoVai(ped,nf){ ped=z(ped); nf=z(nf); return agFora().some(({row})=>(nf&&z(row.nf)===nf)||(ped&&z(row.ped)===ped)); }
 /* marca no histórico quais aparições foram na MESA e aplica a regra da 1ª aparição */
 function reRegraMesa(){ const n=nexS(); n.histPed=n.histPed||{};
@@ -5220,7 +5221,7 @@ function reRegraMesa(){ const n=nexS(); n.histPed=n.histPed||{};
   for(const r of S.romaneios||[]){ if(!romMesa(r)) continue; const d=nexDataRom(r);
     for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada') continue; if(typeof opFaltaAnt==='function'&&opFaltaAnt(p,k)) continue;
       const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(x=>x.d<d);
-      if(!ant.some(x=>x.m)){ e.status='ignorada'; e.motivo='Agendamento: 1ª aparição na MESA'; tiradas++; } } }
+      if(!ant.some(x=>x.m)&&linhaAgendada(row)){ e.status='ignorada'; e.motivo='Agendamento: 1ª aparição na MESA'; tiradas++; } } }
   /* divergência: voltou com MENOS volumes que da vez anterior = caixa que faltou chegando, não reentrega */
   for(const r of S.romaneios||[]){ const d=nexDataRom(r);
     for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada'||e.divOk) continue;
@@ -5242,7 +5243,7 @@ function agfRender(){ const el=$('#agf-lista'); if(!el) return; const l=agFora()
 { const _ma2=muralAbrir; muralAbrir=function(){ _ma2(); const g=document.querySelector('#mural .mural-g'); if(!g) return;
     const fo=agFora(), me=agMesa(); const cs=new Map(); for(const {row} of me){ const k=N(row.dest); const o=cs.get(k)||{nome:row.dest,notas:0,c:cliAcha(row.dest,row.cid)}; o.notas++; cs.set(k,o); }
     const c1=`<div class="mural-c" style="${fo.length?'border:2px solid #E8590C':''}"><h3>✋ Agendadas fora da MESA · pedir fisicamente</h3><b class="big">${fo.length}</b> nota(s) que não vão para a operação${fo.length?`<ul>${fo.slice(0,10).map(({row})=>`<li>${esc(row.rem||'')} → <b>${esc(row.dest||'')}</b> · ped. ${esc(z(row.ped)||'—')} · NF ${esc(z(row.nf)||'—')}</li>`).join('')}${fo.length>10?`<li>+ ${fo.length-10} nota(s)</li>`:''}</ul>`:'<p class="sub">Nenhuma agendada fora da MESA.</p>'}<button class="btn mini" data-mural-ir2="agenda" type="button">Ver lista completa</button></div>`;
-    const c2=`<div class="mural-c"><h3>🚚 Agendados que seguem rota hoje (MESA)</h3><b class="big">${me.length}</b> nota(s) · ${cs.size} cliente(s)${cs.size?`<ul>${[...cs.values()].slice(0,8).map(o=>`<li><b>${esc(o.nome)}</b> · ${o.notas} nota(s)${o.c?' · 📋 '+esc(cliResumo(o.c)):''}</li>`).join('')}</ul>`:'<p class="sub">Sem romaneio da MESA hoje.</p>'}</div>`;
+    const c2=`<div class="mural-c"><h3>🚚 Agendados que seguem rota hoje (MESA)</h3><p class="sub" style="margin:0">Só clientes cadastrados em Agendamentos.</p><b class="big">${me.length}</b> nota(s) · ${cs.size} cliente(s)${cs.size?`<ul>${[...cs.values()].slice(0,8).map(o=>`<li><b>${esc(o.nome)}</b> · ${o.notas} nota(s)${o.c?' · 📋 '+esc(cliResumo(o.c)):''}</li>`).join('')}</ul>`:'<p class="sub">Sem romaneio da MESA hoje.</p>'}</div>`;
     const ex=[...g.querySelectorAll('.mural-c')].find(c=>/Clientes com exigência/i.test(c.textContent)); if(ex) ex.insertAdjacentHTML('afterend',c2+c1); else g.insertAdjacentHTML('afterbegin',c1+c2);
     g.querySelectorAll('[data-mural-ir2]').forEach(b=>b.addEventListener('click',ev=>{ ev.stopPropagation(); muralFechar(); irPara('agenda'); },{once:true})); }; }
 
@@ -5744,7 +5745,7 @@ function reDiag(ped,nf){ ped=z(ped); nf=z(nf); let rom=null, row=null; for(const
   const e=(nf&&nexS().reent[nf])||(ped&&nexS().reent['P'+ped])||null;
   if(!hs.length) return {tipo:'nova'};
   if(e&&e.status==='ignorada') return {tipo:'ignorada',motivo:e.motivo||'marcada como não é reentrega',ant:hs[0]};
-  if(rom&&romMesa(rom)&&!hs.some(x=>x.m)) return {tipo:'mesa1',ant:hs[0]};
+  if(rom&&romMesa(rom)&&!hs.some(x=>x.m)&&row&&linhaAgendada(row)) return {tipo:'mesa1',ant:hs[0]};
   return {tipo:'reent',ant:hs[0],qt:hs.length}; }
 { const _ml4=opMostrar; opMostrar=function(r){ if(r&&r._ped!==undefined&&r.status!=='fora'&&!/REENTREGA|VOLUMES QUE FALTARAM|DIVERGÊNCIA ·|CAIXA QUE FALTOU/.test(r.titulo||'')){
       try{ const g=(reAtiva(r._ped,r._nf)||(typeof opFaltaAnt==='function'&&opFaltaAnt(r._ped,r._nf)))?{tipo:'jaTratado'}:reDiag(r._ped,r._nf);
@@ -5753,6 +5754,11 @@ function reDiag(ped,nf){ ped=z(ped); nf=z(nf); let rom=null, row=null; for(const
         else if(g.tipo==='ignorada') r.linha=(r.linha||'')+` — já veio em ${fmtData(g.ant.d)}, mas foi marcada: ${g.motivo}`;
       }catch(e){ console.error(e); } }
     _ml4(r); }; }
+
+
+/* v6.3.20: desfaz "1ª aparição na MESA" de notas cujo cliente não está cadastrado em Agendamentos */
+function reRevisarMesa(){ const n=nexS(); let volta=0; for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(e&&e.status==='ignorada'&&e.motivo==='Agendamento: 1ª aparição na MESA'&&!linhaAgendada(row)){ e.status='suspeita'; e.motivo=''; volta++; } } if(volta) salvar(); return volta; }
+{ const _nv5=nexVarrer; nexVarrer=function(){ const a=_nv5.apply(this,arguments); try{ reRevisarMesa(); }catch(e){} return a; }; }
 
 /* ---------- início ---------- */
 (async function(){
