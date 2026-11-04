@@ -2719,7 +2719,7 @@ async function reBuscarChave(chave){
 }
 async function reLancar(txt){
   txt=String(txt||'').trim(); if(!txt) return; const dig=txt.replace(/\D/g,'');
-  if(dig.length!==44&&(/\d{1,2}\s*\/\s*\d{1,2}/.test(txt)||/[A-Za-zÀ-ÿ]/.test(txt.replace(/^(nf|n|ped|pedido)\s*[:.\-]?\s*/i,'')))){ reStatus('Isso parece uma data ou um texto, não uma NF. Bipe a DANFE ou digite só o número da nota.','erro'); opSom&&opSom('fora'); return; }
+  if(dig.length!==44&&!reSemNF(txt)&&(/\d{1,2}\s*\/\s*\d{1,2}/.test(txt)||/[A-Za-zÀ-ÿ]/.test(txt.replace(/^(nf|n|ped|pedido)\s*[:.\-]?\s*/i,'')))){ reStatus('Isso parece uma data ou um texto, não uma NF. Bipe a DANFE ou digite só o número da nota.','erro'); opSom&&opSom('fora'); return; }
   const linhas=reDia();
   const nova={nf:'',ped:'',cli:'',cid:'',uf:'',qtd:1,obs:'',per:'Não',val:0,chave:''};
   if(dig.length===44){
@@ -4017,7 +4017,8 @@ document.addEventListener('input',e=>{ const t=e.target; if(t.dataset&&t.dataset
 document.addEventListener('keydown',e=>{ if(ED.on&&e.key==='Escape'&&!document.querySelector('.fundo')) edFechar(); });
 
 /* ---------- aba Correção ---------- */
-const reLinhaInvalida=l=>{ const nf=String(l.nf||''); return /\d{2}\/\d{2}\/\d{2,4}/.test(nf)||!/^\d{3,12}$/.test(z(nf))||!String(l.cid||'').trim(); };
+const reSemNF=v=>/^\s*(N\s*\/\s*A|S\s*\/\s*N|SEM\s*NF)\s*$/i.test(String(v||''));
+const reLinhaInvalida=l=>{ const nf=String(l.nf||''); if(reSemNF(nf)) return !String(l.cid||'').trim(); return /\d{2}\/\d{2}\/\d{2,4}/.test(nf)||!/^\d{3,12}$/.test(z(nf))||!String(l.cid||'').trim(); };
 function corItens(){ const out={geo:[],fora:[],nrec:[],reMot:[],reBase:[],ret:[],sus:0,inval:[]};
   try{ out.geo=geoParaConferir(); }catch(e){}
   const vist=new Set();
