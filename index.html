@@ -4079,7 +4079,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.11', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.12', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5685,6 +5685,18 @@ function rbProcurar(q){ const el=$('#rb-achou'); const k=z(q); if(!k){ el.innerH
   el.innerHTML=hs.length?`<div class="rb-rom" style="border-color:#AE3EC9"><b>${esc(k)}</b> apareceu ${hs.length} vez(es):<ul style="margin:4px 0 0">${hs.map(e=>`<li>${fmtData(e.d)} · romaneio ${esc(e.num||'?')}${e.m?' <span class="base">MESA</span>':''} · por ${e.por}${e.v!=null?' · '+e.v+' vol.':''}</li>`).join('')}</ul></div>`:`<div class="rb-sem">${esc(k)} não aparece no banco.</div>`; }
 /* bipe fora do romaneio: diz se já veio antes */
 { const _ml3=opMostrar; opMostrar=function(r){ if(r&&r.status==='fora'&&r._ped!==undefined){ const n=nexS(); const ks=[...new Set([z(r._nf),z(r._ped)].filter(Boolean))]; const hs=ks.flatMap(k=>[...((n.hist||{})[k]||[]),...(((n.histPed||{})[k])||[])]).sort((a,b)=>b.d.localeCompare(a.d)); if(hs.length) r.linha=`Já veio em ${fmtData(hs[0].d)} (romaneio ${hs[0].num||'?'}) — pode ser reentrega não informada. `+(r.linha||''); } _ml3(r); }; }
+
+
+/* ================= v6.3.12 · Correção: cada bloco fica recolhido até clicar em Expandir ================= */
+const COR_ABERTOS=new Set();
+(function(){ const st=document.createElement('style'); st.textContent=`.cor-bloco>header{cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cor-bloco>header .cor-exp{margin-left:auto}
+.cor-bloco.recolhido>:not(header){display:none!important}.cor-bloco.recolhido{padding-bottom:10px}`; document.head.appendChild(st); })();
+{ const _rc=renderCorrecao; renderCorrecao=function(){ _rc.apply(this,arguments); for(const b of document.querySelectorAll('#cor-corpo .cor-bloco')){ const h=b.querySelector('header'); if(!h) continue; const k=N((h.querySelector('h2')||h).textContent.replace(/\d+/g,''));
+      b.dataset.cor=k; const aberto=COR_ABERTOS.has(k); b.classList.toggle('recolhido',!aberto);
+      if(!h.querySelector('.cor-exp')) h.insertAdjacentHTML('beforeend',`<button class="btn mini cor-exp" type="button">${aberto?'▴ Recolher':'▾ Expandir'}</button>`); } }; }
+document.addEventListener('click',e=>{ const h=e.target.closest&&e.target.closest('#cor-corpo .cor-bloco>header'); if(!h) return; if(e.target.closest('button:not(.cor-exp),a,input,select,label')) return;
+  const b=h.parentElement, k=b.dataset.cor; if(COR_ABERTOS.has(k)) COR_ABERTOS.delete(k); else COR_ABERTOS.add(k);
+  const ab=COR_ABERTOS.has(k); b.classList.toggle('recolhido',!ab); const bt=h.querySelector('.cor-exp'); if(bt) bt.textContent=ab?'▴ Recolher':'▾ Expandir'; });
 
 /* ---------- início ---------- */
 (async function(){
