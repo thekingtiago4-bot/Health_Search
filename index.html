@@ -4904,7 +4904,7 @@ function opLer(textos,origem){
   opRender(); }
 
 function opContagem(ped,nf){ const rows=[]; const idx=opIndice(); for(const it of (ped&&idx.ped.get(ped))||(nf&&idx.nf.get(nf))||[]) rows.push(it.x);
-  const esp=rows.reduce((t,x)=>t+(volNum(x.vol)||1),0)||1;
+  const fa=opFaltaAnt(ped,nf); const esp=fa?Math.max(1,fa.esp-fa.lidos):(rows.reduce((t,x)=>t+(volNum(x.vol)||1),0)||1);
   const lidos=new Set(OP.bipes.filter(b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(nf&&b.nf===nf))).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
   return {esp,lidos}; }
 
@@ -5026,11 +5026,20 @@ function opEntrar(){ opXmlInfo(); if(OP.dia!==($('#op-dia').value||hojeISO())||!
 function opVisiveis(){ return OP.usuario?OP.bipes.filter(b=>b.usuario===OP.usuario):OP.bipes; }
 function opPendentes(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[];
   for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; const esp=volNum(x.vol); if(esp===0) continue;
-    const lidos=new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
-    if(lidos<(esp||1)) out.push({r,x,ped,nf,esp:esp||1,lidos,valor:opValor(ped,nf,x)}); }
+    const lidos=new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size; const fa=opFaltaAnt(ped,nf); const espF=fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
+    if(lidos<espF) out.push({r,x,ped,nf,esp:espF,lidos,valor:opValor(ped,nf,x),falta:fa}); }
   return out.sort((a,b)=>b.valor-a.valor); }
+/* falta de volume: nota conferida pela metade hoje fica registrada; se voltar outro dia, é a caixa que faltou */
+const opFk=(ped,nf)=>z(nf)||(ped?'P'+z(ped):'');
+function opFaltaAnt(ped,nf){ const F=S.opFaltas||{}; const e=F[z(nf)]||(ped&&F['P'+z(ped)])||(ped&&Object.values(F).find(x=>x.ped&&x.ped===z(ped)))||null; return e&&e.d<hojeISO()?e:null; }
+function opRegFaltas(){ if(OP.dia!==hojeISO()) return; S.opFaltas=S.opFaltas||{}; const antes=JSON.stringify(S.opFaltas), hoje=hojeISO();
+  const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'); const lidosDe=(ped,nf)=>new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
+  for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf), k=opFk(ped,nf); if(!k) continue; const esp=volNum(x.vol)||1, lidos=lidosDe(ped,nf), ant=opFaltaAnt(ped,nf);
+    if(ant){ const falt=Math.max(1,ant.esp-ant.lidos); if(lidos>=falt){ delete S.opFaltas[opFk(ant.ped,ant.nf)]; toast(`✔ NF ${nf||'—'}: chegaram os ${falt} volume(s) que faltavam. Nota completa.`); } continue; }
+    if(lidos>0&&lidos<esp) S.opFaltas[k]={d:hoje,nf,ped,esp,lidos,dest:x.dest||'',rem:x.rem||''}; else if(S.opFaltas[k]&&S.opFaltas[k].d===hoje) delete S.opFaltas[k]; }
+  if(JSON.stringify(S.opFaltas)!==antes) salvar(); }
 function opBadge(){ const q=$('#qt-op'); if(!q) return; const n=OP.bipes.filter(b=>b.status==='fora'||b.status==='dup').length; q.textContent=n; q.hidden=!n; }
-function opRender(){ if(!$('#op-cards')) return; const vis=opVisiveis(); const c={todos:vis.length,ok:0,semnota:0,fora:0,dup:0}; for(const b of vis) c[b.status]=(c[b.status]||0)+1;
+function opRender(){ if(!$('#op-cards')) return; try{ opRegFaltas(); }catch(e){ console.error(e); } const vis=opVisiveis(); const c={todos:vis.length,ok:0,semnota:0,fora:0,dup:0}; for(const b of vis) c[b.status]=(c[b.status]||0)+1;
   const pend=opPendentes(), us=[...new Set(OP.bipes.map(b=>b.usuario).filter(Boolean))].sort();
   const sel=$('#op-usu'); sel.innerHTML='<option value="">Todos os usuários</option>'+us.map(u=>`<option ${u===OP.usuario?'selected':''}>${esc(u)}</option>`).join('');
   const card=(f,n,t,cor)=>`<button class="op-card" type="button" data-f="${f}" aria-pressed="${OP.filtro===f}"><b>${fmtN(n)}</b><span>${cor?`<i style="background:${cor}"></i>`:''}${t}</span></button>`;
@@ -5040,7 +5049,7 @@ function opRenderLista(){ const el=$('#op-lista'); if(!el) return; const q=($('#
   const cas=s=>!q||String(s).toLowerCase().includes(q);
   if(OP.filtro==='falta'||OP.filtro==='alto'){ const p=opPendentes().filter(it=>OP.filtro!=='alto'||it.valor>=opAlto()).filter(it=>cas([it.ped,it.nf,it.x.dest,it.x.cid,it.r.numero].join(' ')));
     $('#op-tit-lista').textContent='Notas que ainda não foram bipadas (mais caras primeiro)';
-    el.innerHTML=p.length?`<table class="op-tab"><thead><tr><th>Romaneio</th><th>Pedido</th><th>NF</th><th>Volumes</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Cliente</th><th class="m-oc">Cidade</th></tr></thead><tbody>${p.slice(0,800).map(it=>`<tr><td>${esc(it.r.numero)}</td><td>${esc(it.ped)}</td><td>${esc(it.nf)}</td><td>${it.lidos} de ${it.esp}</td><td>${opCtHtml((opConteudo(it.ped,it.nf)||{}).cod)}</td><td>${opValHtml(it.valor)}</td><td class="m-oc">${esc(it.x.dest)}</td><td class="m-oc">${esc(it.x.cid)}</td></tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.dia===hojeISO()?(S.romaneios.length?'Nada faltando. Tudo dos romaneios foi bipado. ✔':'Carregue os romaneios do dia para ver o que falta.'):'O que falta só é calculado para a operação de hoje.'}</div>`;
+    el.innerHTML=p.length?`<table class="op-tab"><thead><tr><th>Romaneio</th><th>Pedido</th><th>NF</th><th>Volumes</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Cliente</th><th class="m-oc">Cidade</th></tr></thead><tbody>${p.slice(0,800).map(it=>`<tr><td>${esc(it.r.numero)}</td><td>${esc(it.ped)}</td><td>${esc(it.nf)}</td><td>${it.lidos} de ${it.esp}${it.falta?` <span class="op-ct g" title="Romaneio mostra ${it.falta.esp}">só faltantes</span>`:''}</td><td>${opCtHtml((opConteudo(it.ped,it.nf)||{}).cod)}</td><td>${opValHtml(it.valor)}</td><td class="m-oc">${esc(it.x.dest)}</td><td class="m-oc">${esc(it.x.cid)}</td></tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.dia===hojeISO()?(S.romaneios.length?'Nada faltando. Tudo dos romaneios foi bipado. ✔':'Carregue os romaneios do dia para ver o que falta.'):'O que falta só é calculado para a operação de hoje.'}</div>`;
     return; }
   const lista=opVisiveis().filter(b=>OP.filtro==='todos'||b.status===OP.filtro).filter(b=>cas([b.ped,b.nf,b.dest,b.cid,b.usuario,b.romaneio,b.codigo].join(' ')));
   $('#op-tit-lista').textContent=OP.filtro==='todos'?'Bipes':OP_ST[OP.filtro].t;
@@ -5150,7 +5159,9 @@ function cliRender(){ const el=$('#cli-lista'); if(!el) return; const q=N($('#cl
 
 /* ---------- alertas no bipe da Operação ---------- */
 { const _ml=opMostrar; opMostrar=function(r){ if(r&&r._ped!==undefined){ const e=reAtiva(r._ped,r._nf), c=cliAcha(r._dest,r._cid), ag=agNaoVai(r._ped,r._nf);
-      if(e&&e.div){ r.titulo='📦 DIVERGÊNCIA · CAIXA QUE FALTOU · '+r.titulo; r.linha=`em ${fmtData(e.div.d)} vieram ${e.div.antes} vol.; agora chegou ${e.div.agora} — junte com a carga da nota, não é reentrega · `+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='div'; }
+      const fa=opFaltaAnt(r._ped,r._nf);
+      if(fa){ const falt=Math.max(1,fa.esp-fa.lidos); r.titulo='📦 VOLUMES QUE FALTARAM · '+r.titulo; r.linha=`em ${fmtData(fa.d)} conferimos ${fa.lidos} de ${fa.esp} vol. — fisicamente chegam só ${falt}, mesmo que o romaneio mostre ${fa.esp}. Não é reentrega · `+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='div'; }
+      else if(e&&e.div){ r.titulo='📦 DIVERGÊNCIA · CAIXA QUE FALTOU · '+r.titulo; r.linha=`em ${fmtData(e.div.d)} vieram ${e.div.antes} vol.; agora chegou ${e.div.agora} — junte com a carga da nota, não é reentrega · `+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='div'; }
       else if(e){ r.titulo='↻ REENTREGA · '+r.titulo; r.linha=reTxt(e).replace('↻ REENTREGA · ','')+' — leve para o local de reentregas · '+(r.linha||''); if(r.status==='ok'||r.status==='semnota') r.status='reent'; }
       if(ag){ r.titulo='✋ AGENDADA · NÃO VAI PARA OPERAÇÃO · '+r.titulo; r.linha='separe e entregue fisicamente ao responsável pelos agendamentos — '+(r.linha||''); r.status='agend'; }
       if(c) r.linha=(r.linha||'')+' — 📋 '+cliResumo(c); }
@@ -5159,10 +5170,11 @@ OP_ST.reent={t:'Reentrega',c:'#AE3EC9'}; OP_ST.agend={t:'Agendada (fora da rota)
 
 /* ---------- mural: reentregas do dia e clientes com exigência ---------- */
 { const _ma=muralAbrir; muralAbrir=function(){ _ma(); const g=document.querySelector('#mural .mural-g'); if(!g) return;
-    const tudo=reNoDia(), re=tudo.filter(x=>!x.e.div), dv=tudo.filter(x=>x.e.div), cl=cliHoje();
+    const tudo=reNoDia(), re=tudo.filter(x=>!x.e.div&&!(typeof opFaltaAnt==='function'&&opFaltaAnt(z(x.row.ped),z(x.row.nf)))), cl=cliHoje();
+    const dv=[], vis=new Set(); for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const k=z(row.nf)||z(row.ped); if(vis.has(k)) continue; const fa=typeof opFaltaAnt==='function'?opFaltaAnt(z(row.ped),z(row.nf)):null, e=reAtiva(z(row.ped),z(row.nf)); const dd=fa?{antes:fa.esp,agora:Math.max(1,fa.esp-fa.lidos),d:fa.d,falta:true}:(e&&e.div); if(dd){ vis.add(k); dv.push({row,e:{div:dd}}); } }
     const c1=`<div class="mural-c" style="${re.length?'border:2px solid #AE3EC9':''}"><h3>↻ Reentregas nos romaneios de hoje</h3><b class="big">${re.length}</b> nota(s) que já vieram antes${re.length?`<ul>${re.slice(0,8).map(x=>`<li><b>NF ${esc(z(x.row.nf)||'—')}</b> · ped. ${esc(z(x.row.ped)||'—')} · ${esc(x.row.dest||'')} · antes em ${esc(fmtData(x.e.anterior))}${x.e.via==='lancada'?' (lançada em Reentregas)':''}</li>`).join('')}${re.length>8?`<li>+ ${re.length-8} nota(s)</li>`:''}</ul><p class="sub">Separe direto no local de reentregas.</p>`:'<p class="sub">Nenhuma nota repetida nos romaneios carregados.</p>'}<button class="btn mini" data-mural-ir="operacao" type="button">Abrir Operação</button></div>`;
     const c2=`<div class="mural-c" style="${cl.length?'border:2px solid #E8A33D':''}"><h3>📋 Clientes com exigência hoje</h3><b class="big">${cl.length}</b> cliente(s)${cl.length?`<ul>${cl.slice(0,8).map(o=>`<li><b>${esc(o.c.nome)}</b> · ${o.notas} nota(s) · ${esc(cliResumo(o.c))}</li>`).join('')}</ul>`:'<p class="sub">Nenhum cliente com exigência nos romaneios de hoje.</p>'}<button class="btn mini" data-mural-ir="agenda" type="button">Abrir clientes</button></div>`;
-    const c3=dv.length?`<div class="mural-c" style="border:2px solid #0B7285"><h3>📦 Caixas que faltaram chegando</h3><b class="big">${dv.length}</b> nota(s) com divergência de volume<ul>${dv.slice(0,8).map(x=>`<li><b>NF ${esc(z(x.row.nf)||'—')}</b> · ped. ${esc(z(x.row.ped)||'—')} · ${esc(x.row.dest||'')} · em ${esc(fmtData(x.e.div.d))} vieram ${x.e.div.antes} vol., agora ${x.e.div.agora}</li>`).join('')}</ul><p class="sub">Junte com a carga da nota. Não é reentrega.</p></div>`:'';
+    const c3=dv.length?`<div class="mural-c" style="border:2px solid #0B7285"><h3>📦 Caixas que faltaram chegando</h3><b class="big">${dv.length}</b> nota(s) com divergência de volume<ul>${dv.slice(0,8).map(x=>`<li><b>NF ${esc(z(x.row.nf)||'—')}</b> · ped. ${esc(z(x.row.ped)||'—')} · ${esc(x.row.dest||'')} · ${x.e.div.falta?`em ${esc(fmtData(x.e.div.d))} faltaram ${x.e.div.agora} de ${x.e.div.antes} vol. — chegam só ${x.e.div.agora} físico(s)`:`em ${esc(fmtData(x.e.div.d))} vieram ${x.e.div.antes} vol., agora ${x.e.div.agora}`}</li>`).join('')}</ul><p class="sub">Junte com a carga da nota. Não é reentrega.</p></div>`:'';
     g.insertAdjacentHTML('afterbegin',c1+c3+c2);
     g.querySelectorAll('[data-mural-ir="operacao"],[data-mural-ir="agenda"]').forEach(b=>b.addEventListener('click',ev=>{ ev.stopPropagation(); muralFechar(); irPara(b.dataset.muralIr); },{once:true})); }; }
 
@@ -5183,14 +5195,16 @@ function reRegraMesa(){ const n=nexS(); n.histPed=n.histPed||{};
       const v=volNum(row.vol); for(const e of (k&&n.hist[k])||[]) if(e.rom===r.id){ e.m=m; if(v!=null) e.v=v; } for(const e of (p&&n.histPed[p])||[]) if(e.rom===r.id){ e.m=m; if(v!=null) e.v=v; } } }
   let tiradas=0;
   for(const r of S.romaneios||[]){ if(!romMesa(r)) continue; const d=nexDataRom(r);
-    for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada') continue;
+    for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada') continue; if(typeof opFaltaAnt==='function'&&opFaltaAnt(p,k)) continue;
       const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(x=>x.d<d);
       if(!ant.some(x=>x.m)){ e.status='ignorada'; e.motivo='Agendamento: 1ª aparição na MESA'; tiradas++; } } }
   /* divergência: voltou com MENOS volumes que da vez anterior = caixa que faltou chegando, não reentrega */
   for(const r of S.romaneios||[]){ const d=nexDataRom(r);
     for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada'||e.divOk) continue;
       const v=volNum(row.vol); const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(x=>x.d<d&&x.v!=null).sort((a,b)=>b.d.localeCompare(a.d))[0];
-      if(ant&&v!=null&&v<ant.v){ e.div={antes:ant.v,agora:v,d:ant.d,rom:ant.num||''}; e.motivo=e.motivo||'Divergência: caixa que faltou'; } else delete e.div; e.divOk=1; } }
+      const fa=typeof opFaltaAnt==='function'?opFaltaAnt(p,k):null;
+      if(fa){ e.div={antes:fa.esp,agora:Math.max(1,fa.esp-fa.lidos),d:fa.d,falta:true}; e.motivo=e.motivo||'Volumes que faltaram'; }
+      else if(ant&&v!=null&&v<ant.v){ e.div={antes:ant.v,agora:v,d:ant.d,rom:ant.num||''}; e.motivo=e.motivo||'Divergência: caixa que faltou'; } else delete e.div; e.divOk=1; } }
   return tiradas; }
 { const _nv2=nexVarrer; nexVarrer=function(){ const a=_nv2.apply(this,arguments); try{ reRegraMesa(); }catch(e){ console.error(e); } return a; }; }
 function agForaHtml(lista,max){ return lista.length?`<table class="op-tab"><thead><tr><th>Remetente</th><th>Cliente</th><th>Pedido</th><th>NF</th><th class="m-oc">Cidade</th><th class="m-oc">Romaneio</th></tr></thead><tbody>${lista.slice(0,max||9999).map(({r,row})=>`<tr><td>${esc(row.rem||'')}</td><td>${esc(row.dest||'')}</td><td>${esc(z(row.ped)||'—')}</td><td>${esc(z(row.nf)||'—')}</td><td class="m-oc">${esc(row.cid||'')}</td><td class="m-oc">${esc(r.numero||'')} ${r.base?'<span class="base">'+esc(r.base)+'</span>':''}</td></tr>`).join('')}</tbody></table>`:''; }
