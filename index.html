@@ -4075,7 +4075,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.5', HS_DATA='03/11/2026';
+const HS_VERSAO='6.3.6', HS_DATA='03/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5425,6 +5425,79 @@ OP_ST.dvg={t:'Divergência',c:'#C2255C'};
       if(!ds.length&&res&&res.n){ const d=dvAcha(res.n,res.n); if(d) ds.push(d); }
       const old=document.getElementById('dv-busca'); if(old) old.remove();
       if(ds.length&&box){ const alvo=box; alvo.insertAdjacentHTML('afterbegin',`<div id="dv-busca" style="border:2px solid #C2255C;border-radius:12px;padding:10px 14px;margin:10px 0;background:var(--sup)"><b style="color:#C2255C">⚠ ${ds.map(d=>esc(dvTexto(d))).join('<br>⚠ ')}</b> <button class="btn mini" type="button" data-dv-abrir="1">Abrir</button></div>`); const ab=document.querySelector('[data-dv-abrir]'); if(ab) ab.onclick=()=>irPara('divergencias'); } }catch(e){ console.error(e); } return out; }; }
+
+
+/* ================= v6.3.6 · CELULAR: barra no topo com menu (gaveta) + pedido de permissão da câmera ================= */
+(function(){ const st=document.createElement('style'); st.textContent=`
+#mb-bar{display:none}
+@media (max-width:860px){
+  html,body{overflow-x:hidden}
+  .rail{position:sticky!important;top:0;z-index:60;flex-direction:row!important;align-items:center;height:auto!important;padding:8px 12px!important;gap:10px}
+  .rail .nav,.rail .resumo{display:none!important}
+  #mb-bar{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+  #mb-bar .tit{flex:1;min-width:0;font-weight:700;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #mb-bar button{all:unset;cursor:pointer;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:1.4rem}
+  #mb-bar button:active{background:rgba(255,255,255,.12)}
+  .rail.mb-aberto{position:fixed!important;inset:0 auto 0 0;width:min(86vw,330px);height:100vh!important;flex-direction:column!important;align-items:stretch;overflow-y:auto;padding:14px 12px 24px!important;box-shadow:0 0 40px rgba(0,0,0,.4);z-index:120}
+  .rail.mb-aberto .nav{display:flex!important;flex-direction:column!important;justify-content:flex-start}
+  .rail.mb-aberto .nav button{padding:11px 12px!important;font-size:1rem}
+  .rail.mb-aberto .nav button .lbl{display:inline!important}
+  .rail.mb-aberto .resumo{display:block!important}
+  .rail.mb-aberto .marca div{display:block!important}
+  .rail.mb-aberto #mb-bar .tit{visibility:hidden}
+  #mb-fundo{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:110}
+  main{padding:16px 12px 40px!important}
+  main h1{font-size:1.45rem}
+  #op-lista,#dv-lista,#agf-lista,#cli-lista,.lista{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .op-tab{min-width:560px}
+  .op-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .op-bip{flex-direction:column}.op-bip .btn{width:100%}
+  .op-topo{flex-direction:column;align-items:stretch}
+  .barra{gap:8px}.barra .filtro{max-width:none;width:100%}
+  input,select,textarea{font-size:16px!important}
+  .modal{max-width:calc(100vw - 24px)}
+}
+#perm-sheet{position:fixed;left:0;right:0;bottom:0;z-index:1500;background:var(--sup);color:var(--tinta);border-radius:18px 18px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.35);padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto}
+#perm-sheet h2{margin:0 0 6px;font-size:1.15rem}#perm-sheet p{margin:0 0 12px;color:var(--tinta2);font-size:.95rem}
+#perm-sheet .it{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--linha)}#perm-sheet .it b{display:block}
+#perm-sheet .bts{display:flex;gap:10px;margin-top:14px}#perm-sheet .bts .btn{flex:1;min-height:48px}`;
+  document.head.appendChild(st);
+  const rail=document.querySelector('.rail'); if(!rail) return;
+  const marca=rail.querySelector('.marca');
+  const bar=document.createElement('div'); bar.id='mb-bar'; bar.innerHTML='<span class="tit" id="mb-tit">Buscar</span><button type="button" id="mb-menu" aria-label="Abrir menu" aria-expanded="false">☰</button>';
+  (marca?marca.after(bar):rail.prepend(bar));
+  const abrir=on=>{ rail.classList.toggle('mb-aberto',on); $('#mb-menu').textContent=on?'✕':'☰'; $('#mb-menu').setAttribute('aria-expanded',String(on));
+    let f=$('#mb-fundo'); if(on&&!f){ f=document.createElement('div'); f.id='mb-fundo'; f.onclick=()=>abrir(false); document.body.appendChild(f); } if(!on&&f) f.remove(); };
+  $('#mb-menu').onclick=()=>abrir(!rail.classList.contains('mb-aberto'));
+  rail.addEventListener('click',e=>{ if(e.target.closest('.nav button')) abrir(false); });
+  addEventListener('keydown',e=>{ if(e.key==='Escape'&&rail.classList.contains('mb-aberto')) abrir(false); });
+  const _ir=irPara; irPara=function(t){ _ir(t); const b=document.querySelector(`.nav [data-tela="${t}"] .lbl`); const ti=$('#mb-tit'); if(ti) ti.textContent=b?b.textContent:'Health Search'; };
+})();
+
+/* permissão da câmera: pede assim que abre no celular (uma vez), explica se estiver bloqueada */
+const PERM_K='healthSearch.perm.camera';
+async function permEstado(){ try{ if(navigator.permissions&&navigator.permissions.query){ const r=await navigator.permissions.query({name:'camera'}); return r.state; } }catch(e){} return 'desconhecido'; }
+async function permPedirCamera(){ try{ const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}); s.getTracks().forEach(t=>t.stop()); try{ localStorage.setItem(PERM_K,'ok'); }catch(e){} return true; }catch(e){ return false; } }
+async function permVerificar(forcar){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return;
+  const st=await permEstado(); if(st==='granted'){ try{ localStorage.setItem(PERM_K,'ok'); }catch(e){} return; }
+  let visto=''; try{ visto=localStorage.getItem(PERM_K)||''; }catch(e){}
+  if(!forcar&&(visto==='ok'||visto==='depois')) return;
+  if($('#perm-sheet')) return;
+  const bloq=st==='denied';
+  const f=document.createElement('div'); f.id='perm-sheet'; f.setAttribute('role','dialog'); f.setAttribute('aria-modal','true');
+  f.innerHTML=`<h2>Permissões do aplicativo</h2><p>${bloq?'A câmera está <b>bloqueada</b> para o Health Search. Libere para conferir as etiquetas:':'Para conferir as etiquetas pela câmera, o Health Search precisa da sua permissão:'}</p>
+    <div class="it"><span style="font-size:1.6rem">📷</span><div><b>Câmera</b><span style="color:var(--mudo);font-size:.9rem">Ler os QR Codes da etiqueta e o código de barras da nota na aba Operação. Nada é gravado.</span></div></div>
+    ${bloq?`<div class="it"><span style="font-size:1.6rem">⚙️</span><div><b>Como liberar</b><span style="color:var(--mudo);font-size:.9rem">No Chrome: toque no 🔒 ao lado do endereço → <b>Permissões</b> → <b>Câmera</b> → <b>Permitir</b>. No app instalado: segure o ícone → <b>Informações do app</b> → <b>Permissões</b> → <b>Câmera</b>.</span></div></div>`:''}
+    <div class="bts"><button class="btn" type="button" data-p="depois">Agora não</button><button class="btn pri" type="button" data-p="ok">${bloq?'Já liberei':'Permitir câmera'}</button></div>`;
+  document.body.appendChild(f);
+  f.onclick=async e=>{ const b=e.target.closest('[data-p]'); if(!b) return;
+    if(b.dataset.p==='depois'){ try{ localStorage.setItem(PERM_K,'depois'); }catch(er){} f.remove(); toast('Tudo bem. A câmera será pedida quando você abrir a Operação.'); return; }
+    b.disabled=true; b.textContent='Aguardando…'; const ok=await permPedirCamera(); f.remove();
+    if(ok) toast('📷 Câmera liberada. Já pode conferir pela aba Operação.'); else { try{ localStorage.removeItem(PERM_K); }catch(er){} toast('A câmera continua bloqueada. Libere nas permissões do navegador.'); setTimeout(()=>permVerificar(true),600); } }; }
+{ const _ir2=irPara; let primeira=true; irPara=function(t){ _ir2(t);
+    if(primeira&&(TOQUE||matchMedia('(max-width:860px)').matches)){ primeira=false; setTimeout(()=>permVerificar(false),1200); }
+    if(t==='operacao') setTimeout(async()=>{ const st=await permEstado(); if(st!=='granted'&&(TOQUE||matchMedia('(max-width:860px)').matches)) permVerificar(true); },300); }; }
 
 /* ---------- início ---------- */
 (async function(){
