@@ -4083,7 +4083,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.21', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.22', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5769,6 +5769,11 @@ function reEhReimport(re){ const rom=(S.romaneios||[]).find(r=>r.id===re.rom); i
 { const _ns=nexSuspeitas; nexSuspeitas=function(){ const l=_ns(); const n=nexS(); return l.filter(([k,r])=>{ if(reEhReimport(r)){ r.status='ignorada'; r.motivo='Mesmo romaneio carregado de novo'; return false; } return true; }); }; }
 { const _ra=reAtiva; reAtiva=function(ped,nf){ const e=_ra(ped,nf); if(e&&reEhReimport(e)){ e.status='ignorada'; e.motivo='Mesmo romaneio carregado de novo'; return null; } return e; }; }
 { const _rh=reHistNota; reHistNota=function(ped,nf){ const out=_rh(ped,nf); const rom=(S.romaneios||[]).find(r=>(r.rows||[]).some(x=>(nf&&z(x.nf)===z(nf))||(ped&&z(x.ped)===z(ped)))); if(!rom) return out; return out.filter(e=>!(e.rom===rom.id&&reMesmoRomaneio(rom,e.d))); }; }
+
+
+/* v6.3.22: "MESA" no título do arquivo = romaneio da MESA */
+{ const _arb2=aplicarRegraBase; aplicarRegraBase=function(r){ _arb2(r); if(r&&/\bMESA\b/i.test(String(r.arquivo||''))&&r.base!=='MESA'){ if(r.baseOrig===undefined) r.baseOrig=r.base||null; r.base='MESA'; } return r; }; }
+{ const _gr=guardarRomaneio; guardarRomaneio=function(r,nome){ _gr(r,nome); try{ const x=(S.romaneios||[]).find(y=>y.arquivo===nome); if(x){ const a=x.base; aplicarRegraBase(x); if(a!==x.base){ salvar(); renderTudo(); } } }catch(e){} }; }
 
 /* ---------- início ---------- */
 (async function(){
