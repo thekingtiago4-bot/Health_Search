@@ -4087,7 +4087,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.8.0', HS_DATA='04/11/2026';
+const HS_VERSAO='6.9.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6159,7 +6159,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
       if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; }
     /* 2) sobe o que mudou aqui */
     const sobe=[]; const eu=opEu(); const agora=nuvLocal();
-    for(const [k,o] of agora){ const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
+    const soAdm=k=>!nvAdmin()&&NUV_ADMIN.has(k); for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
     for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
     for(let i=0;i<sobe.length;i+=50){ const lote=sobe.slice(i,i+50); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r)); if(e2) throw e2; for(const r of lote) NUV.h[r.chave]=r._h; }
     NUV.erro=''; NUV.ult=new Date(); nuvGuardar();
@@ -6169,7 +6169,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
 function nuvAgendar(){ if(NUV.aplicando) return; clearTimeout(NUV.timer); NUV.timer=setTimeout(nuvSinc,1500); }
 { const _g=RE.gravar.bind(RE); RE.gravar=function(){ _g(); nuvAgendar(); }; }
 { const _s=Store.salvar.bind(Store); Store.salvar=function(...a){ const r=_s(...a); nuvAgendar(); return r; }; }
-setInterval(()=>{ if(!document.hidden) nuvSinc(); },30000);
+setInterval(()=>{ if(!document.hidden&&!NUV.aoVivo) nuvSinc(); else if(!document.hidden&&Date.now()-(NUV.ult||0)>120000) nuvSinc(); },30000);
 window.addEventListener('focus',()=>nuvSinc()); window.addEventListener('online',()=>nuvSinc());
 (function nuvIniciar(){ const b=document.querySelector('.marca'); if(b&&!$('#nuv-st')) b.insertAdjacentHTML('afterend','<span id="nuv-st" style="font-size:var(--fs-sm);margin-left:10px;white-space:nowrap;cursor:pointer" title="">☁</span>');
   const el=$('#nuv-st'); if(el) el.onclick=()=>{ if(NUV.erro) toast(NUV.erro); else nuvSinc(); };
@@ -6198,6 +6198,11 @@ function nuvMesclar(l,r){ if(Array.isArray(l)&&Array.isArray(r)){ const ch=x=>x&
 { const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')) return nuvMesclar(local,remoto); return remoto; }; }
 { const NM=window.HS_NOMES, _ns=NM&&NM.salvar; if(typeof _ns==='function') NM.salvar=function(...a){ const r=_ns.apply(NM,a); nuvAgendar(); return r; }; }
 
+/* v6.9.0: chaves que só o admin grava + atualização ao vivo */
+const NUV_ADMIN=new Set(['s:geo','s:aprendidos','s:cidAlias','s:cidAtend','s:geoRuas','s:txtFix','ls:xlNomes']);
+(function nuvAoVivo(){ let n=0; const t=setInterval(()=>{ if(!opOnline()){ if(++n>180) clearInterval(t); return; } clearInterval(t); if(NUV.canal) return;
+  try{ NUV.canal=NV.cli.channel('hs-sync').on('postgres_changes',{event:'*',schema:'public',table:'hs_sync'},p=>{ const r=p&&p.new; if(r&&r.chave&&NUV.h[r.chave]===(r.apagado?'x':nuvHash(r.valor))) return; clearTimeout(NUV.vivo); NUV.vivo=setTimeout(nuvSinc,400); }).subscribe(st=>{ NUV.aoVivo=st==='SUBSCRIBED'; nuvStatus(); }); }catch(e){ console.error(e); } },1000); })();
+{ const _st=nuvStatus; nuvStatus=function(){ _st(); const el=$('#nuv-st'); if(el&&NUV.aoVivo&&!NUV.erro&&!NUV.rodando) el.textContent=el.textContent.replace('☁','☁⚡'); }; }
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
