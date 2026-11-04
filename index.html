@@ -4075,7 +4075,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.7', HS_DATA='03/11/2026';
+const HS_VERSAO='6.3.8', HS_DATA='03/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4810,12 +4810,17 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
 .op-x{all:unset;cursor:pointer;color:var(--mudo);padding:0 6px}
 #op-cam{position:fixed;inset:0;z-index:90;background:#000;display:flex;flex-direction:column}
 #op-cam video{flex:1;width:100%;object-fit:cover;min-height:0}
-#op-cam .mira{position:absolute;left:8%;right:8%;top:22%;bottom:30%;border:3px solid rgba(255,255,255,.85);border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.28);pointer-events:none;transition:border-color .1s}
+#op-cam .mira{position:absolute;left:4%;right:4%;top:14%;bottom:26%;border:6px solid rgba(255,255,255,.9);border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.28);pointer-events:none;transition:border-color .1s}
 #op-cam .bar{position:absolute;left:0;right:0;bottom:0;padding:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;background:linear-gradient(transparent,rgba(0,0,0,.75))}
 #op-cam .bar button{font-size:1rem}
 #op-cam .msg{position:absolute;left:12px;right:12px;top:12px;color:#fff;border-radius:12px;padding:12px 14px;font-weight:600;background:rgba(0,0,0,.55)}
 #op-cam .msg b{display:block;font-size:1.2rem}
 @media (max-width:640px){.op-tab .m-oc{display:none}}
+#op-cam .op-camleg{position:absolute;left:10px;right:10px;bottom:76px;max-height:30vh;overflow:auto;color:#fff;background:rgba(0,0,0,.6);border-radius:12px;padding:8px 10px;font-size:.82rem;line-height:1.35}
+#op-cam .op-camleg b{font-weight:700}#op-cam .op-camleg .pt,.op-leg .pt{display:inline-block!important;width:10px;height:10px;border-radius:50%;margin:0 4px 0 8px;vertical-align:-1px}
+#op-cam .pausa{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);color:#fff;font-weight:700;padding:10px 16px;border-radius:12px;font-size:1.05rem}
+.op-leg{border:1.5px dashed var(--linha);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:var(--fs-sm);color:var(--tinta2);background:var(--sup)}
+.op-leg ol{margin:4px 0 6px 18px;padding:0}
 .op-xml{margin:4px 0 8px;border:1.5px solid var(--linha);border-radius:12px;padding:10px 14px;background:var(--sup)}.op-xml summary{cursor:pointer}
 .op-ct{display:inline-block;font-size:.75rem;font-weight:700;border-radius:6px;padding:1px 6px;margin:1px 3px 1px 0;white-space:nowrap}.op-ct.g{background:#DBEAFE;color:#1E40AF}.op-ct.s{background:#F3E8D7;color:#7C4A12}.op-ct.m{background:#DCFCE7;color:#166534}.op-ct.t{background:#EDE9FE;color:#5B21B6}`;
   document.head.appendChild(st);
@@ -4829,6 +4834,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
     <label id="op-modo-box" class="tag" style="cursor:pointer" title="Desligado: um bipe confere a nota inteira"><input type="checkbox" id="op-modo"> Conferir volume a volume</label><span id="op-sinc" class="tag"></span></div>
   <div class="op-bip"><button class="btn pri grande" type="button" id="op-bt-cam">📷 Abrir câmera</button>
     <input id="op-campo" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Bipe a nota (DANFE) ou digite pedido / NF e Enter" aria-label="Código bipado"></div>
+  <details class="op-leg" open><summary><b>Como conferir</b> (toque para esconder)</summary><ol><li>Toque em <b>📷 Abrir câmera</b> e aponte para a etiqueta inteira, dentro da moldura.</li><li>Segure firme até ouvir o bipe. A tela muda de cor com o resultado.</li><li>Espere 4 segundos e passe a próxima caixa. Um bipe por nota já basta: conte os volumes físicos.</li><li>Leitor vermelho: bipe o código de barras da nota (DANFE) no campo acima.</li></ol><div id="op-leg-cores"></div></details>
   <div class="op-res" id="op-res" style="background:var(--sup2);color:var(--mudo)"><b>Pronto para conferir</b><small>Os romaneios carregados hoje são a base da conferência.</small></div>
   <div class="op-cards" id="op-cards"></div>
   <details class="op-xml" id="op-xml"><summary><b>Conteúdo das caixas (XML das notas)</b> <span class="tag" id="op-xml-qt">0 notas</span></summary>
@@ -4840,7 +4846,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
     <button class="btn mini" type="button" id="op-csv">Exportar Excel (CSV)</button></div>
   <div id="op-lista"></div>`;
   const ref=document.getElementById('t-romaneios'); ref.parentNode.insertBefore(sec,ref);
-  $('#op-dia').value=hojeISO();
+  $('#op-dia').value=hojeISO(); setTimeout(()=>{ const c=$('#op-leg-cores'); if(c) c.innerHTML=OP_LEG.split('<br>')[1]; },0);
   $('#op-modo').onchange=e=>{ if(!(opAdmin()||!opOnline())){ e.target.checked=opPorVol(); toast('Só o administrador muda o modo de conferência.'); return; } S.opPorVolume=e.target.checked; salvar(); opRender(); toast(S.opPorVolume?'Agora cada volume precisa ser bipado.':'Um bipe confere a nota inteira.'); };
   $('#op-dia').onchange=()=>opAbrirDia($('#op-dia').value||hojeISO());
   $('#op-usu').onchange=()=>{ OP.usuario=$('#op-usu').value; opRender(); };
@@ -4961,6 +4967,9 @@ function opMostrar(r){ opSom(r.status); const cor=(OP_ST[r.status]||{c:'#555'}).
   const el=$('#op-res'); el.style.background=cor; el.style.color='#fff'; el.innerHTML=`<b>${esc(r.titulo)}</b><small>${esc(r.linha||'')}</small>`; el.classList.add('pisca'); setTimeout(()=>el.classList.remove('pisca'),160);
   const m=document.querySelector('#op-cam .msg'); if(m){ m.style.background=cor; m.innerHTML=`<b>${esc(r.titulo)}</b>${esc(r.linha||'')}`; const mi=document.querySelector('#op-cam .mira'); if(mi){ mi.style.borderColor=cor; setTimeout(()=>mi.style.borderColor='',700); } } }
 
+const OP_LEG=`<b>Como bipar:</b> 1) coloque a etiqueta inteira dentro da moldura · 2) segure firme até o bipe · 3) espere 4 s e passe a próxima.<br>
+<span class="pt" style="background:#16a34a"></span>Conferido <span class="pt" style="background:#eab308"></span>Sem nota <span class="pt" style="background:#dc2626"></span>Fora do romaneio (separe) <span class="pt" style="background:#AE3EC9"></span>Reentrega <span class="pt" style="background:#E8590C"></span>Agendada (não vai) <span class="pt" style="background:#C2255C"></span>Divergência <span class="pt" style="background:#0B7285"></span>Caixa que faltou <span class="pt" style="background:#4F7CF7"></span>Duplicado`;
+function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el) return; let n=4; el.hidden=false; el.querySelector('b').textContent=n; clearInterval(opCamPausa.t); opCamPausa.t=setInterval(()=>{ n--; if(n<=0){ clearInterval(opCamPausa.t); el.hidden=true; return; } el.querySelector('b').textContent=n; },1000); }
 /* ---------- câmera ---------- */
 async function opDetector(){
   if('BarcodeDetector' in window){ try{ const sup=await BarcodeDetector.getSupportedFormats(); const f=['qr_code','code_128','itf','code_39','ean_13','data_matrix'].filter(x=>sup.includes(x)); if(f.includes('qr_code')){ const d=new BarcodeDetector({formats:f}); return async v=>(await d.detect(v)).map(c=>c.rawValue); } }catch(e){} }
@@ -4978,7 +4987,7 @@ async function opCamAbrir(){
   try{ OP.det=OP.det||await opDetector(); }catch(e){ stream.getTracks().forEach(t=>t.stop()); toast(e.message); return; }
   opSom('info');
   const f=document.createElement('div'); f.id='op-cam'; f.innerHTML=`<video playsinline muted autoplay></video><div class="mira"></div><div class="msg"><b>Aponte para a etiqueta</b>Leio os QR Codes sozinho, não precisa apertar nada.</div>
-    <div class="bar"><button class="btn" type="button" data-a="luz">🔦 Lanterna</button><button class="btn pri" type="button" data-a="sair">Fechar</button></div>`;
+    <div class="op-camleg">${OP_LEG}</div><div class="pausa" hidden>Próxima leitura em <b>4</b> s…</div><div class="bar"><button class="btn" type="button" data-a="luz">🔦 Lanterna</button><button class="btn pri" type="button" data-a="sair">Fechar</button></div>`;
   document.body.appendChild(f); const v=f.querySelector('video'); v.srcObject=stream; OP.cam=stream; try{ await v.play(); }catch(e){}
   const tr=stream.getVideoTracks()[0]; let luz=false;
   try{ const c=tr.getCapabilities&&tr.getCapabilities(); if(c&&c.focusMode&&c.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}); if(!(c&&c.torch)) f.querySelector('[data-a="luz"]').hidden=true; }catch(e){}
@@ -4987,7 +4996,7 @@ async function opCamAbrir(){
   let ocupado=false, ult=0;
   const passo=async ts=>{ if(!OP.cam) return; OP.loop=requestAnimationFrame(passo); if(ocupado||ts-ult<90||v.readyState<2) return; ocupado=true; ult=ts;
     try{ const lidos=[...new Set(await OP.det(v))].filter(Boolean); if(lidos.length){ const prin=lidos.find(t=>t.includes('@'))||lidos.find(t=>t.replace(/\D/g,'').length===44)||lidos[0];
-        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-vez>2500){ OP.visto.set(prin,agora); opLer(lidos,'camera'); } else OP.visto.set(prin,agora); } }catch(e){}
+        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=4000&&agora-vez>4000){ OP.visto.set(prin,agora); OP.ultLeitura=agora; opLer(lidos,'camera'); opCamPausa(); } else OP.visto.set(prin,agora); } }catch(e){}
     ocupado=false; };
   OP.loop=requestAnimationFrame(passo); }
 function opCamFechar(){ cancelAnimationFrame(OP.loop); if(OP.cam) OP.cam.getTracks().forEach(t=>t.stop()); OP.cam=null; const f=$('#op-cam'); if(f) f.remove(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
@@ -5518,6 +5527,99 @@ addEventListener('resize',()=>{ clearTimeout(mbChecarPC.t); mbChecarPC.t=setTime
 /* depois que o programa abre: checa modo computador, permissão da câmera e instalação (também quando o mural fecha) */
 { const _ir3=irPara; let vez=0; irPara=function(t){ _ir3(t); if(vez++===0) setTimeout(()=>{ mbChecarPC(); if(mbCelular()) permVerificar(false); setTimeout(mbInstalarAviso,4000); },1500); }; }
 { const _mf=muralFechar; muralFechar=function(){ _mf(); if(mbCelular()) setTimeout(()=>permVerificar(false),500); }; }
+
+/* ================= v6.3.8 · BANCO DE ROMANEIOS: alimentar por dia, arquivo por mês/dia, histórico para pegar reentregas não informadas ================= */
+const RB={mes:hojeISO().slice(0,7),dias:{},aberto:null,carregando:false,local:'healthSearch.romBanco'};
+const rbMin=rows=>(rows||[]).map(x=>({nf:z(x.nf),ped:z(x.ped),rem:x.rem||'',dest:x.dest||'',cid:x.cid||'',uf:x.uf||'',vol:x.vol||''}));
+const rbHash=r=>{ let h=0; const s=JSON.stringify(rbMin(r.rows)); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return String(h); };
+function rbLocalLer(){ try{ return JSON.parse(localStorage.getItem(RB.local)||'{}'); }catch(e){ return {}; } }
+function rbLocalGravar(o){ try{ localStorage.setItem(RB.local,JSON.stringify(o)); }catch(e){ /* cheio: mantém só os 120 dias mais novos */ const ks=Object.keys(o).sort().reverse(); const n={}; for(const k of ks.slice(0,120)) n[k]=o[k]; try{ localStorage.setItem(RB.local,JSON.stringify(n)); }catch(e2){} } }
+/* guarda um romaneio no banco (online + aparelho) */
+async function rbGuardar(r,dia){ const reg={id:dia+'|'+r.id,dia,numero:String(r.numero||''),base:r.base||'',motorista:r.motorista||'',notas:contar(r.rows).notas,vol:contar(r.rows).vol,rows:rbMin(r.rows),hash:rbHash(r),criado_por:(NV.perfil&&NV.perfil.nome)||''};
+  const L=rbLocalLer(); const d=L[dia]=L[dia]||{}; const ja=d[reg.id]; if(ja&&ja.hash===reg.hash&&ja.on) return false; d[reg.id]=Object.assign({},reg,{on:false}); rbLocalGravar(L);
+  if(opOnline()){ try{ const {error}=await NV.cli.from('hs_rom_banco').upsert(Object.assign({},reg,{atualizado_em:new Date().toISOString()})); if(!error){ const L2=rbLocalLer(); if(L2[dia]&&L2[dia][reg.id]){ L2[dia][reg.id].on=true; rbLocalGravar(L2); } } else if(!rbGuardar.av){ rbGuardar.av=1; toast('Banco de romaneios: '+nvTraduz(error.message)+' (rode o SQL da 6.3.8).'); } }catch(e){} }
+  return true; }
+/* histórico de notas/pedidos usado nas reentregas */
+function rbRegistrarHist(r,dia){ const n=nexS(); n.histPed=n.histPed||{}; const m=romMesa(r);
+  for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), v=volNum(row.vol);
+    if(k){ const h=n.hist[k]=n.hist[k]||[]; if(!h.some(e=>e.d===dia&&e.rom===r.id)) h.push({d:dia,rom:r.id,num:r.numero||'',m,v}); }
+    if(p){ const h=n.histPed[p]=n.histPed[p]||[]; if(!h.some(e=>e.d===dia&&e.rom===r.id)){ h.push({d:dia,rom:r.id,num:r.numero||'',nf:k,m,v}); h.sort((a,b)=>a.d.localeCompare(b.d)); if(h.length>20) h.splice(0,h.length-20); } } } }
+/* reavalia os romaneios de hoje contra o histórico (depois de alimentar dias antigos) */
+function rbReavaliar(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
+  for(const r of S.romaneios||[]){ const d=nexDataRom(r);
+    for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), kk=k||('P'+p); if(!kk) continue; if(n.reent[kk]&&n.reent[kk].d===d) continue;
+      const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(e=>e.d<d).sort((a,b)=>b.d.localeCompare(a.d))[0];
+      if(ant){ n.reent[kk]={d,rom:r.id,num:r.numero||'',anterior:ant.d,romAnt:ant.num||'',status:'suspeita',motivo:'',via:'banco',ped:p,nfAnt:ant.nf||'',em:new Date().toISOString()}; novas++; } } }
+  try{ reRegraMesa(); }catch(e){} return novas; }
+/* arquiva sozinho os romaneios carregados, no dia de cada um */
+{ const _nv4=nexVarrer; nexVarrer=function(){ const a=_nv4.apply(this,arguments); try{ for(const r of S.romaneios||[]) rbGuardar(r,nexDataRom(r)); }catch(e){ console.error(e); } return a; }; }
+
+(function rbMontar(){ const sec=document.getElementById('t-romaneios'); if(!sec) return;
+  const st=document.createElement('style'); st.textContent=`
+.rb{border:1.5px solid var(--linha);border-radius:12px;background:var(--sup);padding:14px;margin:22px 0}
+.rb h2{margin:0 0 4px}.rb .linha{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:10px 0}
+.rb label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-sm);font-weight:600;color:var(--tinta2)}
+.rb input[type=date],.rb input[type=month],.rb input[type=text]{border:1.5px solid var(--linha);border-radius:var(--r);padding:7px 9px;background:var(--sup);color:inherit;font:inherit}
+.rb-dia{border-top:1px solid var(--linha);padding:8px 0}.rb-dia>button{all:unset;cursor:pointer;display:flex;gap:10px;align-items:center;width:100%;font-weight:600}
+.rb-dia .q{color:var(--mudo);font-weight:500;font-size:var(--fs-sm)}.rb-roms{margin:6px 0 4px 18px}
+.rb-rom{border:1px solid var(--linha);border-radius:10px;padding:8px 10px;margin:6px 0}.rb-rom summary{cursor:pointer}
+.rb-sem{color:var(--mudo);padding:8px 0}`;
+  document.head.appendChild(st);
+  sec.insertAdjacentHTML('beforeend',`<div class="rb" id="rb">
+    <h2>Banco de romaneios</h2>
+    <p class="sub" style="margin:0">Todo romaneio carregado fica guardado no dia dele. Alimente aqui os <b>dias anteriores</b> para o programa reconhecer reentregas que não foram informadas.</p>
+    <div class="linha"><label>Dia dos romaneios<input type="date" id="rb-dia"></label>
+      <label class="soltar" id="rb-soltar" tabindex="0" style="flex:1;min-width:240px;margin:0"><div><b>Alimentar: arraste os PDFs desse dia</b><span>não mexe nos romaneios de hoje</span></div><input type="file" id="rb-arq" accept="application/pdf,.pdf" multiple class="sr"></label></div>
+    <div id="rb-status" role="status" class="sub" style="margin:0"></div>
+    <div class="linha"><label>Mês<input type="month" id="rb-mes"></label><label style="flex:1">Procurar no banco<input type="text" id="rb-q" placeholder="Pedido ou NF" inputmode="numeric" autocomplete="off"></label></div>
+    <div id="rb-achou"></div><div id="rb-lista"></div></div>`);
+  $('#rb-dia').value=diaMais(-1); $('#rb-mes').value=RB.mes;
+  $('#rb-arq').onchange=e=>{ rbAlimentar([...e.target.files]); e.target.value=''; };
+  const sz=$('#rb-soltar'); ['dragover','dragenter'].forEach(ev=>sz.addEventListener(ev,e=>{ e.preventDefault(); e.stopPropagation(); sz.classList.add('sobre'); })); ['dragleave','drop'].forEach(ev=>sz.addEventListener(ev,()=>sz.classList.remove('sobre')));
+  sz.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); rbAlimentar([...e.dataTransfer.files]); });
+  $('#rb-mes').onchange=()=>{ RB.mes=$('#rb-mes').value||hojeISO().slice(0,7); rbCarregarMes(); };
+  $('#rb-q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); rbProcurar($('#rb-q').value); } });
+  $('#rb-q').addEventListener('change',()=>rbProcurar($('#rb-q').value));
+  $('#rb-lista').onclick=async e=>{ const b=e.target.closest('[data-rb-dia]'); if(b){ RB.aberto=RB.aberto===b.dataset.rbDia?null:b.dataset.rbDia; rbRender(); }
+    const x=e.target.closest('[data-rb-del]'); if(x){ if(!opAdmin()&&opOnline()){ toast('Só o administrador apaga do banco.'); return; } if(!await confirmar('Apagar do banco','Tirar este romaneio do banco? O histórico já registrado continua valendo.','Apagar')) return; const id=x.dataset.rbDel, dia=id.split('|')[0]; if(opOnline()) await NV.cli.from('hs_rom_banco').delete().eq('id',id); const L=rbLocalLer(); if(L[dia]){ delete L[dia][id]; rbLocalGravar(L); } rbCarregarMes(); } };
+  const _ir=irPara; irPara=function(t){ _ir(t); if(t==='romaneios') rbCarregarMes(); };
+})();
+
+async function rbAlimentar(files){ const lista=files.filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf'); if(!lista.length){ toast('Escolha os PDFs dos romaneios.'); return; }
+  const diaEsc=$('#rb-dia').value||diaMais(-1); const el=$('#rb-status'); let ok=0, erro=0; const dias=new Set();
+  for(let i=0;i<lista.length;i++){ const f=lista[i]; el.innerHTML=`<span class="gira"></span> Lendo ${i+1} de ${lista.length}: ${esc(f.name)}`; await new Promise(r=>setTimeout(r,20));
+    try{ const r=await RomEngine.parsePdf(pdfjsLib,new Uint8Array(await f.arrayBuffer()),DICT); if(!r.rows.length) throw new Error('sem notas');
+      const {_unk,...dados}=r; dados.id=(dados.serie||'000')+'.'+(dados.baseCod||'000')+'.'+(dados.numero||f.name); dados.arquivo=f.name; aplicarRegraBase(dados);
+      const dia=nexIsoDe(dados.dataViagem)||nexIsoDe(dados.dataEmissao)||diaEsc;
+      if(dia>=hojeISO()&&diaEsc<hojeISO()) { /* PDF de hoje: vale o dia escolhido */ }
+      const d=dia<hojeISO()?dia:diaEsc; rbRegistrarHist(dados,d); await rbGuardar(dados,d); dias.add(d); ok++; }catch(e){ console.error(e); erro++; } }
+  const novas=rbReavaliar(); salvar(); try{ renderTudo(); }catch(e){}
+  el.innerHTML=`✔ ${ok} romaneio(s) guardado(s) no banco${dias.size?' ('+[...dias].sort().map(fmtData).join(', ')+')':''}${erro?` · ${erro} com erro`:''}${novas?` · <b style="color:#AE3EC9">${novas} reentrega(s) encontrada(s) nos romaneios de hoje</b>`:''}.`;
+  if(novas) toast(`↻ ${novas} nota(s) de hoje já tinham vindo antes. Veja no mural e na Operação.`);
+  RB.mes=[...dias].sort().pop()?.slice(0,7)||RB.mes; $('#rb-mes').value=RB.mes; rbCarregarMes(); }
+
+async function rbCarregarMes(){ const mes=RB.mes, ini=mes+'-01', fim=mes+'-31'; RB.dias={};
+  const L=rbLocalLer(); for(const d in L) if(d.startsWith(mes)) RB.dias[d]=Object.values(L[d]).map(x=>({...x}));
+  rbRender();
+  if(!opOnline()) return; RB.carregando=true;
+  try{ const {data,error}=await NV.cli.from('hs_rom_banco').select('id,dia,numero,base,motorista,notas,vol,criado_por').gte('dia',ini).lte('dia',fim).order('dia'); if(error) throw error;
+    for(const x of data){ const d=String(x.dia).slice(0,10); RB.dias[d]=RB.dias[d]||[]; const i=RB.dias[d].findIndex(y=>y.id===x.id); if(i>=0) Object.assign(RB.dias[d][i],x); else RB.dias[d].push(x); } }catch(e){}
+  RB.carregando=false; rbRender(); }
+function rbRender(){ const el=$('#rb-lista'); if(!el) return; const ds=Object.keys(RB.dias).sort().reverse();
+  if(!ds.length){ el.innerHTML=`<div class="rb-sem">${RB.carregando?'Carregando…':'Nenhum romaneio guardado neste mês.'}</div>`; return; }
+  const tot=ds.reduce((t,d)=>{ for(const r of RB.dias[d]){ t.r++; t.n+=r.notas||0; t.v+=r.vol||0; } return t; },{r:0,n:0,v:0});
+  el.innerHTML=`<p class="sub" style="margin:4px 0">${ds.length} dia(s) · ${fmtN(tot.r)} romaneio(s) · ${fmtN(tot.n)} notas · ${fmtN(tot.v)} volumes</p>`+ds.map(d=>{ const L=RB.dias[d]; const n=L.reduce((t,r)=>t+(r.notas||0),0), v=L.reduce((t,r)=>t+(r.vol||0),0); const dt=new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+    return `<div class="rb-dia"><button type="button" data-rb-dia="${d}">${RB.aberto===d?'▾':'▸'} ${esc(dt)} <span class="q">${L.length} romaneio(s) · ${fmtN(n)} notas · ${fmtN(v)} vol.</span></button>${RB.aberto===d?`<div class="rb-roms">${L.sort((a,b)=>String(a.numero).localeCompare(String(b.numero))).map(r=>`<details class="rb-rom" data-rb-id="${esc(r.id)}"><summary><b>${esc(r.numero||'?')}</b> <span class="base">${esc(r.base||'?')}</span> · ${fmtN(r.notas||0)} notas · ${fmtN(r.vol||0)} vol.${r.motorista?' · '+esc(r.motorista):''} ${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar do banco" data-rb-del="${esc(r.id)}">✕</button>`:''}</summary><div class="rb-notas">Abrindo…</div></details>`).join('')}</div>`:''}</div>`; }).join('');
+  el.querySelectorAll('details.rb-rom').forEach(dt=>dt.addEventListener('toggle',()=>{ if(dt.open) rbNotas(dt); })); }
+async function rbNotas(dt){ const id=dt.dataset.rbId, dia=id.split('|')[0], box=dt.querySelector('.rb-notas'); let rows=null;
+  const L=rbLocalLer(); if(L[dia]&&L[dia][id]) rows=L[dia][id].rows;
+  if(!rows&&opOnline()){ const {data}=await NV.cli.from('hs_rom_banco').select('rows').eq('id',id).maybeSingle(); rows=data&&data.rows; }
+  rows=rows||[]; box.innerHTML=rows.length?`<div style="overflow-x:auto"><table class="op-tab"><thead><tr><th>NF</th><th>Pedido</th><th>Remetente</th><th>Cliente</th><th>Cidade</th><th>Vol.</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped||'—')}</td><td>${esc(x.rem)}</td><td>${esc(x.dest)}</td><td>${esc(x.cid)}${x.uf?'/'+esc(x.uf):''}</td><td>${esc(x.vol)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="rb-sem">Sem notas guardadas.</div>'; }
+/* procurar pedido/NF: histórico (rápido, no aparelho) */
+function rbProcurar(q){ const el=$('#rb-achou'); const k=z(q); if(!k){ el.innerHTML=''; return; } const n=nexS(); const hs=[...((n.hist||{})[k]||[]).map(e=>({...e,por:'NF'})),...(((n.histPed||{})[k])||[]).map(e=>({...e,por:'Pedido'}))].sort((a,b)=>b.d.localeCompare(a.d));
+  el.innerHTML=hs.length?`<div class="rb-rom" style="border-color:#AE3EC9"><b>${esc(k)}</b> apareceu ${hs.length} vez(es):<ul style="margin:4px 0 0">${hs.map(e=>`<li>${fmtData(e.d)} · romaneio ${esc(e.num||'?')}${e.m?' <span class="base">MESA</span>':''} · por ${e.por}${e.v!=null?' · '+e.v+' vol.':''}</li>`).join('')}</ul></div>`:`<div class="rb-sem">${esc(k)} não aparece no banco.</div>`; }
+/* bipe fora do romaneio: diz se já veio antes */
+{ const _ml3=opMostrar; opMostrar=function(r){ if(r&&r.status==='fora'&&r._ped!==undefined){ const n=nexS(); const ks=[...new Set([z(r._nf),z(r._ped)].filter(Boolean))]; const hs=ks.flatMap(k=>[...((n.hist||{})[k]||[]),...(((n.histPed||{})[k])||[])]).sort((a,b)=>b.d.localeCompare(a.d)); if(hs.length) r.linha=`Já veio em ${fmtData(hs[0].d)} (romaneio ${hs[0].num||'?'}) — pode ser reentrega não informada. `+(r.linha||''); } _ml3(r); }; }
 
 /* ---------- início ---------- */
 (async function(){
