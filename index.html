@@ -3554,7 +3554,8 @@ const nexCor=t=>(nexS().etiquetas.find(e=>e.nome===t)||{cor:'#62797C'}).cor;
 const nexChip=t=>`<span class="nx-chip" style="--c:${esc(nexCor(t))}">${t==='Prioridade'?'⚡ ':''}${esc(t)}</span>`;
 function nexLog(txt){ const n=nexS(); n.log.unshift({em:new Date().toISOString(),txt}); n.log.length=Math.min(n.log.length,80); }
 function nexIsoDe(s){ s=String(s||'').trim(); let m=s.match(/(\d{2})\/(\d{2})\/(\d{4})/); if(m) return `${m[3]}-${m[2]}-${m[1]}`; m=s.match(/(\d{4})-(\d{2})-(\d{2})/); return m?m[0]:''; }
-const nexDataRom=r=>nexIsoDe(r.dataViagem)||nexIsoDe(r.dataEmissao)||String(r.importadoEm||'').slice(0,10)||reHoje();
+/* v6.3.19: o dia do romaneio vem do NOME do arquivo; sem data no nome, do dia em que foi carregado (a data interna do PDF não é confiável) */
+const nexDataRom=r=>{ if(!r) return reHoje(); if(r.diaFixo) return r.diaFixo; let d=''; try{ d=(typeof rbDataDoNome==='function')?rbDataDoNome(r.arquivo,reHoje()):''; }catch(e){} if(!d&&r.importadoEm){ const t=new Date(r.importadoEm); if(!isNaN(t)) d=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'); } return d||nexIsoDe(r.dataViagem)||nexIsoDe(r.dataEmissao)||reHoje(); };
 function nexProxUtil(base){ const d=base?new Date(base+'T12:00:00'):new Date(); d.setHours(12,0,0,0); const iso=()=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   const fer=x=>{ try{ return nacionaisCalculados(+x.slice(0,4)).some(f=>f.d===x); }catch(e){ return false; } };
   do{ d.setDate(d.getDate()+1); }while(d.getDay()===0||d.getDay()===6||fer(iso())); return iso(); }
@@ -4082,7 +4083,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.18', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.19', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5739,14 +5740,14 @@ function reHistNota(ped,nf){ const n=nexS(); const ks=[...new Set([z(nf),z(ped)]
   for(const k of ks) for(const e of [...((n.hist||{})[k]||[]),...(((n.histPed||{})[k])||[])]){ const key=e.d+'|'+e.rom; if(vis.has(key)) continue; vis.add(key); out.push(e); }
   return out.sort((a,b)=>b.d.localeCompare(a.d)); }
 function reDiag(ped,nf){ ped=z(ped); nf=z(nf); let rom=null, row=null; for(const r of S.romaneios||[]){ const x=(r.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(ped&&z(x.ped)===ped)); if(x){ rom=r; row=x; break; } }
-  const dHoje=rom?nexDataRom(rom):hojeISO(); const hs=reHistNota(ped,nf).filter(e=>e.d<dHoje&&(!rom||e.rom!==rom.id));
+  const dHoje=rom?nexDataRom(rom):hojeISO(); const hs=reHistNota(ped,nf).filter(e=>e.d<dHoje);
   const e=(nf&&nexS().reent[nf])||(ped&&nexS().reent['P'+ped])||null;
   if(!hs.length) return {tipo:'nova'};
   if(e&&e.status==='ignorada') return {tipo:'ignorada',motivo:e.motivo||'marcada como não é reentrega',ant:hs[0]};
   if(rom&&romMesa(rom)&&!hs.some(x=>x.m)) return {tipo:'mesa1',ant:hs[0]};
   return {tipo:'reent',ant:hs[0],qt:hs.length}; }
 { const _ml4=opMostrar; opMostrar=function(r){ if(r&&r._ped!==undefined&&r.status!=='fora'&&!/REENTREGA|VOLUMES QUE FALTARAM|DIVERGÊNCIA ·|CAIXA QUE FALTOU/.test(r.titulo||'')){
-      try{ const g=reDiag(r._ped,r._nf);
+      try{ const g=(reAtiva(r._ped,r._nf)||(typeof opFaltaAnt==='function'&&opFaltaAnt(r._ped,r._nf)))?{tipo:'jaTratado'}:reDiag(r._ped,r._nf);
         if(g.tipo==='reent'){ r.titulo='↻ REENTREGA · '+r.titulo; r.linha=`já veio em ${fmtData(g.ant.d)} (romaneio ${g.ant.num||'?'})${g.qt>1?' · '+g.qt+' vezes antes':''} — leve para o local de reentregas · `+(r.linha||''); if(r.status==='ok'||r.status==='semnota'||!r.status) r.status='reent'; }
         else if(g.tipo==='mesa1') r.linha=(r.linha||'')+` — veio antes em ${fmtData(g.ant.d)} (rom. ${g.ant.num||'?'}), agora 1ª vez na MESA: agendamento, não é reentrega`;
         else if(g.tipo==='ignorada') r.linha=(r.linha||'')+` — já veio em ${fmtData(g.ant.d)}, mas foi marcada: ${g.motivo}`;
