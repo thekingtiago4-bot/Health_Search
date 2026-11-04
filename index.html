@@ -4087,7 +4087,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.5.1', HS_DATA='04/11/2026';
+const HS_VERSAO='6.6.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6049,6 +6049,83 @@ async function opCamSemCodigo(v){ const ag=Date.now(); if(OCRK.ocupado||ag-OCRK.
   const vez=OP.visto.get('t'+chave)||0; if(Date.now()-vez<4000) return; if(opLerEtiqueta(p)){ OP.visto.set('t'+chave,Date.now()); OP.ultLeitura=Date.now(); opCamPausa(); } }
 /* coluna Vol.: mostra o total mesmo quando a nota foi conferida por um bipe só */
 (function(){ const st=document.createElement('style'); st.textContent='.op-tab td.st[data-pit]{color:#E8590C}'; document.head.appendChild(st); })();
+
+/* ================= v6.6.0 · Painel de reentregas: tudo clicável, cidades, motivos e motoristas, relatório completo ================= */
+(function(){ const st=document.createElement('style'); st.textContent=`
+#re-painel .rp-h{cursor:pointer;border-radius:6px}#re-painel .rp-h:hover{background:color-mix(in srgb,var(--ag) 10%,transparent)}
+#re-painel .rp-kpi-c,#rp-kpi>div{cursor:pointer}#rp-kpi>div:hover{outline:2px solid var(--ag);outline-offset:-2px;border-radius:10px}
+.rp-card h3 .rp-ver{float:right;font-size:var(--fs-sm);font-weight:600;background:none;border:1.5px solid var(--linha);color:var(--tinta);border-radius:8px;padding:2px 8px;cursor:pointer}
+#rx{position:fixed;inset:0;z-index:1400;background:rgba(0,0,0,.55);display:flex;align-items:stretch;justify-content:center;padding:16px}
+#rx .cx{background:var(--sup);color:var(--tinta);border-radius:16px;width:min(1400px,100%);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+#rx header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--linha)}#rx header h2{flex:1;margin:0;font-size:1.15rem;min-width:200px}
+#rx .corpo{overflow:auto;padding:14px 18px;flex:1}
+#rx .kp{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}#rx .kp div{border:1.5px solid var(--linha);border-radius:10px;padding:8px 12px;font-size:var(--fs-sm);color:var(--mudo)}#rx .kp b{display:block;font-size:1.2rem;color:var(--tinta)}
+#rx .gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:14px}#rx .gr>div{border:1.5px solid var(--linha);border-radius:12px;padding:10px}#rx .gr h4{margin:0 0 6px}
+#rx table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}#rx th{position:sticky;top:-14px;background:var(--sup);text-align:left;padding:6px;border-bottom:2px solid var(--linha);cursor:pointer;white-space:nowrap}
+#rx td{padding:5px 6px;border-bottom:1px solid var(--linha);vertical-align:top}#rx td.r,#rx th.r{text-align:right;white-space:nowrap}
+#rx .bus{border:1.5px solid var(--linha);border-radius:8px;padding:6px 10px;background:var(--sup);color:var(--tinta);font:inherit;min-width:220px}
+#rx .mini-l{display:flex;justify-content:space-between;gap:8px;padding:3px 4px;border-radius:6px;cursor:pointer}#rx .mini-l:hover{background:color-mix(in srgb,var(--ag) 12%,transparent)}#rx .mini-l span:last-child{color:var(--mudo);white-space:nowrap}
+@media print{body>*:not(#rx){display:none!important}#rx{position:static;background:none;padding:0}#rx .cx{box-shadow:none;width:100%}#rx header button,#rx .bus{display:none}#rx .corpo{overflow:visible}}`; document.head.appendChild(st); })();
+
+/* motorista da reentrega = motorista do romaneio em que a nota saiu antes (banco de romaneios) */
+let RPM=null;
+function rpMotIdx(){ if(RPM) return RPM; const m=new Map(); const add=(nf,dia,mot,num)=>{ const k=opK(nf); if(!k) return; if(!m.has(k)) m.set(k,[]); m.get(k).push({dia,mot:String(mot||'').trim(),num}); };
+  try{ const L=rbLocalLer(); for(const d of Object.keys(L)) for(const reg of Object.values(L[d])) for(const x of reg.rows||[]) add(x.nf,d,reg.motorista,reg.numero); }catch(e){}
+  for(const r of S.romaneios||[]) for(const x of r.rows||[]) add(x.nf,opDiaRom(r),r.motorista,r.numero);
+  for(const v of m.values()) v.sort((a,b)=>b.dia.localeCompare(a.dia)); RPM=m; setTimeout(()=>{ RPM=null; },60000); return m; }
+function rpMot(x){ if(x.l.mot) return String(x.l.mot).toUpperCase(); const h=rpMotIdx().get(opK(x.l.nf)); if(!h) return '(SEM MOTORISTA)'; const a=h.find(e=>e.dia<x.d&&e.mot)||h.find(e=>e.mot); return a?a.mot.toUpperCase():'(SEM MOTORISTA)'; }
+const rpMotivo=x=>rpNz(x.l.obs).replace(/\s+/g,' ')||'(SEM MOTIVO)';
+const rpCidade=x=>(rpNz(x.l.cid)||'(SEM CIDADE)')+(x.l.uf?' – '+String(x.l.uf).toUpperCase():'');
+const RPK={cli:{t:'Cliente',f:x=>x.cli},cid:{t:'Cidade',f:rpCidade},mot:{t:'Motorista',f:rpMot},motivo:{t:'Motivo',f:rpMotivo},tipo:{t:'Tipo de ocorrência',f:x=>x.tipo},uf:{t:'Estado',f:x=>(x.l.uf||'?').toUpperCase()},reg:{t:'Região',f:x=>rpRegNome(x.reg)},mes:{t:'Mês',f:x=>RP_MESES[+x.m.slice(5)-1]+'/'+x.m.slice(0,4)},dia:{t:'Dia',f:x=>fmtData(x.d)}};
+function rpAgrupa(lista,k){ const g=new Map(), f=RPK[k].f; for(const x of lista){ const c=f(x); const o=g.get(c)||{n:0,vol:0,v:0,itens:[]}; o.n++; o.vol+=+x.l.qtd||0; o.v+=+x.l.val||0; o.itens.push(x); g.set(c,o); } return [...g.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].v-a[1].v); }
+const rpPct=(n,t)=>t?(100*n/t).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%':'';
+
+/* cartões novos no painel */
+function rpCardsNovos(){ const g=$('#re-painel .rp-grade'); if(!g||$('#rp-cid')) return;
+  g.insertAdjacentHTML('beforeend',`
+  <div class="rp-card"><h3>Cidades com mais reentregas <button class="rp-ver" type="button" data-rp-ver="cid">Ver todas</button></h3><div id="rp-cid"></div></div>
+  <div class="rp-card"><h3>Maiores motivos <button class="rp-ver" type="button" data-rp-ver="motivo">Ver todos</button></h3><div id="rp-mot"></div></div>
+  <div class="rp-card rp-larga"><h3>Motoristas com mais reentregas <small class="rp-dica">motorista do romaneio em que a nota saiu antes</small> <button class="rp-ver" type="button" data-rp-ver="mot">Ver todos</button></h3><div id="rp-mtr"></div></div>`);
+  for(const [id,k] of [['rp-cli-n','cli'],['rp-cli-v','cli'],['rp-tip','tipo'],['rp-uf','uf']]){ const h=$('#'+id); if(h){ const t=h.previousElementSibling; if(t&&t.tagName==='H3'&&!t.querySelector('.rp-ver')) t.insertAdjacentHTML('beforeend',`<button class="rp-ver" type="button" data-rp-ver="${k}">Ver todos</button>`); } } }
+function rpMarcar(id,k,itens){ $$('#'+id+' .rp-h').forEach((e,i)=>{ if(itens[i]){ e.dataset.rpK=k; e.dataset.rpV=itens[i][0]; } }); }
+{ const _rr=rpRender; rpRender=function(){ _rr(); rpCardsNovos(); const sel=RP._sel||[]; const tot=sel.length;
+  const cid=rpAgrupa(sel,'cid').slice(0,10); rpBarras($('#rp-cid'),cid.map(([n,o])=>({n,v:o.n})),v=>v+(v>1?' notas':' nota'),'var(--no)'); $$('#rp-cid .rp-h').forEach((e,i)=>e.querySelector('.vl').textContent=`${cid[i][1].n} · ${rpPct(cid[i][1].n,tot)}`); rpMarcar('rp-cid','cid',cid);
+  const mt=rpAgrupa(sel,'motivo').slice(0,10); rpBarras($('#rp-mot'),mt.map(([n,o])=>({n,v:o.n})),v=>v+'','var(--amar)'); $$('#rp-mot .rp-h').forEach((e,i)=>e.querySelector('.vl').textContent=`${mt[i][1].n} · ${rpPct(mt[i][1].n,tot)}`); rpMarcar('rp-mot','motivo',mt);
+  const mo=rpAgrupa(sel,'mot').slice(0,12); rpBarras($('#rp-mtr'),mo.map(([n,o])=>({n,v:o.n})),v=>v+''); $$('#rp-mtr .rp-h').forEach((e,i)=>{ const o=mo[i][1]; const top=rpAgrupa(o.itens,'motivo').slice(0,2).map(([m,q])=>m.slice(0,28)+' ('+q.n+')').join(', '); e.querySelector('.vl').textContent=`${o.n} · ${top}`; e.title=mo[i][0]+' — '+top; }); rpMarcar('rp-mtr','mot',mo);
+  const cl=rpAgrupa(sel,'cli'); const byN=cl.slice(0,10), byV=cl.slice().sort((a,b)=>b[1].v-a[1].v).slice(0,10); rpMarcar('rp-cli-n','cli',byN); rpMarcar('rp-cli-v','cli',byV);
+  const tp=[]; $$('#rp-tip .rp-h').forEach(e=>tp.push([e.title])); rpMarcar('rp-tip','tipo',tp); const uf=[]; $$('#rp-uf .rp-h').forEach(e=>uf.push([e.title])); rpMarcar('rp-uf','uf',uf);
+  $$('#rp-kpi>div').forEach(d=>d.dataset.rpTodos='1'); }; }
+
+/* janela de relatório completo */
+const RX={lista:[],titulo:'',ord:'d',asc:false,busca:''};
+function rxAbrir(titulo,lista){ RX.lista=lista; RX.titulo=titulo; RX.busca=''; RX.ord='d'; RX.asc=false; const f=$('#rx')||document.createElement('div'); f.id='rx'; document.body.appendChild(f); rxRender(); }
+function rxPer(){ const p=RP.per==='*'?'todos os meses':RP_MESES[+RP.per.slice(5)-1]+'/'+RP.per.slice(0,4); return p+(RP.reg!=='*'?' · '+rpRegNome(RP.reg):'')+(RP.tipo!=='*'?' · '+RP.tipo:''); }
+const RX_COLS=[['d','Data'],['nf','NF'],['ped','Pedido'],['cli','Cliente'],['cid','Cidade'],['uf','UF'],['reg','Região'],['mot','Motorista'],['motivo','Motivo'],['tipo','Tipo'],['qtd','Vol.'],['val','Valor']];
+function rxVal(x,c){ switch(c){ case 'd':return x.d; case 'nf':return x.l.nf||''; case 'ped':return x.l.ped||''; case 'cli':return x.l.cli||x.cli; case 'cid':return rpNz(x.l.cid); case 'uf':return (x.l.uf||'').toUpperCase(); case 'reg':return rpRegNome(x.reg); case 'mot':return rpMot(x); case 'motivo':return x.l.obs||''; case 'tipo':return x.tipo; case 'qtd':return +x.l.qtd||0; case 'val':return +x.l.val||0; } }
+function rxFiltrada(){ const b=rpNz(RX.busca); let l=RX.lista; if(b) l=l.filter(x=>RX_COLS.some(([c])=>rpNz(rxVal(x,c)).includes(b))); const s=RX.asc?1:-1; return l.slice().sort((a,b2)=>{ const va=rxVal(a,RX.ord), vb=rxVal(b2,RX.ord); return (typeof va==='number'?va-vb:String(va).localeCompare(String(vb)))*s; }); }
+function rxMini(lista,k,lim){ const t=lista.length; return rpAgrupa(lista,k).slice(0,lim||8).map(([n,o])=>`<div class="mini-l" data-rx-k="${k}" data-rx-v="${esc(n)}"><span>${esc(n)}</span><span>${o.n} · ${rpPct(o.n,t)} · ${reMoeda(o.v)}</span></div>`).join('')||'<p class="rp-vazio">—</p>'; }
+function rxRender(){ const f=$('#rx'); const l=rxFiltrada(); const vol=l.reduce((s,x)=>s+(+x.l.qtd||0),0), val=l.reduce((s,x)=>s+(+x.l.val||0),0);
+  const cli=new Set(l.map(x=>x.cli)).size, nfs=new Map(); for(const x of l){ const k=opK(x.l.nf); if(k) nfs.set(k,(nfs.get(k)||0)+1); } const rec=[...nfs.values()].filter(n=>n>1).length;
+  f.innerHTML=`<div class="cx" role="dialog" aria-label="${esc(RX.titulo)}"><header><h2>${esc(RX.titulo)}<br><small style="color:var(--mudo);font-weight:500">${esc(rxPer())}</small></h2>
+   <input class="bus" type="search" placeholder="Filtrar: cliente, NF, cidade, motorista, motivo…" value="${esc(RX.busca)}" data-rx-bus>
+   <button class="btn mini" type="button" data-rx="csv">Excel (CSV)</button><button class="btn mini" type="button" data-rx="pdf">Imprimir / PDF</button><button class="btn mini pri" type="button" data-rx="x">Fechar</button></header>
+   <div class="corpo"><div class="kp"><div>Notas<b>${l.length}</b></div><div>Volumes<b>${vol.toLocaleString('pt-BR')}</b></div><div>Valor<b>${reMoeda(val)}</b></div><div>Clientes<b>${cli}</b></div><div>NFs repetidas<b>${rec}</b></div><div>Ticket médio<b>${reMoeda(l.length?val/l.length:0)}</b></div></div>
+   <div class="gr"><div><h4>Por motivo</h4>${rxMini(l,'motivo',10)}</div><div><h4>Por cidade</h4>${rxMini(l,'cid',10)}</div><div><h4>Por motorista</h4>${rxMini(l,'mot',10)}</div><div><h4>Por cliente</h4>${rxMini(l,'cli',10)}</div><div><h4>Por tipo</h4>${rxMini(l,'tipo')}</div><div><h4>Por região</h4>${rxMini(l,'reg')}</div><div><h4>Por mês</h4>${rxMini(l,'mes',12)}</div><div><h4>Por dia</h4>${rxMini(l,'dia',10)}</div></div>
+   <table><thead><tr>${RX_COLS.map(([c,t])=>`<th data-rx-ord="${c}" class="${c==='qtd'||c==='val'?'r':''}">${t}${RX.ord===c?(RX.asc?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>${l.slice(0,3000).map(x=>`<tr>${RX_COLS.map(([c])=>{ const v=rxVal(x,c); return `<td class="${c==='qtd'||c==='val'?'r':''}">${c==='d'?fmtData(v):c==='val'?reMoeda(v):esc(String(v))}</td>`; }).join('')}</tr>`).join('')}</tbody></table>${l.length>3000?'<p class="rp-vazio">Mostrando 3.000 linhas — o Excel leva todas.</p>':''}</div></div>`; }
+function rxCSV(){ const l=rxFiltrada(); const linhas=[RX_COLS.map(c=>c[1])].concat(l.map(x=>RX_COLS.map(([c])=>{ const v=rxVal(x,c); return c==='d'?fmtData(v):c==='val'?String((+v).toFixed(2)).replace('.',','):v; })));
+  const csv='﻿'+linhas.map(r=>r.map(v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(';')).join('\r\n');
+  baixar(new Blob([csv],{type:'text/csv;charset=utf-8'}),'Reentregas_'+RX.titulo.replace(/[^\wÀ-ÿ]+/g,'_').slice(0,60)+'.csv'); }
+document.addEventListener('click',e=>{
+  const v=e.target.closest('#re-painel [data-rp-ver]'); if(v){ e.stopPropagation(); const k=v.dataset.rpVer; rxAbrir('Todos · por '+RPK[k].t.toLowerCase(),RP._sel||[]); return; }
+  const h=e.target.closest('#re-painel .rp-h[data-rp-k]'); if(h){ const k=h.dataset.rpK, val=h.dataset.rpV; rxAbrir(RPK[k].t+': '+val,(RP._sel||[]).filter(x=>RPK[k].f(x)===val)); return; }
+  const kp=e.target.closest('#rp-kpi>div'); if(kp){ rxAbrir('Todas as reentregas',RP._sel||[]); return; }
+  const f=e.target.closest('#rx'); if(!f) return;
+  if(e.target===f){ f.remove(); return; }
+  const b=e.target.closest('[data-rx]'); if(b){ if(b.dataset.rx==='x') f.remove(); else if(b.dataset.rx==='csv') rxCSV(); else window.print(); return; }
+  const o=e.target.closest('[data-rx-ord]'); if(o){ const c=o.dataset.rxOrd; if(RX.ord===c) RX.asc=!RX.asc; else { RX.ord=c; RX.asc=c!=='qtd'&&c!=='val'&&c!=='d'; } rxRender(); return; }
+  const m=e.target.closest('[data-rx-k]'); if(m){ const k=m.dataset.rxK, val=m.dataset.rxV; rxAbrir(RX.titulo+' › '+RPK[k].t+': '+val,RX.lista.filter(x=>RPK[k].f(x)===val)); return; } },true);
+document.addEventListener('input',e=>{ const b=e.target.closest('[data-rx-bus]'); if(!b) return; RX.busca=b.value; const p=b.selectionStart; rxRender(); const n=$('#rx [data-rx-bus]'); n.focus(); n.setSelectionRange(p,p); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#rx')){ e.stopPropagation(); $('#rx').remove(); } },true);
 
 /* ---------- início ---------- */
 (async function(){
