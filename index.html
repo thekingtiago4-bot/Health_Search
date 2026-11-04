@@ -4084,7 +4084,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.1', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5755,7 +5755,7 @@ function reHistNota(ped,nf){ const n=nexS(); const ks=[...new Set([z(nf),z(ped)]
   for(const k of ks) for(const e of [...((n.hist||{})[k]||[]),...(((n.histPed||{})[k])||[])]){ const key=e.d+'|'+e.rom; if(vis.has(key)) continue; vis.add(key); out.push(e); }
   return out.sort((a,b)=>b.d.localeCompare(a.d)); }
 function reDiag(ped,nf){ ped=z(ped); nf=z(nf); let rom=null, row=null; for(const r of S.romaneios||[]){ const x=(r.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(ped&&z(x.ped)===ped)); if(x){ rom=r; row=x; break; } }
-  const dHoje=rom?nexDataRom(rom):hojeISO(); const hs=reHistNota(ped,nf).filter(e=>e.d<dHoje);
+  const dHoje=rom?nexDataRom(rom):hojeISO(); const idsHoje=new Set((S.romaneios||[]).map(r=>r.id)), numHoje=new Set((S.romaneios||[]).map(r=>String(r.numero))); const hs=reHistNota(ped,nf).filter(e=>e.d<dHoje&&!idsHoje.has(e.rom)&&!numHoje.has(String(e.num)));
   const e=(nf&&nexS().reent[nf])||(ped&&nexS().reent['P'+ped])||null;
   if(!hs.length) return {tipo:'nova'};
   if(e&&e.status==='ignorada'&&!/1ª aparição na MESA|Mesmo romaneio carregado de novo/.test(e.motivo||'')) return {tipo:'ignorada',motivo:e.motivo||'marcada como não é reentrega',ant:hs[0]};
@@ -5816,6 +5816,23 @@ function txtOnde(w){ const out=[]; for(const r of S.romaneios||[]){ for(const k 
 { const _rc7=renderCorrecao; renderCorrecao=function(){ _rc7.apply(this,arguments); try{ for(const inp of document.querySelectorAll('#cor-corpo [data-v61-tx]')){ const w=inp.dataset.v61Tx; if(inp.parentElement.querySelector('.v61-onde')) continue; const os=txtOnde(w);
       const marca=t=>esc(t).replace(/\uFFFD/g,'<b class="qb">?</b>');
       inp.insertAdjacentHTML('afterend',`<span class="v61-onde">${os.slice(0,3).map(o=>`${esc(o.campo)}: <span class="tx">${marca(o.txt)}</span> · rom. ${esc(o.rom||'?')}${o.nf?' · NF '+esc(z(o.nf)):''}${o.row&&o.row.cid&&o.campo!=='Cidade'?' · '+esc(o.row.cid):''}`).join('<br>')}${os.length>3?`<br>+ ${os.length-3} lugar(es)`:''}</span>`); } }catch(e){ console.error(e); } }; }
+
+
+/* ================= v6.4.1 · os romaneios carregados HOJE nunca contam como histórico deles mesmos =================
+   Referência = só dias ANTERIORES; o dia atual entra no banco mas não é consultado. Limpa aparições gravadas com data errada. */
+function reLimparHoje(){ const n=nexS(); n.histPed=n.histPed||{}; const roms=S.romaneios||[]; if(!roms.length) return 0; let tir=0;
+  const dia=new Map(roms.map(r=>[r.id,nexDataRom(r)])), num=new Map(roms.map(r=>[String(r.numero),nexDataRom(r)]));
+  /* histórico: aparição de um romaneio de hoje com outra data = gravada errada (data interna do PDF) */
+  for(const mapa of [n.hist,n.histPed]) for(const k of Object.keys(mapa)){ const a=mapa[k].length; mapa[k]=mapa[k].filter(e=>{ const d=dia.get(e.rom)||num.get(String(e.num)); return !d||e.d===d; }); tir+=a-mapa[k].length; if(!mapa[k].length) delete mapa[k]; }
+  /* banco: o mesmo romaneio guardado em outro dia (data errada) sai */
+  try{ const L=rbLocalLer(); let mud=false; for(const d of Object.keys(L)) for(const id of Object.keys(L[d])){ const rid=id.slice(d.length+1), certo=dia.get(rid); if(certo&&certo!==d){ delete L[d][id]; mud=true; if(opOnline()) NV.cli.from('hs_rom_banco').delete().eq('id',id).then(()=>{}); } } for(const d of Object.keys(L)) if(!Object.keys(L[d]).length) delete L[d]; if(mud) rbLocalGravar(L); }catch(e){}
+  /* suspeitas que apontavam para um romaneio de hoje ou para o mesmo dia */
+  for(const k of Object.keys(n.reent)){ const r=n.reent[k]; if(r.status!=='suspeita') continue; if(num.has(String(r.romAnt))||r.anterior>=r.d) delete n.reent[k]; }
+  if(tir) salvar(); return tir; }
+{ const _nv7=nexVarrer; nexVarrer=function(){ try{ reLimparHoje(); }catch(e){} const a=_nv7.apply(this,arguments); try{ reLimparHoje(); }catch(e){} return a; }; }
+{ const _ns2=nexSuspeitas; nexSuspeitas=function(){ const num=new Set((S.romaneios||[]).map(r=>String(r.numero))); return _ns2().filter(([k,r])=>!num.has(String(r.romAnt))&&r.anterior<r.d); }; }
+{ const _ra2=reAtiva; reAtiva=function(ped,nf){ const e=_ra2(ped,nf); if(!e) return e; const num=new Set((S.romaneios||[]).map(r=>String(r.numero))); return (num.has(String(e.romAnt))||!(e.anterior<e.d))?null:e; }; }
+setTimeout(()=>{ try{ reLimparHoje(); }catch(e){} },2500);
 
 /* ---------- início ---------- */
 (async function(){
