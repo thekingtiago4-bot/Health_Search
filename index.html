@@ -5857,6 +5857,17 @@ async function rbZerarTudo(){ if(!opAdmin()&&opOnline()){ toast('Só o administr
     if(L.apagados) for(const d of L.apagados) delete out.dias[d];
     out.atual=L.atual||out.atual; out.apiKey=L.apiKey||out.apiKey; return _ap(out); }catch(e){ return _ap(re); } }; }
 
+
+/* v6.4.5: recupera reentregas confirmadas que sumiram de Reentregas (sobrescritas por outro aparelho) */
+function reRecuperarConfirmadas(){ const n=nexS(), D=RE.ler(); let v=0;
+  for(const [k,r] of Object.entries(n.reent)){ if(r.status!=='confirmada'||!r.d) continue; const nf=String(k).startsWith('P')?'':k; const ls=D.dias[r.d]||[];
+    if(ls.some(l=>(nf&&z(l.nf)===nf)||(r.ped&&z(l.ped)===z(r.ped)))) continue;
+    let row=null; try{ const B=rbLocalLer(); for(const reg of Object.values(B[r.d]||{})){ row=(reg.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(r.ped&&z(x.ped)===z(r.ped))); if(row) break; } }catch(e){}
+    for(const rr of S.romaneios||[]){ if(row) break; row=(rr.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(r.ped&&z(x.ped)===z(r.ped))); }
+    if(nexParaReentrega({nf:nf||(row&&row.nf)||'',ped:r.ped||(row&&row.ped)||'',dest:row&&row.dest,cid:row&&row.cid,uf:row&&row.uf,vol:row&&row.vol,peso:row&&row.peso,valor:row&&row.valor,motivo:r.motivo||''},r.d,'automatica')) v++; }
+  if(v){ toast(`${v} reentrega(s) confirmada(s) que tinham sumido foram recolocadas em Reentregas.`); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} } return v; }
+setTimeout(()=>{ try{ reRecuperarConfirmadas(); }catch(e){ console.error(e); } },3500);
+
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
