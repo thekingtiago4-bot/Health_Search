@@ -4082,7 +4082,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.15', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.16', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5619,7 +5619,7 @@ function rbReavaliar(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
     <h2>Banco de romaneios</h2>
     <p class="sub" style="margin:0">Todo romaneio carregado fica guardado no dia dele. Alimente aqui os <b>dias anteriores</b> para o programa reconhecer reentregas que não foram informadas.</p>
     <div class="linha"><label>Dia dos romaneios<input type="date" id="rb-dia"></label>
-      <label class="soltar" id="rb-soltar" tabindex="0" style="flex:1;min-width:240px;margin:0"><div><b>Alimentar: arraste os PDFs desse dia</b><span>não mexe nos romaneios de hoje</span></div><input type="file" id="rb-arq" accept="application/pdf,.pdf" multiple class="sr"></label></div>
+      <label class="soltar" id="rb-soltar" tabindex="0" style="flex:1;min-width:240px;margin:0"><div><b>Alimentar: arraste os PDFs</b><span>a data vem do nome do arquivo (ex.: 30-10-2026); sem data no nome, vale o dia escolhido</span></div><input type="file" id="rb-arq" accept="application/pdf,.pdf" multiple class="sr"></label></div>
     <div id="rb-status" role="status" class="sub" style="margin:0"></div>
     <div class="linha"><label>Mês<input type="month" id="rb-mes"></label><label style="flex:1">Procurar no banco<input type="text" id="rb-q" placeholder="Pedido ou NF" inputmode="numeric" autocomplete="off"></label></div>
     <div id="rb-achou"></div><div id="rb-lista"></div></div>`);
@@ -5638,6 +5638,14 @@ function rbReavaliar(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
 
 
 /* data do PDF diferente do dia escolhido: pergunta qual vale */
+
+/* data no NOME do arquivo (ex.: "Romaneio 30-10-2026.pdf", "30.10", "2026-10-30", "30102026"); sem data no nome, vale o dia escolhido */
+function rbDataDoNome(nome,ref){ const n=String(nome||'').replace(/\.pdf$/i,''); const anoRef=+(ref||hojeISO()).slice(0,4); const ok=(a,m,d)=>{ a=+a; m=+m; d=+d; if(a<100) a+=2000; if(m<1||m>12||d<1||d>31) return ''; const iso=a+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); return iso<=hojeISO()?iso:''; };
+  let m=n.match(/(20\d{2})[-_.\/](\d{1,2})[-_.\/](\d{1,2})/); if(m) return ok(m[1],m[2],m[3]);
+  m=n.match(/(?:^|\D)(\d{1,2})[-_.\/](\d{1,2})[-_.\/](\d{2}|20\d{2})(?:\D|$)/); if(m) return ok(m[3],m[2],m[1]);
+  m=n.match(/(?:^|\D)(\d{2})(\d{2})(20\d{2})(?:\D|$)/); if(m) return ok(m[3],m[2],m[1]);
+  m=n.match(/(?:^|\D)(\d{1,2})[-_.\/](\d{1,2})(?:\D|$)/); if(m){ let r=ok(anoRef,m[2],m[1]); if(!r) r=ok(anoRef-1,m[2],m[1]); return r; }
+  return ''; }
 function rbQualData(arq,num,diaPdf,diaEsc,restam){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo';
   f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:460px"><h2>Qual data vale?</h2><p>Romaneio <b>${esc(num||'?')}</b> <small style="color:var(--mudo)">(${esc(arq)})</small>:<br>o PDF diz <b>${fmtData(diaPdf)}</b>, mas você escolheu <b>${fmtData(diaEsc)}</b>.</p>
     ${restam>1?`<label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input type="checkbox" id="rbq-todos"> Usar a mesma escolha para os outros ${restam-1} arquivo(s)</label>`:''}
@@ -5650,8 +5658,8 @@ async function rbAlimentar(files){ const lista=files.filter(f=>/\.pdf$/i.test(f.
   for(let i=0;i<lista.length;i++){ const f=lista[i]; el.innerHTML=`<span class="gira"></span> Lendo ${i+1} de ${lista.length}: ${esc(f.name)}`; await new Promise(r=>setTimeout(r,20));
     try{ const r=await RomEngine.parsePdf(pdfjsLib,new Uint8Array(await f.arrayBuffer()),DICT); if(!r.rows.length) throw new Error('sem notas');
       const {_unk,...dados}=r; dados.id=(dados.serie||'000')+'.'+(dados.baseCod||'000')+'.'+(dados.numero||f.name); dados.arquivo=f.name; aplicarRegraBase(dados);
-      const diaPdf=nexIsoDe(dados.dataViagem)||nexIsoDe(dados.dataEmissao)||'';
-      let d=diaEsc; if(diaPdf&&diaPdf!==diaEsc){ if(!escolhaLote) { const r=await rbQualData(f.name,dados.numero,diaPdf,diaEsc,lista.length-i); if(r===null){ el.innerHTML='Cancelado.'; break; } d=r.d==='pdf'?diaPdf:diaEsc; if(r.todos) escolhaLote=r.d; } else d=escolhaLote==='pdf'?diaPdf:diaEsc; } rbRegistrarHist(dados,d); await rbGuardar(dados,d); dias.add(d); ok++; }catch(e){ console.error(e); erro++; } }
+      const diaPdf=rbDataDoNome(f.name,diaEsc);
+      let d=diaPdf||diaEsc; if(false){ if(!escolhaLote) { const r=await rbQualData(f.name,dados.numero,diaPdf,diaEsc,lista.length-i); if(r===null){ el.innerHTML='Cancelado.'; break; } d=r.d==='pdf'?diaPdf:diaEsc; if(r.todos) escolhaLote=r.d; } else d=escolhaLote==='pdf'?diaPdf:diaEsc; } rbRegistrarHist(dados,d); await rbGuardar(dados,d); dias.add(d); ok++; }catch(e){ console.error(e); erro++; } }
   const novas=rbReavaliar(); salvar(); try{ renderTudo(); }catch(e){}
   el.innerHTML=`✔ ${ok} romaneio(s) guardado(s) no banco${dias.size?' ('+[...dias].sort().map(fmtData).join(', ')+')':''}${erro?` · ${erro} com erro`:''}${novas?` · <b style="color:#AE3EC9">${novas} reentrega(s) encontrada(s) nos romaneios de hoje</b>`:''}.`;
   if(novas) toast(`↻ ${novas} nota(s) de hoje já tinham vindo antes. Veja no mural e na Operação.`);
