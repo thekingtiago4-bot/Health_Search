@@ -4087,7 +4087,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.5.0', HS_DATA='04/11/2026';
+const HS_VERSAO='6.5.1', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5986,8 +5986,8 @@ function etqLinhas(ws){ const ls=[]; for(const w of ws.slice().sort((a,b)=>(a.y0
   return ls.sort((a,b)=>a.cy-b.cy).map(l=>l.ws.sort((a,b)=>a.x0-b.x0).map(w=>w.text).join(' ')); }
 function etqInterpretar(linhas){ const L=linhas.map(l=>l.toUpperCase().replace(/[|]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean); const T=L.join('\n');
   const dig=s=>String(s||'').replace(/[OQ]/g,'0').replace(/[IL]/g,'1').replace(/\D/g,'');
-  const r={pit:/MAFRA\s*HOSP/.test(T),nfs:[],nums:[],vol:null,tot:null,cid:'',dest:'',modelo:''};
-  if(/9\s*DE\s*JULHO|MAFRA|ESPECIALIDADES|DRACENA/.test(T)&&!r.pit) r.modelo='9 de Julho'; else if(/CEI\s*COM/.test(T)) r.modelo='CEI Comércio'; else if(/MACROMED/.test(T)) r.modelo='Macromed'; else if(/HEALTH\s*QUALITY/.test(T)) r.modelo='Health Quality'; else if(r.pit) r.modelo='Pitágoras';
+  const r={cremer:/CREMER/.test(T),pit:/MAFRA\s*HOSP/.test(T),nfs:[],nums:[],vol:null,tot:null,cid:'',dest:'',modelo:''};
+  if(r.cremer) r.modelo='Cremer'; else if(/9\s*DE\s*JULHO|MAFRA|ESPECIALIDADES|DRACENA/.test(T)&&!r.pit) r.modelo='9 de Julho'; else if(/CEI\s*COM/.test(T)) r.modelo='CEI Comércio'; else if(/MACROMED/.test(T)) r.modelo='Macromed'; else if(/HEALTH\s*QUALITY/.test(T)) r.modelo='Health Quality'; else if(r.pit) r.modelo='Pitágoras';
   const re=/(?:\bN\s*[F\.]\s*[:\-.º°]?|NOTA\s*FISCAL\s*[:\-.º°]?)\s*([0-9OQIL][0-9OQIL .]{3,12})/g; let m;
   while((m=re.exec(T))){ const d=dig(m[1]); if(d.length>=4&&d.length<=9) r.nfs.push(d); }
   L.forEach((l,i)=>{ if(/NOTA\s*FISCAL/.test(l)&&!/\d{4}/.test(l)&&L[i+1]){ const n=(L[i+1].match(/\b\d{5,9}\b/)||[])[0]; if(n) r.nfs.push(n); } });
@@ -5995,7 +5995,9 @@ function etqInterpretar(linhas){ const L=linhas.map(l=>l.toUpperCase().replace(/
   m=T.match(/VOL(?:UME)?S?\.?\s*[:.]?\s*(\d{1,3})\s*(?:\/|DE)\s*(\d{1,3})/); if(!m){ const i=L.findIndex(l=>/VOLUME/.test(l)); if(i>=0&&L[i+1]) m=L[i+1].match(/(\d{1,3})\s*\/\s*(\d{1,3})\s*$/); }
   if(!m) m=T.match(/\b(\d{1,3})\s*\/\s*(\d{1,3})\b/); if(m){ r.vol=+m[1]; r.tot=+m[2]; }
   m=T.match(/CIDADE\s*[:.]?\s*([A-ZÀ-Ü' ]{3,40})/); if(m) r.cid=m[1].trim(); else { m=T.match(/([A-ZÀ-Ü' ]{3,40}?)\s*-\s*(SP|MG|RJ|GO|PR|DF|MS|MT|BA)\b/); if(m) r.cid=m[1].trim(); }
-  const i=L.findIndex(l=>/DESTIN/.test(l)); if(i>=0){ const resto=L[i].replace(/.*DESTIN[A-ZÁ]*\s*[:.]?\s*\d*/,'').trim(); r.dest=resto.length>3?resto:(L[i+1]||''); }
+  const i=L.findIndex(l=>/DESTIN/.test(l)); if(i>=0){ const resto=L[i].replace(/.*DESTIN[A-ZÁ]*(\s*[A-Z]?RIO)?\s*[:.]?\s*\d*/,'').trim(); const lim=t=>String(t||'').replace(/^[^A-ZÀ-Ü]*\d*\s*[-–—]*\s*/,'').replace(/[^A-ZÀ-Ü' .&]+$/,'').trim(); r.dest=resto.length>3?lim(resto):lim(L[i+1]); if(r.cremer&&!r.cid){ for(let j=i+2;j<=i+4&&j<L.length;j++){ const c=L[j].replace(/[^A-ZÀ-Ü' ]/g,' ').replace(/\s+/g,' ').trim(); if(c.replace(/[^A-Z]/g,'').length>=5){ r.cid=c; break; } } } }
+  m=T.match(/\b\d{8,10}\s*[-–—]+\s*([A-Z][A-Z .&]{3,40})/); if(m&&!r.pit&&(!r.dest||r.dest.length<5||/^RIO|:$/.test(r.dest))) r.dest=m[1].trim();
+  if(!r.cid){ m=T.match(/([A-ZÀ-Ü' ]{3,40}?)\s*[-–—~=]+\s*(SP|MG|RJ|GO|PR|DF|MS|MT|BA)\b/); if(m) r.cid=m[1].trim(); }
   r.nfs=[...new Set(r.nfs)]; return r; }
 function opFrame(v){ const w=Math.min(1600,v.videoWidth), h=Math.round(v.videoHeight*w/v.videoWidth); const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d',{willReadFrequently:true}); cx.filter='grayscale(1) contrast(1.4)'; cx.drawImage(v,0,0,w,h); return cv; }
 async function opOcr(v){ const OCR=window.HS_OCR; if(!OCR||!OCR.tem()||!OCR.suportado()) return null; OCRK.ocupado=true; OCRK.ult=Date.now();
@@ -6006,6 +6008,7 @@ async function opOcr(v){ const OCR=window.HS_OCR; if(!OCR||!OCR.tem()||!OCR.supo
 function opLerEtiqueta(p){ if(!p) return false; const idx=opIndice(); const ext={dest:p.dest,cid:p.cid,tot:p.tot};
   if(p.pit){ const ped=p.nums.find(n=>n.length===6)||p.nums[0]||''; OP.extra=Object.assign(ext,{status:'pit',ped,nf:''}); OP.silencio=true; try{ opLer([ped||'000000'],'texto'); }finally{ OP.silencio=false; }
     const b=OP.bipes[0]; opMostrar({status:'pit',titulo:'Fora do romaneio · PITÁGORAS'+(ped?' · Pedido '+ped:''),linha:'Etiqueta dupla com MAFRA HOSPITALAR: o pedido está no rodapé da nota. '+[b&&b.dest,b&&b.cid].filter(Boolean).join(' · ')}); opRender(); return true; }
+  if(p.cremer){ const pd=(p.nums.find(n=>n.length===6)||''); const ac=cremerAchar(pd,p); if(ac){ OP.extra={tot:p.tot||null}; opLer([opK(ac.x.nf)||opK(ac.x.ped)],'texto'); return true; } }
   const cand=[...p.nfs,...p.nums.filter(n=>!p.nfs.includes(n))]; const ach=cand.find(n=>idx.nf.has(opK(n))||idx.ped.has(opK(n)));
   if(ach){ OP.extra={tot:p.tot||null}; opLer([ach],'texto'); return true; }
   const nfF=p.nfs[0]||(p.modelo&&p.nums.find(n=>n.length===6));
@@ -6019,6 +6022,14 @@ function opSubNum(lidos,idx){ for(const t of lidos){ const s=String(t||'');
     const d=s.replace(/\D/g,''); for(let i=0;i+44<=d.length&&d.length>44;i++){ const nf=opK(d.slice(i+25,i+34)); if(/^\d{2}\d{4}\d{14}55/.test(d.slice(i,i+22))&&idx.nf.has(nf)) return d.slice(i,i+44); }
     for(const g of (s.match(/\d{4,12}/g)||[])){ const k=opK(g); if(idx.nf.has(k)||idx.ped.has(k)) return k; } }
   return null; }
+/* CREMER: etiqueta com CREMER na faixa preta; o pedido Cremer pode não bater com o do romaneio — casa pelo pedido parcial ou por remetente CREMER + cliente + cidade */
+function cremerAchar(ped,p){ const P=opK(ped), sem=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const rows=[]; for(const r of opRomsDoDia()) for(const x of r.rows||[]) rows.push({r,x});
+  if(P){ const a=rows.find(({x})=>{ const k=opK(x.ped); return k&&(k.endsWith(P)||P.endsWith(k)&&k.length>=4); }); if(a) return a; }
+  if(!p) return null; const cid=sem(p.cid), pal=sem(p.dest).split(' ').filter(w=>w.length>=4&&!/LTDA|COMERCIO|DISTRIB/.test(w));
+  const cand=rows.filter(({x})=>/CREMER/.test(sem(x.rem))||!x.rem);
+  const nota=({x})=>{ const d=sem(x.dest); let n=pal.filter(w=>d.includes(w)).length*2; if(cid&&sem(x.cid)===cid) n+=3; return n; };
+  const ord=cand.map(it=>[nota(it),it]).filter(([n])=>n>=4).sort((a,b)=>b[0]-a[0]); return ord.length&&(!ord[1]||ord[1][0]<ord[0][0])?ord[0][1]:null; }
 /* decide o que fazer com os códigos lidos pela câmera */
 async function opCamTratar(lidos,v){ OCRK.ultCod=Date.now(); const idx=opIndice(); const it=lidos.map(opInterpretar).filter(Boolean);
   const bom=it.find(l=>l.tipo==='volume'||l.tipo==='danfe'||(l.tipo==='numero'&&(idx.ped.has(l.num)||idx.nf.has(l.num))));
@@ -6027,6 +6038,7 @@ async function opCamTratar(lidos,v){ OCRK.ultCod=Date.now(); const idx=opIndice(
   const sub=opSubNum(lidos,idx); if(sub){ opLer([sub],'camera'); opCamPausa(); return; }
   if(OCRK.ocupado) return;
   const p=await opOcr(v); if(!OP.cam) return;
+  if((p&&p.cremer)||(bom&&bom.tipo==='volume')){ const ac=cremerAchar(bom&&bom.ped,p); if(ac){ const k=opK(ac.x.nf)||opK(ac.x.ped); OP.extra={vol:bom&&bom.vol||null,tot:(bom&&bom.tot)||(p&&p.tot)||null}; opLer([k],'camera'); opCamPausa(); return; } }
   if(p&&p.pit){ opLerEtiqueta(p); opCamPausa(); return; }
   if(bom){ if(p) OP.extra={dest:p.dest,cid:p.cid}; opLer(lidos,'camera'); opCamPausa(); return; }
   if(p&&opLerEtiqueta(p)){ opCamPausa(); return; }

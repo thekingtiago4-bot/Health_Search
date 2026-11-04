@@ -1,1 +1,1 @@
-{"versao":"6.5.0","data":"2026-11-04","novidades":"Câmera 0,5 s; lê o texto da etiqueta (9 de Julho, CEI, Macromed, Pitágoras, Health Quality); só romaneios do dia; relatório XML do Softlog com volumes e valor; CREMER pelo número embutido"}
+{"versao":"6.5.1","data":"2026-11-04","novidades":"CREMER: reconhece a etiqueta e casa com o romaneio pelo pedido, cliente e cidade"}
