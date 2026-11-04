@@ -4087,7 +4087,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.9.0', HS_DATA='04/11/2026';
+const HS_VERSAO='6.9.1', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6203,6 +6203,25 @@ const NUV_ADMIN=new Set(['s:geo','s:aprendidos','s:cidAlias','s:cidAtend','s:geo
 (function nuvAoVivo(){ let n=0; const t=setInterval(()=>{ if(!opOnline()){ if(++n>180) clearInterval(t); return; } clearInterval(t); if(NUV.canal) return;
   try{ NUV.canal=NV.cli.channel('hs-sync').on('postgres_changes',{event:'*',schema:'public',table:'hs_sync'},p=>{ const r=p&&p.new; if(r&&r.chave&&NUV.h[r.chave]===(r.apagado?'x':nuvHash(r.valor))) return; clearTimeout(NUV.vivo); NUV.vivo=setTimeout(nuvSinc,400); }).subscribe(st=>{ NUV.aoVivo=st==='SUBSCRIBED'; nuvStatus(); }); }catch(e){ console.error(e); } },1000); })();
 { const _st=nuvStatus; nuvStatus=function(){ _st(); const el=$('#nuv-st'); if(el&&NUV.aoVivo&&!NUV.erro&&!NUV.rodando) el.textContent=el.textContent.replace('☁','☁⚡'); }; }
+/* v6.9.1: backup semanal automático do banco online, só no PC do administrador */
+const BKN={ch:'healthSearch.bkNuvem'};
+async function bknTabela(t,cols,filtro){ let out=[]; for(let pg=0;pg<200;pg++){ let q=NV.cli.from(t).select(cols).range(pg*1000,pg*1000+999); if(filtro) q=filtro(q); const {data,error}=await q; if(error) throw error; out=out.concat(data||[]); if(!data||data.length<1000) break; } return out; }
+async function bknBaixar(manual){ if(!opOnline()||!nvAdmin()) { if(manual) toast('Só o administrador, conectado, faz o backup do banco.'); return; }
+  try{ if(manual) toast('Gerando backup do banco…');
+    const ini=new Date(Date.now()-90*864e5).toISOString().slice(0,10); const dump={app:'Health Search',versao:HS_VERSAO,geradoEm:new Date().toISOString(),por:opEu(),tabelas:{}};
+    dump.tabelas.hs_sync=await bknTabela('hs_sync','*');
+    try{ dump.tabelas.hs_rom_banco=await bknTabela('hs_rom_banco','*'); }catch(e){ dump.erros=(dump.erros||[]).concat('hs_rom_banco: '+e.message); }
+    try{ dump.tabelas.hs_bipagens=await bknTabela('hs_bipagens','*',q=>q.gte('dia',ini)); }catch(e){ dump.erros=(dump.erros||[]).concat('hs_bipagens: '+e.message); }
+    let blob=new Blob([JSON.stringify(dump)],{type:'application/json'}), ext='json';
+    if(typeof CompressionStream!=='undefined'){ blob=await new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob(); ext='json.gz'; }
+    baixar(blob,`Backup_banco_HealthSearch_${hojeISO()}.${ext}`); try{ localStorage.setItem(BKN.ch,new Date().toISOString()); }catch(e){}
+    const n=Object.values(dump.tabelas).reduce((t,a)=>t+a.length,0); toast(`Backup do banco salvo em Downloads (${fmtN(n)} registros${dump.erros?', com avisos':''}).`);
+  }catch(e){ console.error(e); toast('Backup do banco falhou: '+(e.message||e)); } }
+(function(){ let n=0; const t=setInterval(()=>{ if(!opOnline()||!NV.perfil){ if(++n>180) clearInterval(t); return; } clearInterval(t); if(!nvAdmin()) return;
+  let ult=''; try{ ult=localStorage.getItem(BKN.ch)||''; }catch(e){} if(!ult||Date.now()-new Date(ult).getTime()>7*864e5) setTimeout(()=>bknBaixar(false),8000); },1000); })();
+{ const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const el=$('#cor-corpo'); if(!el||!nvAdmin()||$('#bkn-bt')) return; let ult=''; try{ ult=localStorage.getItem(BKN.ch)||''; }catch(e){}
+  el.insertAdjacentHTML('afterbegin',`<div class="barra" style="margin-bottom:10px;gap:10px;display:flex;align-items:center;flex-wrap:wrap"><button class="btn mini" id="bkn-bt" type="button">💾 Backup do banco agora</button><small class="sec">Automático toda semana neste PC · último: ${ult?fmtData(ult.slice(0,10)):'nunca'}</small></div>`);
+  $('#bkn-bt').onclick=()=>bknBaixar(true); }; }
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
