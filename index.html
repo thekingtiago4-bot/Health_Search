@@ -4086,7 +4086,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.5', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.6', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5855,7 +5855,10 @@ async function rbZerarTudo(){ if(!opAdmin()&&opOnline()){ toast('Só o administr
     const out=JSON.parse(JSON.stringify(re)); out.dias=out.dias||{}; const chave=l=>z(l.nf)+'|'+String(l.ped||'')+'|'+String(l.cli||'');
     for(const [d,ls] of Object.entries(L.dias)){ const alvo=out.dias[d]=out.dias[d]||[]; const tem=new Set(alvo.map(chave)); for(const l of ls) if(!tem.has(chave(l))){ alvo.push(l); tem.add(chave(l)); } }
     if(L.apagados) for(const d of L.apagados) delete out.dias[d];
-    out.atual=L.atual||out.atual; out.apiKey=L.apiKey||out.apiKey; return _ap(out); }catch(e){ return _ap(re); } }; }
+    out.atual=L.atual||out.atual; out.apiKey=L.apiKey||out.apiKey;
+    const conta=x=>Object.values(x.dias||{}).reduce((t,l)=>t+l.length,0); const r=_ap(out);
+    if(conta(out)>conta(re)&&Store.modo==='nuvem') setTimeout(()=>{ try{ Store.salvar(S); }catch(e){} },1500); /* devolve ao banco o que só existia aqui */
+    return r; }catch(e){ return _ap(re); } }; }
 
 
 /* v6.4.5: recupera reentregas confirmadas que sumiram de Reentregas (sobrescritas por outro aparelho) */
