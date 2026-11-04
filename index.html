@@ -4083,7 +4083,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.23', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.24', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5632,7 +5632,8 @@ function rbReavaliar(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
   $('#rb-mes').onchange=()=>{ RB.mes=$('#rb-mes').value||hojeISO().slice(0,7); rbCarregarMes(); };
   $('#rb-q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); rbProcurar($('#rb-q').value); } });
   $('#rb-q').addEventListener('change',()=>rbProcurar($('#rb-q').value));
-  $('#rb-lista').onclick=async e=>{ const mv=e.target.closest('[data-rb-mover],[data-rb-mover-dia]'); if(mv){ e.preventDefault(); e.stopPropagation(); const ids=mv.dataset.rbMover?[mv.dataset.rbMover]:(RB.dias[mv.dataset.rbMoverDia]||[]).map(r=>r.id); rbMoverPergunta(ids); return; }
+  $('#rb-lista').onclick=async e=>{ const dd=e.target.closest('[data-rb-del-dia]'); if(dd){ e.stopPropagation(); rbApagarDia(dd.dataset.rbDelDia); return; }
+    const mv=e.target.closest('[data-rb-mover],[data-rb-mover-dia]'); if(mv){ e.preventDefault(); e.stopPropagation(); const ids=mv.dataset.rbMover?[mv.dataset.rbMover]:(RB.dias[mv.dataset.rbMoverDia]||[]).map(r=>r.id); rbMoverPergunta(ids); return; }
     const b=e.target.closest('[data-rb-dia]'); if(b){ RB.aberto=RB.aberto===b.dataset.rbDia?null:b.dataset.rbDia; rbRender(); }
     const x=e.target.closest('[data-rb-del]'); if(x){ if(!opAdmin()&&opOnline()){ toast('Só o administrador apaga do banco.'); return; } if(!await confirmar('Apagar do banco','Tirar este romaneio do banco? O histórico já registrado continua valendo.','Apagar')) return; const id=x.dataset.rbDel, dia=id.split('|')[0]; if(opOnline()) await NV.cli.from('hs_rom_banco').delete().eq('id',id); const L=rbLocalLer(); if(L[dia]){ delete L[dia][id]; rbLocalGravar(L); } rbCarregarMes(); } };
   const _ir=irPara; irPara=function(t){ _ir(t); if(t==='romaneios') rbCarregarMes(); };
@@ -5678,13 +5679,25 @@ function rbRender(){ const el=$('#rb-lista'); if(!el) return; const ds=Object.ke
   if(!ds.length){ el.innerHTML=`<div class="rb-sem">${RB.carregando?'Carregando…':'Nenhum romaneio guardado neste mês.'}</div>`; return; }
   const tot=ds.reduce((t,d)=>{ for(const r of RB.dias[d]){ t.r++; t.n+=r.notas||0; t.v+=r.vol||0; } return t; },{r:0,n:0,v:0});
   el.innerHTML=`<p class="sub" style="margin:4px 0">${ds.length} dia(s) · ${fmtN(tot.r)} romaneio(s) · ${fmtN(tot.n)} notas · ${fmtN(tot.v)} volumes</p>`+ds.map(d=>{ const L=RB.dias[d]; const n=L.reduce((t,r)=>t+(r.notas||0),0), v=L.reduce((t,r)=>t+(r.vol||0),0); const dt=new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
-    return `<div class="rb-dia"><button type="button" data-rb-dia="${d}">${RB.aberto===d?'▾':'▸'} ${esc(dt)} <span class="q">${L.length} romaneio(s) · ${fmtN(n)} notas · ${fmtN(v)} vol.</span></button>${RB.aberto===d?`<div class="rb-roms"><button class="btn mini" type="button" data-rb-mover-dia="${d}" style="margin:2px 0 4px">📅 Mudar o dia de todos os romaneios de ${fmtData(d)}</button>${L.sort((a,b)=>String(a.numero).localeCompare(String(b.numero))).map(r=>`<details class="rb-rom" data-rb-id="${esc(r.id)}"><summary><b>${esc(r.numero||'?')}</b> <span class="base">${esc(r.base||'?')}</span> · ${fmtN(r.notas||0)} notas · ${fmtN(r.vol||0)} vol.${r.motorista?' · '+esc(r.motorista):''} <button class="btn mini" type="button" data-rb-mover="${esc(r.id)}" title="Mudar o dia deste romaneio">📅 Mudar dia</button> ${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar do banco" data-rb-del="${esc(r.id)}">✕</button>`:''}</summary><div class="rb-notas">Abrindo…</div></details>`).join('')}</div>`:''}</div>`; }).join('');
+    return `<div class="rb-dia"><div style="display:flex;align-items:center;gap:8px"><button type="button" data-rb-dia="${d}" style="flex:1">${RB.aberto===d?'▾':'▸'} ${esc(dt)} <span class="q">${L.length} romaneio(s) · ${fmtN(n)} notas · ${fmtN(v)} vol.</span></button>${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar o dia inteiro" data-rb-del-dia="${d}" style="font-size:1.1rem">✕</button>`:''}</div>${RB.aberto===d?`<div class="rb-roms"><button class="btn mini" type="button" data-rb-mover-dia="${d}" style="margin:2px 0 4px">📅 Mudar o dia de todos os romaneios de ${fmtData(d)}</button>${L.sort((a,b)=>String(a.numero).localeCompare(String(b.numero))).map(r=>`<details class="rb-rom" data-rb-id="${esc(r.id)}"><summary><b>${esc(r.numero||'?')}</b> <span class="base">${esc(r.base||'?')}</span> · ${fmtN(r.notas||0)} notas · ${fmtN(r.vol||0)} vol.${r.motorista?' · '+esc(r.motorista):''} <button class="btn mini" type="button" data-rb-mover="${esc(r.id)}" title="Mudar o dia deste romaneio">📅 Mudar dia</button> ${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar do banco" data-rb-del="${esc(r.id)}">✕</button>`:''}</summary><div class="rb-notas">Abrindo…</div></details>`).join('')}</div>`:''}</div>`; }).join('');
   el.querySelectorAll('details.rb-rom').forEach(dt=>dt.addEventListener('toggle',()=>{ if(dt.open) rbNotas(dt); })); }
 async function rbNotas(dt){ const id=dt.dataset.rbId, dia=id.split('|')[0], box=dt.querySelector('.rb-notas'); let rows=null;
   const L=rbLocalLer(); if(L[dia]&&L[dia][id]) rows=L[dia][id].rows;
   if(!rows&&opOnline()){ const {data}=await NV.cli.from('hs_rom_banco').select('rows').eq('id',id).maybeSingle(); rows=data&&data.rows; }
   rows=rows||[]; box.innerHTML=rows.length?`<div style="overflow-x:auto"><table class="op-tab"><thead><tr><th>NF</th><th>Pedido</th><th>Remetente</th><th>Cliente</th><th>Cidade</th><th>Vol.</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped||'—')}</td><td>${esc(x.rem)}</td><td>${esc(x.dest)}</td><td>${esc(x.cid)}${x.uf?'/'+esc(x.uf):''}</td><td>${esc(x.vol)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="rb-sem">Sem notas guardadas.</div>'; }
 
+
+/* apagar um dia inteiro do banco (romaneios + histórico desse dia) */
+async function rbApagarDia(dia){ if(!opAdmin()&&opOnline()){ toast('Só o administrador apaga do banco.'); return; }
+  const L=rbLocalLer(); const regs=RB.dias[dia]||Object.values(L[dia]||{}); const ids=regs.map(r=>r.id);
+  if(!await confirmar('Apagar o dia inteiro',`Apagar <b>${ids.length} romaneio(s)</b> de <b>${fmtData(dia)}</b> do banco, junto com o histórico desse dia? Não dá para desfazer.`,'Apagar o dia')) return;
+  if(opOnline()){ try{ const {error}=await NV.cli.from('hs_rom_banco').delete().eq('dia',dia); if(error) toast('Online: '+nvTraduz(error.message)); }catch(e){} }
+  delete L[dia]; rbLocalGravar(L);
+  const roms=new Set(ids.map(id=>id.slice(dia.length+1))); const n=nexS(); let tirou=0;
+  for(const mapa of [n.hist||{},n.histPed||{}]) for(const k of Object.keys(mapa)){ const antes=mapa[k].length; mapa[k]=mapa[k].filter(e=>!(e.d===dia&&(roms.has(e.rom)||!roms.size))); tirou+=antes-mapa[k].length; if(!mapa[k].length) delete mapa[k]; }
+  for(const k of Object.keys(n.reent)){ const r=n.reent[k]; if(r.status==='suspeita'&&(r.anterior===dia||r.d===dia)) delete n.reent[k]; }
+  rbReavaliar(); salvar(); try{ renderTudo(); }catch(e){}
+  if(RB.aberto===dia) RB.aberto=null; toast(`🗑 ${fmtData(dia)} apagado: ${ids.length} romaneio(s), ${tirou} registro(s) de histórico.`); rbCarregarMes(); }
 /* mudar o dia de romaneios do banco (corrige histórico e reentregas) */
 function rbMoverPergunta(ids){ if(!ids.length) return; const de=ids[0].split('|')[0];
   const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:400px"><h2>Mudar o dia</h2><p>${ids.length} romaneio(s) de <b>${fmtData(de)}</b> vão para:</p><input type="date" id="rbm-d" value="${de}" max="${hojeISO()}" style="font-size:1.2rem;padding:8px;border:1.5px solid var(--linha);border-radius:8px;background:var(--sup);color:inherit;width:100%;box-sizing:border-box"><div class="botoes"><button class="btn" data-r="0" type="button">Cancelar</button><button class="btn pri" data-r="1" type="button">Mudar</button></div></div>`;
