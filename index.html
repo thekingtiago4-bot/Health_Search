@@ -4087,7 +4087,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.9.1', HS_DATA='04/11/2026';
+const HS_VERSAO='6.9.2', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6222,6 +6222,22 @@ async function bknBaixar(manual){ if(!opOnline()||!nvAdmin()) { if(manual) toast
 { const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const el=$('#cor-corpo'); if(!el||!nvAdmin()||$('#bkn-bt')) return; let ult=''; try{ ult=localStorage.getItem(BKN.ch)||''; }catch(e){}
   el.insertAdjacentHTML('afterbegin',`<div class="barra" style="margin-bottom:10px;gap:10px;display:flex;align-items:center;flex-wrap:wrap"><button class="btn mini" id="bkn-bt" type="button">💾 Backup do banco agora</button><small class="sec">Automático toda semana neste PC · último: ${ult?fmtData(ult.slice(0,10)):'nunca'}</small></div>`);
   $('#bkn-bt').onclick=()=>bknBaixar(true); }; }
+/* v6.9.2: restaurar o banco a partir do arquivo de backup (só admin) */
+async function bknRestaurar(f){ if(!opOnline()||!nvAdmin()){ toast('Só o administrador, conectado, restaura o banco.'); return; }
+  try{ let txt; if(/\.gz$/i.test(f.name)){ if(typeof DecompressionStream==='undefined') throw new Error('Este navegador não abre .gz. Use o Chrome.'); txt=await new Response(f.stream().pipeThrough(new DecompressionStream('gzip'))).text(); } else txt=await f.text();
+    const d=JSON.parse(txt); if(!d||d.app!=='Health Search'||!d.tabelas) throw new Error('Este arquivo não é um backup do banco do Health Search.');
+    const T=d.tabelas, q=k=>(T[k]||[]).length;
+    if(!await confirmar('Restaurar backup do banco',`Backup de ${fmtData(String(d.geradoEm).slice(0,10))} (por ${esc(d.por||'?')}): ${fmtN(q('hs_sync'))} registros, ${fmtN(q('hs_rom_banco'))} romaneios no banco e ${fmtN(q('hs_bipagens'))} bipes. O que estiver no backup volta para o banco; o que foi criado depois e não está no backup é mantido. Continuar?`,'Restaurar')) return;
+    const sobe=async(t,rows,map)=>{ for(let i=0;i<rows.length;i+=50){ const {error}=await NV.cli.from(t).upsert(rows.slice(i,i+50).map(map||(x=>x))); if(error) throw new Error(t+': '+error.message); toast(`Restaurando ${t}… ${Math.min(i+50,rows.length)} de ${rows.length}`); } };
+    await sobe('hs_sync',T.hs_sync||[],({chave,tipo,valor,apagado})=>({chave,tipo,valor,apagado:!!apagado,atualizado_por:opEu()+' (restauração)'}));
+    if(q('hs_rom_banco')) await sobe('hs_rom_banco',T.hs_rom_banco);
+    if(q('hs_bipagens')) await sobe('hs_bipagens',T.hs_bipagens);
+    NUV.h={}; NUV.desde=''; nuvGuardar(); await nuvSinc(); try{ renderTudo(); }catch(e){}
+    toast('Backup restaurado e sincronizado neste aparelho. Os outros recebem sozinhos.');
+  }catch(e){ console.error(e); toast('Não restaurei: '+(e.message||e)); } }
+{ const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const b=$('#bkn-bt'); if(!b||$('#bkn-rest')) return;
+  b.insertAdjacentHTML('afterend',`<label class="btn mini" id="bkn-rest" style="cursor:pointer">♻ Restaurar backup<input type="file" accept=".gz,.json,application/json,application/gzip" hidden></label>`);
+  $('#bkn-rest input').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f) bknRestaurar(f); }; }; }
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
