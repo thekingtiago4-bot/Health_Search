@@ -4087,7 +4087,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.6.1', HS_DATA='04/11/2026';
+const HS_VERSAO='6.7.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6129,6 +6129,52 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#rx')){ e.stopP
 
 /* v6.6.1: aceitar a sugestão com um clique (antes, escolher a mesma opção já marcada não disparava nada) */
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-cor-aceita]'); if(!b) return; const sel=b.parentElement.querySelector('select[data-cor-ens]'); if(!sel) return; sel.value=b.dataset.corAceita; sel.dispatchEvent(new Event('change',{bubbles:true})); });
+/* ================= v6.7.0 · Banco online: reentregas e divergências sincronizadas (hs_sync) ================= */
+const NUV={chH:'healthSearch.nuvHash',chD:'healthSearch.nuvDesde',h:{},desde:'',ok:null,timer:null,rodando:false,aplicando:false,ult:null,erro:''};
+try{ NUV.h=JSON.parse(localStorage.getItem(NUV.chH)||'{}'); NUV.desde=localStorage.getItem(NUV.chD)||''; }catch(e){}
+function nuvHash(v){ const s=JSON.stringify(v); let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36)+'.'+s.length; }
+function nuvGuardar(){ try{ localStorage.setItem(NUV.chH,JSON.stringify(NUV.h)); localStorage.setItem(NUV.chD,NUV.desde||''); }catch(e){} }
+/* tudo o que vai para o banco, com a sua chave */
+function nuvLocal(){ const m=new Map(); const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias||{})) if(ls&&ls.length) m.set('re:'+d,{tipo:'re',valor:ls});
+  for(const x of dvS()) if(x&&x.id) m.set('dv:'+x.id,{tipo:'dv',valor:x}); return m; }
+function nuvAplicar(chave,valor,apagado){ NUV.aplicando=true; try{
+  if(chave.startsWith('re:')){ const D=RE.ler(); const d=chave.slice(3); if(apagado) delete D.dias[d]; else D.dias[d]=valor; RE.gravar(); }
+  else if(chave.startsWith('dv:')){ const L=dvS(), id=chave.slice(3), i=L.findIndex(x=>x.id===id); if(apagado){ if(i>=0) L.splice(i,1); } else if(i>=0) L[i]=valor; else L.push(valor); salvar(); }
+  }finally{ NUV.aplicando=false; } }
+/* conflito (mudou aqui e lá ao mesmo tempo): reentregas juntam as linhas; divergência fica a mais recente */
+function nuvJuntar(chave,local,remoto){ if(chave.startsWith('re:')){ const vis=new Set(), out=[]; for(const l of [...remoto,...local]){ const k=JSON.stringify([opK(l.nf),rpNz(l.cli),rpNz(l.obs),+l.qtd||0]); if(vis.has(k)) continue; vis.add(k); out.push(l); } return out; }
+  const t=x=>((x.hist||[]).slice(-1)[0]||{}).em||x.em||''; return t(local)>t(remoto)?local:remoto; }
+function nuvStatus(){ const el=$('#nuv-st'); if(!el) return; const on=opOnline(); el.textContent=!on?'☁ offline':NUV.erro?'☁ erro':NUV.rodando?'☁ sincronizando…':NUV.ult?'☁ salvo online '+NUV.ult.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'☁ online'; el.title=NUV.erro||'Reentregas e divergências ficam no banco online: abre igual em qualquer aparelho.'; el.style.color=NUV.erro?'var(--no)':on?'var(--ok)':'var(--mudo)'; }
+async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } NUV.rodando=true; nuvStatus(); let mudou=false;
+  try{
+    /* 1) baixa o que mudou no banco */
+    let q=NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').order('atualizado_em').limit(1000); if(NUV.desde) q=q.gt('atualizado_em',new Date(new Date(NUV.desde).getTime()-5000).toISOString());
+    const {data,error}=await q; if(error) throw error; const loc=nuvLocal();
+    for(const r of data||[]){ const l=loc.get(r.chave), hr=r.apagado?'x':nuvHash(r.valor);
+      if(NUV.h[r.chave]===hr&&(!l||nuvHash(l.valor)===hr)) { if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; }
+      const mexiAqui=l&&nuvHash(l.valor)!==NUV.h[r.chave];
+      if(r.apagado){ if(!mexiAqui&&l) { nuvAplicar(r.chave,null,true); mudou=true; } NUV.h[r.chave]='x'; }
+      else if(mexiAqui&&NUV.h[r.chave]){ const j=nuvJuntar(r.chave,l.valor,r.valor); nuvAplicar(r.chave,j,false); NUV.h[r.chave]=hr; mudou=true; }
+      else { nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=hr; mudou=true; }
+      if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; }
+    /* 2) sobe o que mudou aqui */
+    const sobe=[]; const eu=opEu(); const agora=nuvLocal();
+    for(const [k,o] of agora){ const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
+    for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&k.startsWith('dv:')) sobe.push({chave:k,tipo:'dv',valor:null,apagado:true,atualizado_por:eu,_h:'x'});
+    for(let i=0;i<sobe.length;i+=200){ const lote=sobe.slice(i,i+200); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r)); if(e2) throw e2; for(const r of lote) NUV.h[r.chave]=r._h; }
+    NUV.erro=''; NUV.ult=new Date(); nuvGuardar();
+    if(mudou){ try{ if(!$('#t-reentregas')||!$('#t-reentregas').hidden) reTela(); }catch(e){} try{ rpRender(); }catch(e){} try{ renderTudo(); }catch(e){} }
+  }catch(e){ NUV.erro=/hs_sync|relation|does not exist|schema cache/i.test(e.message||'')?'Falta rodar o arquivo supabase-v6.7.0-sincronizar.sql no Supabase.':(e.message||'Falha ao sincronizar'); console.error('nuv',e); }
+  finally{ NUV.rodando=false; nuvStatus(); } }
+function nuvAgendar(){ if(NUV.aplicando) return; clearTimeout(NUV.timer); NUV.timer=setTimeout(nuvSinc,1500); }
+{ const _g=RE.gravar.bind(RE); RE.gravar=function(){ _g(); nuvAgendar(); }; }
+{ const _s=Store.salvar.bind(Store); Store.salvar=function(...a){ const r=_s(...a); nuvAgendar(); return r; }; }
+setInterval(()=>{ if(!document.hidden) nuvSinc(); },30000);
+window.addEventListener('focus',()=>nuvSinc()); window.addEventListener('online',()=>nuvSinc());
+(function nuvIniciar(){ const b=document.querySelector('.marca'); if(b&&!$('#nuv-st')) b.insertAdjacentHTML('afterend','<span id="nuv-st" style="font-size:var(--fs-sm);margin-left:10px;white-space:nowrap;cursor:pointer" title="">☁</span>');
+  const el=$('#nuv-st'); if(el) el.onclick=()=>{ if(NUV.erro) toast(NUV.erro); else nuvSinc(); };
+  let n=0; const t=setInterval(()=>{ if(opOnline()){ clearInterval(t); nuvSinc(); } else if(++n>120) clearInterval(t); nuvStatus(); },1000); })();
+
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
