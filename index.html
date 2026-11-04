@@ -4071,7 +4071,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.2', HS_DATA='03/11/2026';
+const HS_VERSAO='6.3.3', HS_DATA='03/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4822,7 +4822,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
   <p class="sub">Conferência da operação do dia. Abra a câmera e passe as etiquetas, ou use o leitor na nota. Cada bipe cruza com os romaneios e fica salvo com o usuário.</p>
   <div class="op-topo"><label>Operação do dia <input type="date" id="op-dia"></label>
     <select id="op-usu" aria-label="Filtrar por usuário"><option value="">Todos os usuários</option></select>
-    <span id="op-sinc" class="tag"></span></div>
+    <label id="op-modo-box" class="tag" style="cursor:pointer" title="Desligado: um bipe confere a nota inteira"><input type="checkbox" id="op-modo"> Conferir volume a volume</label><span id="op-sinc" class="tag"></span></div>
   <div class="op-bip"><button class="btn pri grande" type="button" id="op-bt-cam">📷 Abrir câmera</button>
     <input id="op-campo" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Bipe a nota (DANFE) ou digite pedido / NF e Enter" aria-label="Código bipado"></div>
   <div class="op-res" id="op-res" style="background:var(--sup2);color:var(--mudo)"><b>Pronto para conferir</b><small>Os romaneios carregados hoje são a base da conferência.</small></div>
@@ -4837,6 +4837,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
   <div id="op-lista"></div>`;
   const ref=document.getElementById('t-romaneios'); ref.parentNode.insertBefore(sec,ref);
   $('#op-dia').value=hojeISO();
+  $('#op-modo').onchange=e=>{ if(!(opAdmin()||!opOnline())){ e.target.checked=opPorVol(); toast('Só o administrador muda o modo de conferência.'); return; } S.opPorVolume=e.target.checked; salvar(); opRender(); toast(S.opPorVolume?'Agora cada volume precisa ser bipado.':'Um bipe confere a nota inteira.'); };
   $('#op-dia').onchange=()=>opAbrirDia($('#op-dia').value||hojeISO());
   $('#op-usu').onchange=()=>{ OP.usuario=$('#op-usu').value; opRender(); };
   $('#op-filtro').oninput=()=>opRenderLista();
@@ -4900,11 +4901,11 @@ function opLer(textos,origem){
   if(b.dia!==hojeISO()){ b.dia=hojeISO(); if(OP.dia!==b.dia){ $('#op-dia').value=b.dia; OP.dia=b.dia; OP.bipes=opLocalLer(b.dia); } }
   OP.bipes.unshift(b); opLocalGravar(); opEnviar(b);
   const conf=x?opContagem(ped,nf):null; const ct=opConteudo(ped,nf);
-  const vv=b.valor||0; opMostrar({_ped:ped,_nf:nf,_dest:b.dest,_cid:b.cid,status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
+  const vv=b.valor||0; opMostrar({_ped:ped,_nf:nf,_dest:b.dest,_cid:b.cid,status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',!opPorVol()?(x?`conte ${volNum(x.vol)||tot||'?'} volume(s) físico(s)`:''):vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
   opRender(); }
 
 function opContagem(ped,nf){ const rows=[]; const idx=opIndice(); for(const it of (ped&&idx.ped.get(ped))||(nf&&idx.nf.get(nf))||[]) rows.push(it.x);
-  const fa=opFaltaAnt(ped,nf); const esp=fa?Math.max(1,fa.esp-fa.lidos):(rows.reduce((t,x)=>t+(volNum(x.vol)||1),0)||1);
+  const fa=opFaltaAnt(ped,nf); const esp=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(rows.reduce((t,x)=>t+(volNum(x.vol)||1),0)||1);
   const lidos=new Set(OP.bipes.filter(b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(nf&&b.nf===nf))).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
   return {esp,lidos}; }
 
@@ -5022,17 +5023,18 @@ async function opApagar(id){ const b=OP.bipes.find(x=>(x.id||x.local_id)===id); 
   opFilaGravar(opFilaLer().filter(x=>x.local_id!==b.local_id)); OP.bipes=OP.bipes.filter(x=>x!==b); opLocalGravar(); opRender(); }
 
 /* ---------- painel ---------- */
-function opEntrar(){ opXmlInfo(); if(OP.dia!==($('#op-dia').value||hojeISO())||!OP.bipes.length) opAbrirDia($('#op-dia').value||hojeISO()); else opRender(); opFila(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
+function opEntrar(){ opXmlInfo(); $('#op-modo').checked=opPorVol(); if(OP.dia!==($('#op-dia').value||hojeISO())||!OP.bipes.length) opAbrirDia($('#op-dia').value||hojeISO()); else opRender(); opFila(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
 function opVisiveis(){ return OP.usuario?OP.bipes.filter(b=>b.usuario===OP.usuario):OP.bipes; }
 function opPendentes(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[];
   for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; const esp=volNum(x.vol); if(esp===0) continue;
-    const lidos=new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size; const fa=opFaltaAnt(ped,nf); const espF=fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
+    const lidos=new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size; const fa=opFaltaAnt(ped,nf); const espF=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
     if(lidos<espF) out.push({r,x,ped,nf,esp:espF,lidos,valor:opValor(ped,nf,x),falta:fa}); }
   return out.sort((a,b)=>b.valor-a.valor); }
 /* falta de volume: nota conferida pela metade hoje fica registrada; se voltar outro dia, é a caixa que faltou */
 const opFk=(ped,nf)=>z(nf)||(ped?'P'+z(ped):'');
-function opFaltaAnt(ped,nf){ const F=S.opFaltas||{}; const e=F[z(nf)]||(ped&&F['P'+z(ped)])||(ped&&Object.values(F).find(x=>x.ped&&x.ped===z(ped)))||null; return e&&e.d<hojeISO()?e:null; }
-function opRegFaltas(){ if(OP.dia!==hojeISO()) return; S.opFaltas=S.opFaltas||{}; const antes=JSON.stringify(S.opFaltas), hoje=hojeISO();
+const opPorVol=()=>!!S.opPorVolume; /* desligado: 1 bipe = nota conferida (o conferente conta os volumes) */
+function opFaltaAnt(ped,nf){ if(!opPorVol()) return null; const F=S.opFaltas||{}; const e=F[z(nf)]||(ped&&F['P'+z(ped)])||(ped&&Object.values(F).find(x=>x.ped&&x.ped===z(ped)))||null; return e&&e.d<hojeISO()?e:null; }
+function opRegFaltas(){ if(OP.dia!==hojeISO()||!opPorVol()) return; S.opFaltas=S.opFaltas||{}; const antes=JSON.stringify(S.opFaltas), hoje=hojeISO();
   const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'); const lidosDe=(ped,nf)=>new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
   for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf), k=opFk(ped,nf); if(!k) continue; const esp=volNum(x.vol)||1, lidos=lidosDe(ped,nf), ant=opFaltaAnt(ped,nf);
     if(ant){ const falt=Math.max(1,ant.esp-ant.lidos); if(lidos>=falt){ delete S.opFaltas[opFk(ant.ped,ant.nf)]; toast(`✔ NF ${nf||'—'}: chegaram os ${falt} volume(s) que faltavam. Nota completa.`); } continue; }
@@ -5048,8 +5050,8 @@ function opRender(){ if(!$('#op-cards')) return; try{ opRegFaltas(); }catch(e){ 
 function opRenderLista(){ const el=$('#op-lista'); if(!el) return; const q=($('#op-filtro').value||'').toLowerCase().trim();
   const cas=s=>!q||String(s).toLowerCase().includes(q);
   if(OP.filtro==='falta'||OP.filtro==='alto'){ const p=opPendentes().filter(it=>OP.filtro!=='alto'||it.valor>=opAlto()).filter(it=>cas([it.ped,it.nf,it.x.dest,it.x.cid,it.r.numero].join(' ')));
-    $('#op-tit-lista').textContent='Notas que ainda não foram bipadas (mais caras primeiro)';
-    el.innerHTML=p.length?`<table class="op-tab"><thead><tr><th>Romaneio</th><th>Pedido</th><th>NF</th><th>Volumes</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Cliente</th><th class="m-oc">Cidade</th></tr></thead><tbody>${p.slice(0,800).map(it=>`<tr><td>${esc(it.r.numero)}</td><td>${esc(it.ped)}</td><td>${esc(it.nf)}</td><td>${it.lidos} de ${it.esp}${it.falta?` <span class="op-ct g" title="Romaneio mostra ${it.falta.esp}">só faltantes</span>`:''}</td><td>${opCtHtml((opConteudo(it.ped,it.nf)||{}).cod)}</td><td>${opValHtml(it.valor)}</td><td class="m-oc">${esc(it.x.dest)}</td><td class="m-oc">${esc(it.x.cid)}</td></tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.dia===hojeISO()?(S.romaneios.length?'Nada faltando. Tudo dos romaneios foi bipado. ✔':'Carregue os romaneios do dia para ver o que falta.'):'O que falta só é calculado para a operação de hoje.'}</div>`;
+    $('#op-tit-lista').textContent=opPorVol()?'Volumes que ainda não foram bipados (mais caros primeiro)':'Notas que ainda não foram bipadas (mais caras primeiro)';
+    el.innerHTML=p.length?`<table class="op-tab"><thead><tr><th>Romaneio</th><th>Pedido</th><th>NF</th><th>Volumes</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Cliente</th><th class="m-oc">Cidade</th></tr></thead><tbody>${p.slice(0,800).map(it=>`<tr><td>${esc(it.r.numero)}</td><td>${esc(it.ped)}</td><td>${esc(it.nf)}</td><td>${opPorVol()?`${it.lidos} de ${it.esp}`:`${volNum(it.x.vol)||'?'} vol.`}${it.falta?` <span class="op-ct g" title="Romaneio mostra ${it.falta.esp}">só faltantes</span>`:''}</td><td>${opCtHtml((opConteudo(it.ped,it.nf)||{}).cod)}</td><td>${opValHtml(it.valor)}</td><td class="m-oc">${esc(it.x.dest)}</td><td class="m-oc">${esc(it.x.cid)}</td></tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.dia===hojeISO()?(S.romaneios.length?'Nada faltando. Tudo dos romaneios foi bipado. ✔':'Carregue os romaneios do dia para ver o que falta.'):'O que falta só é calculado para a operação de hoje.'}</div>`;
     return; }
   const lista=opVisiveis().filter(b=>OP.filtro==='todos'||b.status===OP.filtro).filter(b=>cas([b.ped,b.nf,b.dest,b.cid,b.usuario,b.romaneio,b.codigo].join(' ')));
   $('#op-tit-lista').textContent=OP.filtro==='todos'?'Bipes':OP_ST[OP.filtro].t;
