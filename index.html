@@ -3703,14 +3703,18 @@ function nexExportar(){ const n=nexS(); const notas={};
   nexBaixar(JSON.stringify(pacote,null,1),'nexroute-ponte '+reHoje()+'.json','application/json'); toast(`Arquivo para o NexRoute gerado: ${pacote.notas.length} nota(s).`); }
 
 /* ---- reentregas detectadas: confirmar com motivo ---- */
-function nexSuspeitas(){ const n=nexS(); return Object.entries(n.reent).filter(([,r])=>r.status==='suspeita'); }
+function nexSuspeitas(){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); const l=Object.entries(n.reent).filter(([,r])=>r.status==='suspeita'); return ids.size?l.filter(([,r])=>ids.has(r.rom)):l; }
 async function nexAbrirSuspeitas(){ const n=nexS(); const l=nexSuspeitas(); if(!l.length){ toast('Nenhuma reentrega esperando motivo.'); return; }
-  const linha=k=>{ for(const r of S.romaneios){ const row=r.rows.find(x=>nexK(x)===k); if(row) return row; } return {nf:k}; };
+  const linha=(k,re)=>{ const ped=re&&re.ped||(String(k).startsWith('P')?String(k).slice(1):''), nf=String(k).startsWith('P')?'':k;
+    const bate=x=>(nf&&nexK(x)===nf)||(ped&&z(x.ped)===ped);
+    for(const r of S.romaneios){ const row=r.rows.find(bate); if(row) return row; }
+    try{ const L=rbLocalLer(); const dias=[re&&re.d,re&&re.anterior].filter(Boolean); for(const d of dias) for(const reg of Object.values(L[d]||{})){ const row=(reg.rows||[]).find(bate); if(row) return row; } for(const d in L) for(const reg of Object.values(L[d])){ const row=(reg.rows||[]).find(bate); if(row) return row; } }catch(e){}
+    return {nf:nf||'—',ped}; };
   const f=document.createElement('div'); f.className='fundo';
   f.innerHTML=`<div class="modal largo" role="dialog" aria-modal="true"><h2>Reentregas detectadas</h2><p>Estas notas entraram hoje mas <b>já tinham sido roteirizadas</b> antes. Digite o motivo e confirme: a nota ganha a etiqueta Reentrega e entra na relação do dia em Reentregas. Se foi só o mesmo romaneio importado de novo, marque “Não é reentrega”.</p>
     <datalist id="nx-mots">${NEX_MOTIVOS.map(m=>`<option value="${esc(m)}">`).join('')}</datalist>
     <div class="rolagem" style="max-height:55vh;overflow:auto"><table class="nx-tab"><thead><tr><th>NF</th><th>Destinatário</th><th>Cidade</th><th>Antes</th><th>Agora</th><th>Motivo</th><th></th></tr></thead><tbody>${
-    l.map(([k,r])=>{ const row=linha(k); return `<tr data-k="${esc(k)}"><td class="forte">${esc(row.nf)}</td><td>${esc(row.dest||'')}</td><td>${esc(row.cid||'')}/${esc(row.uf||'')}</td><td>${esc(fmtData(r.anterior))}<small class="sec"> ${esc(r.romAnt)}</small></td><td>${esc(fmtData(r.d))}<small class="sec"> ${esc(r.num)}</small></td>
+    l.map(([k,r])=>{ const row=linha(k,r); return `<tr data-k="${esc(k)}"><td class="forte">${esc(z(row.nf)||'—')}${row.ped?`<small class="sec"> ped. ${esc(z(row.ped))}</small>`:''}</td><td>${esc(row.dest||'')}</td><td>${esc(row.cid||'')}${row.uf?'/'+esc(row.uf):''}</td><td>${esc(fmtData(r.anterior))}<small class="sec"> ${esc(r.romAnt)}</small></td><td>${esc(fmtData(r.d))}<small class="sec"> ${esc(r.num)}</small></td>
       <td><input list="nx-mots" data-mot placeholder="Motivo" autocomplete="off"></td><td><label class="nx-ign"><input type="checkbox" data-ign> Não é reentrega</label></td></tr>`; }).join('')}</tbody></table></div>
     <div class="botoes"><button class="btn" data-a="x">Depois</button><button class="btn pri" data-a="ok">Confirmar</button></div></div>`;
   document.body.appendChild(f);
@@ -4075,7 +4079,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.10', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.11', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5618,14 +5622,22 @@ function rbReavaliar(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
   const _ir=irPara; irPara=function(t){ _ir(t); if(t==='romaneios') rbCarregarMes(); };
 })();
 
+
+/* data do PDF diferente do dia escolhido: pergunta qual vale */
+function rbQualData(arq,num,diaPdf,diaEsc,restam){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo';
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:460px"><h2>Qual data vale?</h2><p>Romaneio <b>${esc(num||'?')}</b> <small style="color:var(--mudo)">(${esc(arq)})</small>:<br>o PDF diz <b>${fmtData(diaPdf)}</b>, mas você escolheu <b>${fmtData(diaEsc)}</b>.</p>
+    ${restam>1?`<label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input type="checkbox" id="rbq-todos"> Usar a mesma escolha para os outros ${restam-1} arquivo(s)</label>`:''}
+    <div class="botoes" style="flex-wrap:wrap"><button class="btn" data-r="x" type="button">Cancelar</button><button class="btn" data-r="esc" type="button">Usar ${fmtData(diaEsc)}</button><button class="btn pri" data-r="pdf" type="button">Usar ${fmtData(diaPdf)} (do PDF)</button></div></div>`;
+  document.body.appendChild(f); f.querySelector('[data-r="pdf"]').focus();
+  f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(!b) return; const t=!!(f.querySelector('#rbq-todos')||{}).checked; f.remove(); res(b.dataset.r==='x'?null:{d:b.dataset.r,todos:t}); };
+  f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ f.remove(); res(null); } }); }); }
 async function rbAlimentar(files){ const lista=files.filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf'); if(!lista.length){ toast('Escolha os PDFs dos romaneios.'); return; }
-  const diaEsc=$('#rb-dia').value||diaMais(-1); const el=$('#rb-status'); let ok=0, erro=0; const dias=new Set();
+  const diaEsc=$('#rb-dia').value||diaMais(-1); const el=$('#rb-status'); let ok=0, erro=0, escolhaLote=null; const dias=new Set();
   for(let i=0;i<lista.length;i++){ const f=lista[i]; el.innerHTML=`<span class="gira"></span> Lendo ${i+1} de ${lista.length}: ${esc(f.name)}`; await new Promise(r=>setTimeout(r,20));
     try{ const r=await RomEngine.parsePdf(pdfjsLib,new Uint8Array(await f.arrayBuffer()),DICT); if(!r.rows.length) throw new Error('sem notas');
       const {_unk,...dados}=r; dados.id=(dados.serie||'000')+'.'+(dados.baseCod||'000')+'.'+(dados.numero||f.name); dados.arquivo=f.name; aplicarRegraBase(dados);
-      const dia=nexIsoDe(dados.dataViagem)||nexIsoDe(dados.dataEmissao)||diaEsc;
-      if(dia>=hojeISO()&&diaEsc<hojeISO()) { /* PDF de hoje: vale o dia escolhido */ }
-      const d=dia<hojeISO()?dia:diaEsc; rbRegistrarHist(dados,d); await rbGuardar(dados,d); dias.add(d); ok++; }catch(e){ console.error(e); erro++; } }
+      const diaPdf=nexIsoDe(dados.dataViagem)||nexIsoDe(dados.dataEmissao)||'';
+      let d=diaEsc; if(diaPdf&&diaPdf!==diaEsc){ if(!escolhaLote) { const r=await rbQualData(f.name,dados.numero,diaPdf,diaEsc,lista.length-i); if(r===null){ el.innerHTML='Cancelado.'; break; } d=r.d==='pdf'?diaPdf:diaEsc; if(r.todos) escolhaLote=r.d; } else d=escolhaLote==='pdf'?diaPdf:diaEsc; } rbRegistrarHist(dados,d); await rbGuardar(dados,d); dias.add(d); ok++; }catch(e){ console.error(e); erro++; } }
   const novas=rbReavaliar(); salvar(); try{ renderTudo(); }catch(e){}
   el.innerHTML=`✔ ${ok} romaneio(s) guardado(s) no banco${dias.size?' ('+[...dias].sort().map(fmtData).join(', ')+')':''}${erro?` · ${erro} com erro`:''}${novas?` · <b style="color:#AE3EC9">${novas} reentrega(s) encontrada(s) nos romaneios de hoje</b>`:''}.`;
   if(novas) toast(`↻ ${novas} nota(s) de hoje já tinham vindo antes. Veja no mural e na Operação.`);
