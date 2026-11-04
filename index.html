@@ -4086,7 +4086,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.11', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.12', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5914,6 +5914,18 @@ function reDiagRender(){ const el=$('#re-diag'); if(!el) return; try{ rbReavalia
 .nx-tab input[data-mot2]::placeholder{color:var(--mudo);font-weight:400;opacity:1}
 .nx-tab input[data-mot2]:focus{outline:2px solid var(--teal,#0f766e)}
 .fundo .modal.largo{max-width:min(1200px,96vw)}`; document.head.appendChild(st); })();
+
+
+/* ================= v6.4.12 · botão "Liberar câmera": chama o pedido do próprio Chrome na hora do toque e mostra o resultado ================= */
+function camLiberar(){ const info=`seguro=${window.isSecureContext} · mediaDevices=${!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)} · endereço=${location.protocol}//${location.host}`;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ alert('Este navegador não deixa o site usar a câmera.\n\nAbra pelo Chrome no endereço https://thekingtiago4-bot.github.io/Nex-Route/ (não pelo WhatsApp nem pelo arquivo).\n\n'+info); return; }
+  /* chamado direto no toque, sem esperar nada antes: é isso que faz o Chrome mostrar a pergunta */
+  navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(st=>{ st.getTracks().forEach(t=>t.stop()); try{ localStorage.setItem(PERM_K,'ok'); }catch(e){} const b=$('#cam-liberar'); if(b) b.hidden=true; toast('📷 Câmera liberada! Toque em "Abrir câmera".'); })
+    .catch(e=>{ alert('O Chrome não liberou a câmera.\n\nMotivo: '+(e&&e.name||'?')+(e&&e.message?' — '+e.message:'')+'\n\n'+info+'\n\nMande um print desta mensagem para o Claude.'); }); }
+(function(){ const alvo=$('#op-bt-cam'); if(!alvo) return; alvo.insertAdjacentHTML('beforebegin','<button class="btn grande" type="button" id="cam-liberar" style="border:2px solid #E8590C">🔓 Liberar câmera</button>'); $('#cam-liberar').onclick=camLiberar;
+  (async()=>{ try{ const st=await permEstado(); if(st==='granted'){ $('#cam-liberar').hidden=true; } }catch(e){} })(); })();
+/* o "Permitir câmera" do aviso de permissões também chama direto no toque */
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#perm-sheet [data-p="ok"]'); if(!b) return; e.stopPropagation(); const sh=$('#perm-sheet'); if(sh) sh.remove(); camLiberar(); },true);
 
 /* ---------- início ---------- */
 (async function(){
