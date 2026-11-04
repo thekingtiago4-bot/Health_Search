@@ -4086,7 +4086,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.6', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.7', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5870,6 +5870,12 @@ function reRecuperarConfirmadas(){ const n=nexS(), D=RE.ler(); let v=0;
     if(nexParaReentrega({nf:nf||(row&&row.nf)||'',ped:r.ped||(row&&row.ped)||'',dest:row&&row.dest,cid:row&&row.cid,uf:row&&row.uf,vol:row&&row.vol,peso:row&&row.peso,valor:row&&row.valor,motivo:r.motivo||''},r.d,'automatica')) v++; }
   if(v){ toast(`${v} reentrega(s) confirmada(s) que tinham sumido foram recolocadas em Reentregas.`); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} } return v; }
 setTimeout(()=>{ try{ reRecuperarConfirmadas(); }catch(e){ console.error(e); } },3500);
+
+
+/* v6.4.7: a recuperação roda DEPOIS que os dados online carregam (antes rodava cedo demais) e avisa se não conseguir salvar online */
+{ const _ir9=irPara; let feito=false; irPara=function(t){ _ir9(t); if(!feito){ feito=true; setTimeout(()=>{ try{ const v=reRecuperarConfirmadas(); if(v&&Store.modo==='nuvem') Store.salvar(S); }catch(e){ console.error(e); } },1200); } }; }
+{ const _nv9=nexVarrer; nexVarrer=function(){ const a=_nv9.apply(this,arguments); try{ reRecuperarConfirmadas(); }catch(e){} return a; }; }
+{ const _sel=nvSelo; nvSelo=function(t,erro){ _sel(t,erro); let b=document.getElementById('nv-falha'); if(erro){ if(!b){ document.body.insertAdjacentHTML('beforeend','<div id="nv-falha" style="position:fixed;top:0;left:0;right:0;z-index:1600;background:#c92a2a;color:#fff;padding:10px 14px;font-weight:700;text-align:center">⚠ Não está salvando online: o que você fizer agora pode não aparecer para os outros. Verifique a internet e aperte F5.</div>'); } } else if(b) b.remove(); }; }
 
 /* ---------- início ---------- */
 (async function(){
