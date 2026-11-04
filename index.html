@@ -4086,7 +4086,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.7', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.8', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5876,6 +5876,23 @@ setTimeout(()=>{ try{ reRecuperarConfirmadas(); }catch(e){ console.error(e); } }
 { const _ir9=irPara; let feito=false; irPara=function(t){ _ir9(t); if(!feito){ feito=true; setTimeout(()=>{ try{ const v=reRecuperarConfirmadas(); if(v&&Store.modo==='nuvem') Store.salvar(S); }catch(e){ console.error(e); } },1200); } }; }
 { const _nv9=nexVarrer; nexVarrer=function(){ const a=_nv9.apply(this,arguments); try{ reRecuperarConfirmadas(); }catch(e){} return a; }; }
 { const _sel=nvSelo; nvSelo=function(t,erro){ _sel(t,erro); let b=document.getElementById('nv-falha'); if(erro){ if(!b){ document.body.insertAdjacentHTML('beforeend','<div id="nv-falha" style="position:fixed;top:0;left:0;right:0;z-index:1600;background:#c92a2a;color:#fff;padding:10px 14px;font-weight:700;text-align:center">⚠ Não está salvando online: o que você fizer agora pode não aparecer para os outros. Verifique a internet e aperte F5.</div>'); } } else if(b) b.remove(); }; }
+
+
+/* ================= v6.4.8 · Reentregas: conserto de dias inválidos, diagnóstico visível e botão para lançar as detectadas ================= */
+function reConsertarDias(){ const D=RE.ler(); let mov=0; for(const k of Object.keys(D.dias)){ if(/^\d{4}-\d{2}-\d{2}$/.test(k)) continue; const alvo=reHoje(); D.dias[alvo]=D.dias[alvo]||[]; for(const l of D.dias[k]) if(!D.dias[alvo].some(x=>z(x.nf)===z(l.nf)&&x.obs===l.obs)){ D.dias[alvo].push(l); mov++; } delete D.dias[k]; } if(mov){ RE.gravar(); } return mov; }
+function reLancarDetectadas(){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); let c=0, pend=0;
+  for(const [k,r] of Object.entries(n.reent)){ if(!ids.has(r.rom)) continue; const dia=/^\d{4}-\d{2}-\d{2}$/.test(r.d||'')?r.d:reHoje();
+    if(r.status==='suspeita'){ pend++; continue; } if(r.status!=='confirmada') continue;
+    const nf=String(k).startsWith('P')?'':k; let row=null; for(const rr of S.romaneios){ row=(rr.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(r.ped&&z(x.ped)===z(r.ped))); if(row) break; }
+    if(nexParaReentrega({nf:nf||(row&&row.nf)||'',ped:(row&&row.ped)||r.ped||'',dest:row&&row.dest,cid:row&&row.cid,uf:row&&row.uf,vol:row&&row.vol,peso:row&&row.peso,valor:row&&row.valor,motivo:r.motivo||'REENTREGA'},dia,'automatica')) c++; }
+  return {c,pend}; }
+(function(){ const st=$('#re-status'); if(!st) return; st.insertAdjacentHTML('beforebegin',`<div id="re-diag" class="sub" style="margin:4px 0 8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"></div>`); })();
+function reDiagRender(){ const el=$('#re-diag'); if(!el) return; const D=RE.ler(), n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); const ds=Object.keys(D.dias).sort(); const hoje=Object.values(n.reent).filter(r=>ids.has(r.rom));
+  const conf=hoje.filter(r=>r.status==='confirmada').length, pend=hoje.filter(r=>r.status==='suspeita').length;
+  el.innerHTML=`<span class="tag">Dias guardados: ${ds.length} · último ${ds.length?reDataBR(ds[ds.length-1]):'—'}</span><span class="tag">Detectadas nos romaneios carregados: ${conf} confirmada(s), ${pend} sem motivo</span>${hoje.length?`<button class="btn mini pri" type="button" id="re-lanc-det">↻ Lançar as detectadas agora</button>`:''}${pend?`<button class="btn mini" type="button" id="re-abrir-det">Abrir as sem motivo</button>`:''}`;
+  const b=$('#re-lanc-det'); if(b) b.onclick=()=>{ const r=reLancarDetectadas(); const D2=RE.ler(); const dias=Object.keys(D2.dias).sort(); D2.atual=dias[dias.length-1]||D2.atual; RE.gravar(); reTela(); toast(`${r.c} reentrega(s) lançada(s).${r.pend?` ${r.pend} ainda sem motivo: clique em "Abrir as sem motivo".`:''}`); };
+  const a=$('#re-abrir-det'); if(a) a.onclick=()=>nexAbrirSuspeitas(); }
+{ const _rt=reTela; reTela=function(){ try{ reConsertarDias(); }catch(e){} const r=_rt.apply(this,arguments); try{ reDiagRender(); }catch(e){} return r; }; }
 
 /* ---------- início ---------- */
 (async function(){
