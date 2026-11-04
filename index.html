@@ -4079,7 +4079,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.12', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.13', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5407,13 +5407,24 @@ function dvBadge(){ const q=$('#qt-dv'); if(!q) return; const n=dvS().filter(d=>
   $('#dv-lista').onclick=async e=>{ const b=e.target.closest('[data-dv]'); if(!b) return; const d=dvS().find(x=>x.id===b.dataset.id); if(!d) return; const eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
     const a=b.dataset.dv;
     if(a==='editar'){ limpar(); $('#dv-id').value=d.id; $('#dv-ped').value=d.ped||''; $('#dv-nf').value=d.nf||''; $('#dv-tipo').value=d.tipo; $('#dv-qtd').value=d.qtd||''; $('#dv-cli').value=d.cli||''; $('#dv-rem').value=d.rem||''; $('#dv-obs').value=d.obs||''; $('#dv-ok').textContent='Salvar alterações'; $('#dv-form').scrollIntoView({behavior:'smooth'}); return; }
-    if(a==='resolver'){ const obs=await dvPerguntar('Resolver divergência '+dvNum(d),'Como foi resolvida? (ex.: volumes chegaram no romaneio 812, entregue completo)'); if(obs===null) return; d.st='resolvida'; d.res={d:hojeISO(),obs,por:eu}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Resolvida: '+obs}); }
+    if(a==='resolver'){ const obs=await dvPerguntar('Resolver divergência '+dvNum(d),'Como foi resolvida? (ex.: volumes chegaram no romaneio 812, entregue completo)'); if(obs===null) return; d.st='resolvida'; d.res={d:hojeISO(),obs,por:eu}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Resolvida: '+obs}); dvParaReentregas(d); }
     if(a==='reabrir'){ d.st='aberta'; delete d.res; delete d.apareceu; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Reaberta'}); }
     if(a==='apagar'){ if(!opAdmin()&&opOnline()){ toast('Só o administrador apaga divergência.'); return; } if(!await confirmar('Apagar divergência',`Apagar ${dvNum(d)} de vez?`,'Apagar')) return; S.divergencias=dvS().filter(x=>x!==d); }
     salvar(); dvRender(); };
   const _ir=irPara; irPara=function(t){ _ir(t); if(t==='divergencias'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-divergencias'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); dvVarrer(false); dvRender(); setTimeout(()=>{ if(!TOQUE) $('#dv-bip').focus(); },0); } };
   document.querySelector('.nav [data-tela="divergencias"]').addEventListener('click',()=>irPara('divergencias'));
 })();
+
+/* divergência resolvida → lançada nas Reentregas do dia de hoje, completa */
+function dvParaReentregas(d){ try{ const D=RE.ler(); const dia=reHoje(); D.dias[dia]=D.dias[dia]||[]; const L=D.dias[dia];
+    if(L.some(l=>l.dvId===d.id)) return;
+    let row=null; const hit=todasLinhas().find(({row:x})=>(d.nf&&z(x.nf)===z(d.nf))||(d.ped&&z(x.ped)===z(d.ped))); if(hit) row=hit.row;
+    if(!row){ try{ const B=rbLocalLer(); for(const dd of Object.keys(B).sort().reverse()){ for(const reg of Object.values(B[dd])){ const x=(reg.rows||[]).find(x=>(d.nf&&z(x.nf)===z(d.nf))||(d.ped&&z(x.ped)===z(d.ped))); if(x){ row=x; break; } } if(row) break; } }catch(e){} }
+    const x=(S.opXml||{})[z(d.nf)]||null;
+    const obs=`DIVERGÊNCIA ${dvNum(d)} · ${d.tipo}${d.qtd?' · '+d.qtd+' vol.':''}${d.obs?' · '+d.obs:''} · RESOLVIDA ${fmtData(d.res.d).slice(0,5)}: ${d.res.obs||'—'}`;
+    L.push({nf:z(d.nf)||'',ped:z(d.ped)||'',cli:(d.cli||(row&&row.dest)||'').toUpperCase(),cid:((row&&row.cid)||'').toUpperCase(),uf:((row&&row.uf)||'').toUpperCase(),qtd:d.qtd||1,obs,per:x&&x.g?'Sim':'Não',val:(x&&x.valor)||(row&&nexNum(row.valor))||0,chave:(x&&x.chave)||'',dvId:d.id});
+    RE.gravar(); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){}
+    toast(`Divergência ${dvNum(d)} lançada em Reentregas de ${fmtData(dia).slice(0,5)}.`); }catch(e){ console.error(e); toast('Resolvida, mas não consegui lançar em Reentregas.'); } }
 function dvPerguntar(tit,txt){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>${esc(tit)}</h2><p>${esc(txt)}</p><textarea rows="3" style="width:100%;box-sizing:border-box;border:1.5px solid var(--linha);border-radius:var(--r);padding:8px;font:inherit;background:var(--sup);color:inherit"></textarea><div class="botoes"><button class="btn" data-r="0">Cancelar</button><button class="btn pri" data-r="1">Confirmar</button></div></div>`;
   document.body.appendChild(f); const ta=f.querySelector('textarea'); ta.focus(); f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(!b) return; f.remove(); res(b.dataset.r==='1'?ta.value.trim():null); }; f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ f.remove(); res(null); } }); }); }
 function dvRender(){ if(!$('#dv-cards')) return; const L=dvS(), F=window.DVF||{filtro:'abertas'}; const c={abertas:L.filter(d=>d.st!=='resolvida').length,apareceu:L.filter(d=>d.st==='apareceu').length,resolvida:L.filter(d=>d.st==='resolvida').length,todas:L.length};
