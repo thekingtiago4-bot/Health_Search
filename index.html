@@ -3099,7 +3099,7 @@ function renderFeriadosTela(){ const tela=$('#t-feriados'); if(!tela||tela.hidde
 function renderFeriadosLeve(){ renderFerAviso(); renderFerBadge(); renderFeriadosTela(); }
 
 /* aviso diário (uma vez por dia, depois da tela de abertura e sem atrapalhar outra janela aberta) */
-function avisoDiario(){ const hj=hojeISO(); if(S.ferAvisado===hj) return; if(!$('#intro').hidden || document.querySelector('.fundo')) return;
+function avisoDiario(){ const hj=hojeISO(); if(S.ferAvisado===hj) return; if(($('#intro')&&!$('#intro').hidden) || document.querySelector('.fundo')) return;
   if(!FER_EST.quando && !S.ferOk) return; if(!Object.keys(S.cidAtend||{}).length) return;
   const dias=janelaFeriados().filter(temFeriado); if(!dias.length) return;
   S.ferAvisado=hj; salvar();
@@ -4083,7 +4083,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.24', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5221,7 +5221,7 @@ function reRegraMesa(){ const n=nexS(); n.histPed=n.histPed||{};
   for(const r of S.romaneios||[]){ if(!romMesa(r)) continue; const d=nexDataRom(r);
     for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada') continue; if(typeof opFaltaAnt==='function'&&opFaltaAnt(p,k)) continue;
       const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(x=>x.d<d);
-      if(!ant.some(x=>x.m)&&linhaAgendada(row)){ e.status='ignorada'; e.motivo='Agendamento: 1ª aparição na MESA'; tiradas++; } } }
+      /* v6.3.25: regra de agendamento desligada para reentrega */ } }
   /* divergência: voltou com MENOS volumes que da vez anterior = caixa que faltou chegando, não reentrega */
   for(const r of S.romaneios||[]){ const d=nexDataRom(r);
     for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(!e||e.rom!==r.id||e.status==='ignorada'||e.via==='lancada') continue;
@@ -5757,8 +5757,8 @@ function reDiag(ped,nf){ ped=z(ped); nf=z(nf); let rom=null, row=null; for(const
   const dHoje=rom?nexDataRom(rom):hojeISO(); const hs=reHistNota(ped,nf).filter(e=>e.d<dHoje);
   const e=(nf&&nexS().reent[nf])||(ped&&nexS().reent['P'+ped])||null;
   if(!hs.length) return {tipo:'nova'};
-  if(e&&e.status==='ignorada'&&!(/1ª aparição na MESA/.test(e.motivo||'')&&!(row&&linhaAgendada(row)))) return {tipo:'ignorada',motivo:e.motivo||'marcada como não é reentrega',ant:hs[0]};
-  if(rom&&romMesa(rom)&&!hs.some(x=>x.m)&&row&&linhaAgendada(row)) return {tipo:'mesa1',ant:hs[0]};
+  if(e&&e.status==='ignorada'&&!/1ª aparição na MESA|Mesmo romaneio carregado de novo/.test(e.motivo||'')) return {tipo:'ignorada',motivo:e.motivo||'marcada como não é reentrega',ant:hs[0]};
+
   return {tipo:'reent',ant:hs[0],qt:hs.length}; }
 { const _ml4=opMostrar; opMostrar=function(r){ if(r&&r._ped!==undefined&&r.status!=='fora'&&!/REENTREGA|VOLUMES QUE FALTARAM|DIVERGÊNCIA ·|CAIXA QUE FALTOU/.test(r.titulo||'')){
       try{ const g=(reAtiva(r._ped,r._nf)||(typeof opFaltaAnt==='function'&&opFaltaAnt(r._ped,r._nf)))?{tipo:'jaTratado'}:reDiag(r._ped,r._nf);
@@ -5788,6 +5788,33 @@ function reEhReimport(re){ const rom=(S.romaneios||[]).find(r=>r.id===re.rom); i
 /* v6.3.22: "MESA" no título do arquivo = romaneio da MESA */
 { const _arb2=aplicarRegraBase; aplicarRegraBase=function(r){ _arb2(r); if(r&&/\bMESA\b/i.test(String(r.arquivo||''))&&r.base!=='MESA'){ if(r.baseOrig===undefined) r.baseOrig=r.base||null; r.base='MESA'; } return r; }; }
 { const _gr=guardarRomaneio; guardarRomaneio=function(r,nome){ _gr(r,nome); try{ const x=(S.romaneios||[]).find(y=>y.arquivo===nome); if(x){ const a=x.base; aplicarRegraBase(x); if(a!==x.base){ salvar(); renderTudo(); } } }catch(e){} }; }
+
+
+/* v6.3.25: desfaz TODAS as liberações antigas da regra da MESA; e diagnóstico de nota */
+function reDesfazMesa(){ const n=nexS(); let v=0; for(const k in n.reent){ const r=n.reent[k]; if(r.status==='ignorada'&&/1ª aparição na MESA/.test(r.motivo||'')){ r.status='suspeita'; r.motivo=''; v++; } } if(v) salvar(); return v; }
+{ const _nv6=nexVarrer; nexVarrer=function(){ const a=_nv6.apply(this,arguments); try{ reDesfazMesa(); rbReavaliar(); reDesfazMesa(); }catch(e){} return a; }; }
+setTimeout(()=>{ try{ reDesfazMesa(); rbReavaliar(); reDesfazMesa(); }catch(e){} },3000);
+function reDiagTexto(q){ const k=z(q); if(!k) return ''; const hs=reHistNota(k,k); let rom=null; for(const r of S.romaneios||[]) if((r.rows||[]).some(x=>z(x.nf)===k||z(x.ped)===k)){ rom=r; break; }
+  const e=nexS().reent[k]; const dH=rom?nexDataRom(rom):hojeISO();
+  return `<b>${esc(k)}</b> · hoje: ${rom?`romaneio ${esc(rom.numero)} (${esc(rom.base||'?')}) com data <b>${fmtData(dH)}</b> <small>(arquivo: ${esc(rom.arquivo||'?')})</small>`:'não está nos romaneios carregados'}<br>Histórico: ${hs.length?hs.map(x=>`${fmtData(x.d)} rom. ${esc(x.num||'?')}${x.m?' (MESA)':''}`).join(' · '):'<span style="color:var(--no)">nenhuma aparição registrada</span>'}${e?`<br>Reentrega registrada: ${esc(e.status)}${e.motivo?' · '+esc(e.motivo):''}`:''}<br>Resultado: <b>${hs.some(x=>x.d<dH)?'↻ REENTREGA':'nota nova (sem aparição em dia anterior)'}</b>`; }
+(function(){ const alvo=$('#op-xml'); if(!alvo) return; alvo.insertAdjacentHTML('afterend',`<details class="op-xml" id="op-diag"><summary><b>🔎 Diagnóstico de reentrega</b> <span class="tag">digite uma NF ou pedido</span></summary><div class="op-topo"><input id="op-diag-q" class="filtro" placeholder="NF ou pedido" inputmode="numeric" style="max-width:220px"><button class="btn mini" type="button" id="op-diag-ok">Ver</button></div><div id="op-diag-res" class="sub" style="margin:0"></div></details>`);
+  const ver=()=>{ $('#op-diag-res').innerHTML=reDiagTexto($('#op-diag-q').value); }; $('#op-diag-ok').onclick=ver; $('#op-diag-q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); ver(); } }); })();
+
+
+/* v6.3.25: ao carregar romaneios (ou alimentar o banco), abre o pop-up de reentregas encontradas */
+function reAvisarPopup(){ try{ nexVarrer(); }catch(e){} const l=nexSuspeitas(); if(!l.length) return; if(document.querySelector('.fundo .modal h2')&&/Reentregas detectadas/.test(document.querySelector('.fundo .modal h2').textContent)) return; opSom&&opSom('reent'); nexAbrirSuspeitas(); }
+{ const _imp=importar; importar=async function(files){ const r=await _imp(files); setTimeout(reAvisarPopup,400); return r; }; }
+{ const _rba=rbAlimentar; rbAlimentar=async function(files){ const r=await _rba(files); setTimeout(reAvisarPopup,400); return r; }; }
+
+
+/* v6.4: caracteres quebrados mostram de onde vêm (romaneio, NF, campo e o texto inteiro) */
+const TXT_NOMES={rem:'Remetente',dest:'Cliente',cid:'Cidade',uf:'UF',origem:'Origem',destino:'Destino',observacoes:'Observação',motorista:'Motorista',veiculo:'Veículo'};
+function txtOnde(w){ const out=[]; for(const r of S.romaneios||[]){ for(const k of TXT_ROM) if(String(r[k]||'').includes(w)) out.push({rom:r.numero,nf:'',campo:TXT_NOMES[k]||k,txt:r[k],arq:r.arquivo});
+    for(const x of r.rows||[]) for(const k of TXT_CAMPOS) if(String(x[k]||'').includes(w)) out.push({rom:r.numero,nf:x.nf,ped:x.ped,campo:TXT_NOMES[k]||k,txt:x[k],arq:r.arquivo,row:x}); } return out; }
+(function(){ const st=document.createElement('style'); st.textContent=`.v61-onde{display:block;font-size:.78rem;color:var(--mudo);margin:4px 0 0;line-height:1.4}.v61-onde b.qb{background:#e03131;color:#fff;border-radius:3px;padding:0 3px}.v61-onde .tx{color:var(--tinta);font-weight:600}`; document.head.appendChild(st); })();
+{ const _rc7=renderCorrecao; renderCorrecao=function(){ _rc7.apply(this,arguments); try{ for(const inp of document.querySelectorAll('#cor-corpo [data-v61-tx]')){ const w=inp.dataset.v61Tx; if(inp.parentElement.querySelector('.v61-onde')) continue; const os=txtOnde(w);
+      const marca=t=>esc(t).replace(/�/g,'<b class="qb">?</b>');
+      inp.insertAdjacentHTML('afterend',`<span class="v61-onde">${os.slice(0,3).map(o=>`${esc(o.campo)}: <span class="tx">${marca(o.txt)}</span> · rom. ${esc(o.rom||'?')}${o.nf?' · NF '+esc(z(o.nf)):''}${o.row&&o.row.cid&&o.campo!=='Cidade'?' · '+esc(o.row.cid):''}`).join('<br>')}${os.length>3?`<br>+ ${os.length-3} lugar(es)`:''}</span>`); } }catch(e){ console.error(e); } }; }
 
 /* ---------- início ---------- */
 (async function(){
