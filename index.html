@@ -3706,7 +3706,7 @@ function nexExportar(){ const n=nexS(); const notas={};
   nexBaixar(JSON.stringify(pacote,null,1),'nexroute-ponte '+reHoje()+'.json','application/json'); toast(`Arquivo para o NexRoute gerado: ${pacote.notas.length} nota(s).`); }
 
 /* ---- reentregas detectadas: confirmar com motivo ---- */
-function nexSuspeitas(){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); const l=Object.entries(n.reent).filter(([,r])=>r.status==='suspeita'); return ids.size?l.filter(([,r])=>ids.has(r.rom)):l; }
+function nexSuspeitas(){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); return Object.entries(n.reent).filter(([,r])=>r.status==='suspeita'&&ids.has(r.rom)); } /* v6.4.2: só dos romaneios carregados agora; sem romaneio carregado = nenhuma */
 async function nexAbrirSuspeitas(){ const n=nexS(); const l=nexSuspeitas(); if(!l.length){ toast('Nenhuma reentrega esperando motivo.'); return; }
   const linha=(k,re)=>{ const ped=re&&re.ped||(String(k).startsWith('P')?String(k).slice(1):''), nf=String(k).startsWith('P')?'':k;
     const bate=x=>(nf&&nexK(x)===nf)||(ped&&z(x.ped)===ped);
@@ -4084,7 +4084,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.1', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.2', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5833,6 +5833,19 @@ function reLimparHoje(){ const n=nexS(); n.histPed=n.histPed||{}; const roms=S.r
 { const _ns2=nexSuspeitas; nexSuspeitas=function(){ const num=new Set((S.romaneios||[]).map(r=>String(r.numero))); return _ns2().filter(([k,r])=>!num.has(String(r.romAnt))&&r.anterior<r.d); }; }
 { const _ra2=reAtiva; reAtiva=function(ped,nf){ const e=_ra2(ped,nf); if(!e) return e; const num=new Set((S.romaneios||[]).map(r=>String(r.numero))); return (num.has(String(e.romAnt))||!(e.anterior<e.d))?null:e; }; }
 setTimeout(()=>{ try{ reLimparHoje(); }catch(e){} },2500);
+
+
+/* ================= v6.4.2 · limpeza: suspeitas antigas de dias que não estão carregados somem; botão "Zerar tudo" ================= */
+function reLimparVelhas(){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); let t=0; for(const k of Object.keys(n.reent)){ const r=n.reent[k]; if(r.status==='suspeita'&&!ids.has(r.rom)){ delete n.reent[k]; t++; } } if(t) salvar(); return t; }
+setTimeout(()=>{ try{ reLimparVelhas(); }catch(e){} },2000);
+{ const _nv8=nexVarrer; nexVarrer=function(){ const a=_nv8.apply(this,arguments); try{ reLimparVelhas(); }catch(e){} return a; }; }
+async function rbZerarTudo(){ if(!opAdmin()&&opOnline()){ toast('Só o administrador pode zerar.'); return; }
+  if(!await confirmar('Zerar histórico de romaneios','Apaga <b>todo o Banco de romaneios</b> (online e neste aparelho), <b>todo o histórico de notas e pedidos</b> e <b>todas as reentregas detectadas que ainda não foram confirmadas</b>. As reentregas já lançadas em Reentregas continuam. Não dá para desfazer.','Zerar tudo')) return;
+  if(opOnline()){ try{ const {error}=await NV.cli.from('hs_rom_banco').delete().gte('dia','1900-01-01'); if(error) toast('Online: '+nvTraduz(error.message)); }catch(e){} }
+  try{ localStorage.removeItem(RB.local); }catch(e){}
+  const n=nexS(); n.hist={}; n.histPed={}; for(const k of Object.keys(n.reent)) if(n.reent[k].status!=='confirmada') delete n.reent[k];
+  salvar(); try{ renderTudo(); }catch(e){} RB.dias={}; RB.aberto=null; rbRender(); toast('Tudo zerado. Agora alimente os dias anteriores e carregue os romaneios de hoje.'); }
+(function(){ const box=$('#rb'); if(!box) return; box.querySelector('h2').insertAdjacentHTML('afterend','<button class="btn mini" type="button" id="rb-zerar" style="float:right;margin-top:-30px;color:var(--no)">🗑 Zerar tudo</button>'); $('#rb-zerar').onclick=rbZerarTudo; })();
 
 /* ---------- início ---------- */
 (async function(){
