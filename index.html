@@ -2879,7 +2879,7 @@ function reSub(t){ $$('[data-re-sub]').forEach(b=>b.setAttribute('aria-pressed',
   $('#re-dia').addEventListener('change',e=>{ RE.ler().atual=e.target.value; RE.gravar(); reTela(); reStatus(''); });
   $('#re-novo').addEventListener('click',()=>{ const v=prompt('Data do novo dia (dd/mm/aaaa):',reDataBR(reHoje())); if(!v) return; const m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(!m){ toast('Data inválida.'); return; }
     const iso=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); const D=RE.ler(); D.dias[iso]=D.dias[iso]||[]; D.atual=iso; RE.gravar(); reTela(); $('#re-bip').focus(); });
-  $('#re-apagar-dia').addEventListener('click',()=>{ const D=RE.ler(); if(!confirm('Apagar o dia '+reDataBR(D.atual)+' com '+reDia().length+' nota(s)?')) return; delete D.dias[D.atual]; D.atual=Object.keys(D.dias).sort().pop()||null; reDia(); RE.gravar(); reTela(); });
+  $('#re-apagar-dia').addEventListener('click',()=>{ const D=RE.ler(); if(!confirm('Apagar o dia '+reDataBR(D.atual)+' com '+reDia().length+' nota(s)?')) return; (D.apagados=D.apagados||[]).push(D.atual); delete D.dias[D.atual]; D.atual=Object.keys(D.dias).sort().pop()||null; reDia(); RE.gravar(); reTela(); });
   $('#re-imprimir').addEventListener('click',reImprimir);
   $('#re-csv').addEventListener('click',reCsv);
   $('#re-cfg').addEventListener('click',()=>{ const D=RE.ler(); const v=prompt('Api-Key do Meu Danfe:',D.apiKey||''); if(v!=null){ D.apiKey=v.trim(); RE.gravar(); toast('Api-Key salva.'); } });
@@ -3606,7 +3606,7 @@ function nexPedirMotivo(titulo,texto,inicial){ return new Promise(res=>{ const f
   f.addEventListener('keydown',e=>{ if(e.key==='Enter') fim(inp.value.trim()); if(e.key==='Escape') fim(null); }); }); }
 
 /* ---- jogar para reentregas (cria a linha no dia seguinte útil) ---- */
-function nexParaReentrega(o,dia,origem){ const D=RE.ler(); D.dias[dia]=D.dias[dia]||[];
+function nexParaReentrega(o,dia,origem){ const D=RE.ler(); D.dias[dia]=D.dias[dia]||[]; if(D.apagados) D.apagados=D.apagados.filter(x=>x!==dia);
   if(D.dias[dia].some(l=>z(l.nf)===z(o.nf))) return false;
   D.dias[dia].push({nf:String(o.nf||''),ped:o.ped||'',cli:String(o.dest||'').toUpperCase(),cid:String(o.cid||'').toUpperCase(),uf:String(o.uf||'').toUpperCase(),qtd:volNum(o.vol)||1,obs:o.motivo||'',per:'Não',val:reNum(o.valor),chave:'',peso:o.peso||'',origem:origem||'nex'});
   RE.gravar(); return true; }
@@ -4086,7 +4086,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.4', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.5', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5848,6 +5848,14 @@ async function rbZerarTudo(){ if(!opAdmin()&&opOnline()){ toast('Só o administr
   const n=nexS(); n.hist={}; n.histPed={}; for(const k of Object.keys(n.reent)) if(n.reent[k].status!=='confirmada') delete n.reent[k];
   salvar(); try{ renderTudo(); }catch(e){} RB.dias={}; RB.aberto=null; rbRender(); toast('Tudo zerado. Agora alimente os dias anteriores e carregue os romaneios de hoje.'); }
 (function(){ const box=$('#rb'); if(!box) return; box.querySelector('h2').insertAdjacentHTML('afterend','<button class="btn mini" type="button" id="rb-zerar" style="float:right;margin-top:-30px;color:var(--no)">🗑 Zerar tudo</button>'); $('#rb-zerar').onclick=rbZerarTudo; })();
+
+
+/* ================= v6.4.5 · Reentregas não se perdem entre aparelhos: o que chega do banco online SOMA com o que já está aqui ================= */
+{ const _ap=nvAplicarRE; nvAplicarRE=function(re){ if(!re) return; try{ const L=RE.ler(); if(!L||!L.dias||!Object.keys(L.dias).length) return _ap(re);
+    const out=JSON.parse(JSON.stringify(re)); out.dias=out.dias||{}; const chave=l=>z(l.nf)+'|'+String(l.ped||'')+'|'+String(l.cli||'');
+    for(const [d,ls] of Object.entries(L.dias)){ const alvo=out.dias[d]=out.dias[d]||[]; const tem=new Set(alvo.map(chave)); for(const l of ls) if(!tem.has(chave(l))){ alvo.push(l); tem.add(chave(l)); } }
+    if(L.apagados) for(const d of L.apagados) delete out.dias[d];
+    out.atual=L.atual||out.atual; out.apiKey=L.apiKey||out.apiKey; return _ap(out); }catch(e){ return _ap(re); } }; }
 
 /* ---------- início ---------- */
 (async function(){
