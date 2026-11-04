@@ -4083,7 +4083,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.20', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.21', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5759,6 +5759,16 @@ function reDiag(ped,nf){ ped=z(ped); nf=z(nf); let rom=null, row=null; for(const
 /* v6.3.20: desfaz "1ª aparição na MESA" de notas cujo cliente não está cadastrado em Agendamentos */
 function reRevisarMesa(){ const n=nexS(); let volta=0; for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), e=(k&&n.reent[k])||(p&&n.reent['P'+p]); if(e&&e.status==='ignorada'&&e.motivo==='Agendamento: 1ª aparição na MESA'&&!linhaAgendada(row)){ e.status='suspeita'; e.motivo=''; volta++; } } if(volta) salvar(); return volta; }
 { const _nv5=nexVarrer; nexVarrer=function(){ const a=_nv5.apply(this,arguments); try{ reRevisarMesa(); }catch(e){} return a; }; }
+
+
+/* ================= v6.3.21 · mesmo romaneio carregado de novo em outro dia não é reentrega ================= */
+function reMesmoRomaneio(rom,d){ /* d = dia da aparição anterior; true se naquele dia foi o MESMO romaneio com as MESMAS notas */
+  if(!rom) return false; try{ const L=rbLocalLer(); const reg=L[d]&&L[d][d+'|'+rom.id]; if(reg&&reg.hash) return reg.hash===rbHash(rom); }catch(e){}
+  return false; }
+function reEhReimport(re){ const rom=(S.romaneios||[]).find(r=>r.id===re.rom); if(!rom||String(re.romAnt)!==String(rom.numero)) return false; return reMesmoRomaneio(rom,re.anterior); }
+{ const _ns=nexSuspeitas; nexSuspeitas=function(){ const l=_ns(); const n=nexS(); return l.filter(([k,r])=>{ if(reEhReimport(r)){ r.status='ignorada'; r.motivo='Mesmo romaneio carregado de novo'; return false; } return true; }); }; }
+{ const _ra=reAtiva; reAtiva=function(ped,nf){ const e=_ra(ped,nf); if(e&&reEhReimport(e)){ e.status='ignorada'; e.motivo='Mesmo romaneio carregado de novo'; return null; } return e; }; }
+{ const _rh=reHistNota; reHistNota=function(ped,nf){ const out=_rh(ped,nf); const rom=(S.romaneios||[]).find(r=>(r.rows||[]).some(x=>(nf&&z(x.nf)===z(nf))||(ped&&z(x.ped)===z(ped)))); if(!rom) return out; return out.filter(e=>!(e.rom===rom.id&&reMesmoRomaneio(rom,e.d))); }; }
 
 /* ---------- início ---------- */
 (async function(){
