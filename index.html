@@ -4014,16 +4014,17 @@ document.addEventListener('input',e=>{ const t=e.target; if(t.dataset&&t.dataset
 document.addEventListener('keydown',e=>{ if(ED.on&&e.key==='Escape'&&!document.querySelector('.fundo')) edFechar(); });
 
 /* ---------- aba Correção ---------- */
-function corItens(){ const out={geo:[],fora:[],nrec:[],reMot:[],reBase:[],ret:[],sus:0};
+const reLinhaInvalida=l=>{ const nf=String(l.nf||''); return /\d{2}\/\d{2}\/\d{2,4}/.test(nf)||!/^\d{3,12}$/.test(z(nf))||!String(l.cid||'').trim(); };
+function corItens(){ const out={geo:[],fora:[],nrec:[],reMot:[],reBase:[],ret:[],sus:0,inval:[]};
   try{ out.geo=geoParaConferir(); }catch(e){}
   const vist=new Set();
   for(const [k,e] of Object.entries(S.cidAtend||{})){
     if(!e.c){ out.nrec.push({k,e}); continue; } if(vist.has(e.c)) continue; vist.add(e.c); const o=geoMun(e.c); if(!o||!GEO_UFS.has(o.u)) continue;
     for(const tipo of ['regiao','base']){ const r=geoClass(e.c,tipo); if(!r.ids.length) out.fora.push({c:e.c,tipo,r}); } }
-  const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias)) ls.forEach((l,i)=>{ if(!String(l.obs||'').trim()) out.reMot.push({d,i,l}); if(!l.base&&!reBase(l.cid,l.uf)) out.reBase.push({d,i,l}); });
+  const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias)) ls.forEach((l,i)=>{ if(reLinhaInvalida(l)){ out.inval.push({d,i,l}); return; } if(!String(l.obs||'').trim()) out.reMot.push({d,i,l}); if(!l.base&&!reBase(l.cid,l.uf)) out.reBase.push({d,i,l}); });
   try{ out.ret=Object.values(nexS().fora).filter(o=>!o.motivo); out.sus=nexSuspeitas().length; }catch(e){}
   return out; }
-const corTotal=o=>o.geo.length+o.fora.length+o.nrec.length+o.reMot.length+o.reBase.length+o.ret.length+o.sus;
+const corTotal=o=>(o.inval||[]).length+o.geo.length+o.fora.length+o.nrec.length+o.reMot.length+o.reBase.length+o.ret.length+o.sus;
 function corBadge(){ const q=$('#qt-cor'); if(!q) return; if(!nvAdmin()){ q.hidden=true; return; } const n=corTotal(corItens()); q.textContent=n; q.hidden=!n; }
 function corSelLista(tipo,c,atual){ return `<select data-cor-ens="${c}" data-tipo="${tipo}"><option value="">Escolher ${tipo==='base'?'base':'região'}…</option>${S.geo.listas.filter(l=>l.tipo===tipo).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(l=>`<option value="${esc(l.id)}"${l.id===atual?' selected':''}>${esc(l.nome)}</option>`).join('')}<option value="-">Nenhuma (não atendemos)</option></select>`; }
 function renderCorrecao(){ const el=$('#cor-corpo'); if(!el) return; if(!nvAdmin()){ el.innerHTML='<div class="vazio-lista">Somente o administrador acessa a Correção.</div>'; return; }
@@ -4079,7 +4080,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.13', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.14', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5708,6 +5709,19 @@ const COR_ABERTOS=new Set();
 document.addEventListener('click',e=>{ const h=e.target.closest&&e.target.closest('#cor-corpo .cor-bloco>header'); if(!h) return; if(e.target.closest('button:not(.cor-exp),a,input,select,label')) return;
   const b=h.parentElement, k=b.dataset.cor; if(COR_ABERTOS.has(k)) COR_ABERTOS.delete(k); else COR_ABERTOS.add(k);
   const ab=COR_ABERTOS.has(k); b.classList.toggle('recolhido',!ab); const bt=h.querySelector('.cor-exp'); if(bt) bt.textContent=ab?'▴ Recolher':'▾ Expandir'; });
+
+
+/* Correção: linhas de Reentregas sem dados (ex.: título ou datas no lugar da NF) */
+{ const _rc2=renderCorrecao; renderCorrecao=function(){ _rc2.apply(this,arguments); const el=$('#cor-corpo'); if(!el||!nvAdmin()) return; const o=corItens(); if(!o.inval.length) return;
+    el.insertAdjacentHTML('afterbegin',`<section class="cor-bloco${COR_ABERTOS.has('LINHAS SEM DADOS EM REENTREGAS')?'':' recolhido'}" data-cor="LINHAS SEM DADOS EM REENTREGAS"><header><h2>Linhas sem dados em Reentregas <span class="cor-n">${o.inval.length}</span></h2><button class="btn mini cor-exp" type="button">${COR_ABERTOS.has('LINHAS SEM DADOS EM REENTREGAS')?'▴ Recolher':'▾ Expandir'}</button></header><p class="sub">Linhas sem NF válida ou sem cidade (por exemplo, um título ou um período digitado no lugar da NF). Corrija em Reentregas ou exclua.</p>
+      <div class="rolagem"><table class="nx-tab"><thead><tr><th>Dia</th><th>NF</th><th>Cliente</th><th>Cidade</th><th>Observação</th><th></th></tr></thead><tbody>${o.inval.map(x=>`<tr><td>${esc(reDataBR(x.d))}</td><td class="forte">${esc(x.l.nf||'—')}</td><td>${esc(x.l.cli||'')}</td><td>${esc(x.l.cid||'—')}${x.l.uf?'/'+esc(x.l.uf):''}</td><td>${esc(x.l.obs||'')}</td><td class="nx-acoes"><button class="btn mini" type="button" data-cor-ir-re="${esc(x.d)}">Abrir o dia</button><button class="btn mini" type="button" data-cor-del-re="${esc(x.d)}|${x.i}">Excluir</button></td></tr>`).join('')}</tbody></table></div></section>`);
+    try{ corBadge(); }catch(e){} }; }
+document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-cor-del-re],[data-cor-ir-re]'); if(!b) return; e.stopPropagation();
+  const D=RE.ler();
+  if(b.dataset.corIrRe){ D.atual=b.dataset.corIrRe; RE.gravar(); irPara('reentregas'); return; }
+  const [d,i]=b.dataset.corDelRe.split('|'); const l=(D.dias[d]||[])[+i]; if(!l) return;
+  if(!await confirmar('Excluir linha',`Excluir de Reentregas (${esc(reDataBR(d))}) a linha "<b>${esc(l.nf||'—')}</b>"?`,'Excluir')) return;
+  D.dias[d].splice(+i,1); RE.gravar(); renderCorrecao(); toast('Linha excluída.'); },true);
 
 /* ---------- início ---------- */
 (async function(){
