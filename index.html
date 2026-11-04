@@ -4086,7 +4086,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.4.8', HS_DATA='04/11/2026';
+const HS_VERSAO='6.4.9', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5887,9 +5887,10 @@ function reLancarDetectadas(){ const n=nexS(), ids=new Set((S.romaneios||[]).map
     if(nexParaReentrega({nf:nf||(row&&row.nf)||'',ped:(row&&row.ped)||r.ped||'',dest:row&&row.dest,cid:row&&row.cid,uf:row&&row.uf,vol:row&&row.vol,peso:row&&row.peso,valor:row&&row.valor,motivo:r.motivo||'REENTREGA'},dia,'automatica')) c++; }
   return {c,pend}; }
 (function(){ const st=$('#re-status'); if(!st) return; st.insertAdjacentHTML('beforebegin',`<div id="re-diag" class="sub" style="margin:4px 0 8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"></div>`); })();
-function reDiagRender(){ const el=$('#re-diag'); if(!el) return; const D=RE.ler(), n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); const ds=Object.keys(D.dias).sort(); const hoje=Object.values(n.reent).filter(r=>ids.has(r.rom));
+function reDiagRender(){ const el=$('#re-diag'); if(!el) return; try{ rbReavaliar(); reDesfazMesa&&reDesfazMesa(); }catch(e){} const D=RE.ler(), n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); const ds=Object.keys(D.dias).sort(); const hoje=Object.values(n.reent).filter(r=>ids.has(r.rom));
   const conf=hoje.filter(r=>r.status==='confirmada').length, pend=hoje.filter(r=>r.status==='suspeita').length;
-  el.innerHTML=`<span class="tag">Dias guardados: ${ds.length} · último ${ds.length?reDataBR(ds[ds.length-1]):'—'}</span><span class="tag">Detectadas nos romaneios carregados: ${conf} confirmada(s), ${pend} sem motivo</span>${hoje.length?`<button class="btn mini pri" type="button" id="re-lanc-det">↻ Lançar as detectadas agora</button>`:''}${pend?`<button class="btn mini" type="button" id="re-abrir-det">Abrir as sem motivo</button>`:''}`;
+  const roms=S.romaneios||[], datas=[...new Set(roms.map(r=>reDataBR(nexDataRom(r))))]; let viaHist=0; for(const r of roms) for(const x of r.rows||[]){ try{ if(reDiag(x.ped,x.nf).tipo==='reent') viaHist++; }catch(e){} }
+  el.innerHTML=`<span class="tag" style="${roms.length?'':'color:var(--no)'}">Romaneios carregados agora: ${roms.length}${datas.length?' ('+datas.join(', ')+')':' — carregue os de hoje na aba Romaneios'}</span><span class="tag">Notas que já vieram antes (histórico): ${viaHist}</span><span class="tag">Dias guardados: ${ds.length} · último ${ds.length?reDataBR(ds[ds.length-1]):'—'}</span><span class="tag">Detectadas nos romaneios carregados: ${conf} confirmada(s), ${pend} sem motivo</span>${hoje.length?`<button class="btn mini pri" type="button" id="re-lanc-det">↻ Lançar as detectadas agora</button>`:''}${pend?`<button class="btn mini" type="button" id="re-abrir-det">Abrir as sem motivo</button>`:''}`;
   const b=$('#re-lanc-det'); if(b) b.onclick=()=>{ const r=reLancarDetectadas(); const D2=RE.ler(); const dias=Object.keys(D2.dias).sort(); D2.atual=dias[dias.length-1]||D2.atual; RE.gravar(); reTela(); toast(`${r.c} reentrega(s) lançada(s).${r.pend?` ${r.pend} ainda sem motivo: clique em "Abrir as sem motivo".`:''}`); };
   const a=$('#re-abrir-det'); if(a) a.onclick=()=>nexAbrirSuspeitas(); }
 { const _rt=reTela; reTela=function(){ try{ reConsertarDias(); }catch(e){} const r=_rt.apply(this,arguments); try{ reDiagRender(); }catch(e){} return r; }; }
