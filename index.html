@@ -4082,7 +4082,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='6.3.17', HS_DATA='04/11/2026';
+const HS_VERSAO='6.3.18', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5732,6 +5732,26 @@ document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.
   const [d,i]=b.dataset.corDelRe.split('|'); const l=(D.dias[d]||[])[+i]; if(!l) return;
   if(!await confirmar('Excluir linha',`Excluir de Reentregas (${esc(reDataBR(d))}) a linha "<b>${esc(l.nf||'—')}</b>"?`,'Excluir')) return;
   D.dias[d].splice(+i,1); RE.gravar(); renderCorrecao(); toast('Linha excluída.'); },true);
+
+
+/* ================= v6.3.18 · bipe consulta o HISTÓRICO direto (não depende só da lista de suspeitas) ================= */
+function reHistNota(ped,nf){ const n=nexS(); const ks=[...new Set([z(nf),z(ped)].filter(Boolean))]; const vis=new Set(), out=[];
+  for(const k of ks) for(const e of [...((n.hist||{})[k]||[]),...(((n.histPed||{})[k])||[])]){ const key=e.d+'|'+e.rom; if(vis.has(key)) continue; vis.add(key); out.push(e); }
+  return out.sort((a,b)=>b.d.localeCompare(a.d)); }
+function reDiag(ped,nf){ ped=z(ped); nf=z(nf); let rom=null, row=null; for(const r of S.romaneios||[]){ const x=(r.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(ped&&z(x.ped)===ped)); if(x){ rom=r; row=x; break; } }
+  const dHoje=rom?nexDataRom(rom):hojeISO(); const hs=reHistNota(ped,nf).filter(e=>e.d<dHoje&&(!rom||e.rom!==rom.id));
+  const e=(nf&&nexS().reent[nf])||(ped&&nexS().reent['P'+ped])||null;
+  if(!hs.length) return {tipo:'nova'};
+  if(e&&e.status==='ignorada') return {tipo:'ignorada',motivo:e.motivo||'marcada como não é reentrega',ant:hs[0]};
+  if(rom&&romMesa(rom)&&!hs.some(x=>x.m)) return {tipo:'mesa1',ant:hs[0]};
+  return {tipo:'reent',ant:hs[0],qt:hs.length}; }
+{ const _ml4=opMostrar; opMostrar=function(r){ if(r&&r._ped!==undefined&&r.status!=='fora'&&!/REENTREGA|VOLUMES QUE FALTARAM|DIVERGÊNCIA ·|CAIXA QUE FALTOU/.test(r.titulo||'')){
+      try{ const g=reDiag(r._ped,r._nf);
+        if(g.tipo==='reent'){ r.titulo='↻ REENTREGA · '+r.titulo; r.linha=`já veio em ${fmtData(g.ant.d)} (romaneio ${g.ant.num||'?'})${g.qt>1?' · '+g.qt+' vezes antes':''} — leve para o local de reentregas · `+(r.linha||''); if(r.status==='ok'||r.status==='semnota'||!r.status) r.status='reent'; }
+        else if(g.tipo==='mesa1') r.linha=(r.linha||'')+` — veio antes em ${fmtData(g.ant.d)} (rom. ${g.ant.num||'?'}), agora 1ª vez na MESA: agendamento, não é reentrega`;
+        else if(g.tipo==='ignorada') r.linha=(r.linha||'')+` — já veio em ${fmtData(g.ant.d)}, mas foi marcada: ${g.motivo}`;
+      }catch(e){ console.error(e); } }
+    _ml4(r); }; }
 
 /* ---------- início ---------- */
 (async function(){
