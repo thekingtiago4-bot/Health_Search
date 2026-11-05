@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.8.1', HS_DATA='04/11/2026';
+const HS_VERSAO='7.8.2', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6233,7 +6233,7 @@ window.addEventListener('focus',()=>nuvSinc()); window.addEventListener('online'
   let n=0; const t=setInterval(()=>{ if(opOnline()){ clearInterval(t); NUV.desde=''; nuvSinc(); } else if(++n>120) clearInterval(t); nuvStatus(); },1000); })();
 
 /* ================= v6.8.0 · Tudo online: agendamentos, regiões/Correção, romaneios, XMLs, regras e históricos ================= */
-const NUV_CAMPOS=['agendamentos','historico','aprendidos','geo','geoRuas','cidAlias','cidAtend','clientesReq','ferManual','nex','opFaltas','opPorVolume','reMotoristas','txtFix','simCen','cadMot','cadMotivos','vmChegou','vmPrev'];
+const NUV_CAMPOS=['agendamentos','historico','aprendidos','geo','geoRuas','cidAlias','cidAtend','clientesReq','ferManual','nex','opFaltas','opPorVolume','reMotoristas','txtFix','simCen','cadMot','cadMotivos','vmChegou','vmPrev','opForaInfo'];
 const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Object.keys(v).length:v==='');
 { const _nl=nuvLocal; nuvLocal=function(){ const m=_nl();
     for(const c of NUV_CAMPOS) if(!nuvVazio(S[c])) m.set('s:'+c,{tipo:'s',valor:S[c]});
@@ -6327,6 +6327,7 @@ const MAN=[
    ['Via Minas · Falta Chegar','Ao marcar “Chegou” numa transferência, aparece à direita a lista “Falta Chegar” só com as cidades que ainda esperam caminhão (e de qual base). Toque numa cidade para ver os romaneios dela. Quando tudo chega, a lista avisa que pode soltar todas.'],
    ['Via Minas · previsão e aviso','Em cada transferência que ainda não chegou há o campo “chega às” (hora prevista); a hora aparece na lista Falta Chegar. Quando a última transferência chega, o app toca um som e mostra um aviso (e notificação, se permitida). No topo da Falta Chegar, “📋 WhatsApp” copia a lista das cidades pendentes para mandar ao motorista.'],
    ['Bipar caixa a caixa','Na câmera, bipar de novo a mesma nota ou pedido (sem número de volume na etiqueta) conta como a próxima caixa: 1/6, 2/6… Só vira “Duplicado” depois que todas as caixas foram bipadas. Embaixo da tela aparece em destaque VOLUMES lidos / total e quantos faltam (verde quando completa). Toque na faixa de informação do bipe (em cima) para abrir a ficha completa: cliente, cidade, valor, volumes, pedido, NF, romaneio, motorista, conteúdo e chave.'],
+   ['Fora do romaneio: cliente e cidade','Quando a caixa bipada não está no romaneio, o app completa cliente e cidade sozinho: primeiro pelo histórico (romaneios antigos e XMLs), e, se não achar, lê o texto da própria etiqueta na câmera (📝 aparece na faixa de cima). A informação fica salva online e aparece na tabela Fora do romaneio para todos.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -6917,6 +6918,18 @@ function opFicha(b){ if(!b){ toast('Bipe uma etiqueta primeiro.'); return; } con
    <div style="text-align:right;margin-top:12px"><button class="btn pri" data-a="x">Fechar</button></div></div>`;
   f.addEventListener('click',e=>{ if(e.target===f||e.target.closest('[data-a="x"]')) f.remove(); }); document.body.appendChild(f); }
 document.addEventListener('click',e=>{ const t=e.target.closest&&e.target.closest('#op-cam .msg,#op-res'); if(!t) return; if(!OP.ultimo) return; e.stopPropagation(); opFicha(OP.ultimo); },true);
+
+/* ================= v7.8.2 · Fora do romaneio: completa cliente e cidade pelo texto da etiqueta (OCR) e pelo histórico ================= */
+function opForaPatch(b){ if(!b||(b.status!=='fora'&&b.status!=='pit')) return; const F=(S.opForaInfo||{})[b.local_id]; if(F){ if(!b.dest&&F.dest) b.dest=F.dest; if(!b.cid&&F.cid) b.cid=F.cid; if(!b.tot&&F.tot) b.tot=F.tot; }
+  if(!b.dest||!b.cid){ const k=(b.ped||'')+'|'+(b.nf||''); OP._foraCache=OP._foraCache||{}; if(!(k in OP._foraCache)){ try{ OP._foraCache[k]=opInfoFora(b.ped,b.nf); }catch(e){ OP._foraCache[k]=null; } } const i=OP._foraCache[k]; if(i){ if(!b.dest&&i.dest) b.dest=String(i.dest); if(!b.cid&&i.cid) b.cid=String(i.cid); } } }
+function opForaGuardar(b,info){ const d={}; if(info.dest&&!b.dest) d.dest=b.dest=info.dest; if(info.cid&&!b.cid) d.cid=b.cid=info.cid; if(info.tot&&!b.tot) d.tot=b.tot=info.tot; if(!Object.keys(d).length) return false;
+  S.opForaInfo=S.opForaInfo||{}; S.opForaInfo[b.local_id]=Object.assign(S.opForaInfo[b.local_id]||{},d,{dia:b.dia});
+  /* guarda só 15 dias */ const lim=new Date(Date.now()-15*864e5).toISOString().slice(0,10); for(const [k,v] of Object.entries(S.opForaInfo)) if(v.dia&&v.dia<lim) delete S.opForaInfo[k];
+  try{ opLocalGravar(); }catch(e){} salvar(); return true; }
+{ const _env=opEnviar; opEnviar=function(b){ const r=_env(b); try{ if((b.status==='fora'||b.status==='pit')&&(!b.dest||!b.cid)){ const v=document.querySelector('#op-cam video');
+      if(v&&v.videoWidth&&!OCRK.ocupado&&window.HS_OCR&&HS_OCR.tem&&HS_OCR.tem()){ const alvo=b; const m=document.querySelector('#op-cam .msg');
+        opOcr(v).then(p=>{ OCRK.ocupado=false; if(!p) return; if(opForaGuardar(alvo,{dest:p.dest,cid:p.cid,tot:p.tot})){ opRender(); if(m&&OP.bipes[0]===alvo) m.insertAdjacentHTML('beforeend',`<br>📝 ${esc([alvo.dest,alvo.cid].filter(Boolean).join(' · '))}`); } }).catch(()=>{ OCRK.ocupado=false; }); } } }catch(e){} return r; }; }
+{ const _rl=opRenderLista; opRenderLista=function(){ try{ (OP.bipes||[]).forEach(opForaPatch); }catch(e){} return _rl.apply(this,arguments); }; }
 
 /* ---------- início ---------- */
 (async function(){
