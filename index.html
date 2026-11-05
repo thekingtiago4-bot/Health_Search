@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.7.2', HS_DATA='04/11/2026';
+const HS_VERSAO='7.7.3', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6881,8 +6881,9 @@ function vmPrevCid(c){ const hs=c.fora.map(x=>(S.vmPrev||{})[x.rom.id]).filter(B
 document.addEventListener('change',e=>{ const t=e.target; if(!t.dataset||t.dataset.vmPrev==null) return; S.vmPrev=S.vmPrev||{}; if(t.value) S.vmPrev[t.dataset.vmPrev]=t.value; else delete S.vmPrev[t.dataset.vmPrev]; salvar(); renderViaMinas(); toast(t.value?'Previsão de chegada: '+t.value+'.':'Previsão apagada.'); });
 document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-vm-wpp]'); if(!b) return; const falta=vmFaltaCids(); if(!falta.length) return;
   const L=[`*Via Minas · falta chegar (${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR').slice(0,5)})*`,''];
-  for(const c of falta){ const bs=[...new Set(c.fora.map(x=>x.rom.base||'?'))].join(', '); const h=vmPrevCid(c); L.push(`• ${c.nome} — ${c.cont.notas} nota(s) · aguardando ${bs}${h?' · prev. '+h:''}`); }
-  L.push('',`Total: ${falta.length} cidade(s) pendente(s).`); const txt=L.join('\n');
+  const g=new Map(); for(const c of falta) for(const x of c.fora){ const b=x.rom.base||'?'; if(!g.has(b)) g.set(b,{hs:new Set(),cids:new Map()}); const e=g.get(b); const h=(S.vmPrev||{})[x.rom.id]; if(h) e.hs.add(h); e.cids.set(c.nome,(e.cids.get(c.nome)||0)+contar(x.linhas.map(z=>z.row)).notas); }
+  for(const [b,e] of [...g].sort((a,b)=>a[0].localeCompare(b[0]))){ const hs=[...e.hs].sort().map(h=>h.replace(':','h')).join(' / '); L.push(hs?`${b} - ${hs}`:b); for(const [nm,q] of [...e.cids].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'))) L.push(`• ${nm} — ${q} nota(s)`); L.push(''); }
+  L.push(`Total: ${String(falta.length).padStart(2,'0')} cidade(s) pendente(s).`); const txt=L.join('\n');
   try{ await navigator.clipboard.writeText(txt); toast('Lista copiada. Cole no WhatsApp.'); }catch(er){ window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); } });
 { const _vm=vmMarcar; vmMarcar=function(id,on){ const antes=vmFaltaCids().length; _vm(id,on); const depois=vmFaltaCids().length;
   if(on&&antes>0&&depois===0){ try{ opSom('ok'); setTimeout(()=>opSom('ok'),250); setTimeout(()=>opSom('ok'),500); }catch(e){}
