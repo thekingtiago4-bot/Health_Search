@@ -4107,7 +4107,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.1', HS_DATA='04/11/2026';
+const HS_VERSAO='7.5.2', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5650,6 +5650,7 @@ function rbReavaliar(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
 .rb label{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-sm);font-weight:600;color:var(--tinta2)}
 .rb input[type=date],.rb input[type=month],.rb input[type=text]{border:1.5px solid var(--linha);border-radius:var(--r);padding:7px 9px;background:var(--sup);color:inherit;font:inherit}
 .rb-dia{border-top:1px solid var(--linha);padding:8px 0}.rb-dia>button{all:unset;cursor:pointer;display:flex;gap:10px;align-items:center;width:100%;font-weight:600}
+.rb-dia button[data-rb-dia]{all:unset;cursor:pointer;display:flex;gap:10px;align-items:center;font-weight:700;color:var(--tinta);padding:4px 2px}.rb-dia button[data-rb-dia]:hover{color:var(--acento)}
 .rb-dia .q{color:var(--mudo);font-weight:500;font-size:var(--fs-sm)}.rb-roms{margin:6px 0 4px 18px}
 .rb-rom{border:1px solid var(--linha);border-radius:10px;padding:8px 10px;margin:6px 0}.rb-rom summary{cursor:pointer}
 .rb-sem{color:var(--mudo);padding:8px 0}`;
@@ -6733,6 +6734,14 @@ function muNum(c){ const b=c.querySelector('.big'); if(!b) return null; const n=
   g.insertAdjacentHTML('beforebegin',''); const sec=inn.querySelector('.mu-sec-top'); if(sec) sec.remove();
   { const mt=inn.querySelector('.mu-topo'); if(mt){ const ent=[...mt.querySelectorAll('button')].find(b=>/Entrar/i.test(b.textContent)); if(ent) hd.appendChild(ent); mt.classList.add('mu-rodape'); const d=inn.querySelector('.mural-dica'); if(d) d.before(mt); else inn.appendChild(mt); } }
   g.insertAdjacentHTML('beforebegin',`<div class="mu-sec mu-sec-top">${nAt?`⚡ Atenção agora <small>${nAt} item(ns) pedindo ação</small>`:'✅ Tudo em dia <small>nenhum alerta no momento</small>'}<i></i></div>`); }; }
+/* v7.5.2: listas de escolha e campos sempre legíveis (fundo escuro, letra branca) */
+(function(){ const st=document.createElement('style'); st.textContent=`
+html[data-tema="escuro"]{color-scheme:dark}
+select option,select optgroup,datalist option{background:#10282d!important;color:#fff!important}
+select option:checked,select option:hover{background:#0F5560!important;color:#fff!important}
+select option:disabled{color:#8fa9ad!important}
+html[data-tema="escuro"] select,html[data-tema="escuro"] input,html[data-tema="escuro"] textarea{color-scheme:dark}
+html[data-tema="escuro"] input::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.8)}`; document.head.appendChild(st); })();
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
