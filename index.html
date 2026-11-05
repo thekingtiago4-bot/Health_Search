@@ -3711,7 +3711,7 @@ function nexExportar(){ const n=nexS(); const notas={};
   nexBaixar(JSON.stringify(pacote,null,1),'nexroute-ponte '+reHoje()+'.json','application/json'); toast(`Arquivo para o NexRoute gerado: ${pacote.notas.length} nota(s).`); }
 
 /* ---- reentregas detectadas: confirmar com motivo ---- */
-function nexSuspeitas(){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); return Object.entries(n.reent).filter(([,r])=>r.status==='suspeita'&&ids.has(r.rom)); } /* v6.4.2: só dos romaneios carregados agora; sem romaneio carregado = nenhuma */
+function nexSuspeitas(){ const n=nexS(), ids=new Set((S.romaneios||[]).map(r=>r.id)); const feito=S.reFeito||{}; return Object.entries(n.reent).filter(([k,r])=>r.status==='suspeita'&&ids.has(r.rom)&&feito[k]!==r.d); } /* v6.4.2: só dos romaneios carregados agora; sem romaneio carregado = nenhuma */
 async function nexAbrirSuspeitas(){ const n=nexS(); const l=nexSuspeitas(); if(!l.length){ toast('Nenhuma reentrega esperando motivo.'); return; }
   const linha=(k,re)=>{ const ped=re&&re.ped||(String(k).startsWith('P')?String(k).slice(1):''), nf=String(k).startsWith('P')?'':k;
     const bate=x=>(nf&&nexK(x)===nf)||(ped&&z(x.ped)===ped);
@@ -3728,9 +3728,9 @@ async function nexAbrirSuspeitas(){ const n=nexS(); const l=nexSuspeitas(); if(!
   document.body.appendChild(f);
   f.addEventListener('click',e=>{ const a=e.target.closest('[data-a]'); if(!a) return; if(a.dataset.a!=='ok'){ f.remove(); return; }
     let c=0,i=0,sem=0; for(const tr of f.querySelectorAll('tr[data-k]')){ const k=tr.dataset.k, r=n.reent[k]; const ign=tr.querySelector('[data-ign]').checked, m=tr.querySelector('[data-mot]').value.trim();
-      if(ign){ r.status='ignorada'; i++; continue; } if(!m){ sem++; continue; }
+      if(ign){ r.status='ignorada'; (S.reFeito=S.reFeito||{})[k]=r.d; i++; continue; } if(!m){ sem++; continue; }
       const mot=(tr.querySelector('[data-mot2]')||{}).value?.trim().toUpperCase()||''; if(mot){ S.reMotoristas=[...new Set([mot,...(S.reMotoristas||[])])].slice(0,60); } const mFinal=mot?`${m} - ${mot}`:m;
-      const row=linha(k,r); r.status='confirmada'; r.motivo=mFinal; r.motorista=mot; nexSetTag(k,'Reentrega',true); nexParaReentrega({nf:row.nf,ped:row.ped,dest:row.dest,cid:row.cid,uf:row.uf,vol:row.vol,peso:row.peso,valor:row.valor,motivo:mFinal},r.d,'automatica'); c++; }
+      const row=linha(k,r); (S.reFeito=S.reFeito||{})[k]=r.d; r.status='confirmada'; r.motivo=mFinal; r.motorista=mot; nexSetTag(k,'Reentrega',true); nexParaReentrega({nf:row.nf,ped:row.ped,dest:row.dest,cid:row.cid,uf:row.uf,vol:row.vol,peso:row.peso,valor:row.valor,motivo:mFinal},r.d,'automatica'); c++; }
     if(c||i){ nexLog(`Reentregas: ${c} confirmada(s), ${i} descartada(s).`); salvar(); }
     if(c){ try{ const D=RE.ler(); const dias=[...f.querySelectorAll('tr[data-k]')].map(tr=>(n.reent[tr.dataset.k]||{}).d).filter(Boolean).sort(); const dia=dias.pop()||reHoje(); D.dias[dia]=D.dias[dia]||[]; D.atual=dia; RE.gravar(); setTimeout(()=>{ try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} toast(`${c} reentrega(s) lançada(s) em Reentregas no dia ${fmtData(dia)}. Abra Reentregas para ver.`); },300); }catch(e){} }
     f.remove(); renderTudo(); toast(`${c} reentrega(s) confirmada(s)${i?`, ${i} descartada(s)`:''}${sem?`. ${sem} ficaram sem motivo e continuam pendentes`:''}.`); }); }
@@ -4110,7 +4110,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.7', HS_DATA='04/11/2026';
+const HS_VERSAO='7.5.8', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5845,7 +5845,8 @@ function reDiagTexto(q){ const k=z(q); if(!k) return ''; const hs=reHistNota(k,k
 
 
 /* v6.3.25: ao carregar romaneios (ou alimentar o banco), abre o pop-up de reentregas encontradas */
-function reAvisarPopup(){ try{ nexVarrer(); }catch(e){} const l=nexSuspeitas(); if(!l.length) return; if(document.querySelector('.fundo .modal h2')&&/Reentregas detectadas/.test(document.querySelector('.fundo .modal h2').textContent)) return; opSom&&opSom('reent'); nexAbrirSuspeitas(); }
+let RE_POP_VISTOS=new Set(), RE_POP_ABERTO=false;
+function reAvisarPopup(){ try{ nexVarrer(); }catch(e){} if(RE_POP_ABERTO) return; const l=nexSuspeitas(); if(!l.length||l.every(([k,r])=>RE_POP_VISTOS.has(k+'|'+r.d))) return; l.forEach(([k,r])=>RE_POP_VISTOS.add(k+'|'+r.d)); RE_POP_ABERTO=true; setTimeout(()=>{ RE_POP_ABERTO=false; },3000); if(document.querySelector('.fundo .modal h2')&&/Reentregas detectadas/.test(document.querySelector('.fundo .modal h2').textContent)) return; opSom&&opSom('reent'); nexAbrirSuspeitas(); }
 { const _imp=importar; importar=async function(files){ const r=await _imp(files); setTimeout(reAvisarPopup,400); return r; }; }
 { const _rba=rbAlimentar; rbAlimentar=async function(files){ const r=await _rba(files); setTimeout(reAvisarPopup,400); return r; }; }
 
