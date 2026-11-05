@@ -4107,7 +4107,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.2', HS_DATA='04/11/2026';
+const HS_VERSAO='7.5.3', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6174,16 +6174,21 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     for(const r of data||[]){ const l=loc.get(r.chave), hr=r.apagado?'x':nuvHash(r.valor);
       if(NUV.h[r.chave]===hr&&(!l||nuvHash(l.valor)===hr)) { if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; }
       const mexiAqui=l&&nuvHash(l.valor)!==NUV.h[r.chave];
+      if(mexiAqui&&NUV.h[r.chave]&&NUV.h[r.chave]===hr){ if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; } /* só eu mudei: vale o daqui */
       if(r.apagado){ if(!mexiAqui&&l) { nuvAplicar(r.chave,null,true); mudou=true; } NUV.h[r.chave]='x'; }
       else if(mexiAqui&&(NUV.h[r.chave]||(r.chave.startsWith('s:')&&!nuvVazio(l.valor)))){ const j=nuvJuntar(r.chave,l.valor,r.valor); nuvAplicar(r.chave,j,false); NUV.h[r.chave]=hr; mudou=true; }
       else { nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=hr; mudou=true; }
       if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; }
     /* 2) sobe o que mudou aqui */
     const sobe=[]; const eu=opEu(); const agora=nuvLocal();
-    const soAdm=k=>!nvAdmin()&&NUV_ADMIN.has(k); for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
+    if(nvAdmin()&&NUV.aal==null){ try{ const {data:al}=await NV.cli.auth.mfa.getAuthenticatorAssuranceLevel(); NUV.aal=al&&al.currentLevel||''; }catch(e){ NUV.aal=''; } }
+    const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>!admOk&&NUV_ADMIN.has(k);
+    if(nvAdmin()&&!admOk&&[...agora.keys()].some(k=>NUV_ADMIN.has(k)&&NUV.h[k]!==nuvHash(agora.get(k).valor))) NUV.avisoAal='Suas alterações em regiões/Correção estão guardadas neste aparelho, mas só vão para o banco depois que você entrar com a verificação em 2 etapas (saia e entre de novo).'; for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
     for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
-    for(let i=0;i<sobe.length;i+=50){ const lote=sobe.slice(i,i+50); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r)); if(e2) throw e2; for(const r of lote) NUV.h[r.chave]=r._h; }
-    NUV.erro=''; NUV.ult=new Date(); nuvGuardar();
+    let recusados=[]; for(let i=0;i<sobe.length;i+=50){ const lote=sobe.slice(i,i+50); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r));
+      if(!e2){ for(const r of lote) NUV.h[r.chave]=r._h; continue; }
+      for(const r of lote){ const {_h,...x}=r; const {error:e3}=await NV.cli.from('hs_sync').upsert(x); if(e3) recusados.push([r.chave,e3]); else NUV.h[r.chave]=_h; } }
+    NUV.erro=NUV.avisoAal||''; NUV.avisoAal=''; if(recusados.length){ const adm=recusados.some(([k])=>NUV_ADMIN.has(k)); NUV.erro=adm?'Regiões/Correção NÃO foram salvas no banco: o administrador precisa entrar com a verificação em 2 etapas (saia e entre de novo). Suas alterações continuam guardadas neste aparelho.':('Não salvei '+recusados.length+' item(ns): '+nvTraduz(recusados[0][1].message)); toast(NUV.erro); } NUV.ult=new Date(); nuvGuardar();
     if(mudou){ try{ if(!$('#t-reentregas')||!$('#t-reentregas').hidden) reTela(); }catch(e){} try{ rpRender(); }catch(e){} try{ renderTudo(); }catch(e){} }
   }catch(e){ NUV.erro=/hs_sync|relation|does not exist|schema cache/i.test(e.message||'')?'Falta rodar o arquivo supabase-v6.7.0-sincronizar.sql no Supabase.':(e.message||'Falha ao sincronizar'); console.error('nuv',e); }
   finally{ NUV.rodando=false; nuvStatus(); } }
@@ -6216,7 +6221,7 @@ const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Obje
     salvar(); }finally{ NUV.aplicando=false; } }; }
 function nuvMesclar(l,r){ if(Array.isArray(l)&&Array.isArray(r)){ const ch=x=>x&&typeof x==='object'?(x.id||x.chave||JSON.stringify(x)):JSON.stringify(x); const m=new Map(); for(const x of l) m.set(ch(x),x); for(const x of r) m.set(ch(x),x); return [...m.values()]; }
   if(l&&r&&typeof l==='object'&&typeof r==='object'){ const o=Object.assign({},l); for(const k of Object.keys(r)) o[k]=(o[k]&&typeof o[k]==='object'&&r[k]&&typeof r[k]==='object')?nuvMesclar(o[k],r[k]):r[k]; return o; } return r; }
-{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')) return nuvMesclar(local,remoto); return remoto; }; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')) return nuvMesclar(remoto,local); return remoto; }; }
 { const NM=window.HS_NOMES, _ns=NM&&NM.salvar; if(typeof _ns==='function') NM.salvar=function(...a){ const r=_ns.apply(NM,a); nuvAgendar(); return r; }; }
 
 /* v6.9.0: chaves que só o admin grava + atualização ao vivo */
@@ -6344,7 +6349,8 @@ const MAN=[
    ['Cidades não reconhecidas','Diga qual é a cidade certa quando o nome veio abreviado no romaneio.'],
    ['Reentregas sem motivo ou sem base','Complete aqui para os relatórios ficarem certos.'],
    ['Backup do banco','O PC do administrador baixa sozinho uma cópia do banco toda semana. “💾 Backup do banco agora” faz na hora.'],
-   ['Restaurar','“♻ Restaurar backup” devolve ao banco tudo o que está no arquivo, sem apagar o que foi criado depois.']]},
+   ['Restaurar','“♻ Restaurar backup” devolve ao banco tudo o que está no arquivo, sem apagar o que foi criado depois.'],
+   ['Recuperar regiões','“🗺️ Recuperar regiões” traz de volta as regiões e bases da cópia geral do banco, se alguma edição se perder. Para salvar regiões no banco, o administrador precisa ter entrado com a verificação em 2 etapas; sem ela, as edições ficam guardadas no aparelho e o ☁ avisa.']]},
  {id:'usuarios',t:'Usuários e segurança',img:null,intro:'Acesso controlado por usuário e por papel.',
   passos:[['Criar usuário (administrador)','Na aba Usuários: nome, usuário (nome.sobrenome) e e-mail (para recuperar a senha). Escolha o papel: usuário ou administrador.'],
    ['Desligar acesso','Desative o usuário que saiu da empresa: ele perde o acesso na hora.'],
@@ -6742,6 +6748,15 @@ select option:checked,select option:hover{background:#0F5560!important;color:#ff
 select option:disabled{color:#8fa9ad!important}
 html[data-tema="escuro"] select,html[data-tema="escuro"] input,html[data-tema="escuro"] textarea{color-scheme:dark}
 html[data-tema="escuro"] input::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.8)}`; document.head.appendChild(st); })();
+/* v7.5.3: recuperar regiões da cópia geral (hs_estado) */
+async function geoRecuperar(){ if(!opOnline()||!nvAdmin()){ toast('Só o administrador, conectado.'); return; }
+  try{ const row=await nvCarregar(); const g=row&&row.dados&&row.dados.s&&row.dados.s.geo; if(!g){ toast('A cópia geral não tem regiões guardadas.'); return; }
+    if(nuvHash(g)===nuvHash(S.geo)){ toast('A cópia geral é igual às regiões atuais: não há o que recuperar por ela.'); return; }
+    const conta=x=>{ try{ return (x.listas||[]).reduce((t,l)=>t+((l.cidades||l.itens||[]).length||0),0); }catch(e){ return 0; } };
+    if(!await confirmar('Recuperar regiões',`A cópia geral de ${new Date(row.atualizado_em).toLocaleString('pt-BR')} (por ${esc(row.atualizado_por||'?')}) tem ${(g.listas||[]).length} regiões/bases e ${conta(g)} cidades. Hoje estão ${(S.geo&&S.geo.listas||[]).length} e ${conta(S.geo||{})}. Usar a cópia geral?`,'Recuperar')) return;
+    S.geo=g; try{ GEO.idx={}; GEO.cls={}; }catch(e){} salvar(); try{ renderTudo(); }catch(e){} toast('Regiões recuperadas da cópia geral. Confira no mapa.'); nuvAgendar();
+  }catch(e){ toast('Não consegui ler a cópia geral: '+nvTraduz(e.message)); } }
+{ const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const b=$('#aud-bt'); if(!b||$('#geo-rec')) return; b.insertAdjacentHTML('afterend','<button class="btn mini" id="geo-rec" type="button">🗺️ Recuperar regiões</button>'); $('#geo-rec').onclick=geoRecuperar; }; }
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
