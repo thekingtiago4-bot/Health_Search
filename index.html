@@ -4107,7 +4107,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.4', HS_DATA='04/11/2026';
+const HS_VERSAO='7.5.5', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5661,13 +5661,15 @@ function rbReavaliar(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
     <div class="linha"><label>Dia dos romaneios<input type="date" id="rb-dia"></label>
       <label class="soltar" id="rb-soltar" tabindex="0" style="flex:1;min-width:240px;margin:0"><div><b>Alimentar: arraste os PDFs</b><span>a data vem do nome do arquivo (ex.: 30-10-2026); sem data no nome, vale o dia escolhido</span></div><input type="file" id="rb-arq" accept="application/pdf,.pdf" multiple class="sr"></label></div>
     <div id="rb-status" role="status" class="sub" style="margin:0"></div>
-    <div class="linha"><label>Mês<input type="month" id="rb-mes"></label><label style="flex:1">Procurar no banco<input type="text" id="rb-q" placeholder="Pedido ou NF" inputmode="numeric" autocomplete="off"></label></div>
+    <div class="linha"><label>Mês<span style="display:flex;gap:4px"><button class="btn mini" type="button" id="rb-ant" title="Mês anterior">◀</button><input type="month" id="rb-mes"><button class="btn mini" type="button" id="rb-prox" title="Próximo mês">▶</button></span></label><label style="flex:1">Procurar no banco<input type="text" id="rb-q" placeholder="Pedido ou NF" inputmode="numeric" autocomplete="off"></label></div>
     <div id="rb-achou"></div><div id="rb-lista"></div></div>`);
   $('#rb-dia').value=diaMais(-1); $('#rb-mes').value=RB.mes;
   $('#rb-arq').onchange=e=>{ rbAlimentar([...e.target.files]); e.target.value=''; };
   const sz=$('#rb-soltar'); ['dragover','dragenter'].forEach(ev=>sz.addEventListener(ev,e=>{ e.preventDefault(); e.stopPropagation(); sz.classList.add('sobre'); })); ['dragleave','drop'].forEach(ev=>sz.addEventListener(ev,()=>sz.classList.remove('sobre')));
   sz.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); rbAlimentar([...e.dataTransfer.files]); });
   $('#rb-mes').onchange=()=>{ RB.mes=$('#rb-mes').value||hojeISO().slice(0,7); rbCarregarMes(); };
+  const rbPasso=d=>{ const [y,m]=(RB.mes||hojeISO().slice(0,7)).split('-').map(Number); const dt=new Date(y,m-1+d,1); RB.mes=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); $('#rb-mes').value=RB.mes; rbCarregarMes(); };
+  $('#rb-ant').onclick=()=>rbPasso(-1); $('#rb-prox').onclick=()=>rbPasso(1);
   $('#rb-q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); rbProcurar($('#rb-q').value); } });
   $('#rb-q').addEventListener('change',()=>rbProcurar($('#rb-q').value));
   $('#rb-lista').onclick=async e=>{ const dd=e.target.closest('[data-rb-del-dia]'); if(dd){ e.stopPropagation(); rbApagarDia(dd.dataset.rbDelDia); return; }
@@ -5704,7 +5706,7 @@ async function rbAlimentar(files){ const lista=files.filter(f=>/\.pdf$/i.test(f.
   const novas=rbReavaliar(); salvar(); try{ renderTudo(); }catch(e){}
   el.innerHTML=`✔ ${ok} romaneio(s) guardado(s) no banco${dias.size?' ('+[...dias].sort().map(fmtData).join(', ')+')':''}${erro?` · ${erro} com erro`:''}${novas?` · <b style="color:#AE3EC9">${novas} reentrega(s) encontrada(s) nos romaneios de hoje</b>`:''}.<br><small>${detalhe.join('<br>')}</small>`;
   if(novas) toast(`↻ ${novas} nota(s) de hoje já tinham vindo antes. Veja no mural e na Operação.`);
-  RB.mes=[...dias].sort().pop()?.slice(0,7)||RB.mes; $('#rb-mes').value=RB.mes; rbCarregarMes(); }
+  const novoMes=[...dias].sort().pop()?.slice(0,7)||RB.mes; if(novoMes!==RB.mes) toast('Mostrando '+novoMes.split('-').reverse().join('/')+' no banco. Os outros meses continuam guardados: use ◀ ▶ ao lado de Mês.'); RB.mes=novoMes; $('#rb-mes').value=RB.mes; rbCarregarMes(); }
 
 async function rbCarregarMes(){ const mes=RB.mes, ini=mes+'-01', fim=mes+'-31'; RB.dias={};
   const L=rbLocalLer(); for(const d in L) if(d.startsWith(mes)&&Object.keys(L[d]).length) RB.dias[d]=Object.values(L[d]).map(x=>({...x}));
@@ -6151,9 +6153,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#rx')){ e.stopP
 /* v6.6.1: aceitar a sugestão com um clique (antes, escolher a mesma opção já marcada não disparava nada) */
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-cor-aceita]'); if(!b) return; const sel=b.parentElement.querySelector('select[data-cor-ens]'); if(!sel) return; sel.value=b.dataset.corAceita; sel.dispatchEvent(new Event('change',{bubbles:true})); });
 /* ================= v6.7.0 · Banco online: reentregas e divergências sincronizadas (hs_sync) ================= */
-const NUV={chH:'healthSearch.nuvHash',chD:'healthSearch.nuvDesde',h:{},desde:'',ok:null,timer:null,rodando:false,aplicando:false,ult:null,erro:''};
+const NUV={sessao:new Set(),chH:'healthSearch.nuvHash',chD:'healthSearch.nuvDesde',h:{},desde:'',ok:null,timer:null,rodando:false,aplicando:false,ult:null,erro:''};
 try{ NUV.h=JSON.parse(localStorage.getItem(NUV.chH)||'{}'); NUV.desde=localStorage.getItem(NUV.chD)||''; }catch(e){}
-function nuvHash(v){ const s=JSON.stringify(v); let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36)+'.'+s.length; }
+function nuvHash(v){ const s=JSON.stringify(v)||''; let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36)+'.'+s.length; }
 function nuvGuardar(){ try{ localStorage.setItem(NUV.chH,JSON.stringify(NUV.h)); localStorage.setItem(NUV.chD,NUV.desde||''); }catch(e){} }
 /* tudo o que vai para o banco, com a sua chave */
 function nuvLocal(){ const m=new Map(); const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias||{})) if(ls&&ls.length) m.set('re:'+d,{tipo:'re',valor:ls});
@@ -6171,7 +6173,8 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     /* 1) baixa o que mudou no banco */
     const mk=()=>{ let q=NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').order('atualizado_em'); if(NUV.desde) q=q.gt('atualizado_em',new Date(new Date(NUV.desde).getTime()-5000).toISOString()); return q; };
     let data=[]; for(let pg=0;pg<50;pg++){ const {data:d1,error}=await mk().range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; } const loc=nuvLocal();
-    for(const r of data||[]){ const l=loc.get(r.chave), hr=r.apagado?'x':nuvHash(r.valor);
+    for(const r of data||[]){ if(!r||!r.chave) continue; const l=loc.get(r.chave), hr=r.apagado?'x':nuvHash(r.valor);
+      if(!l&&!r.apagado&&!NUV.sessao.has(r.chave)){ nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=hr; mudou=true; if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; }
       if(NUV.h[r.chave]===hr&&(!l||nuvHash(l.valor)===hr)) { if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; }
       const mexiAqui=l&&nuvHash(l.valor)!==NUV.h[r.chave];
       if(mexiAqui&&NUV.h[r.chave]&&NUV.h[r.chave]===hr){ if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; } /* só eu mudei: vale o daqui */
@@ -6184,11 +6187,11 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     if(nvAdmin()&&NUV.aal==null){ try{ const {data:al}=await NV.cli.auth.mfa.getAuthenticatorAssuranceLevel(); NUV.aal=al&&al.currentLevel||''; }catch(e){ NUV.aal=''; } }
     const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>!admOk&&NUV_ADMIN.has(k);
     if(nvAdmin()&&!admOk&&[...agora.keys()].some(k=>NUV_ADMIN.has(k)&&NUV.h[k]!==nuvHash(agora.get(k).valor))) NUV.avisoAal='Suas alterações em regiões/Correção estão guardadas neste aparelho, mas só vão para o banco depois que você entrar com a verificação em 2 etapas (saia e entre de novo).'; for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
-    for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
+    for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
     let recusados=[]; for(let i=0;i<sobe.length;i+=50){ const lote=sobe.slice(i,i+50); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r));
       if(!e2){ for(const r of lote) NUV.h[r.chave]=r._h; continue; }
       for(const r of lote){ const {_h,...x}=r; const {error:e3}=await NV.cli.from('hs_sync').upsert(x); if(e3) recusados.push([r.chave,e3]); else NUV.h[r.chave]=_h; } }
-    NUV.erro=NUV.avisoAal||''; NUV.avisoAal=''; if(recusados.length){ const adm=recusados.some(([k])=>NUV_ADMIN.has(k)); NUV.erro=adm?'Regiões/Correção NÃO foram salvas no banco: o administrador precisa entrar com a verificação em 2 etapas (saia e entre de novo). Suas alterações continuam guardadas neste aparelho.':('Não salvei '+recusados.length+' item(ns): '+nvTraduz(recusados[0][1].message)); toast(NUV.erro); } NUV.ult=new Date(); nuvGuardar();
+    NUV.erro=NUV.avisoAal||''; NUV.avisoAal=''; if(recusados.length){ const adm=recusados.some(([k])=>NUV_ADMIN.has(k)); NUV.erro=adm?'Regiões/Correção NÃO foram salvas no banco: o administrador precisa entrar com a verificação em 2 etapas (saia e entre de novo). Suas alterações continuam guardadas neste aparelho.':('Não salvei '+recusados.length+' item(ns): '+nvTraduz(recusados[0][1].message)); toast(NUV.erro); } NUV.ult=new Date(); for(const k of nuvLocal().keys()) NUV.sessao.add(k); nuvGuardar();
     if(mudou){ try{ if(!$('#t-reentregas')||!$('#t-reentregas').hidden) reTela(); }catch(e){} try{ rpRender(); }catch(e){} try{ renderTudo(); }catch(e){} }
   }catch(e){ NUV.erro=/hs_sync|relation|does not exist|schema cache/i.test(e.message||'')?'Falta rodar o arquivo supabase-v6.7.0-sincronizar.sql no Supabase.':(e.message||'Falha ao sincronizar'); console.error('nuv',e); }
   finally{ NUV.rodando=false; nuvStatus(); } }
@@ -6283,6 +6286,7 @@ const MAN=[
   passos:[['Nome do arquivo com a data','Salve o PDF com a data do dia no nome, no formato dd-mm. Exemplo: “Romaneio - MESA 04-11.pdf”. É essa data que o app usa.'],
    ['Carregar','Arraste os PDFs para a área de romaneios (ou clique e escolha). Pode vários de uma vez.'],
    ['Relatório XML do Softlog','Também pode carregar o “Relatório de notas fiscais para conferência” (.XML do Softlog): ele traz volumes, valor e cidade de cada nota.'],
+   ['Banco de romaneios','Os dias anteriores ficam guardados por mês. Use ◀ ▶ ao lado de “Mês” para ver outros meses: ao alimentar um dia de outro mês, o banco passa a mostrar aquele mês, mas nada some.'],
    ['Conferir o resumo','Depois de carregar, o app mostra quantas notas e volumes entraram e avisa reentregas detectadas — marque-as no pop-up.'],
    ['Origem por cor','001.001 = CAJ · Integração = MESA · 001.004 = DF · Giovanni ou “VIA MINAS” = Via Minas. Cada origem tem uma cor.']]},
  {id:'editar-rom',t:'Criar e editar romaneio',img:'editar',intro:'Para notas que apareceram depois (ex.: presas nas caixas): em vez de refazer o romaneio, acrescente as notas nele.',
@@ -6350,6 +6354,7 @@ const MAN=[
    ['Reentregas sem motivo ou sem base','Complete aqui para os relatórios ficarem certos.'],
    ['Backup do banco','O PC do administrador baixa sozinho uma cópia do banco toda semana. “💾 Backup do banco agora” faz na hora.'],
    ['Restaurar','“♻ Restaurar backup” devolve ao banco tudo o que está no arquivo, sem apagar o que foi criado depois.'],
+   ['Restaurar o que foi apagado','Na 🕵 Auditoria, romaneios, divergências e XMLs apagados têm o botão “♻ Restaurar”, que traz o item de volta para todos.'],
    ['Recuperar regiões','“🗺️ Recuperar regiões” traz de volta as regiões e bases da cópia geral do banco, se alguma edição se perder. Para salvar regiões no banco, o administrador precisa ter entrado com a verificação em 2 etapas; sem ela, as edições ficam guardadas no aparelho e o ☁ avisa.']]},
  {id:'usuarios',t:'Usuários e segurança',img:null,intro:'Acesso controlado por usuário e por papel.',
   passos:[['Criar usuário (administrador)','Na aba Usuários: nome, usuário (nome.sobrenome) e e-mail (para recuperar a senha). Escolha o papel: usuário ou administrador.'],
@@ -6447,6 +6452,7 @@ function audDesc(r){ const k=String(r.chave||''); const tp=k.split(':')[0], id=k
   if(r.tabela==='hs_bipagens') return 'Bipe pedido '+((r.antes||{}).ped||'')+' NF '+((r.antes||{}).nf||'');
   if(tp==='dv'){ const v=(r.depois&&r.depois.valor)||(r.antes&&r.antes.valor)||{}; return 'Divergência #'+String(v.n||'').padStart(3,'0')+' · '+(v.tipo||'')+' · '+(v.st||''); }
   return o||k; }
+function audPodeRestaurar(r){ return r.tabela==='hs_sync'&&/apag/.test(r.acao)&&r.antes&&r.antes.valor&&!r.antes.tamanho&&/^(rom|dv|xml|rel|re):/.test(r.chave||''); }
 function audDif(r){ if(r.resumo) return r.resumo; const a=r.antes&&r.antes.valor, d=r.depois&&r.depois.valor;
   if(Array.isArray(a)&&Array.isArray(d)){ const ka=new Set(a.map(x=>JSON.stringify(x))), kd=new Set(d.map(x=>JSON.stringify(x))); const add=d.filter(x=>!ka.has(JSON.stringify(x))), rem=a.filter(x=>!kd.has(JSON.stringify(x)));
     const lin=x=>[x.nf&&('NF '+x.nf),x.cli||x.dest,x.obs].filter(Boolean).join(' · '); return [add.length?'+ '+add.slice(0,3).map(lin).join(' | ')+(add.length>3?' …':''):'',rem.length?'− '+rem.slice(0,3).map(lin).join(' | ')+(rem.length>3?' …':''):''].filter(Boolean).join('  ')||'ajuste nas linhas'; }
@@ -6458,7 +6464,7 @@ function audRender(){ const f=$('#rx'); if(!f) return; const l=audFiltrada(); co
    <input class="bus" type="search" placeholder="Filtrar: usuário, NF, ação…" value="${esc(AUD.q)}" data-aud-q>
    <button class="btn mini" data-aud="csv">Excel (CSV)</button><button class="btn mini pri" data-rx="x">Fechar</button></header>
    <div class="corpo"><div class="kp"><div>Registros<b>${fmtN(l.length)}</b></div><div>Usuários<b>${us}</b></div><div>Exclusões<b>${ap}</b></div></div>
-   <table><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>O quê</th><th>Detalhe</th></tr></thead><tbody>${l.slice(0,2000).map(r=>`<tr><td style="white-space:nowrap">${new Date(r.em).toLocaleString('pt-BR')}</td><td>${esc(r.usuario||'')}</td><td style="color:${/apag/.test(r.acao)?'var(--no)':r.acao==='criou'?'var(--ok)':'inherit'};font-weight:700">${esc(r.acao)}</td><td>${esc(audDesc(r))}</td><td>${esc(audDif(r))}</td></tr>`).join('')||'<tr><td colspan="5">Nada no período.</td></tr>'}</tbody></table></div></div>`; }
+   <table><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>O quê</th><th>Detalhe</th></tr></thead><tbody>${l.slice(0,2000).map(r=>`<tr><td style="white-space:nowrap">${new Date(r.em).toLocaleString('pt-BR')}</td><td>${esc(r.usuario||'')}</td><td style="color:${/apag/.test(r.acao)?'var(--no)':r.acao==='criou'?'var(--ok)':'inherit'};font-weight:700">${esc(r.acao)}</td><td>${esc(audDesc(r))}</td><td>${esc(audDif(r))}${audPodeRestaurar(r)?` <button class="btn mini pri" data-aud-rest="${r.id}">♻ Restaurar</button>`:''}</td></tr>`).join('')||'<tr><td colspan="5">Nada no período.</td></tr>'}</tbody></table></div></div>`; }
 document.addEventListener('change',e=>{ const d=e.target.closest&&e.target.closest('[data-aud-dias]'); if(d){ AUD.dias=+d.value; audAbrir(); } });
 document.addEventListener('input',e=>{ const q=e.target.closest&&e.target.closest('[data-aud-q]'); if(!q) return; AUD.q=q.value; const p=q.selectionStart; audRender(); const n=$('#rx [data-aud-q]'); if(n){ n.focus(); n.setSelectionRange(p,p); } });
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-aud="csv"]'); if(!b) return; const l=audFiltrada();
@@ -6757,6 +6763,10 @@ async function geoRecuperar(){ if(!opOnline()||!nvAdmin()){ toast('Só o adminis
     S.geo=g; try{ GEO.idx={}; GEO.cls={}; }catch(e){} salvar(); try{ renderTudo(); }catch(e){} toast('Regiões recuperadas da cópia geral. Confira no mapa.'); nuvAgendar();
   }catch(e){ toast('Não consegui ler a cópia geral: '+nvTraduz(e.message)); } }
 { const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const b=$('#aud-bt'); if(!b||$('#geo-rec')) return; b.insertAdjacentHTML('afterend','<button class="btn mini" id="geo-rec" type="button">🗺️ Recuperar regiões</button>'); $('#geo-rec').onclick=geoRecuperar; }; }
+document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-aud-rest]'); if(!b) return; const r=(AUD.lista||[]).find(x=>String(x.id)===b.dataset.audRest); if(!r) return;
+  if(!await confirmar('Restaurar',`Trazer de volta: ${esc(audDesc(r))}?`,'Restaurar')) return;
+  try{ const {error}=await NV.cli.from('hs_sync').upsert({chave:r.chave,tipo:r.chave.split(':')[0],valor:r.antes.valor,apagado:false,atualizado_por:opEu()+' (restauração)'}); if(error) throw error;
+    NUV.sessao.delete(r.chave); delete NUV.h[r.chave]; await nuvSinc(); try{ renderTudo(); }catch(er){} toast('Restaurado: '+audDesc(r)); audAbrir(); }catch(er){ toast('Não restaurei: '+nvTraduz(er.message)); } },true);
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
