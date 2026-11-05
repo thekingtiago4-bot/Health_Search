@@ -4111,7 +4111,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.6.0', HS_DATA='04/11/2026';
+const HS_VERSAO='7.6.1', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4685,7 +4685,7 @@ function rtProjecao(ops){ const notas=[], carros=[]; for(const op of ops){ for(c
 function rtPrint(titulo,html,paisagem){ let p=$('#rt-print'); if(!p){ p=document.createElement('div'); p.id='rt-print'; document.body.appendChild(p); }
   p.innerHTML=`<style>@page{size:A4 ${paisagem?'landscape':'portrait'};margin:10mm}</style><h1>${esc(titulo)}</h1>${html}<p class="rodape">Health Search · Relatórios Precisos · impresso em ${new Date().toLocaleString('pt-BR')}</p>`;
   const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal rt-previa"><div class="rt-previa-topo"><b>Prévia · ${esc(titulo)}</b><span><button class="btn" data-a="x" type="button">Fechar</button> <button class="btn pri" data-a="ok" type="button">Imprimir / salvar PDF</button></span></div><div class="rt-folha${paisagem?' pais':''}">${p.innerHTML}</div></div>`;
-  document.body.appendChild(f); f.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b) return; f.remove(); if(b.dataset.a==='ok'){ document.body.classList.add('rt-imprimindo'); setTimeout(()=>{ window.print(); document.body.classList.remove('rt-imprimindo'); },60); } }); }
+  document.body.appendChild(f); f.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b) return; f.remove(); const limpa=()=>{ const st=p.querySelector('style'); if(st) st.remove(); }; if(b.dataset.a==='ok'){ document.body.classList.add('rt-imprimindo'); setTimeout(()=>{ window.print(); document.body.classList.remove('rt-imprimindo'); limpa(); },60); } else limpa(); }); }
 function rtFolha(modelo,ops){ const op=ops[0], {notas,carros}=rtProjecao(ops), tit=ops.map(o=>o.rotulo).join(' + ')+' · '+fmtData(op.dia), tbl=(cab,linhas,cls='')=>`<table class="${cls}"><thead><tr>${cab.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.join('')}</tbody></table>`;
   const tt=rtTotais(notas);
   if(modelo==='rotas'){ const cols=[...carros.map(c=>({c,ns:notas.filter(n=>n.carro===c.id)})),{c:{nome:'Sem carro',cor:'#868E96'},ns:notas.filter(n=>!n.carro)}].filter(x=>x.ns.length);
@@ -6418,7 +6418,7 @@ const MAN_CSS=`
 .man-passos li::before{content:counter(p);grid-row:span 2;width:30px;height:30px;border-radius:50%;background:#E6F2F2;color:#0F5560;font-weight:800;display:grid;place-items:center}.man-passos b{color:#0E3B43}.man-passos span{color:#3c5256;line-height:1.5}
 .man-rod{display:none}.man-fim dl{display:grid;grid-template-columns:150px 1fr;gap:8px 16px}.man-fim dt{font-weight:700;color:#0E3B43}.man-dir{margin-top:30px;font-size:13px;color:#6b8285}
 @media (max-width:700px){.man-sec,.man-sum{padding:26px 18px}.man-capa{min-height:480px}}
-@media print{ @page{size:A4;margin:14mm 12mm} body{background:#fff} #man-doc{box-shadow:none;border-radius:0;max-width:none}
+@media print{ body{background:#fff} #man-doc{box-shadow:none;border-radius:0;max-width:none}
  .man-capa{min-height:0;height:255mm;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;break-after:page} .man-sum{break-after:page}
  .man-sec{break-before:page;border:0;padding:0} .man-sec figure,.man-passos li{break-inside:avoid}
  .man-cab span,.man-passos li::before{-webkit-print-color-adjust:exact;print-color-adjust:exact} .man-rod{display:block;text-align:right;font-size:11px;color:#8aa;margin-top:16px} }}`;
@@ -6433,7 +6433,7 @@ const MAN_CSS=`
   const _ir=irPara; irPara=function(t){ _ir(t); if(t==='manual'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-manual'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); montar(); } };
   document.querySelector('.nav [data-tela="manual"]').addEventListener('click',()=>irPara('manual'));
   $('#man-pdf').onclick=()=>{ montar(); const w=window.open('','_blank'); if(!w){ toast('O navegador bloqueou a janela. Permita pop-ups para este site.'); return; }
-    w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Manual Health Search ${typeof HS_VERSAO!=='undefined'?HS_VERSAO:''}</title><style>body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#eef3f3}${MAN_CSS.replace(/#t-manual [^{]*\{[^}]*\}/g,'')}</style></head><body><div id="man-doc">${$('#man-doc').innerHTML}</div><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`); w.document.close(); };
+    w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Manual Health Search ${typeof HS_VERSAO!=='undefined'?HS_VERSAO:''}</title><style>@page{size:A4 portrait;margin:14mm 12mm}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#eef3f3}${MAN_CSS.replace(/#t-manual [^{]*\{[^}]*\}/g,'')}</style></head><body><div id="man-doc">${$('#man-doc').innerHTML}</div><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`); w.document.close(); };
   $('#man-comp').onclick=async()=>{ const url=location.origin+location.pathname+'#manual'; const d={title:'Manual do Health Search',text:'Manual do usuário do Health Search: passo a passo de todas as telas.',url};
     try{ if(navigator.share){ await navigator.share(d); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
     try{ await navigator.clipboard.writeText(url); toast('Link do manual copiado. Para mandar o arquivo, use “Baixar PDF” e anexe.'); }catch(e){ toast(url); } };
