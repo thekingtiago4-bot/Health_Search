@@ -4107,7 +4107,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.5', HS_DATA='04/11/2026';
+const HS_VERSAO='7.5.6', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5959,8 +5959,7 @@ const OP_ESPERA=500;
 function opDiaRom(r){ return rbDataDoNome(r.arquivo||'')||String(r.importadoEm||'').slice(0,10); }
 function opRelDia(){ const R=S.opRel||{}; return R[hojeISO()]||{}; }
 function opRomsDoDia(){ const hoje=hojeISO(); const out=(S.romaneios||[]).filter(r=>opDiaRom(r)===hoje);
-  const rel=Object.values(opRelDia()); if(rel.length) out.push({id:'rel-'+hoje,numero:'XML',arquivo:'relatório XML',rows:rel.map(n=>({nf:n.nf,ped:'',dest:n.dest,cid:n.cid,vol:String(n.vol||''),valor:n.valor?String(n.valor).replace('.',','):''}))});
-  return out; }
+  return out; } /* v7.5.6: o relatório XML só completa dados dos romaneios; não conta como romaneio */
 opIndice=function(){ const ped=new Map(), nf=new Map();
   for(const r of opRomsDoDia()) for(const x of r.rows||[]){ const it={r,x};
     const p=opK(x.ped), n=opK(x.nf); if(p){ if(!ped.has(p)) ped.set(p,[]); ped.get(p).push(it); } if(n){ if(!nf.has(n)) nf.set(n,[]); nf.get(n).push(it); } }
@@ -5980,13 +5979,23 @@ function relLer(txt){ const d=new DOMParser().parseFromString(txt,'text/xml'); c
   const out=[]; for(const r of rows.slice(h+1)){ const nf=opK(r[c.nf]); if(!nf) continue; const num=i=>i<0?0:+String(r[i]||'').replace(',','.')||0;
     out.push({nf,rem:r[c.rem]||'',doc:r[c.doc]||'',dest:r[c.dest]||'',cep:r[c.cep]||'',cid:r[c.cid]||'',uf:r[c.uf]||'',vol:num(c.vol),peso:num(c.peso),valor:num(c.valor)||num(c.vp),chave:r[c.chave]||''}); }
   return out; }
+function relEnriquecer(){ const idx=new Map(); for(const d of Object.keys(S.opRel||{}).sort()) for(const [nf,n] of Object.entries(S.opRel[d])) idx.set(opK(nf),n);
+  let notas=0, campos=0; const vazio=v=>v==null||String(v).trim()===''||String(v).trim()==='0'||String(v).trim()==='0,00';
+  for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const n=idx.get(opK(x.nf)); if(!n) continue; let mud=0;
+    if(vazio(x.valor)&&n.valor){ x.valor=(+n.valor).toFixed(2).replace('.',','); mud++; }
+    if(vazio(x.vol)&&n.vol){ x.vol=String(n.vol); mud++; }
+    if(vazio(x.peso)&&n.peso){ x.peso=String(n.peso).replace('.',','); mud++; }
+    if(vazio(x.cid)&&n.cid){ x.cid=n.cid; mud++; } if(vazio(x.uf)&&n.uf){ x.uf=n.uf; mud++; }
+    if(vazio(x.dest)&&n.dest){ x.dest=n.dest; mud++; } if(vazio(x.chave)&&n.chave){ x.chave=n.chave; mud++; } if(vazio(x.rem)&&n.rem){ x.rem=n.rem; mud++; }
+    if(mud){ notas++; campos+=mud; x._xml=true; } }
+  return {notas,campos,naoEsta:[...idx.keys()].filter(k=>!(S.romaneios||[]).some(r=>(r.rows||[]).some(x=>opK(x.nf)===k))).length}; }
 async function relImportar(files){ let ok=0, er=0; const dia=hojeISO(); S.opRel=S.opRel||{}; const D=S.opRel[dia]=S.opRel[dia]||{};
   for(const f of files){ try{ const txt=new TextDecoder('iso-8859-1').decode(await f.arrayBuffer()); for(const n of relLer(txt)){ D[n.nf]=n; ok++; } }catch(e){ er++; toast(f.name+': '+e.message); } }
   for(const k of Object.keys(S.opRel)) if(k<new Date(Date.now()-10*864e5).toISOString().slice(0,10)) delete S.opRel[k];
-  salvar(); if(ok) toast(`Relatório XML: ${ok} nota(s) entraram na conferência de hoje (com volumes, valor e cidade).`); if(typeof opRender==='function') try{ opRender(); }catch(e){} return ok; }
+  const en=relEnriquecer(); salvar(); try{ renderTudo(); }catch(e){} if(ok) toast(`Relatório XML lido (${ok} notas): ${en.notas} nota(s) dos romaneios completadas (${en.campos} dado(s): valor, volumes, peso, cidade…).${en.naoEsta?' '+en.naoEsta+' nota(s) do XML não estão em nenhum romaneio carregado e foram ignoradas.':''}`); if(typeof opRender==='function') try{ opRender(); }catch(e){} return ok; }
 async function relSeparar(files){ const rel=[], resto=[]; for(const f of files){ if(/\.xml$/i.test(f.name)){ const t=new TextDecoder('iso-8859-1').decode(await f.slice(0,4000).arrayBuffer()); if(/urn:schemas-microsoft-com:office:spreadsheet/.test(t)){ rel.push(f); continue; } } resto.push(f); } return {rel,resto}; }
 { const _xi=opXmlImportar; opXmlImportar=async function(files){ const {rel,resto}=await relSeparar([...files]); if(rel.length) await relImportar(rel); if(resto.length) return _xi(resto); }; }
-{ const _imp=importar; importar=async function(files){ const {rel,resto}=await relSeparar([...files]); if(rel.length) await relImportar(rel); if(resto.length||!rel.length) return _imp(resto); };
+{ const _imp=importar; importar=async function(files){ const {rel,resto}=await relSeparar([...files]); let r; if(resto.length||!rel.length){ r=await _imp(resto); const en=relEnriquecer(); if(en.notas){ salvar(); try{ renderTudo(); }catch(e){} } } if(rel.length) await relImportar(rel); return r; };
   try{ const a=$('#arq'); if(a&&!/xml/.test(a.accept||'')) a.accept=(a.accept?a.accept+',':'')+'.xml'; }catch(e){} }
 { const _ov=opValor; opValor=function(ped,nf,x){ const v=_ov(ped,nf,x); if(v) return v; const n=nf&&opRelDia()[opK(nf)]; return n?n.valor:0; }; }
 
@@ -6285,7 +6294,7 @@ const MAN=[
  {id:'romaneios',t:'Romaneios',img:'romaneios',intro:'Carregue os romaneios do dia para que busca e conferência funcionem.',
   passos:[['Nome do arquivo com a data','Salve o PDF com a data do dia no nome, no formato dd-mm. Exemplo: “Romaneio - MESA 04-11.pdf”. É essa data que o app usa.'],
    ['Carregar','Arraste os PDFs para a área de romaneios (ou clique e escolha). Pode vários de uma vez.'],
-   ['Relatório XML do Softlog','Também pode carregar o “Relatório de notas fiscais para conferência” (.XML do Softlog): ele traz volumes, valor e cidade de cada nota.'],
+   ['Relatório XML do Softlog','O “Relatório de notas fiscais para conferência” (.XML do Softlog) serve só para COMPLETAR os romaneios: arraste junto com os PDFs (antes ou depois) e o app preenche o que falta em cada nota — valor, volumes, peso, cidade, cliente e chave. Ele não vira romaneio: nota que está só no XML não conta como “no romaneio”.'],
    ['Banco de romaneios','Os dias anteriores ficam guardados por mês. Use ◀ ▶ ao lado de “Mês” para ver outros meses: ao alimentar um dia de outro mês, o banco passa a mostrar aquele mês, mas nada some.'],
    ['Conferir o resumo','Depois de carregar, o app mostra quantas notas e volumes entraram e avisa reentregas detectadas — marque-as no pop-up.'],
    ['Origem por cor','001.001 = CAJ · Integração = MESA · 001.004 = DF · Giovanni ou “VIA MINAS” = Via Minas. Cada origem tem uma cor.']]},
