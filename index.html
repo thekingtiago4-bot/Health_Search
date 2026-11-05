@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.7.6', HS_DATA='04/11/2026';
+const HS_VERSAO='7.7.7', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6867,10 +6867,13 @@ document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.
 { const _rv=renderViaMinas; renderViaMinas=function(){ _rv(); const a=$('#vm-falta'); if(!a) return; let lista=[]; try{ lista=cidadesMG(); }catch(e){}
   const temChegou=Object.keys(S.vmChegou||{}).length>0; const falta=lista.filter(c=>!c.pronta);
   const on=temChegou&&lista.length>0; a.hidden=!on; $('#t-viaminas').classList.toggle('vm-com-falta',on); if(!on) return;
+  requestAnimationFrame(vmFaltaAlinha);
   $('#vm-falta-n').textContent=falta.length;
   $('#vm-falta-l').innerHTML=falta.length?falta.map(c=>`<button type="button" class="vm-cid" data-vm="${esc(c.k)}" aria-pressed="${c.k===VM_SEL}"><i class="pt esp"></i><span class="nm">${esc(c.nome)}</span><span class="n">${fmtN(c.cont.notas)} nota(s)</span><span class="bs">${chipsBase(Object.fromEntries(c.fora.map(x=>[x.rom.base||'?',contar(x.linhas.map(h=>h.row)).notas])))}</span></button>`).join('')
     :'<div class="vazio-lista" style="color:var(--ok)">Tudo chegou. Pode soltar todas as cidades.</div>'; }; }
 
+function vmFaltaAlinha(){ const a=$('#vm-falta'), g=document.querySelector('#t-viaminas .vm-grid'), sec=$('#t-viaminas'); if(!a||!g||a.hidden||sec.hidden) return; a.style.marginTop='0px'; if(getComputedStyle(sec).display!=='grid') return; a.style.marginTop=Math.max(0,g.getBoundingClientRect().top-a.getBoundingClientRect().top)+'px'; }
+addEventListener('resize',()=>vmFaltaAlinha());
 /* ================= v7.7.2 · Via Minas: previsão de chegada, aviso quando tudo chega, copiar pendentes para WhatsApp ================= */
 function vmFaltaCids(){ try{ return cidadesMG().filter(c=>!c.pronta); }catch(e){ return []; } }
 function vmPrevCid(c){ const hs=c.fora.map(x=>(S.vmPrev||{})[x.rom.id]).filter(Boolean).sort(); return hs.length?hs[hs.length-1]:''; }
