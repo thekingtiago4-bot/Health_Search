@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.7.7', HS_DATA='04/11/2026';
+const HS_VERSAO='7.8.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4852,7 +4852,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
 #op-cam .bar{position:absolute;left:0;right:0;bottom:0;padding:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;background:linear-gradient(transparent,rgba(0,0,0,.75))}
 #op-cam .bar button{font-size:1rem}
 #op-cam .msg{position:absolute;left:12px;right:12px;top:12px;color:#fff;border-radius:12px;padding:12px 14px;font-weight:600;background:rgba(0,0,0,.55)}
-#op-cam .msg b{display:block;font-size:1.2rem}
+#op-cam .msg b{display:block;font-size:1.2rem}#op-cam .msg,#op-res{cursor:pointer}#op-cam .vtot{position:absolute;left:12px;right:12px;bottom:84px;border-radius:14px;padding:10px 16px;color:#fff;display:flex;align-items:baseline;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.5);z-index:3}#op-cam .vtot span{font-weight:700;letter-spacing:.08em;font-size:13px;opacity:.9}#op-cam .vtot b{font-size:2.6rem;line-height:1;font-weight:800}#op-cam .vtot small{margin-left:auto;font-weight:700;font-size:14px}
 @media (max-width:640px){.op-tab .m-oc{display:none}}
 #op-cam .op-camleg{position:absolute;left:10px;right:10px;bottom:76px;max-height:30vh;overflow:auto;color:#fff;background:rgba(0,0,0,.6);border-radius:12px;padding:8px 10px;font-size:.82rem;line-height:1.35}
 #op-cam .op-camleg b{font-weight:700}#op-cam .op-camleg .pt,.op-leg .pt{display:inline-block!important;width:10px;height:10px;border-radius:50%;margin:0 4px 0 8px;vertical-align:-1px}
@@ -4937,11 +4937,16 @@ function opLer(textos,origem){
   const it=achados[0]||null, x=it&&it.x;
   const ped=prin.ped||(x&&opK(x.ped))||(prin.tipo==='numero'&&!x?prin.num:'');
   const nf=prin.nf||(x&&opK(x.nf))||'';
-  const vol=prin.vol||null, tot=prin.tot||(x&&volNum(x.vol))||null;
-  const chave=vol?('P'+ped+'#'+vol):('N'+(nf||ped));
+  let vol=prin.vol||null, tot=prin.tot||(x&&volNum(x.vol))||null;
+  let chave=vol?('P'+ped+'#'+vol):('N'+(nf||ped));
+  /* v7.8.0: mesma nota/pedido bipado de novo sem número de volume = próxima caixa (1/6, 2/6…), não duplicidade */
+  let cont=false;
+  if(x&&!vol){ const tt=achados.reduce((t,a)=>t+(volNum(a.x.vol)||0),0)||tot||1; tot=tt;
+    const ja=OP.bipes.filter(b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(!ped&&nf&&b.nf===nf))).length;
+    if(ja>0&&ja<tt){ vol=ja+1; chave='C'+(ped||nf)+'#'+vol; cont=true; } else if(ja===0){ vol=1; } }
   let status;
   if(!x) status='fora';
-  else if(OP.bipes.some(b=>b.chave===chave&&b.status!=='fora')) status='dup';
+  else if(!cont&&OP.bipes.some(b=>(b.chave===chave||(b.chave==='C'+(ped||nf)+'#'+tot&&!prin.vol))&&b.status!=='fora')) status='dup';
   else if(!nf) status='semnota';
   else status='ok';
   const b={local_id:Date.now().toString(36)+Math.random().toString(36).slice(2,8),dia:OP.dia||hojeISO(),codigo:prin.codigo,tipo:prin.tipo+(origem?':'+origem:''),ped,nf,vol,tot,pallet,
@@ -4949,7 +4954,7 @@ function opLer(textos,origem){
   if(b.dia!==hojeISO()){ b.dia=hojeISO(); if(OP.dia!==b.dia){ $('#op-dia').value=b.dia; OP.dia=b.dia; OP.bipes=opLocalLer(b.dia); } }
   OP.bipes.unshift(b); opLocalGravar(); opEnviar(b);
   const conf=x?opContagem(ped,nf):null; const ct=opConteudo(ped,nf);
-  const vv=b.valor||0; opMostrar({_ped:ped,_nf:nf,_dest:b.dest,_cid:b.cid,status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',!opPorVol()?(x?`conte ${volNum(x.vol)||tot||'?'} volume(s) físico(s)`:''):vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
+  const vv=b.valor||0; OP.ultimo=b; opMostrar({_vk:status==='fora'?null:(status==='dup'?tot:vol),_vt:tot,_b:b,_ped:ped,_nf:nf,_dest:b.dest,_cid:b.cid,status,titulo:OP_ST[status].t+(ped?' · Pedido '+ped:'')+(vv>=opAlto()?' · 💰 ALTO VALOR '+opMoeda(vv):vv?' · '+opMoeda(vv):''),linha:status==='fora'?'Não está em nenhum romaneio carregado. Separe a caixa.':[nf?'NF '+nf:'sem NF no romaneio',!opPorVol()?(x?(status==='dup'&&!prin.vol?`todas as ${tot} caixa(s) já bipadas`:vol&&tot?`caixa ${vol} de ${tot}`:`conte ${volNum(x.vol)||tot||'?'} volume(s) físico(s)`):''):vol&&tot?`volume ${vol} de ${tot}`:(conf?`${conf.lidos} de ${conf.esp} volume(s)`:''),b.romaneio?'romaneio '+b.romaneio:'',b.dest].filter(Boolean).join(' · ')+(ct?' — '+ct.texto+(ct.aviso?' · '+ct.aviso:''):(x?' — sem XML: conteúdo desconhecido':''))});
   opRender(); }
 
 function opContagem(ped,nf){ const rows=[]; const idx=opIndice(); for(const it of (ped&&idx.ped.get(ped))||(nf&&idx.nf.get(nf))||[]) rows.push(it.x);
@@ -5002,6 +5007,8 @@ function opSom(st){ try{ OP_AC=OP_AC||new (window.AudioContext||window.webkitAud
   let t=ac.currentTime; for(const [f,d] of seq){ if(f){ const o=ac.createOscillator(), g=ac.createGain(); o.type=st==='fora'?'sawtooth':'square'; o.frequency.value=f; g.gain.setValueAtTime(.18,t); g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t+d); } t+=d; } }catch(e){}
   try{ if(navigator.vibrate) navigator.vibrate({ok:60,semnota:[80,60,80],fora:[300],dup:[50,40,50,40,50],reent:[120,60,120,60,120]}[st]||40); }catch(e){} }
 function opMostrar(r){ opSom(r.status); const cor=(OP_ST[r.status]||{c:'#555'}).c;
+  try{ let tb=document.querySelector('#op-cam .vtot'); const cam=document.querySelector('#op-cam'); if(cam&&!tb){ cam.insertAdjacentHTML('beforeend','<div class="vtot" hidden></div>'); tb=cam.querySelector('.vtot'); }
+    if(tb){ if(r._vt){ const k=r._vk||0, t=r._vt; tb.hidden=false; tb.style.background=k>=t?'var(--ok)':cor; tb.innerHTML=`<span>VOLUMES</span><b>${k?fmtN(k)+' / ':''}${fmtN(t)}</b><small>${k>=t?'pedido completo ✓':'faltam '+fmtN(t-k)}</small>`; } else tb.hidden=true; } }catch(e){}
   const el=$('#op-res'); el.style.background=cor; el.style.color='#fff'; el.innerHTML=`<b>${esc(r.titulo)}</b><small>${esc(r.linha||'')}</small>`; el.classList.add('pisca'); setTimeout(()=>el.classList.remove('pisca'),160);
   const m=document.querySelector('#op-cam .msg'); if(m){ m.style.background=cor; m.innerHTML=`<b>${esc(r.titulo)}</b>${esc(r.linha||'')}`; const mi=document.querySelector('#op-cam .mira'); if(mi){ mi.style.borderColor=cor; setTimeout(()=>mi.style.borderColor='',700); } } }
 
@@ -6319,6 +6326,7 @@ const MAN=[
    ['Cadastros (motoristas e motivos)','Menu Ferramentas → Cadastros. Motoristas: cadastre o nome e, em apelidos, outras grafias (ALEXANDR, ALE) e o nome que vem no romaneio; use “Juntar com…” para unir duas pessoas iguais. Nomes digitados nas reentregas que não estão no cadastro aparecem embaixo para cadastrar ou marcar como apelido. Motivos: deixe só os que vocês usam, apague os outros e ordene com ▲. Nas Reentregas há a coluna Motorista (com sugestões); se vazia, vale o nome depois do “ - ” na observação. No ranking de motoristas aparece a taxa: reentregas de X notas levadas (%), quando o nome do romaneio está nos apelidos.'],
    ['Via Minas · Falta Chegar','Ao marcar “Chegou” numa transferência, aparece à direita a lista “Falta Chegar” só com as cidades que ainda esperam caminhão (e de qual base). Toque numa cidade para ver os romaneios dela. Quando tudo chega, a lista avisa que pode soltar todas.'],
    ['Via Minas · previsão e aviso','Em cada transferência que ainda não chegou há o campo “chega às” (hora prevista); a hora aparece na lista Falta Chegar. Quando a última transferência chega, o app toca um som e mostra um aviso (e notificação, se permitida). No topo da Falta Chegar, “📋 WhatsApp” copia a lista das cidades pendentes para mandar ao motorista.'],
+   ['Bipar caixa a caixa','Na câmera, bipar de novo a mesma nota ou pedido (sem número de volume na etiqueta) conta como a próxima caixa: 1/6, 2/6… Só vira “Duplicado” depois que todas as caixas foram bipadas. Embaixo da tela aparece em destaque VOLUMES lidos / total e quantos faltam (verde quando completa). Toque na faixa de informação do bipe (em cima) para abrir a ficha completa: cliente, cidade, valor, volumes, pedido, NF, romaneio, motorista, conteúdo e chave.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -6895,6 +6903,20 @@ document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.
   if(on&&antes>0&&depois===0){ try{ opSom('ok'); setTimeout(()=>opSom('ok'),250); setTimeout(()=>opSom('ok'),500); }catch(e){}
     try{ if('Notification' in window){ const n=()=>new Notification('Via Minas: tudo chegou',{body:'Todas as transferências chegaram. Pode soltar a rota.'}); if(Notification.permission==='granted') n(); else if(Notification.permission!=='denied') Notification.requestPermission().then(p=>{ if(p==='granted') n(); }); } }catch(e){}
     setTimeout(()=>toast('✅ Todas as transferências chegaram — pode soltar a rota do Via Minas.'),400); } }; }
+
+/* ================= v7.8.0 · Toque na informação do bipe → ficha completa da nota ================= */
+function opFicha(b){ if(!b){ toast('Bipe uma etiqueta primeiro.'); return; } const idx=opIndice(); const its=(b.ped&&idx.ped.get(b.ped))||(b.nf&&idx.nf.get(b.nf))||[]; const x=(its[0]||{}).x||{}; const r=(its[0]||{}).r||{};
+  const ct=opConteudo(b.ped,b.nf); const tot=its.reduce((t,a)=>t+(volNum(a.x.vol)||0),0)||b.tot||0;
+  const lidos=OP.bipes.filter(z=>z.status!=='fora'&&z.status!=='dup'&&((b.ped&&z.ped===b.ped)||(!b.ped&&b.nf&&z.nf===b.nf))).length;
+  const vt=its.reduce((t,a)=>t+(+String(a.x.valor||'').replace(/\./g,'').replace(',','.')||0),0)||b.valor||0;
+  const L=(k,v)=>v||v===0?`<div style="display:grid;grid-template-columns:130px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--linha)"><span style="color:var(--mudo)">${k}</span><b style="word-break:break-word">${v}</b></div>`:'';
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:560px;width:calc(100% - 24px);max-height:90vh;overflow:auto"><h2 style="margin-top:0">${esc(OP_ST[b.status]?OP_ST[b.status].t:'Nota')}${b.nf?' · NF '+esc(b.nf):''}</h2>
+   <div style="display:flex;gap:10px;margin:6px 0 12px"><div style="flex:1;background:var(--sup);border-radius:12px;padding:10px 12px"><small style="color:var(--mudo)">VOLUMES</small><div style="font-size:2rem;font-weight:800">${fmtN(lidos)} / ${fmtN(tot||'?')}</div></div><div style="flex:1;background:var(--sup);border-radius:12px;padding:10px 12px"><small style="color:var(--mudo)">VALOR</small><div style="font-size:1.6rem;font-weight:800">${vt?opMoeda(vt):'—'}</div></div></div>
+   ${L('Cliente',esc(x.dest||b.dest||''))}${L('Cidade',esc([x.cid||b.cid,x.uf].filter(Boolean).join('/')))}${L('Endereço',esc(x.end||x.endereco||''))}${L('Pedido',esc(b.ped||x.ped||''))}${L('NF',esc(b.nf||x.nf||''))}${L('Notas do pedido',its.length>1?esc(its.map(a=>a.x.nf).join(', ')):'')}${L('Romaneio',esc([r.numero||b.romaneio,r.base].filter(Boolean).join(' · ')))}${L('Motorista',esc(r.motorista||''))}${L('Remetente',esc(x.rem||''))}${L('Peso',x.peso?esc(String(x.peso))+' kg':'')}${L('Conteúdo',ct?esc(ct.texto+(ct.aviso?' · '+ct.aviso:'')):'')}${L('Chave',esc(x.chave||''))}${L('Bipado',esc(new Date(b.criado_em).toLocaleString('pt-BR'))+' por '+esc(b.usuario||''))}
+   <div style="text-align:right;margin-top:12px"><button class="btn pri" data-a="x">Fechar</button></div></div>`;
+  f.addEventListener('click',e=>{ if(e.target===f||e.target.closest('[data-a="x"]')) f.remove(); }); document.body.appendChild(f); }
+document.addEventListener('click',e=>{ const t=e.target.closest&&e.target.closest('#op-cam .msg,#op-res'); if(!t) return; if(!OP.ultimo) return; e.stopPropagation(); opFicha(OP.ultimo); },true);
 
 /* ---------- início ---------- */
 (async function(){
