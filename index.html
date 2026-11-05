@@ -3849,7 +3849,7 @@ Store.salvar=async function(obj){ if(this.modo!=='nuvem') return _stSalvar(obj);
 
 /* outro usuário salvou: recarrega na hora */
 function nvTempoReal(){ if(NV.canal) return; NV.canal=NV.cli.channel('hs-estado').on('postgres_changes',{event:'*',schema:'public',table:'hs_estado'},async p=>{
-  if(!p.new||p.new.origem===NV.origem||NV.salvando) return; if(typeof NUV!=='undefined'&&NUV.ult&&!NUV.erro) return; try{ const row=await nvCarregar(); if(!row||!row.dados) return; NV.versao=row.atualizado_em;
+  if(!p.new||p.new.origem===NV.origem||NV.salvando) return; if(typeof NUV!=='undefined') return; /* v7.5.4: hs_sync cuida de tudo */ try{ const row=await nvCarregar(); if(!row||!row.dados) return; NV.versao=row.atualizado_em;
     S=Object.assign(S,row.dados.s||{}); nvAplicarRE(row.dados.re); montarDicionario(); renderTudo(); if(!$('#t-reentregas').hidden) reTela(); toast('Atualizado por '+(row.atualizado_por||'outro usuário')+'.'); }catch(e){} }).subscribe(); }
 
 function nvSelo(t,erro){ const e=$('#r-salvo'); if(e){ e.textContent=t; e.parentElement.classList.toggle('nv-erro',!!erro); } }
@@ -4107,7 +4107,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.3', HS_DATA='04/11/2026';
+const HS_VERSAO='7.5.4', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6221,7 +6221,7 @@ const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Obje
     salvar(); }finally{ NUV.aplicando=false; } }; }
 function nuvMesclar(l,r){ if(Array.isArray(l)&&Array.isArray(r)){ const ch=x=>x&&typeof x==='object'?(x.id||x.chave||JSON.stringify(x)):JSON.stringify(x); const m=new Map(); for(const x of l) m.set(ch(x),x); for(const x of r) m.set(ch(x),x); return [...m.values()]; }
   if(l&&r&&typeof l==='object'&&typeof r==='object'){ const o=Object.assign({},l); for(const k of Object.keys(r)) o[k]=(o[k]&&typeof o[k]==='object'&&r[k]&&typeof r[k]==='object')?nuvMesclar(o[k],r[k]):r[k]; return o; } return r; }
-{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')) return nuvMesclar(remoto,local); return remoto; }; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')){ const tl=local&&local.em, tr=remoto&&remoto.em; if(tl&&tr) return String(tl)>String(tr)?local:remoto; return nuvMesclar(local,remoto); } return remoto; }; }
 { const NM=window.HS_NOMES, _ns=NM&&NM.salvar; if(typeof _ns==='function') NM.salvar=function(...a){ const r=_ns.apply(NM,a); nuvAgendar(); return r; }; }
 
 /* v6.9.0: chaves que só o admin grava + atualização ao vivo */
