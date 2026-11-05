@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.6.3', HS_DATA='04/11/2026';
+const HS_VERSAO='7.7.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6226,7 +6226,7 @@ window.addEventListener('focus',()=>nuvSinc()); window.addEventListener('online'
   let n=0; const t=setInterval(()=>{ if(opOnline()){ clearInterval(t); NUV.desde=''; nuvSinc(); } else if(++n>120) clearInterval(t); nuvStatus(); },1000); })();
 
 /* ================= v6.8.0 · Tudo online: agendamentos, regiões/Correção, romaneios, XMLs, regras e históricos ================= */
-const NUV_CAMPOS=['agendamentos','historico','aprendidos','geo','geoRuas','cidAlias','cidAtend','clientesReq','ferManual','nex','opFaltas','opPorVolume','reMotoristas','txtFix','simCen'];
+const NUV_CAMPOS=['agendamentos','historico','aprendidos','geo','geoRuas','cidAlias','cidAtend','clientesReq','ferManual','nex','opFaltas','opPorVolume','reMotoristas','txtFix','simCen','cadMot','cadMotivos'];
 const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Object.keys(v).length:v==='');
 { const _nl=nuvLocal; nuvLocal=function(){ const m=_nl();
     for(const c of NUV_CAMPOS) if(!nuvVazio(S[c])) m.set('s:'+c,{tipo:'s',valor:S[c]});
@@ -6316,6 +6316,7 @@ const MAN=[
    ['Ou pelo XML / à mão','Arraste o XML da nota, ou digite NF, pedido, cliente, cidade, volumes e valor e clique em Acrescentar.'],
    ['Conferir e salvar','Notas, volumes e valor do romaneio sobem na hora. As novas aparecem em verde. Clique em Salvar: já valem na busca, na conferência e para todos os aparelhos.'],
    ['Retirar notas','Só o administrador retira notas ou remove um romaneio. Tudo fica registrado na Auditoria (quem, quando e quais notas).'],
+   ['Cadastros (motoristas e motivos)','Menu Ferramentas → Cadastros. Motoristas: cadastre o nome e, em apelidos, outras grafias (ALEXANDR, ALE) e o nome que vem no romaneio; use “Juntar com…” para unir duas pessoas iguais. Nomes digitados nas reentregas que não estão no cadastro aparecem embaixo para cadastrar ou marcar como apelido. Motivos: deixe só os que vocês usam, apague os outros e ordene com ▲. Nas Reentregas há a coluna Motorista (com sugestões); se vazia, vale o nome depois do “ - ” na observação. No ranking de motoristas aparece a taxa: reentregas de X notas levadas (%), quando o nome do romaneio está nos apelidos.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -6791,6 +6792,66 @@ document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.
   if(!await confirmar('Restaurar',`Trazer de volta: ${esc(audDesc(r))}?`,'Restaurar')) return;
   try{ const {error}=await NV.cli.from('hs_sync').upsert({chave:r.chave,tipo:r.chave.split(':')[0],valor:r.antes.valor,apagado:false,atualizado_por:opEu()+' (restauração)'}); if(error) throw error;
     NUV.sessao.delete(r.chave); delete NUV.h[r.chave]; await nuvSinc(); try{ renderTudo(); }catch(er){} toast('Restaurado: '+audDesc(r)); audAbrir(); }catch(er){ toast('Não restaurei: '+nvTraduz(er.message)); } },true);
+/* ================= v7.7.0 · Cadastros: motoristas (com apelidos) e motivos; motorista nas reentregas; taxa no ranking ================= */
+function cadUsados(){ const mots=new Map(), mtv=new Map(); try{ const D=RE.ler(); for(const ls of Object.values(D.dias||{})) for(const l of ls){ const p=rpObsPartes(l.obs); const mo=String(l.mot||p.mot||'').toUpperCase().trim(); if(mo) mots.set(mo,(mots.get(mo)||0)+1); if(p.m) mtv.set(p.m,(mtv.get(p.m)||0)+1); } }catch(e){} return {mots,mtv}; }
+function cadInit(){ let mud=false;
+  if(!Array.isArray(S.cadMotivos)){ const {mtv}=cadUsados(); const usados=[...mtv.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]); S.cadMotivos=[...new Set([...usados,...NEX_MOTIVOS.map(m=>m.toUpperCase())])]; mud=true; }
+  if(!Array.isArray(S.cadMot)){ const {mots}=cadUsados(); S.cadMot=[...new Set([...mots.keys(),...(S.reMotoristas||[])])].filter(Boolean).sort().map(n=>({nome:n,alias:''})); mud=true; }
+  NEX_MOTIVOS.splice(0,NEX_MOTIVOS.length,...S.cadMotivos); S.reMotoristas=S.cadMot.map(m=>m.nome); return mud; }
+function cadApelidos(m){ return [m.nome,...String(m.alias||'').split(/[,;\n]+/)].map(rpNz).filter(Boolean); }
+function motCanon(n){ const k=rpNz(n); if(!k) return ''; for(const m of (S.cadMot||[])) if(cadApelidos(m).includes(k)) return m.nome; return k; }
+function cadDatalists(){ let d=$('#cad-dl'); if(!d){ d=document.createElement('div'); d.id='cad-dl'; d.hidden=true; document.body.appendChild(d); }
+  d.innerHTML=`<datalist id="cad-mot-dl">${(S.cadMot||[]).map(m=>`<option value="${esc(m.nome)}">`).join('')}</datalist><datalist id="cad-motivos-dl">${(S.cadMotivos||[]).map(m=>`<option value="${esc(m)}">`).join('')}</datalist>`; }
+/* motorista: campo próprio da reentrega > nome da observação; sempre pelo cadastro (apelidos juntam) */
+{ const _m=rpMot; rpMot=function(x){ const n=_m(x); return n==='(SEM MOTORISTA)'?n:motCanon(n); }; } try{ RPK.mot.f=rpMot; }catch(e){}
+/* coluna Motorista na tabela de reentregas */
+(function(){ const th=document.querySelector('#re-tab thead tr'); if(th&&!th.querySelector('.th-mot')){ const ths=[...th.children]; const ob=ths.find(t=>/Observa/.test(t.textContent)); if(ob) ob.insertAdjacentHTML('afterend','<th class="th-mot">Motorista</th>'); } })();
+{ const _rt=reTela; reTela=function(n){ _rt(n); cadDatalists(); const L=reDia(); $$('#re-tab tbody tr').forEach((tr,i)=>{ const ob=tr.querySelector('[data-f="obs"]'); if(!ob||tr.querySelector('[data-f="mot"]')) return; ob.setAttribute('list','cad-motivos-dl'); const l=L[i]||{};
+    ob.closest('td').insertAdjacentHTML('afterend',`<td><input data-i="${i}" data-f="mot" list="cad-mot-dl" value="${esc(l.mot||'')}" placeholder="${esc(rpObsPartes(l.obs).mot?motCanon(rpObsPartes(l.obs).mot):'')}" style="min-width:110px"></td>`); }); }; }
+document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.matches('#re-tab [data-f="mot"]')) return; e.stopImmediatePropagation(); const L=reDia(); const l=L[+el.dataset.i]; if(!l) return;
+  const v=motCanon(el.value); l.mot=v; if(v&&!(S.cadMot||[]).some(m=>m.nome===v)) toast(v+' ainda não está no cadastro. Cadastre ou junte com outro nome em Cadastros.'); RE.gravar(); reTela(); try{ rpRender(); }catch(er){} },true);
+/* taxa: reentregas ÷ notas levadas pelo motorista (romaneios cujo motorista bate com o nome ou um apelido) */
+function cadNotasLevadas(){ const per=(typeof RP!=='undefined'&&RP.per)||'*'; const c=new Map(); try{ for(const [,v] of rpMotIdx()) { const vistos=new Set(); for(const e of v){ if(per!=='*'&&!String(e.dia).startsWith(per)) continue; const k=e.dia+'|'+e.num; if(vistos.has(k)) continue; vistos.add(k); const n=motCanon(e.mot); if(n) c.set(n,(c.get(n)||0)+1); } } }catch(e){} return c; }
+{ const _rr=rpRender; rpRender=function(){ _rr(); try{ const lev=cadNotasLevadas(); $$('#rp-mtr .rp-h').forEach(e=>{ const n=e.dataset.rpV; const q=lev.get(n); const vl=e.querySelector('.vl'); if(!vl||!q) return; const re=parseInt(vl.textContent)||0; vl.textContent=vl.textContent.replace(/^(\d+)/,`$1 de ${fmtN(q)} (${(100*re/q).toLocaleString('pt-BR',{maximumFractionDigits:1})}%)`); }); }catch(e){} }; }
+/* tela Cadastros */
+const CAD_CSS=`#t-cadastros .cad-gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:14px}#t-cadastros .cad-bx{background:var(--sup);border:1.5px solid var(--linha);border-radius:var(--r);padding:14px 16px}
+#t-cadastros .cad-it{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--linha)}#t-cadastros .cad-it input{width:100%}#t-cadastros .cad-add{display:flex;gap:6px;margin:8px 0}#t-cadastros .cad-add input{flex:1}#t-cadastros small.u{color:var(--mudo)}#t-cadastros input,#t-cadastros select{background:var(--papel);color:var(--tinta);border:1.5px solid var(--linha);border-radius:8px;padding:7px 9px;font:inherit}#t-cadastros select option{background:#0C2B31;color:#fff}#t-cadastros input:focus{outline:2px solid var(--acento);outline-offset:0}`;
+(function(){ const st=document.createElement('style'); st.textContent=CAD_CSS; document.head.appendChild(st);
+  const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return;
+  ref.insertAdjacentHTML('beforebegin',`<button data-tela="cadastros"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 8h5M17 12h5M19 16h3"/></svg><span class="lbl">Cadastros</span></button>`);
+  const sec=document.createElement('section'); sec.className='tela'; sec.id='t-cadastros'; sec.hidden=true;
+  sec.innerHTML=`<h1>Cadastros</h1><p class="sub">Motoristas e motivos usados nas reentregas. O que estiver aqui aparece como sugestão ao digitar e organiza o relatório. Vale para toda a equipe (fica salvo online).</p><div id="cad-corpo"></div>`;
+  const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
+  const _ir=irPara; irPara=function(t){ _ir(t); if(t==='cadastros'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-cadastros'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); cadRender(); } };
+  document.querySelector('.nav [data-tela="cadastros"]').addEventListener('click',()=>irPara('cadastros'));
+})();
+function cadRender(){ const el=$('#cad-corpo'); if(!el) return; cadInit(); const {mots,mtv}=cadUsados();
+  const usoMot=n=>{ let q=0; for(const [k,v] of mots) if(motCanon(k)===n) q+=v; return q; };
+  const soltos=[...mots.keys()].filter(k=>!(S.cadMot||[]).some(m=>cadApelidos(m).includes(rpNz(k))));
+  const motivoUso=m=>mtv.get(rpNz(m))||0;
+  el.innerHTML=`<div class="cad-gr"><div class="cad-bx"><h3>🚚 Motoristas e parceiros</h3><p class="sub" style="margin:0">Em <b>apelidos</b> ponha outras formas de escrever (ex.: ALEXANDR, ALE) e o nome que vem no romaneio — assim tudo conta como uma pessoa e o ranking mostra a taxa (reentregas ÷ notas levadas).</p>
+    <form class="cad-add" id="cad-mot-f"><input class="bus" name="n" placeholder="Nome do motorista" required><button class="btn pri mini">Cadastrar</button></form>
+    ${(S.cadMot||[]).map((m,i)=>`<div class="cad-it"><div><input class="bus" data-cad-mot="${i}" data-k="nome" value="${esc(m.nome)}"><input class="bus" data-cad-mot="${i}" data-k="alias" value="${esc(m.alias||'')}" placeholder="apelidos / nome no romaneio, separados por vírgula" style="margin-top:4px;font-size:12px"><small class="u">${usoMot(m.nome)} reentrega(s)</small></div><span style="display:grid;gap:4px"><select class="bus" data-cad-merge="${i}" style="min-width:0;font-size:12px"><option value="">Juntar com…</option>${(S.cadMot||[]).map((o,j)=>j===i?'':`<option value="${j}">${esc(o.nome)}</option>`).join('')}</select><button class="btn mini perigo" data-cad-mot-del="${i}" type="button">Excluir</button></span></div>`).join('')||'<p class="sub">Nenhum motorista.</p>'}
+    ${soltos.length?`<h4 style="margin-top:14px">Nomes usados nas reentregas que não estão no cadastro</h4>${soltos.map(k=>`<div class="cad-it"><div><b>${esc(k)}</b> <small class="u">${mots.get(k)} reentrega(s)</small></div><span><button class="btn mini pri" data-cad-novo="${esc(k)}" type="button">Cadastrar</button> <select class="bus" data-cad-junta="${esc(k)}" style="min-width:0"><option value="">É apelido de…</option>${(S.cadMot||[]).map((m,i)=>`<option value="${i}">${esc(m.nome)}</option>`).join('')}</select></span></div>`).join('')}`:''}</div>
+   <div class="cad-bx"><h3>📝 Motivos</h3><p class="sub" style="margin:0">Só os motivos que vocês usam. Apague os que nunca vai usar; a ordem aqui é a ordem das sugestões.</p>
+    <form class="cad-add" id="cad-mtv-f"><input class="bus" name="n" placeholder="Novo motivo (ex.: FERIADO)" required><button class="btn pri mini">Cadastrar</button></form>
+    ${(S.cadMotivos||[]).map((m,i)=>`<div class="cad-it"><div><input class="bus" data-cad-mtv="${i}" value="${esc(m)}"><small class="u">${motivoUso(m)} uso(s)</small></div><span><button class="btn mini" data-cad-sobe="${i}" type="button" title="Subir">▲</button> <button class="btn mini perigo" data-cad-mtv-del="${i}" type="button">Excluir</button></span></div>`).join('')||'<p class="sub">Nenhum motivo.</p>'}</div></div>`; }
+function cadMudou(){ cadInit(); salvar(); cadDatalists(); cadRender(); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} }
+document.addEventListener('submit',e=>{ const f=e.target; if(f.id!=='cad-mot-f'&&f.id!=='cad-mtv-f') return; e.preventDefault(); const v=String(new FormData(f).get('n')||'').trim().toUpperCase(); if(!v) return;
+  if(f.id==='cad-mot-f'){ if(S.cadMot.some(m=>cadApelidos(m).includes(rpNz(v)))){ toast('Esse nome já está no cadastro.'); return; } S.cadMot.push({nome:v,alias:''}); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); }
+  else { if(S.cadMotivos.some(m=>rpNz(m)===rpNz(v))){ toast('Esse motivo já existe.'); return; } S.cadMotivos.push(v); } cadMudou(); });
+document.addEventListener('change',e=>{ const t=e.target; if(!t.closest||!t.closest('#t-cadastros')) return;
+  if(t.dataset.cadMot!=null){ const m=S.cadMot[+t.dataset.cadMot]; if(!m) return; const v=t.value.trim().toUpperCase(); if(t.dataset.k==='nome'&&!v){ toast('O nome não pode ficar vazio.'); t.value=m.nome; return; } m[t.dataset.k]=v; cadMudou(); return; }
+  if(t.dataset.cadMtv!=null){ const v=t.value.trim().toUpperCase(); if(!v) return; S.cadMotivos[+t.dataset.cadMtv]=v; cadMudou(); return; }
+  if(t.dataset.cadMerge!=null&&t.value!==''){ const de=S.cadMot[+t.dataset.cadMerge], para=S.cadMot[+t.value]; para.alias=[para.alias,de.nome,de.alias].filter(Boolean).join(', '); S.cadMot.splice(+t.dataset.cadMerge,1); cadMudou(); toast(de.nome+' juntado em '+para.nome+'.'); return; }
+  if(t.dataset.cadJunta!=null&&t.value!==''){ const m=S.cadMot[+t.value]; m.alias=[m.alias,t.dataset.cadJunta].filter(Boolean).join(', '); cadMudou(); toast(t.dataset.cadJunta+' agora conta como '+m.nome+'.'); } });
+document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.closest('#t-cadastros button[type="button"]'); if(!t) return; const d=t.dataset;
+  if(d.cadNovo){ S.cadMot.push({nome:d.cadNovo,alias:''}); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); cadMudou(); }
+  else if(d.cadMotDel!=null){ const m=S.cadMot[+d.cadMotDel]; if(await confirmar('Excluir motorista',`Tirar ${m.nome} do cadastro? As reentregas antigas não mudam.`,'Excluir')){ S.cadMot.splice(+d.cadMotDel,1); cadMudou(); } }
+  else if(d.cadMtvDel!=null){ S.cadMotivos.splice(+d.cadMtvDel,1); cadMudou(); }
+  else if(d.cadSobe!=null){ const i=+d.cadSobe; if(i>0){ const a=S.cadMotivos; [a[i-1],a[i]]=[a[i],a[i-1]]; cadMudou(); } } });
+{ const _rt2=renderTudo; renderTudo=function(){ try{ if(cadInit()) salvar(); cadDatalists(); }catch(e){} return _rt2.apply(this,arguments); }; }
+
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
