@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.8.2', HS_DATA='04/11/2026';
+const HS_VERSAO='7.8.3', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6328,6 +6328,7 @@ const MAN=[
    ['Via Minas · previsão e aviso','Em cada transferência que ainda não chegou há o campo “chega às” (hora prevista); a hora aparece na lista Falta Chegar. Quando a última transferência chega, o app toca um som e mostra um aviso (e notificação, se permitida). No topo da Falta Chegar, “📋 WhatsApp” copia a lista das cidades pendentes para mandar ao motorista.'],
    ['Bipar caixa a caixa','Na câmera, bipar de novo a mesma nota ou pedido (sem número de volume na etiqueta) conta como a próxima caixa: 1/6, 2/6… Só vira “Duplicado” depois que todas as caixas foram bipadas. Embaixo da tela aparece em destaque VOLUMES lidos / total e quantos faltam (verde quando completa). Toque na faixa de informação do bipe (em cima) para abrir a ficha completa: cliente, cidade, valor, volumes, pedido, NF, romaneio, motorista, conteúdo e chave.'],
    ['Fora do romaneio: cliente e cidade','Quando a caixa bipada não está no romaneio, o app completa cliente e cidade sozinho: primeiro pelo histórico (romaneios antigos e XMLs), e, se não achar, lê o texto da própria etiqueta na câmera (📝 aparece na faixa de cima). A informação fica salva online e aparece na tabela Fora do romaneio para todos.'],
+   ['Fora do romaneio: editar, reler e agrupar','Na lista Fora do romaneio da Operação: caixas do mesmo pedido viram uma linha só (“2/5 caixas”, botão “ver” abre as demais). Clique em cliente/cidade (ou “✎ informar”) para digitar à mão — vale para todas as caixas do pedido. “📷 ler etiqueta” abre a câmera só para ler o texto da etiqueta daquela caixa: aponte e toque na faixa de cima.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -6930,6 +6931,39 @@ function opForaGuardar(b,info){ const d={}; if(info.dest&&!b.dest) d.dest=b.dest
       if(v&&v.videoWidth&&!OCRK.ocupado&&window.HS_OCR&&HS_OCR.tem&&HS_OCR.tem()){ const alvo=b; const m=document.querySelector('#op-cam .msg');
         opOcr(v).then(p=>{ OCRK.ocupado=false; if(!p) return; if(opForaGuardar(alvo,{dest:p.dest,cid:p.cid,tot:p.tot})){ opRender(); if(m&&OP.bipes[0]===alvo) m.insertAdjacentHTML('beforeend',`<br>📝 ${esc([alvo.dest,alvo.cid].filter(Boolean).join(' · '))}`); } }).catch(()=>{ OCRK.ocupado=false; }); } } }catch(e){} return r; }; }
 { const _rl=opRenderLista; opRenderLista=function(){ try{ (OP.bipes||[]).forEach(opForaPatch); }catch(e){} return _rl.apply(this,arguments); }; }
+
+/* ================= v7.8.3 · Fora do romaneio: editar cliente/cidade, reler etiqueta, agrupar por pedido ================= */
+function opForaEditar(lids){ const bs=OP.bipes.filter(b=>lids.includes(String(b.local_id||b.id))); if(!bs.length) return; const b0=bs[0];
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:440px"><h2 style="margin-top:0">Cliente e cidade</h2><p class="sub">Pedido ${esc(b0.ped||'—')}${b0.nf?' · NF '+esc(b0.nf):''}${bs.length>1?' · vale para as '+bs.length+' caixas':''}</p>
+   <form id="ofe-f"><label class="campo">Cliente<input name="dest" value="${esc(b0.dest||'')}" autocomplete="off" style="width:100%"></label><label class="campo" style="margin-top:8px">Cidade<input name="cid" value="${esc(b0.cid||'')}" list="ofe-cids" autocomplete="off" style="width:100%"></label>
+   <datalist id="ofe-cids">${[...new Set((S.romaneios||[]).flatMap(r=>r.rows.map(x=>x.cid)).filter(Boolean))].sort().slice(0,600).map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-a="x">Cancelar</button><button class="btn pri">Salvar</button></div></form></div>`;
+  f.addEventListener('click',e=>{ if(e.target===f||e.target.closest('[data-a="x"]')) f.remove(); });
+  f.querySelector('form').addEventListener('submit',e=>{ e.preventDefault(); const fd=new FormData(e.target); const dest=String(fd.get('dest')||'').trim().toUpperCase(), cid=String(fd.get('cid')||'').trim().toUpperCase();
+    S.opForaInfo=S.opForaInfo||{}; for(const b of bs){ b.dest=dest; b.cid=cid; S.opForaInfo[b.local_id]=Object.assign(S.opForaInfo[b.local_id]||{},{dest,cid,dia:b.dia}); } try{ opLocalGravar(); }catch(er){} salvar(); f.remove(); opRender(); toast('Cliente e cidade salvos.'); });
+  document.body.appendChild(f); setTimeout(()=>f.querySelector('[name=dest]').focus(),50); }
+/* releitura: abre a câmera só para ler o texto da etiqueta de uma caixa já bipada */
+OP.releitura=null;
+async function opForaReler(lids){ const bs=OP.bipes.filter(b=>lids.includes(String(b.local_id||b.id))); if(!bs.length) return; if(!(window.HS_OCR&&HS_OCR.tem&&HS_OCR.tem())){ toast('A leitura de texto não está disponível neste aparelho.'); return; }
+  OP.releitura=bs; await opCamAbrir(); const m=document.querySelector('#op-cam .msg'); if(m) m.innerHTML=`<b>📷 Ler etiqueta · Pedido ${esc(bs[0].ped||bs[0].nf||'')}</b>Coloque a etiqueta inteira na moldura e <u>toque aqui</u> para ler.`; }
+function opForaRelido(p){ const bs=OP.releitura; OP.releitura=null; if(!bs) return; if(!p||(!p.dest&&!p.cid)){ toast('Não consegui ler cliente/cidade. Tente de novo mais perto ou digite à mão.'); opCamFechar(); return; }
+  S.opForaInfo=S.opForaInfo||{}; for(const b of bs){ if(p.dest) b.dest=p.dest; if(p.cid) b.cid=p.cid; S.opForaInfo[b.local_id]=Object.assign(S.opForaInfo[b.local_id]||{},{dest:b.dest,cid:b.cid,dia:b.dia}); } try{ opLocalGravar(); }catch(e){} salvar(); opCamFechar(); opRender(); toast('Lido: '+[p.dest,p.cid].filter(Boolean).join(' · ')); }
+{ const _ol=opLer; opLer=function(){ if(OP.releitura) return; return _ol.apply(this,arguments); }; }
+{ const _oe=opLerEtiqueta; opLerEtiqueta=function(p){ if(OP.releitura){ if(p&&(p.dest||p.cid)){ opForaRelido(p); return true; } return false; } return _oe(p); }; }
+{ const _cf=opCamFechar; opCamFechar=function(){ OP.releitura=null; return _cf.apply(this,arguments); }; }
+document.addEventListener('click',e=>{ if(!OP.releitura) return; const t=e.target.closest&&e.target.closest('#op-cam .msg'); if(!t) return; e.stopImmediatePropagation(); const v=document.querySelector('#op-cam video'); if(!v||OCRK.ocupado) return; opOcr(v).then(p=>{ OCRK.ocupado=false; opForaRelido(p); }); },true);
+/* agrupar por pedido + botões na linha */
+OP.abertos=OP.abertos||new Set();
+{ const _rl=opRenderLista; opRenderLista=function(){ const r=_rl.apply(this,arguments); try{ const el=$('#op-lista'); const trs=[...el.querySelectorAll('tbody tr[data-lid]')]; const porLid=new Map(OP.bipes.map(b=>[String(b.local_id||b.id),b]));
+    const grupos=new Map(); for(const tr of trs){ const b=porLid.get(tr.dataset.lid); if(!b||(b.status!=='fora'&&b.status!=='pit')) continue; const k=b.ped||('NF'+(b.nf||'')); if(!k||k==='NF') { grupos.set(tr.dataset.lid,[tr]); continue; } if(!grupos.has(k)) grupos.set(k,[]); grupos.get(k).push(tr); }
+    for(const [k,g] of grupos){ const lids=g.map(t=>t.dataset.lid); const bs=lids.map(l=>porLid.get(l)); const tr=g[0]; const tds=tr.children;
+      const tot=Math.max(0,...bs.map(b=>+b.tot||0)); const vols=new Set(bs.map(b=>b.vol).filter(Boolean)); const n=vols.size||g.length;
+      if(g.length>1){ tds[4].innerHTML=`<b>${n}${tot?'/'+tot:''}</b> caixas <button type="button" class="btn mini" data-op-grp="${esc(k)}" style="padding:1px 6px;font-size:11px">${OP.abertos.has(k)?'ocultar':'ver '+g.length}</button>`; g.slice(1).forEach(t=>{ t.hidden=!OP.abertos.has(k); t.style.opacity='.75'; }); }
+      const cc=tds[8]; if(cc){ const txt=cc.textContent.trim(); cc.innerHTML=`<span data-op-ed="${esc(lids.join(','))}" title="Clique para digitar" style="cursor:pointer;border-bottom:1px dashed var(--mudo)">${txt?esc(txt):'<i style="color:var(--ag)">✎ informar</i>'}</span> <button type="button" class="btn mini" data-op-reler="${esc(lids.join(','))}" title="Abrir a câmera e ler o texto da etiqueta" style="padding:1px 6px;font-size:11px">📷 ler etiqueta</button>`; } } }catch(e){ console.error(e); } return r; }; }
+document.addEventListener('click',e=>{ const g=e.target.closest&&e.target.closest('[data-op-grp]'); if(g){ const k=g.dataset.opGrp; OP.abertos.has(k)?OP.abertos.delete(k):OP.abertos.add(k); opRenderLista(); return; }
+  const ed=e.target.closest&&e.target.closest('[data-op-ed]'); if(ed){ opForaEditar(ed.dataset.opEd.split(',')); return; }
+  const rl=e.target.closest&&e.target.closest('[data-op-reler]'); if(rl){ opForaReler(rl.dataset.opReler.split(',')); } });
 
 /* ---------- início ---------- */
 (async function(){
