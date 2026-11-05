@@ -1,6 +1,29 @@
 -- Health Search 7.4.0 · "Falar com o ADM": chamados (sugestões, bugs, pedidos de relatório)
 -- Rode UMA vez no Supabase → SQL Editor → New query → Run (depois do 7.1.0).
 
+-- (este arquivo funciona sozinho: cria as funções de apoio que faltarem)
+create or replace function public.hs_limpar_regras(t text) returns void language plpgsql as $f$
+declare r record;
+begin
+  for r in select policyname from pg_policies where schemaname = 'public' and tablename = t loop
+    execute format('drop policy if exists %I on public.%I', r.policyname, t);
+  end loop;
+end $f$;
+do $$ begin
+  if to_regprocedure('public.hs_eh_ativo()') is null then
+    execute $q$create function public.hs_eh_ativo() returns boolean language sql stable security definer set search_path = public as
+      'select exists (select 1 from public.perfis p where p.id = auth.uid() and p.ativo)'$q$;
+  end if;
+  if to_regprocedure('public.hs_eh_admin()') is null then
+    execute $q$create function public.hs_eh_admin() returns boolean language sql stable security definer set search_path = public as
+      'select exists (select 1 from public.perfis p where p.id = auth.uid() and p.ativo and p.papel = ''admin'')'$q$;
+  end if;
+  if to_regprocedure('public.hs_aud_nome()') is null then
+    execute $q$create function public.hs_aud_nome() returns text language sql stable security definer set search_path = public as
+      'select coalesce((select coalesce(to_jsonb(p)->>''nome'', to_jsonb(p)->>''usuario'') from public.perfis p where p.id = auth.uid()), auth.jwt()->>''email'', ''sistema'')'$q$;
+  end if;
+end $$;
+
 create table if not exists public.hs_chamados (
   id           bigserial primary key,
   criado_em    timestamptz not null default now(),
@@ -47,8 +70,12 @@ create policy hs_ch_atualizar on public.hs_chamados for update to authenticated
 create policy hs_ch_apagar on public.hs_chamados for delete to authenticated using (public.hs_eh_admin());
 revoke all on public.hs_chamados from anon;
 
-drop trigger if exists hs_aud on public.hs_chamados;
-create trigger hs_aud after update or delete on public.hs_chamados for each row execute function public.hs_auditar();
+do $$ begin
+  if to_regprocedure('public.hs_auditar()') is not null then
+    execute 'drop trigger if exists hs_aud on public.hs_chamados';
+    execute 'create trigger hs_aud after update or delete on public.hs_chamados for each row execute function public.hs_auditar()';
+  end if;
+end $$;
 
 do $$ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'hs_chamados') then
