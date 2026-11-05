@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.8.0', HS_DATA='04/11/2026';
+const HS_VERSAO='7.8.1', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5103,7 +5103,7 @@ function opPendentes(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filt
   return out.sort((a,b)=>b.valor-a.valor); }
 /* falta de volume: nota conferida pela metade hoje fica registrada; se voltar outro dia, é a caixa que faltou */
 const opFk=(ped,nf)=>z(nf)||(ped?'P'+z(ped):'');
-const opPorVol=()=>!!S.opPorVolume; /* desligado: 1 bipe = nota conferida (o conferente conta os volumes) */
+const opPorVol=()=>S.opPorVolume!==false; /* v7.8.1: ligado de fábrica (volume a volume); desligado: 1 bipe = nota conferida */
 function opFaltaAnt(ped,nf){ if(!opPorVol()) return null; const F=S.opFaltas||{}; const e=F[z(nf)]||(ped&&F['P'+z(ped)])||(ped&&Object.values(F).find(x=>x.ped&&x.ped===z(ped)))||null; return e&&e.d<hojeISO()?e:null; }
 function opRegFaltas(){ if(OP.dia!==hojeISO()||!opPorVol()) return; S.opFaltas=S.opFaltas||{}; const antes=JSON.stringify(S.opFaltas), hoje=hojeISO();
   const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'); const lidosDe=(ped,nf)=>new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
