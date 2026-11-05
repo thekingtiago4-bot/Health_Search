@@ -3189,7 +3189,7 @@ function geoClass(c,tipo){ c=+c; tipo=tipo||'regiao'; const memo=GEO.cls[tipo]||
           r= dn>GEO_RAIO ? {ids:[],fonte:'fora',sug:id,dn:Math.round(dn),viz} : {ids:[id],fonte:'auto',conf:Math.round(100*w/tot),dn:Math.round(dn),viz}; } } } }
   memo.set(c,r); return r; }
 /* região "Via Minas" = lista com o apelido VIA MINAS (Minas Gerais e Região) */
-function geoIdViaMinas(){ const l=S.geo.listas.find(l=>l.tipo==='regiao'&&(l.alias||[]).some(a=>normCid(a)==='VIA MINAS')) || S.geo.listas.find(l=>l.tipo==='regiao'&&/MINAS GERAIS E REGIAO/.test(normCid(l.nome))); return l?l.id:null; }
+function geoIdViaMinas(){ const l=S.geo.listas.find(l=>l.tipo==='regiao'&&(l.alias||[]).some(a=>normCid(a)==='VIA MINAS')) || S.geo.listas.find(l=>l.tipo==='regiao'&&/MINAS GERAIS E REGIAO/.test(normCid(l.nome))) || S.geo.listas.find(l=>l.tipo==='regiao'&&/VIA MINAS|MINAS GERAIS/.test(normCid(l.nome))); return l?l.id:null; }
 function geoCodLinha(row){ if(!row||!row.cid) return 0; const r=resolverCidade(row.cid,row.uf); return r.o?r.o.c:0; }
 
 /* ---------- casar nomes com o IBGE ---------- */
@@ -3493,10 +3493,12 @@ function aplicarRegraTodos(){ (S.romaneios||[]).forEach(aplicarRegraBase); }
 function marcarBasesVM(raiz){ $$('.base',raiz||document).forEach(e=>{ if(e.textContent.trim().startsWith(VIA_MINAS)) e.classList.add('vm'); }); }
 let VM_SEL=null;
 function cidadesMG(){ /* cidades da região Via Minas (Minas Gerais e Região), pela lista ou pela etiqueta automática */
-  const mapa=new Map(); const vm=geoIdViaMinas(); if(!vm) return [];
+  const mapa=new Map(); const vm=geoIdViaMinas();
+  /* cidades da região: pela lista/etiqueta da região OU por estarem num romaneio Via Minas (assim nunca some se a região for editada) */
+  const doVM=new Set(); for(const r of S.romaneios) if(r.base===VIA_MINAS) for(const row of r.rows){ const c=geoCodLinha(row); if(c) doVM.add(c); }
   for(const r of S.romaneios) r.rows.forEach((row,i)=>{
-    const cod=geoCodLinha(row); if(!cod) return; const g=geoClass(cod,'regiao'); if(!g.ids.includes(vm)) return;
-    const o=geoMun(cod); const k=String(cod);
+    const cod=geoCodLinha(row); if(!cod) return; const g=vm?geoClass(cod,'regiao'):{ids:[],fonte:''}; if(!(vm&&g.ids.includes(vm))&&!doVM.has(cod)) return;
+    const o=geoMun(cod); if(!o) return; const k=String(cod);
     if(!mapa.has(k)) mapa.set(k,{k,nome:o.n+(o.u!=='MG'?'/'+o.u:''),auto:g.fonte==='auto',linhas:[]}); mapa.get(k).linhas.push({row,rom:r,i}); });
   for(const c of mapa.values()){
     const porRom=new Map(); for(const h of c.linhas){ if(!porRom.has(h.rom.id)) porRom.set(h.rom.id,{rom:h.rom,linhas:[]}); porRom.get(h.rom.id).linhas.push(h); }
@@ -4111,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.6.1', HS_DATA='04/11/2026';
+const HS_VERSAO='7.6.2', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
