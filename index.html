@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.6.2', HS_DATA='04/11/2026';
+const HS_VERSAO='7.6.3', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6113,8 +6113,12 @@ function rpMotIdx(){ if(RPM) return RPM; const m=new Map(); const add=(nf,dia,mo
   try{ const L=rbLocalLer(); for(const d of Object.keys(L)) for(const reg of Object.values(L[d])) for(const x of reg.rows||[]) add(x.nf,d,reg.motorista,reg.numero); }catch(e){}
   for(const r of S.romaneios||[]) for(const x of r.rows||[]) add(x.nf,opDiaRom(r),r.motorista,r.numero);
   for(const v of m.values()) v.sort((a,b)=>b.dia.localeCompare(a.dia)); RPM=m; setTimeout(()=>{ RPM=null; },60000); return m; }
-function rpMot(x){ if(x.l.mot) return String(x.l.mot).toUpperCase(); const h=rpMotIdx().get(opK(x.l.nf)); if(!h) return '(SEM MOTORISTA)'; const a=h.find(e=>e.dia<x.d&&e.mot)||h.find(e=>e.mot); return a?a.mot.toUpperCase():'(SEM MOTORISTA)'; }
-const rpMotivo=x=>rpNz(x.l.obs).replace(/\s+/g,' ')||'(SEM MOTIVO)';
+/* v7.6.3: motorista = o nome digitado na observação ("MOTIVO - MOTORISTA"), não o do romaneio */
+function rpObsPartes(obs){ const t=rpNz(obs).replace(/\s+/g,' ').trim(); if(!t) return {m:'',mot:''}; const i=t.lastIndexOf(' - '); if(i<0) return {m:t,mot:''};
+  const suf=t.slice(i+3).trim(), pre=t.slice(0,i).trim(); const conhecidos=new Set((S.reMotoristas||[]).map(rpNz)); const motivos=new Set(NEX_MOTIVOS.map(rpNz));
+  if(conhecidos.has(suf)) return {m:pre,mot:suf}; if(motivos.has(t)||/^(ALTA VOLUMETRIA|VOLUMETRIA|SEM TEMPO|CLIENTE)/.test(suf)) return {m:t,mot:''}; return {m:pre,mot:suf}; }
+function rpMot(x){ if(x.l.mot) return String(x.l.mot).toUpperCase(); return rpObsPartes(x.l.obs).mot||'(SEM MOTORISTA)'; }
+const rpMotivo=x=>rpObsPartes(x.l.obs).m||'(SEM MOTIVO)';
 const rpCidade=x=>(rpNz(x.l.cid)||'(SEM CIDADE)')+(x.l.uf?' – '+String(x.l.uf).toUpperCase():'');
 const RPK={cli:{t:'Cliente',f:x=>x.cli},cid:{t:'Cidade',f:rpCidade},mot:{t:'Motorista',f:rpMot},motivo:{t:'Motivo',f:rpMotivo},tipo:{t:'Tipo de ocorrência',f:x=>x.tipo},uf:{t:'Estado',f:x=>(x.l.uf||'?').toUpperCase()},reg:{t:'Região',f:x=>rpRegNome(x.reg)},mes:{t:'Mês',f:x=>RP_MESES[+x.m.slice(5)-1]+'/'+x.m.slice(0,4)},dia:{t:'Dia',f:x=>fmtData(x.d)}};
 function rpAgrupa(lista,k){ const g=new Map(), f=RPK[k].f; for(const x of lista){ const c=f(x); const o=g.get(c)||{n:0,vol:0,v:0,itens:[]}; o.n++; o.vol+=+x.l.qtd||0; o.v+=+x.l.val||0; o.itens.push(x); g.set(c,o); } return [...g.entries()].sort((a,b)=>b[1].n-a[1].n||b[1].v-a[1].v); }
@@ -6125,7 +6129,7 @@ function rpCardsNovos(){ const g=$('#re-painel .rp-grade'); if(!g||$('#rp-cid'))
   g.insertAdjacentHTML('beforeend',`
   <div class="rp-card"><h3>Cidades com mais reentregas <button class="rp-ver" type="button" data-rp-ver="cid">Ver todas</button></h3><div id="rp-cid"></div></div>
   <div class="rp-card"><h3>Maiores motivos <button class="rp-ver" type="button" data-rp-ver="motivo">Ver todos</button></h3><div id="rp-mot"></div></div>
-  <div class="rp-card rp-larga"><h3>Motoristas com mais reentregas <small class="rp-dica">motorista do romaneio em que a nota saiu antes</small> <button class="rp-ver" type="button" data-rp-ver="mot">Ver todos</button></h3><div id="rp-mtr"></div></div>`);
+  <div class="rp-card rp-larga"><h3>Motoristas com mais reentregas <small class="rp-dica">motorista digitado na observação (MOTIVO - MOTORISTA)</small> <button class="rp-ver" type="button" data-rp-ver="mot">Ver todos</button></h3><div id="rp-mtr"></div></div>`);
   for(const [id,k] of [['rp-cli-n','cli'],['rp-cli-v','cli'],['rp-tip','tipo'],['rp-uf','uf']]){ const h=$('#'+id); if(h){ const t=h.previousElementSibling; if(t&&t.tagName==='H3'&&!t.querySelector('.rp-ver')) t.insertAdjacentHTML('beforeend',`<button class="rp-ver" type="button" data-rp-ver="${k}">Ver todos</button>`); } } }
 function rpMarcar(id,k,itens){ $$('#'+id+' .rp-h').forEach((e,i)=>{ if(itens[i]){ e.dataset.rpK=k; e.dataset.rpV=itens[i][0]; } }); }
 { const _rr=rpRender; rpRender=function(){ _rr(); rpCardsNovos(); const sel=RP._sel||[]; const tot=sel.length;
