@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.7.0', HS_DATA='04/11/2026';
+const HS_VERSAO='7.7.1', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6317,6 +6317,7 @@ const MAN=[
    ['Conferir e salvar','Notas, volumes e valor do romaneio sobem na hora. As novas aparecem em verde. Clique em Salvar: já valem na busca, na conferência e para todos os aparelhos.'],
    ['Retirar notas','Só o administrador retira notas ou remove um romaneio. Tudo fica registrado na Auditoria (quem, quando e quais notas).'],
    ['Cadastros (motoristas e motivos)','Menu Ferramentas → Cadastros. Motoristas: cadastre o nome e, em apelidos, outras grafias (ALEXANDR, ALE) e o nome que vem no romaneio; use “Juntar com…” para unir duas pessoas iguais. Nomes digitados nas reentregas que não estão no cadastro aparecem embaixo para cadastrar ou marcar como apelido. Motivos: deixe só os que vocês usam, apague os outros e ordene com ▲. Nas Reentregas há a coluna Motorista (com sugestões); se vazia, vale o nome depois do “ - ” na observação. No ranking de motoristas aparece a taxa: reentregas de X notas levadas (%), quando o nome do romaneio está nos apelidos.'],
+   ['Via Minas · Falta Chegar','Ao marcar “Chegou” numa transferência, aparece à direita a lista “Falta Chegar” só com as cidades que ainda esperam caminhão (e de qual base). Toque numa cidade para ver os romaneios dela. Quando tudo chega, a lista avisa que pode soltar todas.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -6851,6 +6852,20 @@ document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.
   else if(d.cadMtvDel!=null){ S.cadMotivos.splice(+d.cadMtvDel,1); cadMudou(); }
   else if(d.cadSobe!=null){ const i=+d.cadSobe; if(i>0){ const a=S.cadMotivos; [a[i-1],a[i]]=[a[i],a[i-1]]; cadMudou(); } } });
 { const _rt2=renderTudo; renderTudo=function(){ try{ if(cadInit()) salvar(); cadDatalists(); }catch(e){} return _rt2.apply(this,arguments); }; }
+
+/* ================= v7.7.1 · Via Minas: lista "Falta Chegar" à direita ================= */
+(function(){ const sec=document.getElementById('t-viaminas'); if(!sec||$('#vm-falta')) return;
+  const st=document.createElement('style'); st.textContent=`#t-viaminas.vm-com-falta{max-width:1440px;display:grid;grid-template-columns:minmax(0,1060px) 320px;column-gap:20px;align-items:start}
+#t-viaminas.vm-com-falta>*:not(#vm-falta){grid-column:1}#vm-falta{grid-column:2;grid-row:1 / span 20;position:sticky;top:60px;margin-top:48px;align-self:start}
+#vm-falta .vm-col h3{margin:0;padding:12px 14px;font-size:15px;border-bottom:1px solid var(--linha);display:flex;justify-content:space-between;align-items:center;color:var(--ag)}#vm-falta .vm-cids{max-height:calc(100vh - 90px)}
+@media (max-width:1200px){#t-viaminas.vm-com-falta{display:block}#vm-falta{position:static;margin-top:16px}}`; document.head.appendChild(st);
+  sec.insertAdjacentHTML('beforeend','<aside id="vm-falta" hidden><div class="vm-col"><h3>Falta Chegar <b id="vm-falta-n"></b></h3><div class="vm-cids" id="vm-falta-l"></div></div></aside>');  $('#vm-falta-l').addEventListener('click',e=>{ const b=e.target.closest('[data-vm]'); if(!b) return; VM_SEL=b.dataset.vm; renderViaMinas(); $('#vm-det').scrollIntoView({behavior:'smooth',block:'start'}); }); })();
+{ const _rv=renderViaMinas; renderViaMinas=function(){ _rv(); const a=$('#vm-falta'); if(!a) return; let lista=[]; try{ lista=cidadesMG(); }catch(e){}
+  const temChegou=Object.keys(S.vmChegou||{}).length>0; const falta=lista.filter(c=>!c.pronta);
+  const on=temChegou&&lista.length>0; a.hidden=!on; $('#t-viaminas').classList.toggle('vm-com-falta',on); if(!on) return;
+  $('#vm-falta-n').textContent=falta.length;
+  $('#vm-falta-l').innerHTML=falta.length?falta.map(c=>`<button type="button" class="vm-cid" data-vm="${esc(c.k)}" aria-pressed="${c.k===VM_SEL}"><i class="pt esp"></i><span class="nm">${esc(c.nome)}</span><span class="n">${fmtN(c.cont.notas)} nota(s)</span><span class="bs">${chipsBase(Object.fromEntries(c.fora.map(x=>[x.rom.base||'?',contar(x.linhas.map(h=>h.row)).notas])))}</span></button>`).join('')
+    :'<div class="vazio-lista" style="color:var(--ok)">Tudo chegou. Pode soltar todas as cidades.</div>'; }; }
 
 /* ---------- início ---------- */
 (async function(){
