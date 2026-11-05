@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.7.3', HS_DATA='04/11/2026';
+const HS_VERSAO='7.7.4', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6856,7 +6856,7 @@ document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.
 
 /* ================= v7.7.1 · Via Minas: lista "Falta Chegar" à direita ================= */
 (function(){ const sec=document.getElementById('t-viaminas'); if(!sec||$('#vm-falta')) return;
-  const st=document.createElement('style'); st.textContent=`#t-viaminas.vm-com-falta{max-width:1440px;display:grid;grid-template-columns:minmax(0,1060px) 320px;column-gap:20px;align-items:start}
+  const st=document.createElement('style'); st.textContent=`#t-viaminas[hidden]{display:none!important}#t-viaminas.vm-com-falta{max-width:1440px;display:grid;grid-template-columns:minmax(0,1060px) 320px;column-gap:20px;align-items:start}
 #t-viaminas.vm-com-falta>*:not(#vm-falta){grid-column:1}#vm-falta{grid-column:2;grid-row:1 / span 20;position:sticky;top:60px;margin-top:48px;align-self:start}
 #vm-falta .vm-col h3{margin:0;padding:12px 14px;font-size:15px;border-bottom:1px solid var(--linha);display:flex;justify-content:space-between;align-items:center;color:var(--ag)}#vm-falta .vm-cids{max-height:calc(100vh - 90px)}
 @media (max-width:1200px){#t-viaminas.vm-com-falta{display:block}#vm-falta{position:static;margin-top:16px}}`; document.head.appendChild(st);
