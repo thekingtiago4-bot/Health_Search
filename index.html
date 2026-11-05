@@ -988,7 +988,7 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
     <!-- FERIADOS -->
     <section class="tela" id="t-feriados" hidden aria-labelledby="h-fer">
       <h1 id="h-fer">Feriados</h1>
-      <p class="sub">Feriados nacionais, estaduais e municipais das cidades que já apareceram nos seus romaneios. O programa busca na internet ao abrir e confere de novo sozinho.</p>
+      <p class="sub">Feriados nacionais, estaduais e municipais de todas as cidades das suas regiões/bases e das que já apareceram nos romaneios. O programa busca na internet ao abrir e confere de novo sozinho.</p>
       <div class="fer-status" id="fer-status" role="status"></div>
       <div class="fer-topo">
         <h2>Próximos dias</h2>
@@ -1186,7 +1186,7 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
       <li>Busque o pedido, a NF ou o cliente na aba <b>Buscar</b>.</li>
       <li>Cadastre as notas agendadas na aba <b>Agendamentos</b>.</li>
       <li>Para transformar a foto ou o PDF de um romaneio em planilha, use a aba <b>Gerar Excel</b>.</li>
-      <li>Veja na aba <b>Feriados</b> quais cidades atendidas param hoje e nos próximos dias.</li>
+      <li>Veja na aba <b>Feriados</b> quais cidades param hoje e nos próximos dias: entram todas as cidades das suas regiões e bases (mesmo as que ainda não vieram em romaneio) e as que já apareceram nos romaneios.</li>
     </ol>
     <div class="rodape"><label><input type="checkbox" id="intro-nao"> Não mostrar ao abrir</label><button class="btn pri grande" id="bt-intro" type="button">Começar</button></div>
   </div>
@@ -3001,8 +3001,11 @@ function registrarCidades(rom){
 /* busca online */
 async function buscarJSON(url){ const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),25000);
   try{ const r=await fetch(url,{cache:'no-store',signal:ctl.signal}); if(!r.ok){ const e=new Error('HTTP '+r.status); e.status=r.status; throw e; } return await r.json(); } finally{ clearTimeout(t); } }
+function ferCidadesTodas(){ const out=Object.entries(S.cidAtend||{}).map(([key,e])=>Object.assign({key},e)); const tem=new Set(out.map(e=>e.c).filter(Boolean)); const I=ibge();
+  for(const l of ((S.geo&&S.geo.listas)||[])) for(const c of (l.cidades||[])){ const cod=+c; if(!cod||tem.has(cod)) continue; const o=I.cod.get(cod); if(!o) continue; tem.add(cod); out.push({key:chaveCid(o.n,o.u),nome:o.n,uf:o.u,c:cod,reg:1}); }
+  return out; }
 function guardarMunicipais(ano){ const mem=FER_MEM[ano]; if(!mem) return; const c=(S.ferCache=S.ferCache||{})[ano]=(S.ferCache[ano]||{}); c.mun={}; c.semMun=[];
-  for(const e of Object.values(S.cidAtend||{})){ if(!e.c) continue; const l=mem.get(e.c); if(l) c.mun[e.c]=l; else c.semMun.push(e.c); } }
+  for(const e of ferCidadesTodas()){ if(!e.c) continue; const l=mem.get(e.c); if(l) c.mun[e.c]=l; else c.semMun.push(e.c); } }
 async function atualizarFeriados(forcar){
   if(FER_EST.carregando) return; FER_EST.carregando=true; renderFerStatus();
   S.ferCache=S.ferCache||{}; const erros=[]; const agora=()=>new Date().toISOString();
@@ -3014,8 +3017,8 @@ async function atualizarFeriados(forcar){
     c.nacDiv=c.nacFonte==='nac'?[...new Set([...[...calc].filter(d=>!on.has(d)),...[...on].filter(d=>!calc.has(d))])]:[];
     try{ const j=await buscarJSON(FER_URL.est.replace('{ano}',ano)); const est={}; for(const x of j||[]){ const uf=String(x.uf||'').toUpperCase(); if(!uf) continue; (est[uf]=est[uf]||[]).push({d:brParaIso(x.data),n:x.nome||'Feriado estadual'}); } c.est=est; c.estEm=agora(); c.estFalta=false; }
     catch(e){ if(e.status===404) c.estFalta=true; else erros.push('estaduais'); }
-    const munVelho=forcar || !FER_MEM[ano] || !c.munEm || Date.now()-new Date(c.munEm)>FER_MUN_VALIDADE;
-    if(munVelho){ try{ const j=await buscarJSON(FER_URL.mun.replace('{ano}',ano)); const mem=new Map(); for(const x of j||[]){ const cod=+x.codigo_ibge; if(!cod) continue; if(!mem.has(cod)) mem.set(cod,[]); mem.get(cod).push({d:brParaIso(x.data),n:x.nome||'Feriado municipal'}); } FER_MEM[ano]=mem; guardarMunicipais(ano); c.munEm=agora(); c.munFalta=false; }
+    const munVelho=forcar || !FER_MEM[ano] || !c.munEm || c.munV!==2 || Date.now()-new Date(c.munEm)>FER_MUN_VALIDADE;
+    if(munVelho){ try{ const j=await buscarJSON(FER_URL.mun.replace('{ano}',ano)); const mem=new Map(); for(const x of j||[]){ const cod=+x.codigo_ibge; if(!cod) continue; if(!mem.has(cod)) mem.set(cod,[]); mem.get(cod).push({d:brParaIso(x.data),n:x.nome||'Feriado municipal'}); } FER_MEM[ano]=mem; guardarMunicipais(ano); c.munEm=agora(); c.munV=2; c.munFalta=false; }
       catch(e){ if(e.status===404) c.munFalta=true; else erros.push('municipais'); } }
   }
   const anoMin=Math.min(...anosJanela()); for(const a of Object.keys(S.ferCache)) if(+a<anoMin) delete S.ferCache[a];
@@ -3039,7 +3042,7 @@ function feriadosCidade(nome,uf){ const k='c|'+chaveCid(nome,uf)+'|'+hojeISO(); 
   const e=regDaLinha(nome,uf), out=[]; for(let i=0;i<=ferDias();i++){ const iso=diaMais(i); for(const x of feriadosDoDia(iso,e)) out.push(Object.assign({iso},x)); }
   FER_MEMO.set(k,out); return out; }
 function janelaFeriados(){ const mk='janela|'+hojeISO(); if(FER_MEMO.has(mk)) return FER_MEMO.get(mk);
-  const cids=Object.entries(S.cidAtend||{}).map(([key,e])=>Object.assign({key},e)), dias=[];
+  const cids=ferCidadesTodas(), dias=[];
   for(let i=0;i<=ferDias();i++){ const iso=diaMais(i), ano=+iso.slice(0,4), c=(S.ferCache||{})[ano]||{}; const it={iso,nac:[],est:new Map(),mun:[]};
     for(const x of (c.nac||nacionaisCalculados(ano))) if(x.d===iso && x.n!=='Páscoa') it.nac.push({n:x.n,f:c.nac?c.nacFonte:'calc'});
     for(const e of cids){ for(const x of feriadosDoDia(iso,e)){ if(x.tipo==='Nacional') continue; if(x.tipo==='Estadual'){ const k=e.uf+'|'+x.n; if(!it.est.has(k)) it.est.set(k,{uf:e.uf,n:x.n,cids:[]}); it.est.get(k).cids.push(e); } else it.mun.push({e,x}); } }
@@ -4107,7 +4110,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.6', HS_DATA='04/11/2026';
+const HS_VERSAO='7.5.7', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
