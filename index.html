@@ -2245,8 +2245,9 @@ function renderDuplicatas(){ const el=$('#dup-box'); if(!el) return; const R=rep
 }
 function dupPorRomaneio(){ const c={}; const R=repetidos(); for(const x of [...R.nf,...R.ped]) for(const e of x.l) c[e.rom.id]=(c[e.rom.id]||0)+1; return c; }
 function renderTotais(){ const el=$('#tot-box'); if(!el) return; if(!S.romaneios.length){ el.innerHTML=''; return; }
-  const ls=todasLinhas().map(x=>x.row); const c=contar(ls); const vistos=new Set(), unicas=[]; for(const r of ls){ const k=z(r.nf); if(vistos.has(k)) continue; vistos.add(k); unicas.push(r); } const cu=contar(unicas); const R=repetidos();
-  el.innerHTML=`<div class="totais"><div class="t"><b>${fmtN(S.romaneios.length)}</b><span>romaneio(s)</span></div><div class="t"><b>${fmtN(c.notas)}</b><span>notas</span></div><div class="t"><b>${fmtN(c.vol)}</b><span>volumes</span></div>${c.zero?`<div class="t alerta" title="${ZERO_TIT}"><b>${fmtN(c.zero)}</b><span>nota(s) com 0 volume, fora da soma</span></div>`:''}${R.total?`<div class="t erro"><b>${fmtN(R.total)}</b><span>repetida(s)</span></div>`:''}${unicas.length<ls.length?`<div class="t"><b>${fmtN(cu.notas)}</b><span>notas sem repetir · ${fmtN(cu.vol)} volumes</span></div>`:''}</div>`;
+  let simL=null; if(typeof SIM!=='undefined'&&SIM.on){ try{ simCalc(); simL=SIM._fica; }catch(e){} } const nRom=simL?new Set(simL.filter(x=>volNum(x.row.vol)!==0).map(x=>x.rom.id)).size:S.romaneios.length;
+  const ls=(simL||todasLinhas()).map(x=>x.row); const c=contar(ls); const vistos=new Set(), unicas=[]; for(const r of ls){ const k=z(r.nf); if(vistos.has(k)) continue; vistos.add(k); unicas.push(r); } const cu=contar(unicas); const R=repetidos();
+  el.innerHTML=`<div class="totais"${simL?' style="outline:2px dashed var(--pri,#5fc9c0);outline-offset:4px;border-radius:10px"':''}>${simL?'<div class="t" style="color:var(--pri,#5fc9c0)"><b>🧪</b><span>simulação ligada</span></div>':''}<div class="t"><b>${fmtN(nRom)}</b><span>romaneio(s)</span></div><div class="t"><b>${fmtN(c.notas)}</b><span>notas</span></div><div class="t"><b>${fmtN(c.vol)}</b><span>volumes</span></div>${c.zero?`<div class="t alerta" title="${ZERO_TIT}"><b>${fmtN(c.zero)}</b><span>nota(s) com 0 volume, fora da soma</span></div>`:''}${R.total?`<div class="t erro"><b>${fmtN(R.total)}</b><span>repetida(s)</span></div>`:''}${unicas.length<ls.length?`<div class="t"><b>${fmtN(cu.notas)}</b><span>notas sem repetir · ${fmtN(cu.vol)} volumes</span></div>`:''}</div>`;
 }
 
 /* ---------- relatório ao carregar os romaneios ---------- */
@@ -4110,7 +4111,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.9', HS_DATA='04/11/2026';
+const HS_VERSAO='7.6.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4437,9 +4438,9 @@ document.addEventListener('change',e=>{ if(e.target.id==='v61-tipo') $('#v61-dab
 const SIM={on:false,ag:false,re:false,ret:false,bases:new Set(),nfs:'',cids:''};
 function simCalc(){ const nfs=new Set(SIM.nfs.split(/[^0-9]+/).map(z).filter(Boolean)), cids=SIM.cids.split(/[\n,;]+/).map(s=>N(s)).filter(Boolean);
   const reNf=new Set(); if(SIM.re) for(const l of Object.values(RE.ler().dias||{}).flat()) reNf.add(z(l.nf)); const fora=(S.nex&&S.nex.fora)||{};
-  const tudo=todasLinhas(), fica=tudo.filter(({row,rom})=>!( (SIM.ag&&agDaLinha(row)) || (SIM.re&&reNf.has(z(row.nf))) || (SIM.ret&&fora[nexK(row)]) || SIM.bases.has(rom.base||'?') || nfs.has(z(row.nf)) || cids.some(c=>N(row.cid||'').includes(c)) ));
+  const tudo=todasLinhas(), fica=SIM._fica=tudo.filter(({row,rom})=>!( (SIM.ag&&agDaLinha(row)) || (SIM.re&&reNf.has(z(row.nf))) || (SIM.ret&&fora[nexK(row)]) || SIM.bases.has(rom.base||'?') || nfs.has(z(row.nf)) || cids.some(c=>N(row.cid||'').includes(c)) ));
   const res=l=>{ const c=contar(l.map(x=>x.row)); return {rom:new Set(l.filter(x=>volNum(x.row.vol)!==0).map(x=>x.rom.id)).size,notas:c.notas,vol:c.vol}; }; return {a:res(tudo),d:res(fica)}; }
-function simRender(){ const p=$('#sim-pn'); if(!p) return; p.hidden=!SIM.on; if(!SIM.on) return; const bases=[...new Set(S.romaneios.map(r=>r.base||'?'))].sort(); const {a,d}=simCalc(), lin=(t,k)=>`<tr><td>${t}</td><td class="num">${fmtN(a[k])}</td><td class="num"><b>${fmtN(d[k])}</b></td><td class="num">${a[k]-d[k]?'−'+fmtN(a[k]-d[k]):'0'}</td></tr>`;
+function simRender(){ const p=$('#sim-pn'); if(!p) return; try{ renderTotais(); }catch(e){} p.hidden=!SIM.on; if(!SIM.on) return; const bases=[...new Set(S.romaneios.map(r=>r.base||'?'))].sort(); const {a,d}=simCalc(), lin=(t,k)=>`<tr><td>${t}</td><td class="num">${fmtN(a[k])}</td><td class="num"><b>${fmtN(d[k])}</b></td><td class="num">${a[k]-d[k]?'−'+fmtN(a[k]-d[k]):'0'}</td></tr>`;
   p.innerHTML=`<p class="sub">Só para estudo: nada é apagado. Marque o que quer tirar da conta.</p><div class="sim-op"><label><input type="checkbox" data-sim="ag"${SIM.ag?' checked':''}> agendadas</label><label><input type="checkbox" data-sim="re"${SIM.re?' checked':''}> já lançadas em reentregas</label><label><input type="checkbox" data-sim="ret"${SIM.ret?' checked':''}> retiradas da rota</label>${bases.map(b=>`<label><input type="checkbox" data-sim-b="${esc(b)}"${SIM.bases.has(b)?' checked':''}> romaneios ${esc(b)}</label>`).join('')}</div>
     <div class="sim-tx"><label>NFs para tirar<textarea id="sim-nfs" rows="2" placeholder="cole os números">${esc(SIM.nfs)}</textarea></label><label>Cidades para tirar<textarea id="sim-cids" rows="2" placeholder="uma por linha">${esc(SIM.cids)}</textarea></label></div>
     <table class="sim-tab"><thead><tr><th></th><th>Hoje</th><th>Sem essas notas</th><th>Diferença</th></tr></thead><tbody>${lin('Romaneios','rom')}${lin('Notas','notas')}${lin('Volumes','vol')}</tbody></table>`; }
