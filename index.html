@@ -4110,7 +4110,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.5.8', HS_DATA='04/11/2026';
+const HS_VERSAO='7.5.9', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6091,6 +6091,7 @@ async function opCamSemCodigo(v){ const ag=Date.now(); if(OCRK.ocupado||ag-OCRK.
 #re-painel .rp-h{cursor:pointer;border-radius:6px}#re-painel .rp-h:hover{background:color-mix(in srgb,var(--ag) 10%,transparent)}
 #re-painel .rp-kpi-c,#rp-kpi>div{cursor:pointer}#rp-kpi>div:hover{outline:2px solid var(--ag);outline-offset:-2px;border-radius:10px}
 .rp-card h3 .rp-ver{float:right;font-size:var(--fs-sm);font-weight:600;background:none;border:1.5px solid var(--linha);color:var(--tinta);border-radius:8px;padding:2px 8px;cursor:pointer}
+.fundo{z-index:1500}
 #rx{position:fixed;inset:0;z-index:1400;background:rgba(0,0,0,.55);display:flex;align-items:stretch;justify-content:center;padding:16px}
 #rx .cx{background:var(--sup);color:var(--tinta);border-radius:16px;width:min(1400px,100%);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 #rx header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--linha)}#rx header h2{flex:1;margin:0;font-size:1.15rem;min-width:200px}
@@ -6156,12 +6157,12 @@ document.addEventListener('click',e=>{
   const h=e.target.closest('#re-painel .rp-h[data-rp-k]'); if(h){ const k=h.dataset.rpK, val=h.dataset.rpV; rxAbrir(RPK[k].t+': '+val,(RP._sel||[]).filter(x=>RPK[k].f(x)===val)); return; }
   const kp=e.target.closest('#rp-kpi>div'); if(kp){ rxAbrir('Todas as reentregas',RP._sel||[]); return; }
   const f=e.target.closest('#rx'); if(!f) return;
-  if(e.target===f){ f.remove(); return; }
+  if(e.target===f){ if(RED.r&&(RED.novas.length||RED.tirar.size)){ toast('Clique em Salvar para gravar as notas, ou Cancelar para descartar.'); return; } RED.r=null; f.remove(); return; }
   const b=e.target.closest('[data-rx]'); if(b){ if(b.dataset.rx==='x') f.remove(); else if(b.dataset.rx==='csv') rxCSV(); else window.print(); return; }
   const o=e.target.closest('[data-rx-ord]'); if(o){ const c=o.dataset.rxOrd; if(RX.ord===c) RX.asc=!RX.asc; else { RX.ord=c; RX.asc=c!=='qtd'&&c!=='val'&&c!=='d'; } rxRender(); return; }
   const m=e.target.closest('[data-rx-k]'); if(m){ const k=m.dataset.rxK, val=m.dataset.rxV; rxAbrir(RX.titulo+' › '+RPK[k].t+': '+val,RX.lista.filter(x=>RPK[k].f(x)===val)); return; } },true);
 document.addEventListener('input',e=>{ const b=e.target.closest('[data-rx-bus]'); if(!b) return; RX.busca=b.value; const p=b.selectionStart; rxRender(); const n=$('#rx [data-rx-bus]'); n.focus(); n.setSelectionRange(p,p); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#rx')){ e.stopPropagation(); $('#rx').remove(); } },true);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#rx')){ e.stopPropagation(); if(RED.r&&(RED.novas.length||RED.tirar.size)){ toast('Clique em Salvar para gravar as notas, ou Cancelar para descartar.'); return; } RED.r=null; $('#rx').remove(); } },true);
 
 /* v6.6.1: aceitar a sugestão com um clique (antes, escolher a mesma opção já marcada não disparava nada) */
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-cor-aceita]'); if(!b) return; const sel=b.parentElement.querySelector('select[data-cor-ens]'); if(!sel) return; sel.value=b.dataset.corAceita; sel.dispatchEvent(new Event('change',{bubbles:true})); });
@@ -6501,7 +6502,7 @@ function redAdicionar(l,origem){ const r=RED.r; const k=opK(l.nf); if(!k){ toast
 function redRender(){ const f=$('#rx'), r=RED.r; if(!f||!r) return; const adm=nvAdmin(); const todas=[...r.rows.map((x,i)=>({x,i,nova:false})),...RED.novas.map((x,i)=>({x,i,nova:true}))].filter(o=>!RED.tirar.has(o.nova?'n'+o.i:'r'+o.i));
   const c=contar(todas.map(o=>o.x)); const val=todas.reduce((s,o)=>s+(+String(o.x.valor||'').replace(/\./g,'').replace(',','.')||0),0);
   f.innerHTML=`<div class="cx" role="dialog" aria-label="Editar romaneio"><header><h2>✏️ Romaneio ${esc(r.numero||'')}<br><small style="color:var(--mudo);font-weight:500">${esc(r.origem||String(r.arquivo||'').replace(/\.pdf$/i,''))} · ${fmtData(opDiaRom(r))} · ${adm?'você pode acrescentar e retirar notas':'você pode acrescentar notas (retirar só o administrador)'}</small></h2>
-   <button class="btn mini" data-red="cancelar">Cancelar</button><button class="btn mini pri" data-red="salvar"${RED.novas.length||RED.tirar.size?'':' disabled'}>Salvar${RED.novas.length?' (+'+RED.novas.length+')':''}${RED.tirar.size?' (−'+RED.tirar.size+')':''}</button></header>
+   <button class="btn mini" data-red="cancelar">Cancelar</button><button class="btn mini pri" data-red="salvar">Salvar${RED.novas.length?' (+'+RED.novas.length+')':''}${RED.tirar.size?' (−'+RED.tirar.size+')':''}</button></header>
    <div class="corpo"><div class="kp"><div>Notas<b>${fmtN(c.notas)}</b></div><div>Volumes<b>${fmtN(c.vol)}</b></div><div>Valor<b>${reMoeda(val)}</b></div><div>Acrescentadas agora<b style="color:var(--ok)">${RED.novas.length}</b></div></div>
    <div class="gr"><div><h4>Bipar a DANFE</h4><input class="bus" id="red-bip" style="width:100%" placeholder="Bipe o código de barras (44 dígitos) e Enter" inputmode="numeric" autocomplete="off"><p class="rp-vazio" id="red-st" style="margin:6px 0 0">Puxa cliente, cidade, volumes e valor no Meu Danfe.</p></div>
     <div><h4>Arrastar o XML da nota</h4><label class="soltar" id="red-soltar" style="display:block;padding:14px;border:2px dashed var(--linha);border-radius:10px;cursor:pointer;text-align:center">Solte os XMLs aqui ou clique<input type="file" id="red-arq" accept=".xml,text/xml" multiple hidden></label></div>
@@ -6514,7 +6515,8 @@ function redRender(){ const f=$('#rx'), r=RED.r; if(!f||!r) return; const adm=nv
   const sz=$('#red-soltar'); sz.ondragover=e=>e.preventDefault(); sz.ondrop=async e=>{ e.preventDefault(); for(const fl of e.dataTransfer.files){ try{ redAdicionar(nfDoXml(await fl.text()),'xml'); }catch(er){ toast(fl.name+': '+er.message); } } };
   $('#red-mao').onsubmit=e=>{ e.preventDefault(); const d=Object.fromEntries(new FormData(e.target)); for(const k of Object.keys(d)) d[k]=String(d[k]).trim().toUpperCase(); if(d.valor&&!/,/.test(d.valor)) d.valor=(+d.valor.replace('.',',').replace(',','.')||0).toFixed(2).replace('.',','); redAdicionar(d,'manual'); }; }
 function redAbrir(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) return; RED.r=r; RED.novas=[]; RED.tirar=new Set(); const f=$('#rx')||document.createElement('div'); f.id='rx'; document.body.appendChild(f); redRender(); }
-async function redSalvar(){ const r=RED.r; if(!r) return; const eu=opEu(), ag=new Date().toISOString(); const tiraR=[...RED.tirar].filter(k=>k[0]==='r').map(k=>+k.slice(1));
+async function redSalvar(){ if(!RED.r) return; { const b=$('#red-bip'); const v=b?b.value.replace(/\D/g,''):''; if(v.length===44){ b.value=''; try{ $('#red-st').textContent='Buscando no Meu Danfe…'; redAdicionar(await redPelaChave(v),'danfe'); }catch(er){ toast('Não consegui puxar a chave: '+er.message); return; } } }
+  const L=S.romaneios=S.romaneios||[]; let r=L.find(x=>x.id===RED.r.id); if(!r){ r=RED.r; L.push(r); } RED.r=r; const eu=opEu(), ag=new Date().toISOString(); const tiraR=[...RED.tirar].filter(k=>k[0]==='r').map(k=>+k.slice(1));
   if(tiraR.length&&!nvAdmin()){ toast('Só o administrador retira notas.'); return; }
   if(tiraR.length&&!await confirmar('Retirar notas',`Retirar ${tiraR.length} nota(s) do romaneio ${r.numero}? Fica registrado na auditoria.`,'Retirar')) return;
   const novas=RED.novas.filter((x,i)=>!RED.tirar.has('n'+i)).map(({_por,_em,_origem,...x})=>Object.assign(x,{_add:{por:_por,em:_em,origem:_origem}}));
@@ -6578,10 +6580,11 @@ function foraDialogo(dados,aoFim){ const f=document.createElement('div'); f.clas
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-fora-add]'); if(!b) return; e.stopPropagation(); const bp=OP.bipes.find(x=>(x.local_id||x.id)===b.dataset.foraAdd); if(!bp) return;
   foraDialogo({nf:bp.nf||(/^numero|^danfe/.test(bp.tipo||'')?opK(bp.codigo).slice(-9):''),ped:/^numero/.test(bp.tipo||'')&&!bp.nf?'':bp.ped,dest:bp.dest,cid:bp.cid,tot:bp.tot,valor:bp.valor,rem:'',tipo:bp.tipo,modelo:bp.status==='pit'?'MAFRA':''},()=>opRender()); },true);
 /* no editor de romaneio: motivo e origem para as notas acrescentadas */
-{ const _rs=redSalvar; redSalvar=async function(){ const r=RED.r; if(!r||!RED.novas.length) return _rs(); const d=await new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; const sug=foraOrigemSug(RED.novas[0]);
+{ const _rs=redSalvar; redSalvar=async function(){ if(!RED.r) return; { const b=$('#red-bip'); const v=b?b.value.replace(/\D/g,''):''; if(v.length===44){ b.value=''; try{ $('#red-st').textContent='Buscando no Meu Danfe…'; redAdicionar(await redPelaChave(v),'danfe'); }catch(er){ toast('Não consegui puxar a chave: '+er.message); return; } } }
+  const id=RED.r.id; if(!RED.novas.length) return _rs(); const d=await new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1500'; const sug=foraOrigemSug(RED.novas[0]);
     f.innerHTML=`<div class="modal" role="dialog" style="max-width:460px"><h2>Por que essas ${RED.novas.length} nota(s) entraram depois?</h2><form id="fm-f" style="display:grid;gap:8px"><label>Motivo<select name="motivo">${FORA_MOT.map(m=>`<option>${m}</option>`).join('')}</select></label><label>Origem<select name="origem"><option value="">Escolher…</option>${FORA_ORI.map(o=>`<option${o===sug?' selected':''}>${o}</option>`).join('')}</select></label><label>Observação<input name="obs" placeholder="opcional"></label><div class="botoes"><button class="btn" type="button" data-x>Voltar</button><button class="btn pri" type="submit">Salvar</button></div></form></div>`;
     document.body.appendChild(f); f.querySelector('[data-x]').onclick=()=>{ f.remove(); res(null); }; f.querySelector('#fm-f').onsubmit=e=>{ e.preventDefault(); const d=Object.fromEntries(new FormData(e.target)); f.remove(); res(d); }; });
-  if(!d) return; const novas=RED.novas.slice(); await _rs(); for(const x of novas){ const l=r.rows.find(y=>opK(y.nf)===opK(x.nf)); if(!l) continue; Object.assign(l._add||(l._add={}),{motivo:d.motivo,orig:d.origem||foraOrigemSug(l),obs:d.obs}); foraRegistrar(r,l,d.motivo+(d.obs?' — '+d.obs:''),d.origem||foraOrigemSug(l)||'Outra','edição do romaneio'); } salvar(); }; }
+  if(!d) return; const novas=RED.novas.slice(); await _rs(); const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) return; for(const x of novas){ const l=r.rows.find(y=>opK(y.nf)===opK(x.nf)); if(!l) continue; Object.assign(l._add||(l._add={}),{motivo:d.motivo,orig:d.origem||foraOrigemSug(l),obs:d.obs}); foraRegistrar(r,l,d.motivo+(d.obs?' — '+d.obs:''),d.origem||foraOrigemSug(l)||'Outra','edição do romaneio'); } salvar(); }; }
 
 /* ---- tela "Fora do romaneio" ---- */
 const FR={per:'30'};
