@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.0', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.1', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6334,7 +6334,7 @@ const MAN=[
    ['Via Minas · mensagem do WhatsApp','O “📋 WhatsApp” da Falta Chegar copia a lista agrupada por base com a hora prevista (ex.: “DF - 06h15”), cada cidade com as notas e o total de cidades pendentes. As cidades dos romaneios Via Minas sempre aparecem na tela, mesmo se a região do mapa estiver incompleta.'],
    ['Criar/editar romaneio: salvar','Pode colar ou bipar os 44 dígitos e clicar direto em Salvar (não precisa Enter). A pergunta do motivo aparece na frente; clicar fora ou Esc com notas novas não fecha a janela sem salvar.'],
    ['Reentregas detectadas','Depois de confirmar (ou marcar “Não é reentrega”), a nota não volta mais para a janela. Notas com motivo em branco continuam pendentes no sino.'],
-   ['Salesforce: completar caixa sem nota (teste)','Nas caixas “Fora do romaneio” ou “Sem nota” com pedido, o botão “🔎 Salesforce” abre a pesquisa do pedido no Salesforce (o número já vai copiado) e uma janela para colar a chave. No Salesforce, na página de resultados, desça até “Notas Fiscais”, abra a nota cujo “Código do Pedido da Integração” é o número da etiqueta, copie o campo chNFe (44 dígitos) e cole. O app completa NF, cliente, cidade, valor e volumes pela chave (Meu Danfe); sem Api-Key, guarda pelo menos NF e chave. Também aparece na ficha da caixa (toque na informação da câmera).'],
+   ['Salesforce: completar caixa sem nota','Nas caixas “Fora do romaneio” ou “Sem nota” com pedido, o botão “🔎 Salesforce” abre a pesquisa do pedido no Salesforce (o número já vai copiado) e uma janela para colar a chave. No Salesforce, na página de resultados, desça até “Notas Fiscais”, abra a nota cujo “Código do Pedido da Integração” é o número da etiqueta, copie o campo chNFe (44 dígitos) e cole. O app completa NF, cliente, cidade, valor e volumes pela chave (Meu Danfe); sem Api-Key, guarda pelo menos NF e chave. Também aparece na ficha da caixa (toque na informação da câmera).'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
