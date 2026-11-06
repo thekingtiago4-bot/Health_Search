@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.6', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.7', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6202,7 +6202,7 @@ function nuvStatus(){ const el=$('#nuv-st'); if(!el) return; el.hidden=Store.mod
 async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } NUV.rodando=true; nuvStatus(); let mudou=false;
   try{
     /* 1) baixa o que mudou no banco */
-    const mk=()=>{ let q=NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').not('chave','like','bkp:%').order('atualizado_em'); if(NUV.desde) q=q.gt('atualizado_em',new Date(new Date(NUV.desde).getTime()-5000).toISOString()); return q; };
+    const mk=()=>{ let q=NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').not('chave','like','bkp:%').not('chave','like','ap:%').order('atualizado_em'); if(NUV.desde) q=q.gt('atualizado_em',new Date(new Date(NUV.desde).getTime()-5000).toISOString()); return q; };
     let data=[]; for(let pg=0;pg<50;pg++){ const {data:d1,error}=await mk().range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; } const loc=nuvLocal();
     for(const r of data||[]){ if(!r||!r.chave) continue; const l=loc.get(r.chave), hr=r.apagado?'x':nuvHash(r.valor);
       if(!l&&!r.apagado&&!NUV.sessao.has(r.chave)){ nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=hr; mudou=true; if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; }
@@ -6341,7 +6341,7 @@ const MAN=[
    ['Caixas sem nota esperando chave','No topo da Operação aparece um aviso amarelo “X caixa(s) sem nota esperando chave” com os pedidos. Some quando todas forem completadas pelo 🔎 Salesforce ou acrescentadas ao MESA. “Ver caixas” abre a lista Fora do romaneio.'],
    ['Apagar nota fora do romaneio (ADM)','Em Dados → Fora do romaneio, o administrador vê um ✕ em cada nota. Ao apagar, pode escolher também tirar a NF do romaneio onde ela foi acrescentada (ex.: MESA). Usuários comuns não veem o botão.'],
    ['Aparelho com dados diferentes','Todo aparelho abre as Reentregas no dia de hoje. Se um tablet/celular mostrar dados diferentes do computador, toque no ☁ (ao lado do nome do app) → “⬇ Puxar tudo da nuvem”: o aparelho fica igual à cópia online, a mesma dos outros.'],
-   ['Backups da nuvem e aparelho desatualizado','Quando alguém entra num aparelho novo, ou num que ficou mais de 6 horas sem sincronizar, o app primeiro guarda na nuvem uma cópia do que está online (regiões, cadastros, reentregas, divergências) e só depois sincroniza. Um aparelho com mapa/configurações antigas não grava mais por cima da versão online: ele recebe a versão da nuvem. Para voltar: ☁ → 🗂 Backups da nuvem → ♻ Restaurar (administrador); antes de restaurar, o estado atual também é guardado.'],
+   ['Backups da nuvem e aparelho desatualizado','Quando alguém entra num aparelho novo, ou num que ficou mais de 6 horas sem sincronizar, o app primeiro guarda na nuvem uma cópia do que está online (regiões, cadastros, reentregas, divergências) e só depois sincroniza. Um aparelho com mapa/configurações antigas não grava mais por cima da versão online: ele recebe a versão da nuvem. Para voltar: ☁ → 🗂 Backups da nuvem → ♻ Restaurar (administrador); antes de restaurar, o estado atual também é guardado. Ficam guardados os 30 backups mais recentes. Quando sua conta entra em outro aparelho, os aparelhos já abertos avisam: “Tablet … entrou com sua conta às 03:59”.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -7092,7 +7092,9 @@ async function nuvBackupNuvem(motivo){ if(!opOnline()||!NV.cli) return false; tr
     let data=[]; for(let pg=0;pg<20;pg++){ const {data:d1,error}=await NV.cli.from('hs_sync').select('chave,valor,apagado').or('chave.like.s:%,chave.like.re:%,chave.like.dv:%,chave.like.ls:%').range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; }
     const itens=data.filter(r=>!r.apagado).map(r=>({chave:r.chave,valor:r.valor})); if(!itens.length) return false;
     const em=new Date().toISOString(); const {error}=await NV.cli.from('hs_sync').upsert({chave:'bkp:'+em,tipo:'bkp',valor:{em,motivo,aparelho:hsAparelho(),por:opEu(),itens},apagado:false,atualizado_por:opEu()}); if(error) throw error;
-    try{ localStorage.setItem('healthSearch.ultBkpNuvem',em); }catch(e){} return true; }catch(e){ console.error('bkp',e); return false; } }
+    try{ localStorage.setItem('healthSearch.ultBkpNuvem',em); }catch(e){} nuvBkpLimpar(); return true; }catch(e){ console.error('bkp',e); return false; } }
+/* v7.9.7: guarda só os 30 backups mais recentes */
+async function nuvBkpLimpar(){ try{ const {data}=await NV.cli.from('hs_sync').select('chave').like('chave','bkp:%').eq('apagado',false).order('chave',{ascending:false}).range(30,500); for(const r of (data||[])){ const {error}=nvAdmin()?await NV.cli.from('hs_sync').delete().eq('chave',r.chave):{error:1}; if(error) await NV.cli.from('hs_sync').update({valor:null,apagado:true}).eq('chave',r.chave); } }catch(e){ console.error(e); } }
 { const _ns=nuvSinc; let primeira=true; nuvSinc=async function(){ if(primeira&&Store.modo==='nuvem'&&opOnline()){ primeira=false; let ult=''; try{ ult=localStorage.getItem('healthSearch.ultSync')||''; }catch(e){}
       const velho=!ult||Date.now()-new Date(ult).getTime()>6*3600e3; if(velho){ await nuvBackupNuvem(ult?'aparelho voltou depois de '+Math.round((Date.now()-new Date(ult).getTime())/3600e3)+'h':'primeiro acesso neste aparelho'); } }
     const r=await _ns.apply(this,arguments); try{ if(!NUV.erro){ localStorage.setItem('healthSearch.ultSync',new Date().toISOString()); nuvBaseMarca(); } }catch(e){} return r; }; }
@@ -7112,6 +7114,20 @@ async function nuvTelaBackups(){ let L=[]; try{ L=await nuvBackups(); }catch(e){
   f.addEventListener('click',async e=>{ if(e.target===f||e.target.closest('[data-bk-x]')){ f.remove(); return; } const r=e.target.closest('[data-bk-r]'); if(r){ f.remove(); nuvRestaurarBkp(r.dataset.bkR); return; } if(e.target.closest('[data-bk-n]')){ f.remove(); toast((await nuvBackupNuvem('backup manual'))?'Backup guardado na nuvem.':'Não consegui guardar o backup.'); } });
   document.body.appendChild(f); }
 (function(){ const el=$('#nuv-st'); if(!el) return; const _oc=el.onclick; el.onclick=()=>{ _oc&&_oc(); setTimeout(()=>{ const m=document.querySelector('.fundo:last-child [data-n="p"]'); if(m&&!m.parentNode.querySelector('[data-n="b"]')){ m.insertAdjacentHTML('afterend','<button class="btn" data-n="b">🗂 Backups da nuvem</button>'); m.parentNode.querySelector('[data-n="b"]').onclick=e=>{ e.stopPropagation(); m.closest('.fundo').remove(); nuvTelaBackups(); }; } },0); }; })();
+
+/* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
+function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
+async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
+async function apConferir(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; const eu=opEu(); if(!eu) return; let visto=''; try{ visto=localStorage.getItem('healthSearch.apVisto')||''; }catch(e){}
+  try{ const {data}=await NV.cli.from('hs_sync').select('chave,valor,atualizado_em').like('chave','ap:'+eu+':%').order('atualizado_em',{ascending:false}).limit(20); const meu='ap:'+eu+':'+apId();
+    const novos=(data||[]).filter(r=>r.chave!==meu&&(!visto||r.atualizado_em>visto)); try{ localStorage.setItem('healthSearch.apVisto',(data&&data[0]&&data[0].atualizado_em)||new Date().toISOString()); }catch(e){}
+    if(!visto) return; /* primeira vez neste aparelho: só marca, não avisa do passado */
+    for(const r of novos){ const v=r.valor||{}; const hora=new Date(r.atualizado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); const msg=`${v.aparelho||'Outro aparelho'} entrou com sua conta às ${hora}.`;
+      toast('🔐 '+msg+' (o app guardou um backup da nuvem antes)'); try{ if('Notification' in window&&Notification.permission==='granted') new Notification('Health Search',{body:msg}); }catch(e){}
+      try{ S.apAvisos=(S.apAvisos||[]).concat([{em:r.atualizado_em,msg}]).slice(-20); }catch(e){} } }catch(e){} }
+setTimeout(async()=>{ await apRegistrar(); await apConferir(); },5000);
+setInterval(()=>{ if(!document.hidden) apConferir(); },60000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) apConferir(); });
 
 /* ---------- início ---------- */
 (async function(){
