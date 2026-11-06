@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.10', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.11', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6022,7 +6022,7 @@ function opInfoFora(ped,nf){ const P=opK(ped), N=opK(nf);
 OP.extra=null; OP.silencio=false;
 { const _env=opEnviar; opEnviar=function(b){ const ex=OP.extra; OP.extra=null;
     if(ex){ for(const k of Object.keys(ex)) if(ex[k]!=null&&ex[k]!==''&&!(k!=='status'&&b[k])) b[k]=ex[k]; }
-    if(b.status==='fora'||b.status==='pit'){ const i=opInfoFora(b.ped,b.nf); if(i){ b.dest=b.dest||String(i.dest||''); b.cid=b.cid||String(i.cid||''); b.tot=b.tot||i.tot||null; if(!b.valor&&i.valor) b.valor=i.valor; } OP.ultFora=i; }
+    if(b.status==='fora'||b.status==='pit'||b.status==='semnota'){ const i=opInfoFora(b.ped,b.nf); if(i){ b.dest=b.dest||String(i.dest||''); b.cid=b.cid||String(i.cid||''); b.tot=b.tot||i.tot||null; if(!b.valor&&i.valor) b.valor=i.valor; } OP.ultFora=i; }
     try{ opLocalGravar(); }catch(e){} return _env(b); }; }
 { const _ms=opMostrar; opMostrar=function(r){ if(OP.silencio) return; if(r&&r.status==='fora'){ const b=OP.bipes[0]; if(b&&(b.dest||b.cid||b.tot)) r.linha=(r.linha||'')+' · '+[b.dest,b.cid,b.tot?b.tot+' vol.':''].filter(Boolean).join(' · '); } _ms(r); }; }
 
@@ -6343,6 +6343,8 @@ const MAN=[
    ['Aparelho com dados diferentes','Todo aparelho abre as Reentregas no dia de hoje. Se um tablet/celular mostrar dados diferentes do computador, toque no ☁ (ao lado do nome do app) → “⬇ Puxar tudo da nuvem”: o aparelho fica igual à cópia online, a mesma dos outros.'],
    ['Backups da nuvem e aparelho desatualizado','Quando alguém entra num aparelho novo, ou num que ficou mais de 6 horas sem sincronizar, o app primeiro guarda na nuvem uma cópia do que está online (regiões, cadastros, reentregas, divergências) e só depois sincroniza. Um aparelho com mapa/configurações antigas não grava mais por cima da versão online: ele recebe a versão da nuvem. Para voltar: ☁ → 🗂 Backups da nuvem → ♻ Restaurar (administrador); antes de restaurar, o estado atual também é guardado. Ficam guardados os 30 backups mais recentes. Quando sua conta entra em outro aparelho, os aparelhos já abertos avisam: “Tablet … entrou com sua conta às 03:59”.'],
    ['Quem lançou e motivo duplicado','Cada reentrega mostra embaixo do motivo quem lançou, em qual aparelho e a hora (ex.: “✔ Tiago · Computador · 04:10”). Se a mesma NF for lançada duas vezes no mesmo dia com motivos diferentes (em aparelhos diferentes, por exemplo), o app avisa e pergunta qual vale: o 1º, o 2º ou manter os dois. A linha repetida fica marcada com ⚠ até decidir.'],
+   ['Sem nota: cliente, cidade e volumes','Caixas “Sem nota” e “Fora do romaneio” completam sozinhas cliente, cidade e volumes procurando o pedido/NF em qualquer romaneio carregado ou do Banco que tenha esses dados (e pelo texto da etiqueta na câmera).'],
+   ['Etiqueta ESPECIALIDADES CAJ (Mafra)','Nas etiquetas com “ESPECIALIDADES CAJ” no topo, o número grande em “Pedido” (ex.: 008267) é procurado como NOTA FISCAL (NF 8267), não como pedido — na leitura pela câmera e quando fica fora do romaneio. No campo da Operação também dá para digitar NF8267 para procurar só como nota.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -6935,13 +6937,13 @@ function opFicha(b){ if(!b){ toast('Bipe uma etiqueta primeiro.'); return; } con
 document.addEventListener('click',e=>{ const t=e.target.closest&&e.target.closest('#op-cam .msg,#op-res'); if(!t) return; if(!OP.ultimo) return; e.stopPropagation(); opFicha(OP.ultimo); },true);
 
 /* ================= v7.8.2 · Fora do romaneio: completa cliente e cidade pelo texto da etiqueta (OCR) e pelo histórico ================= */
-function opForaPatch(b){ if(!b||(b.status!=='fora'&&b.status!=='pit')) return; const F=(S.opForaInfo||{})[b.local_id]; if(F){ if(!b.dest&&F.dest) b.dest=F.dest; if(!b.cid&&F.cid) b.cid=F.cid; if(!b.tot&&F.tot) b.tot=F.tot; }
+function opForaPatch(b){ if(!b||!['fora','pit','semnota'].includes(b.status)) return; const F=(S.opForaInfo||{})[b.local_id]; if(F){ if(!b.dest&&F.dest) b.dest=F.dest; if(!b.cid&&F.cid) b.cid=F.cid; if(!b.tot&&F.tot) b.tot=F.tot; }
   if(!b.dest||!b.cid){ const k=(b.ped||'')+'|'+(b.nf||''); OP._foraCache=OP._foraCache||{}; if(!(k in OP._foraCache)){ try{ OP._foraCache[k]=opInfoFora(b.ped,b.nf); }catch(e){ OP._foraCache[k]=null; } } const i=OP._foraCache[k]; if(i){ if(!b.dest&&i.dest) b.dest=String(i.dest); if(!b.cid&&i.cid) b.cid=String(i.cid); } } }
 function opForaGuardar(b,info){ const d={}; if(info.dest&&!b.dest) d.dest=b.dest=info.dest; if(info.cid&&!b.cid) d.cid=b.cid=info.cid; if(info.tot&&!b.tot) d.tot=b.tot=info.tot; if(!Object.keys(d).length) return false;
   S.opForaInfo=S.opForaInfo||{}; S.opForaInfo[b.local_id]=Object.assign(S.opForaInfo[b.local_id]||{},d,{dia:b.dia});
   /* guarda só 15 dias */ const lim=new Date(Date.now()-15*864e5).toISOString().slice(0,10); for(const [k,v] of Object.entries(S.opForaInfo)) if(v.dia&&v.dia<lim) delete S.opForaInfo[k];
   try{ opLocalGravar(); }catch(e){} salvar(); return true; }
-{ const _env=opEnviar; opEnviar=function(b){ const r=_env(b); try{ if((b.status==='fora'||b.status==='pit')&&(!b.dest||!b.cid)){ const v=document.querySelector('#op-cam video');
+{ const _env=opEnviar; opEnviar=function(b){ const r=_env(b); try{ if(['fora','pit','semnota'].includes(b.status)&&(!b.dest||!b.cid)){ const v=document.querySelector('#op-cam video');
       if(v&&v.videoWidth&&!OCRK.ocupado&&window.HS_OCR&&HS_OCR.tem&&HS_OCR.tem()){ const alvo=b; const m=document.querySelector('#op-cam .msg');
         opOcr(v).then(p=>{ OCRK.ocupado=false; if(!p) return; if(opForaGuardar(alvo,{dest:p.dest,cid:p.cid,tot:p.tot})){ opRender(); if(m&&OP.bipes[0]===alvo) m.insertAdjacentHTML('beforeend',`<br>📝 ${esc([alvo.dest,alvo.cid].filter(Boolean).join(' · '))}`); } }).catch(()=>{ OCRK.ocupado=false; }); } } }catch(e){} return r; }; }
 { const _rl=opRenderLista; opRenderLista=function(){ try{ (OP.bipes||[]).forEach(opForaPatch); }catch(e){} return _rl.apply(this,arguments); }; }
@@ -6970,7 +6972,7 @@ document.addEventListener('click',e=>{ if(!OP.releitura) return; const t=e.targe
 /* agrupar por pedido + botões na linha */
 OP.abertos=OP.abertos||new Set();
 { const _rl=opRenderLista; opRenderLista=function(){ const r=_rl.apply(this,arguments); try{ const el=$('#op-lista'); const trs=[...el.querySelectorAll('tbody tr[data-lid]')]; const porLid=new Map(OP.bipes.map(b=>[String(b.local_id||b.id),b]));
-    const grupos=new Map(); for(const tr of trs){ const b=porLid.get(tr.dataset.lid); if(!b||(b.status!=='fora'&&b.status!=='pit')) continue; const k=b.ped||('NF'+(b.nf||'')); if(!k||k==='NF') { grupos.set(tr.dataset.lid,[tr]); continue; } if(!grupos.has(k)) grupos.set(k,[]); grupos.get(k).push(tr); }
+    const grupos=new Map(); for(const tr of trs){ const b=porLid.get(tr.dataset.lid); if(!b||!['fora','pit','semnota'].includes(b.status)) continue; const k=b.ped||('NF'+(b.nf||'')); if(!k||k==='NF') { grupos.set(tr.dataset.lid,[tr]); continue; } if(!grupos.has(k)) grupos.set(k,[]); grupos.get(k).push(tr); }
     for(const [k,g] of grupos){ const lids=g.map(t=>t.dataset.lid); const bs=lids.map(l=>porLid.get(l)); const tr=g[0]; const tds=tr.children;
       const tot=Math.max(0,...bs.map(b=>+b.tot||0)); const vols=new Set(bs.map(b=>b.vol).filter(Boolean)); const n=vols.size||g.length;
       if(g.length>1){ tds[4].innerHTML=`<b>${n}${tot?'/'+tot:''}</b> caixas <button type="button" class="btn mini" data-op-grp="${esc(k)}" style="padding:1px 6px;font-size:11px">${OP.abertos.has(k)?'ocultar':'ver '+g.length}</button>`; g.slice(1).forEach(t=>{ t.hidden=!OP.abertos.has(k); t.style.opacity='.75'; }); }
@@ -7180,6 +7182,22 @@ function reJaLancada(k,d){ try{ const D=RE.ler(); const L=D.dias[d]||[]; const k
     if(mud) setTimeout(()=>{ try{ salvar(); }catch(e){} },0); return l; }; }
 { const _rr=rbReavaliar; rbReavaliar=function(){ const n=nexS(); const antes={}; for(const [k,r] of Object.entries(n.reent)) if(r.status!=='suspeita') antes[k]=r; const q=_rr.apply(this,arguments);
     for(const [k,r] of Object.entries(antes)) if(n.reent[k]&&n.reent[k].status==='suspeita'&&n.reent[k].d===r.d) n.reent[k]=r; return q; }; }
+
+/* ================= v7.9.11 · Etiqueta "ESPECIALIDADES CAJ" (Mafra): o número grande "Pedido" é a NOTA FISCAL ================= */
+{ const _ei=etqInterpretar; etqInterpretar=function(linhas){ const r=_ei(linhas); try{ const T=linhas.join('\n').toUpperCase(); if(/ALIDADES\s*CAJ/.test(T)){ r.espCaj=true; r.modelo=r.modelo||'Especialidades CAJ';
+      const L=linhas.map(l=>l.toUpperCase()); let n=''; const i=L.findIndex(l=>/PEDIDO/.test(l)); if(i>=0){ const m=(L[i]+' '+(L[i+1]||'')).replace(/[OQ]/g,'0').match(/\b(\d{4,9})\b/); if(m) n=m[1]; }
+      if(!n){ const m=T.replace(/[OQ]/g,'0').match(/\b(0\d{5,8})\b/); if(m) n=m[1]; } if(n){ r.nfs=[String(+n)]; r.nums=r.nums.filter(x=>String(+x)!==String(+n)); } } }catch(e){} return r; }; }
+{ const _le=opLerEtiqueta; opLerEtiqueta=function(p){ if(p&&p.espCaj&&p.nfs&&p.nfs[0]&&!OP.releitura){ const nf=opK(p.nfs[0]); const idx=opIndice();
+      OP.extra={dest:p.dest,cid:p.cid,tot:p.tot,nf,ped:''}; if(idx.nf.has(nf)){ opLer([nf],'texto'); return true; } opLer(['NF'+nf],'texto'); return true; } return _le(p); }; }
+/* "NF123" digitado ou vindo da etiqueta = procurar só como nota fiscal */
+{ const _oi=opInterpretar; opInterpretar=function(t){ const s=String(t||'').trim(); const m=s.match(/^NF\s*0*(\d{3,9})$/i); if(m) return {tipo:'danfe',nf:m[1],codigo:s}; return _oi(t); }; }
+
+/* v7.9.11: sem nota/fora — procura cliente/cidade/volumes em qualquer romaneio (carregados e Banco) que tenha esses dados */
+function opAcharDados(ped,nf){ const P=opK(ped), N=opK(nf); const ok=x=>x&&(x.dest||x.cid); const bate=x=>(N&&opK(x.nf)===N)||(P&&opK(x.ped)===P);
+  for(const r of S.romaneios||[]) for(const x of r.rows||[]) if(bate(x)&&ok(x)) return {dest:x.dest,cid:x.cid,tot:volNum(x.vol),nf:opK(x.nf)};
+  try{ const L=rbLocalLer(); for(const d of Object.keys(L).sort().reverse()) for(const g of Object.values(L[d])) for(const x of (g.rows||[])) if(bate(x)&&ok(x)) return {dest:x.dest,cid:x.cid,tot:volNum(x.vol),nf:opK(x.nf)}; }catch(e){}
+  return null; }
+{ const _fp2=opForaPatch; opForaPatch=function(b){ _fp2(b); if(b&&['fora','pit','semnota'].includes(b.status)&&(!b.dest||!b.cid||!b.tot)){ const i=opAcharDados(b.ped,b.nf); if(i){ if(!b.dest&&i.dest) b.dest=String(i.dest); if(!b.cid&&i.cid) b.cid=String(i.cid); if(!b.tot&&i.tot) b.tot=i.tot; } } }; }
 
 /* ---------- início ---------- */
 (async function(){
