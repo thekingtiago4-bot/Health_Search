@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.8', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.9', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6342,6 +6342,7 @@ const MAN=[
    ['Apagar nota fora do romaneio (ADM)','Em Dados → Fora do romaneio, o administrador vê um ✕ em cada nota. Ao apagar, pode escolher também tirar a NF do romaneio onde ela foi acrescentada (ex.: MESA). Usuários comuns não veem o botão.'],
    ['Aparelho com dados diferentes','Todo aparelho abre as Reentregas no dia de hoje. Se um tablet/celular mostrar dados diferentes do computador, toque no ☁ (ao lado do nome do app) → “⬇ Puxar tudo da nuvem”: o aparelho fica igual à cópia online, a mesma dos outros.'],
    ['Backups da nuvem e aparelho desatualizado','Quando alguém entra num aparelho novo, ou num que ficou mais de 6 horas sem sincronizar, o app primeiro guarda na nuvem uma cópia do que está online (regiões, cadastros, reentregas, divergências) e só depois sincroniza. Um aparelho com mapa/configurações antigas não grava mais por cima da versão online: ele recebe a versão da nuvem. Para voltar: ☁ → 🗂 Backups da nuvem → ♻ Restaurar (administrador); antes de restaurar, o estado atual também é guardado. Ficam guardados os 30 backups mais recentes. Quando sua conta entra em outro aparelho, os aparelhos já abertos avisam: “Tablet … entrou com sua conta às 03:59”.'],
+   ['Quem lançou e motivo duplicado','Cada reentrega mostra embaixo do motivo quem lançou, em qual aparelho e a hora (ex.: “✔ Tiago · Computador · 04:10”). Se a mesma NF for lançada duas vezes no mesmo dia com motivos diferentes (em aparelhos diferentes, por exemplo), o app avisa e pergunta qual vale: o 1º, o 2º ou manter os dois. A linha repetida fica marcada com ⚠ até decidir.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -7141,6 +7142,36 @@ function reFeitoDeNex(){ try{ const n=nexS(); S.reFeito=S.reFeito||{}; let m=fal
 NUV.primeiraOk=false;
 { const _rp=reAvisarPopup; reAvisarPopup=function(){ if(Store.modo==='nuvem'&&!NUV.primeiraOk) return; try{ reFeitoDeNex(); }catch(e){} return _rp.apply(this,arguments); }; }
 { const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); try{ if(reFeitoDeNex()) salvar(); }catch(e){} if(!NUV.primeiraOk&&!NUV.erro&&NUV.ult){ NUV.primeiraOk=true; setTimeout(()=>{ try{ reAvisarPopup(); }catch(e){} },500); } return r; }; }
+
+/* ================= v7.9.9 · Quem confirmou e onde + mesma NF com motivos diferentes no mesmo dia ================= */
+function reCarimbo(){ return {_por:opEu()||'',_ap:(hsAparelho().split(' ')[0]),_em:new Date().toISOString()}; }
+function reCarimboTxt(l){ if(!l||!l._por) return ''; const h=new Date(l._em); return `✔ ${l._por.split(' ')[0]} · ${l._ap||''} · ${isNaN(h)?'':h.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; }
+/* lançamento automático (janela de reentregas detectadas) */
+{ const _np=nexParaReentrega; nexParaReentrega=function(o,dia,origem){ const D=RE.ler(); const L=D.dias[dia]||[]; const ja=L.find(l=>z(l.nf)===z(o.nf));
+    if(ja){ if(rpNz(ja.obs)!==rpNz(o.motivo||'')&&o.motivo){ reDupFila.push({dia,nf:z(o.nf),a:ja,b:Object.assign({},ja,{obs:o.motivo},reCarimbo())}); setTimeout(reDupPerguntar,400); } return false; }
+    const r=_np(o,dia,origem); if(r){ const L2=RE.ler().dias[dia]; const l=L2[L2.length-1]; if(l&&z(l.nf)===z(o.nf)){ Object.assign(l,reCarimbo()); RE.gravar(); } } return r; }; }
+/* digitado na tabela */
+document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.matches('#re-tab [data-f="obs"],#re-tab [data-f="mot"]')) return; setTimeout(()=>{ try{ const l=reDia()[+el.dataset.i]; if(l){ Object.assign(l,reCarimbo()); RE.gravar(); } }catch(er){} },0); });
+/* mostra o carimbo e marca NF repetida com motivos diferentes */
+{ const _rt=reTela; reTela=function(){ const r=_rt.apply(this,arguments); try{ const L=reDia(); const cont=new Map(); L.forEach(l=>{ const k=z(l.nf); if(!k) return; const s=cont.get(k)||new Set(); s.add(rpNz(l.obs)); cont.set(k,s); });
+    $$('#re-tab tbody tr').forEach((tr,i)=>{ const l=L[i]; const ob=tr.querySelector('[data-f="obs"]'); if(!l||!ob||tr.querySelector('.re-carimbo')) return; const td=ob.closest('td'); const c=reCarimboTxt(l); const dup=(cont.get(z(l.nf))||new Set()).size>1;
+      td.insertAdjacentHTML('beforeend',`<small class="re-carimbo" style="display:block;color:${dup?'var(--no)':'var(--mudo)'};font-size:11px;margin-top:2px">${dup?'⚠ NF lançada 2× com motivos diferentes · ':''}${esc(c)}</small>`); }); }catch(e){} return r; }; }
+/* pergunta qual motivo vale */
+const reDupFila=[]; let reDupAberto=false;
+function reDupVarrer(){ try{ const D=RE.ler(); const vistos=(S.reDupOk=S.reDupOk||{}); for(const [dia,L] of Object.entries(D.dias||{})){ if(dia<reHoje()) continue; const por=new Map(); for(const l of L){ const k=z(l.nf); if(!k) continue; if(!por.has(k)) por.set(k,[]); por.get(k).push(l); }
+      for(const [k,ls] of por){ const ob=[...new Set(ls.map(l=>rpNz(l.obs)))]; if(ob.length<2) continue; const ch=dia+'|'+k+'|'+ob.sort().join('|'); if(vistos[ch]||reDupFila.some(q=>q.ch===ch)) continue; reDupFila.push({ch,dia,nf:k,a:ls[0],b:ls.find(l=>rpNz(l.obs)!==rpNz(ls[0].obs))}); } } if(reDupFila.length) reDupPerguntar(); }catch(e){ console.error(e); } }
+function reDupPerguntar(){ if(reDupAberto||!reDupFila.length||document.querySelector('.fundo')) { if(reDupFila.length&&!reDupAberto) setTimeout(reDupPerguntar,3000); return; } const q=reDupFila.shift(); reDupAberto=true;
+  const quem=l=>l._por?` <small class="sub">(${esc(reCarimboTxt(l).replace('✔ ',''))})</small>`:'';
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:520px"><h2 style="margin-top:0">NF ${esc(q.nf)} com dois motivos</h2><p class="sub">${fmtData(q.dia)} · ${esc(q.a.cli||'')} — qual motivo vale?</p>
+   <div style="display:grid;gap:8px;margin-top:10px"><button class="btn" data-d="a" style="text-align:left">1️⃣ <b>${esc(q.a.obs||'(vazio)')}</b>${quem(q.a)}</button><button class="btn" data-d="b" style="text-align:left">2️⃣ <b>${esc(q.b.obs||'(vazio)')}</b>${quem(q.b)}</button><button class="btn" data-d="ab">Manter os dois</button></div></div>`;
+  f.addEventListener('click',e=>{ const b=e.target.closest('[data-d]'); if(!b) return; const D=RE.ler(); let L=D.dias[q.dia]||[]; const k=q.nf; const v=b.dataset.d;
+    if(v!=='ab'){ const fica=v==='a'?q.a:q.b; const obF=rpNz(fica.obs); const iFica=L.findIndex(l=>z(l.nf)===k&&rpNz(l.obs)===obF); if(iFica<0&&v==='b'){ L.push(fica); } D.dias[q.dia]=L.filter((l,i)=>z(l.nf)!==k||rpNz(l.obs)===obF).filter((l,i,arr)=>z(l.nf)!==k||arr.findIndex(x=>z(x.nf)===k)===i); }
+    (S.reDupOk=S.reDupOk||{})[q.ch||(q.dia+'|'+k+'|'+[rpNz(q.a.obs),rpNz(q.b.obs)].sort().join('|'))]=1; RE.gravar(); salvar(); f.remove(); reDupAberto=false; try{ if(!$('#t-reentregas').hidden) reTela(); }catch(er){} toast(v==='ab'?'Mantive os dois lançamentos.':'NF '+k+' ficou com: '+(v==='a'?q.a.obs:q.b.obs)); setTimeout(reDupPerguntar,300); });
+  document.body.appendChild(f); }
+NUV_CAMPOS.push('reDupOk');
+{ const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); setTimeout(reDupVarrer,800); return r; }; }
+setTimeout(reDupVarrer,8000);
 
 /* ---------- início ---------- */
 (async function(){
