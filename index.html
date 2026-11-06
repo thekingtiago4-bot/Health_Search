@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.11', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.12', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4943,7 +4943,11 @@ function opLer(textos,origem){
   let cont=false;
   if(x&&!vol){ const tt=achados.reduce((t,a)=>t+(volNum(a.x.vol)||0),0)||tot||1; tot=tt;
     const ja=OP.bipes.filter(b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(!ped&&nf&&b.nf===nf))).length;
-    if(ja>0&&ja<tt){ vol=ja+1; chave='C'+(ped||nf)+'#'+vol; cont=true; } else if(ja===0){ vol=1; } }
+    if(ja>0&&ja<tt){ /* v7.9.12: pela câmera, a mesma etiqueta lida de novo sem sair da tela é a MESMA caixa */
+      const ult=Math.max(0,...OP.bipes.filter(b=>(ped&&b.ped===ped)||(!ped&&nf&&b.nf===nf)).map(b=>new Date(b.criado_em).getTime()||0)); const cam=/camera/.test(origem||'')||OP.camGap!=null;
+      if(cam&&(Date.now()-ult<1800||(OP.camGap!=null&&OP.camGap<1200))){ OP.camGap=null; opMostrar({status:'info',titulo:'Mesma caixa ('+ja+' de '+tt+')',linha:'Tire a câmera desta etiqueta e aponte para a próxima caixa.'}); return; }
+      vol=ja+1; chave='C'+(ped||nf)+'#'+vol; cont=true; } else if(ja===0){ vol=1; } }
+  OP.camGap=null;
   let status;
   if(!x) status='fora';
   else if(!cont&&OP.bipes.some(b=>(b.chave===chave||(b.chave==='C'+(ped||nf)+'#'+tot&&!prin.vol))&&b.status!=='fora')) status='dup';
@@ -5054,7 +5058,7 @@ async function opCamAbrir(){
   let ocupado=false, ult=0;
   const passo=async ts=>{ if(!OP.cam) return; OP.loop=requestAnimationFrame(passo); if(ocupado||ts-ult<90||v.readyState<2) return; ocupado=true; ult=ts;
     try{ const lidos=[...new Set(await OP.det(v))].filter(Boolean); if(lidos.length){ const prin=lidos.find(t=>t.includes('@'))||lidos.find(t=>t.replace(/\D/g,'').length===44)||lidos[0];
-        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=OP_ESPERA&&agora-vez>OP_ESPERA){ OP.visto.set(prin,agora); OP.ultLeitura=agora; if(OP.destino){ const fn=OP.destino; opCamFechar(); fn(lidos); return; } ocupado=false; await opCamTratar(lidos,v); } else OP.visto.set(prin,agora); } else if(!OP.destino){ ocupado=false; opCamSemCodigo(v); } }catch(e){}
+        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=OP_ESPERA&&agora-vez>OP_ESPERA){ OP.camGap=vez?agora-vez:1e9; OP.visto.set(prin,agora); OP.ultLeitura=agora; if(OP.destino){ const fn=OP.destino; opCamFechar(); fn(lidos); return; } ocupado=false; await opCamTratar(lidos,v); } else OP.visto.set(prin,agora); } else if(!OP.destino){ ocupado=false; opCamSemCodigo(v); } }catch(e){}
     ocupado=false; };
   OP.loop=requestAnimationFrame(passo); }
 function opCamFechar(){ OP.destino=null; cancelAnimationFrame(OP.loop); if(OP.cam) OP.cam.getTracks().forEach(t=>t.stop()); OP.cam=null; const f=$('#op-cam'); if(f) f.remove(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
@@ -6329,7 +6333,7 @@ const MAN=[
    ['Cadastros (motoristas e motivos)','Menu Ferramentas → Cadastros. Motoristas: cadastre o nome e, em apelidos, outras grafias (ALEXANDR, ALE) e o nome que vem no romaneio; use “Juntar com…” para unir duas pessoas iguais. Nomes digitados nas reentregas que não estão no cadastro aparecem embaixo para cadastrar ou marcar como apelido. Motivos: deixe só os que vocês usam, apague os outros e ordene com ▲. Nas Reentregas há a coluna Motorista (com sugestões); se vazia, vale o nome depois do “ - ” na observação. No ranking de motoristas aparece a taxa: reentregas de X notas levadas (%), quando o nome do romaneio está nos apelidos.'],
    ['Via Minas · Falta Chegar','Ao marcar “Chegou” numa transferência, aparece à direita a lista “Falta Chegar” só com as cidades que ainda esperam caminhão (e de qual base). Toque numa cidade para ver os romaneios dela. Quando tudo chega, a lista avisa que pode soltar todas.'],
    ['Via Minas · previsão e aviso','Em cada transferência que ainda não chegou há o campo “chega às” (hora prevista); a hora aparece na lista Falta Chegar. Quando a última transferência chega, o app toca um som e mostra um aviso (e notificação, se permitida). No topo da Falta Chegar, “📋 WhatsApp” copia a lista das cidades pendentes para mandar ao motorista.'],
-   ['Bipar caixa a caixa','Na câmera, bipar de novo a mesma nota ou pedido (sem número de volume na etiqueta) conta como a próxima caixa: 1/6, 2/6… Só vira “Duplicado” depois que todas as caixas foram bipadas. Embaixo da tela aparece em destaque VOLUMES lidos / total e quantos faltam (verde quando completa). Toque na faixa de informação do bipe (em cima) para abrir a ficha completa: cliente, cidade, valor, volumes, pedido, NF, romaneio, motorista, conteúdo e chave.'],
+   ['Bipar caixa a caixa','Na câmera, bipar de novo a mesma nota ou pedido (sem número de volume na etiqueta) conta como a próxima caixa: 1/6, 2/6… Só vira “Duplicado” depois que todas as caixas foram bipadas. Pela câmera, a mesma etiqueta só conta como nova caixa depois de sair da tela (afaste e aponte para a próxima); se ficar parada, aparece “Mesma caixa”. Embaixo da tela aparece em destaque VOLUMES lidos / total e quantos faltam (verde quando completa). Toque na faixa de informação do bipe (em cima) para abrir a ficha completa: cliente, cidade, valor, volumes, pedido, NF, romaneio, motorista, conteúdo e chave.'],
    ['Fora do romaneio: cliente e cidade','Quando a caixa bipada não está no romaneio, o app completa cliente e cidade sozinho: primeiro pelo histórico (romaneios antigos e XMLs), e, se não achar, lê o texto da própria etiqueta na câmera (📝 aparece na faixa de cima). A informação fica salva online e aparece na tabela Fora do romaneio para todos.'],
    ['Fora do romaneio: editar, reler e agrupar','Na lista Fora do romaneio da Operação: caixas do mesmo pedido viram uma linha só (“2/5 caixas”, botão “ver” abre as demais). Clique em cliente/cidade (ou “✎ informar”) para digitar à mão — vale para todas as caixas do pedido. “📷 ler etiqueta” abre a câmera só para ler o texto da etiqueta daquela caixa: aponte e toque na faixa de cima.'],
    ['Virada do dia (00h)','À meia-noite (ou na primeira vez que o app abre no dia seguinte), os romaneios carregados de dias anteriores são guardados no Banco de romaneios, no dia deles (pela data do nome do PDF), e saem de Carregados. Assim cada dia começa limpo e nada se perde: para consultar, abra o dia no Banco.'],
