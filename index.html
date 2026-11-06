@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.8.6', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6334,6 +6334,7 @@ const MAN=[
    ['Via Minas · mensagem do WhatsApp','O “📋 WhatsApp” da Falta Chegar copia a lista agrupada por base com a hora prevista (ex.: “DF - 06h15”), cada cidade com as notas e o total de cidades pendentes. As cidades dos romaneios Via Minas sempre aparecem na tela, mesmo se a região do mapa estiver incompleta.'],
    ['Criar/editar romaneio: salvar','Pode colar ou bipar os 44 dígitos e clicar direto em Salvar (não precisa Enter). A pergunta do motivo aparece na frente; clicar fora ou Esc com notas novas não fecha a janela sem salvar.'],
    ['Reentregas detectadas','Depois de confirmar (ou marcar “Não é reentrega”), a nota não volta mais para a janela. Notas com motivo em branco continuam pendentes no sino.'],
+   ['Salesforce: completar caixa sem nota (teste)','Nas caixas “Fora do romaneio” ou “Sem nota” com pedido, o botão “🔎 Salesforce” abre a pesquisa do pedido no Salesforce (o número já vai copiado) e uma janela para colar a chave. No Salesforce, na página de resultados, desça até “Notas Fiscais”, abra a nota cujo “Código do Pedido da Integração” é o número da etiqueta, copie o campo chNFe (44 dígitos) e cole. O app completa NF, cliente, cidade, valor e volumes pela chave (Meu Danfe); sem Api-Key, guarda pelo menos NF e chave. Também aparece na ficha da caixa (toque na informação da câmera).'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -6983,6 +6984,40 @@ var RB_VIR={dia:hojeISO()};
 setInterval(()=>{ const h=hojeISO(); if(h!==RB_VIR.dia){ RB_VIR.dia=h; rbVirada(); } },30000);
 setTimeout(()=>rbVirada(true),4000);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&hojeISO()!==RB_VIR.dia){ RB_VIR.dia=hojeISO(); rbVirada(); } });
+
+/* ================= v7.9.0 (teste) · Salesforce: abrir a pesquisa do pedido e colar a chave (chNFe) para completar a caixa ================= */
+const SF_URL='https://viveo-force.lightning.force.com';
+function sfAbrir(ped){ const q=String(ped||'').replace(/\D/g,'').replace(/^0+/,'')||String(ped||''); try{ navigator.clipboard&&navigator.clipboard.writeText(q).catch(()=>{}); }catch(e){}
+  window.open(SF_URL+'/_ui/search/ui/UnifiedSearchResults?str='+encodeURIComponent(q),'_blank','noopener'); toast('Salesforce aberto na pesquisa do pedido '+q+'. Desça até “Notas Fiscais”, abra a nota (Código do Pedido da Integração = '+q+'), copie o chNFe e cole aqui.'); }
+function sfChaveInfo(ch){ return {nf:String(+ch.slice(25,34)), serie:String(+ch.slice(22,25)), cnpj:ch.slice(6,20), uf:ch.slice(0,2)}; }
+function sfColar(lids){ const bs=OP.bipes.filter(b=>lids.includes(String(b.local_id||b.id))); if(!bs.length) return; const b0=bs[0];
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:520px"><h2 style="margin-top:0">Completar pela chave da nota</h2>
+   <p class="sub">Pedido <b>${esc(b0.ped||'—')}</b>${bs.length>1?' · vale para as '+bs.length+' caixas':''}. No Salesforce, na pesquisa, desça até <b>Notas Fiscais</b>, abra a nota com <b>Código do Pedido da Integração</b> = ${esc(b0.ped||'')} e copie o campo <b>chNFe</b>.</p>
+   <form id="sfc-f"><input name="ch" inputmode="numeric" autocomplete="off" placeholder="Cole os 44 dígitos (chNFe)" style="width:100%;box-sizing:border-box;font-size:1.05rem;letter-spacing:.04em">
+   <div id="sfc-st" class="sub" style="min-height:1.4em;margin-top:6px"></div>
+   <div style="display:flex;gap:8px;justify-content:space-between;margin-top:10px;flex-wrap:wrap"><button type="button" class="btn" data-sf-abrir="${esc(b0.ped||b0.nf||'')}">🔎 Abrir no Salesforce</button><span style="display:flex;gap:8px"><button type="button" class="btn" data-a="x">Cancelar</button><button class="btn pri">Completar</button></span></div></form></div>`;
+  f.addEventListener('click',e=>{ if(e.target===f||e.target.closest('[data-a="x"]')) f.remove(); });
+  f.querySelector('form').addEventListener('submit',async e=>{ e.preventDefault(); const ch=String(new FormData(e.target).get('ch')||'').replace(/\D/g,''); const st=f.querySelector('#sfc-st');
+    if(ch.length!==44){ st.textContent='A chave precisa ter 44 dígitos (tem '+ch.length+').'; return; }
+    const base=sfChaveInfo(ch); let n=null; st.textContent='Buscando a nota…';
+    try{ n=await redPelaChave(ch); }catch(er){ st.textContent='Não consegui puxar a DANFE ('+er.message+'). Guardei NF e chave.'; }
+    const info={nf:(n&&n.nf)||base.nf, dest:n&&n.dest||'', cid:[n&&n.cid,n&&n.uf].filter(Boolean).join('/'), valor:n?+String(n.valor).replace(/\./g,'').replace(',','.')||0:0, tot:n?+n.vol||0:0, chave:ch, sf:1};
+    S.opForaInfo=S.opForaInfo||{}; for(const b of bs){ if(!b.nf) b.nf=info.nf; if(info.dest) b.dest=info.dest; if(info.cid) b.cid=info.cid; if(info.valor&&!+b.valor) b.valor=info.valor; if(info.tot&&!b.tot) b.tot=info.tot; b.chaveNF=ch;
+      S.opForaInfo[b.local_id]=Object.assign(S.opForaInfo[b.local_id]||{},{nf:b.nf,dest:b.dest,cid:b.cid,valor:b.valor,tot:b.tot,chave:ch,dia:b.dia}); }
+    try{ opLocalGravar(); }catch(er){} salvar(); opRender(); toast('Caixa completada: NF '+info.nf+(info.dest?' · '+info.dest:'')+(info.cid?' · '+info.cid:'')); setTimeout(()=>f.remove(), n?300:2500); });
+  document.body.appendChild(f); setTimeout(()=>f.querySelector('[name=ch]').focus(),50); }
+/* aplica NF/valor guardados também */
+{ const _fp=opForaPatch; opForaPatch=function(b){ _fp(b); const F=(S.opForaInfo||{})[b&&b.local_id]; if(F){ if(!b.nf&&F.nf) b.nf=F.nf; if(!+b.valor&&F.valor) b.valor=F.valor; if(F.chave) b.chaveNF=F.chave; } }; }
+/* botões na lista (fora e sem nota) */
+{ const _rl=opRenderLista; opRenderLista=function(){ const r=_rl.apply(this,arguments); try{ const porLid=new Map(OP.bipes.map(b=>[String(b.local_id||b.id),b]));
+    $$('#op-lista tbody tr[data-lid]').forEach(tr=>{ if(tr.hidden) return; const b=porLid.get(tr.dataset.lid); if(!b||!['fora','semnota','pit'].includes(b.status)||!b.ped) return; const cc=tr.children[8]; if(!cc||cc.querySelector('[data-sf-colar]')) return;
+      const lids=(cc.querySelector('[data-op-ed]')||{dataset:{}}).dataset.opEd||tr.dataset.lid;
+      cc.insertAdjacentHTML('beforeend',` <button type="button" class="btn mini" data-sf-colar="${esc(lids)}" title="Abrir o pedido no Salesforce e colar a chave da nota" style="padding:1px 6px;font-size:11px">🔎 Salesforce${b.chaveNF?' ✓':''}</button>`); }); }catch(e){} return r; }; }
+document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('[data-sf-abrir]'); if(a){ sfAbrir(a.dataset.sfAbrir); return; }
+  const c=e.target.closest&&e.target.closest('[data-sf-colar]'); if(c){ const lids=c.dataset.sfColar.split(','); const b=OP.bipes.find(x=>lids.includes(String(x.local_id||x.id))); if(b&&!b.chaveNF) sfAbrir(b.ped); sfColar(lids); } });
+/* na ficha da câmera também */
+{ const _of=opFicha; opFicha=function(b){ _of(b); try{ if(b&&['fora','semnota','pit'].includes(b.status)&&b.ped){ const m=document.querySelector('.fundo:last-child .modal'); const pe=m&&m.querySelector('[data-a="x"]'); if(pe) pe.insertAdjacentHTML('beforebegin',`<button type="button" class="btn" data-sf-colar="${esc(String(b.local_id||b.id))}" style="margin-right:8px">🔎 Salesforce: colar chave</button>`); } }catch(e){} }; }
 
 /* ---------- início ---------- */
 (async function(){
