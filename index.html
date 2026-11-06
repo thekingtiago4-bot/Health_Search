@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.5', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.6', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6194,12 +6194,15 @@ function nuvAplicar(chave,valor,apagado){ NUV.aplicando=true; try{
   }finally{ NUV.aplicando=false; } }
 /* conflito (mudou aqui e lá ao mesmo tempo): reentregas juntam as linhas; divergência fica a mais recente */
 function nuvJuntar(chave,local,remoto){ if(chave.startsWith('re:')){ const vis=new Set(), out=[]; for(const l of [...remoto,...local]){ const k=JSON.stringify([opK(l.nf),rpNz(l.cli),rpNz(l.obs),+l.qtd||0]); if(vis.has(k)) continue; vis.add(k); out.push(l); } return out; }
-  const t=x=>((x.hist||[]).slice(-1)[0]||{}).em||x.em||''; return t(local)>t(remoto)?local:remoto; }
+  const t=x=>((x.hist||[]).slice(-1)[0]||{}).em||x.em||'';
+  /* v7.9.6: mapa/configurações — se a nuvem mudou depois da última versão que ESTE aparelho recebeu, vale a nuvem (aparelho com cópia velha não grava por cima) */
+  if(chave.startsWith('s:')){ const base=nuvBase(chave); if(!base||t(remoto)>base){ if(chave==='s:geo') setTimeout(()=>toast('O mapa deste aparelho estava desatualizado: usei a versão online.'),300); return remoto; } }
+  return t(local)>t(remoto)?local:remoto; }
 function nuvStatus(){ const el=$('#nuv-st'); if(!el) return; el.hidden=Store.modo!=='nuvem'; const on=opOnline(); el.textContent=!on?'☁ offline':NUV.erro?'☁ erro':NUV.rodando?'☁ sincronizando…':NUV.ult?'☁ salvo online '+NUV.ult.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'☁ online'; el.title=NUV.erro||'Tudo fica no banco online: romaneios, reentregas, divergências, agendamentos, regiões e XMLs.'; el.style.color=NUV.erro?'var(--no)':on?'var(--ok)':'var(--mudo)'; }
 async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } NUV.rodando=true; nuvStatus(); let mudou=false;
   try{
     /* 1) baixa o que mudou no banco */
-    const mk=()=>{ let q=NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').order('atualizado_em'); if(NUV.desde) q=q.gt('atualizado_em',new Date(new Date(NUV.desde).getTime()-5000).toISOString()); return q; };
+    const mk=()=>{ let q=NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').not('chave','like','bkp:%').order('atualizado_em'); if(NUV.desde) q=q.gt('atualizado_em',new Date(new Date(NUV.desde).getTime()-5000).toISOString()); return q; };
     let data=[]; for(let pg=0;pg<50;pg++){ const {data:d1,error}=await mk().range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; } const loc=nuvLocal();
     for(const r of data||[]){ if(!r||!r.chave) continue; const l=loc.get(r.chave), hr=r.apagado?'x':nuvHash(r.valor);
       if(!l&&!r.apagado&&!NUV.sessao.has(r.chave)){ nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=hr; mudou=true; if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; }
@@ -6252,7 +6255,7 @@ const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Obje
     salvar(); }finally{ NUV.aplicando=false; } }; }
 function nuvMesclar(l,r){ if(Array.isArray(l)&&Array.isArray(r)){ const ch=x=>x&&typeof x==='object'?(x.id||x.chave||JSON.stringify(x)):JSON.stringify(x); const m=new Map(); for(const x of l) m.set(ch(x),x); for(const x of r) m.set(ch(x),x); return [...m.values()]; }
   if(l&&r&&typeof l==='object'&&typeof r==='object'){ const o=Object.assign({},l); for(const k of Object.keys(r)) o[k]=(o[k]&&typeof o[k]==='object'&&r[k]&&typeof r[k]==='object')?nuvMesclar(o[k],r[k]):r[k]; return o; } return r; }
-{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')){ const tl=local&&local.em, tr=remoto&&remoto.em; if(tl&&tr) return String(tl)>String(tr)?local:remoto; return nuvMesclar(local,remoto); } return remoto; }; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')){ const tl=local&&local.em, tr=remoto&&remoto.em; const base=nuvBase(chave); if(tr&&(!base||String(tr)>base)){ if(chave==='s:geo') setTimeout(()=>toast('O mapa deste aparelho estava desatualizado: usei a versão online.'),300); return remoto; } if(tl&&tr) return String(tl)>String(tr)?local:remoto; return nuvMesclar(local,remoto); } return remoto; }; }
 { const NM=window.HS_NOMES, _ns=NM&&NM.salvar; if(typeof _ns==='function') NM.salvar=function(...a){ const r=_ns.apply(NM,a); nuvAgendar(); return r; }; }
 
 /* v6.9.0: chaves que só o admin grava + atualização ao vivo */
@@ -6338,6 +6341,7 @@ const MAN=[
    ['Caixas sem nota esperando chave','No topo da Operação aparece um aviso amarelo “X caixa(s) sem nota esperando chave” com os pedidos. Some quando todas forem completadas pelo 🔎 Salesforce ou acrescentadas ao MESA. “Ver caixas” abre a lista Fora do romaneio.'],
    ['Apagar nota fora do romaneio (ADM)','Em Dados → Fora do romaneio, o administrador vê um ✕ em cada nota. Ao apagar, pode escolher também tirar a NF do romaneio onde ela foi acrescentada (ex.: MESA). Usuários comuns não veem o botão.'],
    ['Aparelho com dados diferentes','Todo aparelho abre as Reentregas no dia de hoje. Se um tablet/celular mostrar dados diferentes do computador, toque no ☁ (ao lado do nome do app) → “⬇ Puxar tudo da nuvem”: o aparelho fica igual à cópia online, a mesma dos outros.'],
+   ['Backups da nuvem e aparelho desatualizado','Quando alguém entra num aparelho novo, ou num que ficou mais de 6 horas sem sincronizar, o app primeiro guarda na nuvem uma cópia do que está online (regiões, cadastros, reentregas, divergências) e só depois sincroniza. Um aparelho com mapa/configurações antigas não grava mais por cima da versão online: ele recebe a versão da nuvem. Para voltar: ☁ → 🗂 Backups da nuvem → ♻ Restaurar (administrador); antes de restaurar, o estado atual também é guardado.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -7077,6 +7081,37 @@ async function nuvPuxarTudo(){ if(!opOnline()){ toast('Sem internet agora.'); re
   f.innerHTML=`<div class="modal" role="dialog" style="max-width:420px"><h2 style="margin-top:0">Banco online</h2><p class="sub">${esc(NUV.erro||('Último envio: '+(NUV.ult?NUV.ult.toLocaleTimeString('pt-BR'):'—')))}</p>
    <div style="display:grid;gap:8px;margin-top:10px"><button class="btn pri" data-n="s">🔄 Sincronizar agora</button><button class="btn" data-n="p">⬇ Puxar tudo da nuvem (aparelho com dados errados)</button><button class="btn" data-n="x">Fechar</button></div></div>`;
   f.addEventListener('click',e=>{ const b=e.target.closest('[data-n]'); if(e.target===f||(b&&b.dataset.n==='x')){ f.remove(); return; } if(!b) return; f.remove(); if(b.dataset.n==='s') nuvSinc(); else nuvPuxarTudo(); }); document.body.appendChild(f); }; })();
+
+/* ================= v7.9.6 · Proteção contra aparelho desatualizado + backup na nuvem ao entrar em outro aparelho ================= */
+function nuvBases(){ try{ return JSON.parse(localStorage.getItem('healthSearch.nuvBase')||'{}'); }catch(e){ return {}; } }
+function nuvBase(k){ return nuvBases()[k]||''; }
+function nuvBaseMarca(){ try{ const b=nuvBases(); const loc=nuvLocal(); const t=x=>x&&((((x.hist||[]).slice(-1)[0]||{}).em)||x.em)||''; for(const [k,o] of loc){ if(!k.startsWith('s:')) continue; if(NUV.h[k]===nuvHash(o.valor)) b[k]=t(o.valor)||b[k]||new Date().toISOString(); } localStorage.setItem('healthSearch.nuvBase',JSON.stringify(b)); }catch(e){} }
+function hsAparelho(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ id=Math.random().toString(36).slice(2,8); localStorage.setItem('healthSearch.aparelho',id); } const ua=navigator.userAgent; const tipo=/iPad|Tablet|SM-T|Tab/i.test(ua)?'Tablet':/Mobi|Android/i.test(ua)?'Celular':'Computador'; return tipo+' '+id; }catch(e){ return 'Aparelho'; } }
+/* backup da nuvem (cópia do que está online) antes de um aparelho desatualizado ou recém-logado sincronizar */
+async function nuvBackupNuvem(motivo){ if(!opOnline()||!NV.cli) return false; try{
+    let data=[]; for(let pg=0;pg<20;pg++){ const {data:d1,error}=await NV.cli.from('hs_sync').select('chave,valor,apagado').or('chave.like.s:%,chave.like.re:%,chave.like.dv:%,chave.like.ls:%').range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; }
+    const itens=data.filter(r=>!r.apagado).map(r=>({chave:r.chave,valor:r.valor})); if(!itens.length) return false;
+    const em=new Date().toISOString(); const {error}=await NV.cli.from('hs_sync').upsert({chave:'bkp:'+em,tipo:'bkp',valor:{em,motivo,aparelho:hsAparelho(),por:opEu(),itens},apagado:false,atualizado_por:opEu()}); if(error) throw error;
+    try{ localStorage.setItem('healthSearch.ultBkpNuvem',em); }catch(e){} return true; }catch(e){ console.error('bkp',e); return false; } }
+{ const _ns=nuvSinc; let primeira=true; nuvSinc=async function(){ if(primeira&&Store.modo==='nuvem'&&opOnline()){ primeira=false; let ult=''; try{ ult=localStorage.getItem('healthSearch.ultSync')||''; }catch(e){}
+      const velho=!ult||Date.now()-new Date(ult).getTime()>6*3600e3; if(velho){ await nuvBackupNuvem(ult?'aparelho voltou depois de '+Math.round((Date.now()-new Date(ult).getTime())/3600e3)+'h':'primeiro acesso neste aparelho'); } }
+    const r=await _ns.apply(this,arguments); try{ if(!NUV.erro){ localStorage.setItem('healthSearch.ultSync',new Date().toISOString()); nuvBaseMarca(); } }catch(e){} return r; }; }
+/* restaurar um backup da nuvem */
+async function nuvBackups(){ const {data,error}=await NV.cli.from('hs_sync').select('chave,atualizado_em,atualizado_por').like('chave','bkp:%').eq('apagado',false).order('chave',{ascending:false}).limit(30); if(error) throw error; return data||[]; }
+async function nuvRestaurarBkp(chave){ if(!nvAdmin()){ toast('Só o administrador restaura.'); return; } const {data,error}=await NV.cli.from('hs_sync').select('valor').eq('chave',chave).maybeSingle(); if(error||!data){ toast('Não achei esse backup.'); return; }
+  const b=data.valor; if(!(await confirmar('Restaurar backup',`Voltar regiões, cadastros, reentregas e divergências para como estavam em ${new Date(b.em).toLocaleString('pt-BR')} (${esc(b.motivo||'')}, ${esc(b.aparelho||'')})? Antes disso eu guardo um backup do estado atual.`,'Restaurar'))) return;
+  await nuvBackupNuvem('antes de restaurar '+new Date(b.em).toLocaleString('pt-BR')); const agora=new Date().toISOString(); let q=0;
+  for(const it of b.itens){ let v=it.valor; if(it.chave.startsWith('s:')&&v&&typeof v==='object'&&!Array.isArray(v)) v=Object.assign({},v,{em:agora}); nuvAplicar(it.chave,v,false); q++; }
+  try{ const bs=nuvBases(); for(const it of b.itens) if(it.chave.startsWith('s:')) bs[it.chave]=agora; localStorage.setItem('healthSearch.nuvBase',JSON.stringify(bs)); }catch(e){}
+  salvar(); try{ RE.gravar(); }catch(e){} try{ renderTudo(); }catch(e){} await nuvSinc(); toast('✔ Backup restaurado ('+q+' itens) e enviado para a nuvem.'); }
+async function nuvTelaBackups(){ let L=[]; try{ L=await nuvBackups(); }catch(e){ toast('Não consegui listar: '+e.message); return; }
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:560px;max-height:85vh;overflow:auto"><h2 style="margin-top:0">Backups da nuvem</h2><p class="sub">O app guarda uma cópia do que está online sempre que alguém entra num aparelho novo ou que ficou mais de 6 horas sem sincronizar — antes dele mexer em qualquer coisa.</p>
+   ${L.length?L.map(x=>{ const em=x.chave.slice(4); return `<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--linha)"><div style="flex:1"><b>${esc(new Date(em).toLocaleString('pt-BR'))}</b><br><small class="sub">${esc(x.atualizado_por||'')}</small></div>${nvAdmin()?`<button class="btn mini" data-bk-r="${esc(x.chave)}">♻ Restaurar</button>`:''}</div>`; }).join(''):'<p>Nenhum backup ainda.</p>'}
+   <div style="display:flex;justify-content:space-between;margin-top:12px"><button class="btn" data-bk-n="1">💾 Fazer backup agora</button><button class="btn pri" data-bk-x="1">Fechar</button></div></div>`;
+  f.addEventListener('click',async e=>{ if(e.target===f||e.target.closest('[data-bk-x]')){ f.remove(); return; } const r=e.target.closest('[data-bk-r]'); if(r){ f.remove(); nuvRestaurarBkp(r.dataset.bkR); return; } if(e.target.closest('[data-bk-n]')){ f.remove(); toast((await nuvBackupNuvem('backup manual'))?'Backup guardado na nuvem.':'Não consegui guardar o backup.'); } });
+  document.body.appendChild(f); }
+(function(){ const el=$('#nuv-st'); if(!el) return; const _oc=el.onclick; el.onclick=()=>{ _oc&&_oc(); setTimeout(()=>{ const m=document.querySelector('.fundo:last-child [data-n="p"]'); if(m&&!m.parentNode.querySelector('[data-n="b"]')){ m.insertAdjacentHTML('afterend','<button class="btn" data-n="b">🗂 Backups da nuvem</button>'); m.parentNode.querySelector('[data-n="b"]').onclick=e=>{ e.stopPropagation(); m.closest('.fundo').remove(); nuvTelaBackups(); }; } },0); }; })();
 
 /* ---------- início ---------- */
 (async function(){
