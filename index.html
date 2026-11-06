@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.7', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.8', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6336,7 +6336,7 @@ const MAN=[
    ['Conferir volume a volume','Vem ligado de fábrica: cada caixa é um bipe (1/6, 2/6…). Para conferir só por nota (1 bipe confere a nota inteira), o administrador desmarca “Conferir volume a volume” na Operação.'],
    ['Via Minas · mensagem do WhatsApp','O “📋 WhatsApp” da Falta Chegar copia a lista agrupada por base com a hora prevista (ex.: “DF - 06h15”), cada cidade com as notas e o total de cidades pendentes. As cidades dos romaneios Via Minas sempre aparecem na tela, mesmo se a região do mapa estiver incompleta.'],
    ['Criar/editar romaneio: salvar','Pode colar ou bipar os 44 dígitos e clicar direto em Salvar (não precisa Enter). A pergunta do motivo aparece na frente; clicar fora ou Esc com notas novas não fecha a janela sem salvar.'],
-   ['Reentregas detectadas','A comparação usa os romaneios carregados e também o Banco de romaneios dos últimos 20 dias (inclusive o que outros aparelhos guardaram), então a nota de ontem que volta hoje é avisada mesmo depois da virada do dia. Depois de confirmar (ou marcar “Não é reentrega”), a nota não volta mais para a janela. Notas com motivo em branco continuam pendentes no sino.'],
+   ['Reentregas detectadas','A comparação usa os romaneios carregados e também o Banco de romaneios dos últimos 20 dias (inclusive o que outros aparelhos guardaram), então a nota de ontem que volta hoje é avisada mesmo depois da virada do dia. Depois de confirmar (ou marcar “Não é reentrega”), a nota não volta mais para a janela. Notas com motivo em branco continuam pendentes no sino. Confirmou num aparelho, some da janela em todos (a marca vai pela nuvem), e a janela só abre depois que o aparelho recebeu os dados da nuvem.'],
    ['Salesforce: completar caixa sem nota','Nas caixas “Fora do romaneio” ou “Sem nota” com pedido, o botão “🔎 Salesforce” abre a pesquisa do pedido no Salesforce (o número já vai copiado) e uma janela para colar a chave. No Salesforce, na página de resultados, desça até “Notas Fiscais”, abra a nota cujo “Código do Pedido da Integração” é o número da etiqueta, copie o campo chNFe (44 dígitos) e cole. O app completa NF, cliente, cidade, valor e volumes pela chave (Meu Danfe); sem Api-Key, guarda pelo menos NF e chave. Também aparece na ficha da caixa (toque na informação da câmera).'],
    ['Caixas sem nota esperando chave','No topo da Operação aparece um aviso amarelo “X caixa(s) sem nota esperando chave” com os pedidos. Some quando todas forem completadas pelo 🔎 Salesforce ou acrescentadas ao MESA. “Ver caixas” abre a lista Fora do romaneio.'],
    ['Apagar nota fora do romaneio (ADM)','Em Dados → Fora do romaneio, o administrador vê um ✕ em cada nota. Ao apagar, pode escolher também tirar a NF do romaneio onde ela foi acrescentada (ex.: MESA). Usuários comuns não veem o botão.'],
@@ -7128,6 +7128,19 @@ async function apConferir(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') retu
 setTimeout(async()=>{ await apRegistrar(); await apConferir(); },5000);
 setInterval(()=>{ if(!document.hidden) apConferir(); },60000);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) apConferir(); });
+
+/* ================= v7.9.8 · Reentregas detectadas iguais em todos os aparelhos ================= */
+NUV_CAMPOS.push('reFeito');
+function nexJuntarReent(a,b){ /* resolvida (confirmada/ignorada) nunca volta para suspeita */ const out=Object.assign({},a||{}); for(const [k,r] of Object.entries(b||{})){ const l=out[k]; if(!l){ out[k]=r; continue; }
+    if(l.d!==r.d){ out[k]=(String(r.d)>String(l.d))?r:l; continue; } const lr=l.status!=='suspeita', rr=r.status!=='suspeita'; out[k]=rr&&!lr?r:lr&&!rr?l:Object.assign({},l,r); } return out; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave==='s:nex'&&local&&remoto){ const m=nuvMesclar(local,remoto); m.reent=nexJuntarReent(local.reent,remoto.reent); return m; }
+    if(chave==='s:reFeito'&&local&&remoto) return Object.assign({},local,remoto); return _nj(chave,local,remoto); }; }
+/* marca resolvida também no reFeito (sincronizado) quando o status muda por qualquer caminho */
+function reFeitoDeNex(){ try{ const n=nexS(); S.reFeito=S.reFeito||{}; let m=false; for(const [k,r] of Object.entries(n.reent)) if(r.status!=='suspeita'&&S.reFeito[k]!==r.d){ S.reFeito[k]=r.d; m=true; } return m; }catch(e){ return false; } }
+/* janela só depois da 1ª sincronização deste acesso */
+NUV.primeiraOk=false;
+{ const _rp=reAvisarPopup; reAvisarPopup=function(){ if(Store.modo==='nuvem'&&!NUV.primeiraOk) return; try{ reFeitoDeNex(); }catch(e){} return _rp.apply(this,arguments); }; }
+{ const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); try{ if(reFeitoDeNex()) salvar(); }catch(e){} if(!NUV.primeiraOk&&!NUV.erro&&NUV.ult){ NUV.primeiraOk=true; setTimeout(()=>{ try{ reAvisarPopup(); }catch(e){} },500); } return r; }; }
 
 /* ---------- início ---------- */
 (async function(){
