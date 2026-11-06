@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.8.3', HS_DATA='04/11/2026';
+const HS_VERSAO='7.8.4', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6329,6 +6329,7 @@ const MAN=[
    ['Bipar caixa a caixa','Na câmera, bipar de novo a mesma nota ou pedido (sem número de volume na etiqueta) conta como a próxima caixa: 1/6, 2/6… Só vira “Duplicado” depois que todas as caixas foram bipadas. Embaixo da tela aparece em destaque VOLUMES lidos / total e quantos faltam (verde quando completa). Toque na faixa de informação do bipe (em cima) para abrir a ficha completa: cliente, cidade, valor, volumes, pedido, NF, romaneio, motorista, conteúdo e chave.'],
    ['Fora do romaneio: cliente e cidade','Quando a caixa bipada não está no romaneio, o app completa cliente e cidade sozinho: primeiro pelo histórico (romaneios antigos e XMLs), e, se não achar, lê o texto da própria etiqueta na câmera (📝 aparece na faixa de cima). A informação fica salva online e aparece na tabela Fora do romaneio para todos.'],
    ['Fora do romaneio: editar, reler e agrupar','Na lista Fora do romaneio da Operação: caixas do mesmo pedido viram uma linha só (“2/5 caixas”, botão “ver” abre as demais). Clique em cliente/cidade (ou “✎ informar”) para digitar à mão — vale para todas as caixas do pedido. “📷 ler etiqueta” abre a câmera só para ler o texto da etiqueta daquela caixa: aponte e toque na faixa de cima.'],
+   ['Virada do dia (00h)','À meia-noite (ou na primeira vez que o app abre no dia seguinte), os romaneios carregados de dias anteriores são guardados no Banco de romaneios, no dia deles (pela data do nome do PDF), e saem de Carregados. Assim cada dia começa limpo e nada se perde: para consultar, abra o dia no Banco.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -6964,6 +6965,20 @@ OP.abertos=OP.abertos||new Set();
 document.addEventListener('click',e=>{ const g=e.target.closest&&e.target.closest('[data-op-grp]'); if(g){ const k=g.dataset.opGrp; OP.abertos.has(k)?OP.abertos.delete(k):OP.abertos.add(k); opRenderLista(); return; }
   const ed=e.target.closest&&e.target.closest('[data-op-ed]'); if(ed){ opForaEditar(ed.dataset.opEd.split(',')); return; }
   const rl=e.target.closest&&e.target.closest('[data-op-reler]'); if(rl){ opForaReler(rl.dataset.opReler.split(',')); } });
+
+/* ================= v7.8.4 · Virada do dia (00h): guarda os romaneios do dia anterior no banco e limpa os carregados ================= */
+async function rbVirada(silencio){ const hoje=hojeISO(); const velhos=(S.romaneios||[]).filter(r=>{ const d=opDiaRom(r); return d&&d<hoje; }); if(!velhos.length) return 0;
+  let ok=0; for(const r of velhos){ try{ await rbGuardar(r,opDiaRom(r)); ok++; }catch(e){ console.error(e); } }
+  const L=rbLocalLer(); const guardado=r=>{ const d=L[opDiaRom(r)]; return !!(d&&d[opDiaRom(r)+'|'+r.id]); };
+  const sair=new Set(velhos.filter(guardado).map(r=>r.id)); if(!sair.size) return 0;
+  S.romaneios=S.romaneios.filter(r=>!sair.has(r.id)); salvar(); try{ renderTudo(); }catch(e){}
+  const dias=[...new Set(velhos.filter(r=>sair.has(r.id)).map(opDiaRom))].sort().map(fmtData).join(', ');
+  if(!silencio||sair.size) toast(`🌙 Novo dia: ${sair.size} romaneio(s) de ${dias} foram guardados no Banco de romaneios. Carregados ficou livre para hoje.`);
+  return sair.size; }
+var RB_VIR={dia:hojeISO()};
+setInterval(()=>{ const h=hojeISO(); if(h!==RB_VIR.dia){ RB_VIR.dia=h; rbVirada(); } },30000);
+setTimeout(()=>rbVirada(true),4000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&hojeISO()!==RB_VIR.dia){ RB_VIR.dia=hojeISO(); rbVirada(); } });
 
 /* ---------- início ---------- */
 (async function(){
