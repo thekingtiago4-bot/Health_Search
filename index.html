@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.1', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.2', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6335,6 +6335,7 @@ const MAN=[
    ['Criar/editar romaneio: salvar','Pode colar ou bipar os 44 dígitos e clicar direto em Salvar (não precisa Enter). A pergunta do motivo aparece na frente; clicar fora ou Esc com notas novas não fecha a janela sem salvar.'],
    ['Reentregas detectadas','Depois de confirmar (ou marcar “Não é reentrega”), a nota não volta mais para a janela. Notas com motivo em branco continuam pendentes no sino.'],
    ['Salesforce: completar caixa sem nota','Nas caixas “Fora do romaneio” ou “Sem nota” com pedido, o botão “🔎 Salesforce” abre a pesquisa do pedido no Salesforce (o número já vai copiado) e uma janela para colar a chave. No Salesforce, na página de resultados, desça até “Notas Fiscais”, abra a nota cujo “Código do Pedido da Integração” é o número da etiqueta, copie o campo chNFe (44 dígitos) e cole. O app completa NF, cliente, cidade, valor e volumes pela chave (Meu Danfe); sem Api-Key, guarda pelo menos NF e chave. Também aparece na ficha da caixa (toque na informação da câmera).'],
+   ['Caixas sem nota esperando chave','No topo da Operação aparece um aviso amarelo “X caixa(s) sem nota esperando chave” com os pedidos. Some quando todas forem completadas pelo 🔎 Salesforce ou acrescentadas ao MESA. “Ver caixas” abre a lista Fora do romaneio.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -7018,6 +7019,15 @@ document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closes
   const c=e.target.closest&&e.target.closest('[data-sf-colar]'); if(c){ const lids=c.dataset.sfColar.split(','); const b=OP.bipes.find(x=>lids.includes(String(x.local_id||x.id))); if(b&&!b.chaveNF) sfAbrir(b.ped); sfColar(lids); } });
 /* na ficha da câmera também */
 { const _of=opFicha; opFicha=function(b){ _of(b); try{ if(b&&['fora','semnota','pit'].includes(b.status)&&b.ped){ const m=document.querySelector('.fundo:last-child .modal'); const pe=m&&m.querySelector('[data-a="x"]'); if(pe) pe.insertAdjacentHTML('beforebegin',`<button type="button" class="btn" data-sf-colar="${esc(String(b.local_id||b.id))}" style="margin-right:8px">🔎 Salesforce: colar chave</button>`); } }catch(e){} }; }
+
+/* ================= v7.9.2 · Contador de caixas sem nota esperando chave (topo da Operação) ================= */
+function opSemChave(){ if(OP.dia&&OP.dia!==hojeISO()) return []; const mesa=new Set(); try{ const r=foraMesaHoje(false); if(r) r.rows.forEach(x=>{ mesa.add(opK(x.nf)); if(x.ped) mesa.add('P'+opK(x.ped)); }); }catch(e){}
+  const g=new Map(); for(const b of (OP.bipes||[])){ if(!['fora','semnota','pit'].includes(b.status)) continue; try{ opForaPatch(b); }catch(e){} if(b.chaveNF) continue; if(b.nf&&mesa.has(opK(b.nf))) continue; if(b.ped&&mesa.has('P'+opK(b.ped))) continue;
+    const k=b.ped||('NF'+(b.nf||b.local_id)); if(!g.has(k)) g.set(k,[]); g.get(k).push(b); } return [...g.values()]; }
+{ const _r=opRender; opRender=function(){ const r=_r.apply(this,arguments); try{ const cards=$('#op-cards'); if(!cards) return r; let el=$('#op-semch'); if(!el){ cards.insertAdjacentHTML('beforebegin','<div id="op-semch" hidden></div>'); el=$('#op-semch'); }
+    const L=opSemChave(); const cx=L.reduce((t,g)=>t+g.length,0); el.hidden=!L.length; if(!L.length) return r;
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:color-mix(in srgb,var(--amar) 16%,transparent);border:1.5px solid var(--amar);border-radius:12px;padding:10px 14px;margin:0 0 12px"><span style="font-size:1.4rem">📦</span><div style="flex:1;min-width:200px"><b style="font-size:1.05rem">${fmtN(cx)} caixa(s) sem nota esperando chave</b><div class="sub" style="margin:2px 0 0">${L.length} pedido(s): ${esc(L.slice(0,8).map(g=>g[0].ped||g[0].nf||'?').join(', '))}${L.length>8?'…':''} — complete pelo 🔎 Salesforce antes de fechar o turno.</div></div><button type="button" class="btn mini pri" id="op-semch-ver">Ver caixas</button></div>`;
+    $('#op-semch-ver').onclick=()=>{ OP.filtro='fora'; opRender(); const l=$('#op-lista'); if(l) l.scrollIntoView({behavior:'smooth',block:'start'}); }; }catch(e){ console.error(e); } return r; }; }
 
 /* ---------- início ---------- */
 (async function(){
