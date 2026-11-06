@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.16', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.17', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5471,7 +5471,7 @@ function dvBadge(){ const q=$('#qt-dv'); if(!q) return; const n=dvS().filter(d=>
     if(a==='editar'){ limpar(); $('#dv-id').value=d.id; $('#dv-ped').value=d.ped||''; $('#dv-nf').value=d.nf||''; $('#dv-tipo').value=d.tipo; $('#dv-qtd').value=d.qtd||''; $('#dv-cli').value=d.cli||''; $('#dv-rem').value=d.rem||''; $('#dv-obs').value=d.obs||''; $('#dv-ok').textContent='Salvar alterações'; $('#dv-form').scrollIntoView({behavior:'smooth'}); return; }
     if(a==='resolver'){ const obs=await dvPerguntar('Resolver divergência '+dvNum(d),'Como foi resolvida? (ex.: volumes chegaram no romaneio 812, entregue completo)'); if(obs===null) return; d.st='resolvida'; d.res={d:hojeISO(),obs,por:eu}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Resolvida: '+obs}); dvParaReentregas(d); }
     if(a==='reabrir'){ d.st='aberta'; delete d.res; delete d.apareceu; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Reaberta'}); }
-    if(a==='apagar'){ if(!opAdmin()&&opOnline()){ toast('Só o administrador apaga divergência.'); return; } if(!await confirmar('Apagar divergência',`Apagar ${dvNum(d)} de vez?`,'Apagar')) return; S.divergencias=dvS().filter(x=>x!==d); }
+    if(a==='apagar'){ if(!opAdmin()&&opOnline()){ toast('Só o administrador apaga divergência.'); return; } if(!await confirmar('Apagar divergência',`Apagar ${dvNum(d)} de vez?`,'Apagar')) return; S.divergencias=dvS().filter(x=>x!==d); try{ (NUV.apagar=NUV.apagar||new Set()).add('dv:'+d.id); }catch(e){} }
     salvar(); dvRender(); };
   const _ir=irPara; irPara=function(t){ _ir(t); if(t==='divergencias'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-divergencias'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); dvVarrer(false); dvRender(); setTimeout(()=>{ if(!TOQUE) $('#dv-bip').focus(); },0); } };
   document.querySelector('.nav [data-tela="divergencias"]').addEventListener('click',()=>irPara('divergencias'));
@@ -6225,7 +6225,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     if(nvAdmin()&&NUV.aal==null){ try{ const {data:al}=await NV.cli.auth.mfa.getAuthenticatorAssuranceLevel(); NUV.aal=al&&al.currentLevel||''; }catch(e){ NUV.aal=''; } }
     const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>!admOk&&NUV_ADMIN.has(k);
     if(nvAdmin()&&!admOk&&[...agora.keys()].some(k=>NUV_ADMIN.has(k)&&NUV.h[k]!==nuvHash(agora.get(k).valor))) NUV.avisoAal='Suas alterações em regiões/Correção estão guardadas neste aparelho, mas só vão para o banco depois que você entrar com a verificação em 2 etapas (saia e entre de novo).'; for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
-    for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
+    for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)&&(!k.startsWith('dv:')||(NUV.apagar&&NUV.apagar.has(k)))) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
     let recusados=[]; for(let i=0;i<sobe.length;i+=50){ const lote=sobe.slice(i,i+50); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r));
       if(!e2){ for(const r of lote) NUV.h[r.chave]=r._h; continue; }
       for(const r of lote){ const {_h,...x}=r; const {error:e3}=await NV.cli.from('hs_sync').upsert(x); if(e3) recusados.push([r.chave,e3]); else NUV.h[r.chave]=_h; } }
@@ -6355,6 +6355,7 @@ const MAN=[
    ['Alta e Baixa volumetria','Na Operação, as notas que faltam bipar ficam em dois cartões: “Baixa volumetria (até 9 vol.)”, que é a lista a cobrar, e “Alta volumetria (10+ vol.)”, que não entra na Baixa; bipar as de alta é opcional e conta normal.'],
    ['Vários usuários ao mesmo tempo','Os bipes de todos chegam ao vivo. Etiqueta com número da caixa já bipada por outra pessoa dá Duplicado. Etiqueta só com o pedido, já bipado por outra pessoa, mostra “Já bipado por Christian (2 de 4)” e só conta se tocar em “É outra caixa”.'],
    ['Operação por romaneio','Abaixo dos cartões da Operação, “Por romaneio” mostra cada origem (DF, AQA, CAJ, MESA, Via Minas…) com quantas notas já foram bipadas e a barra de progresso; ✅ quando a origem inteira foi bipada. Embaixo, cada romaneio com o que falta. Toque num romaneio para abrir a lista com duas colunas: notas bipadas (e quem bipou) e notas faltando. Acima dos cartões há os botões “Romaneio: Todos · DF 0019486 · CAJ 0235414…”: escolhendo um, os cartões (Bipes, Conferidos, Baixa/Alta volumetria, Alto valor, Duplicados) e as listas passam a contar só aquele romaneio.'],
+   ['Atualizações seguras','Toda vez que o app atualiza, antes de sincronizar ele guarda um backup na nuvem (“antes da atualização x → y”) e uma foto do que o aparelho tinha. Depois de atualizar, confere e devolve sozinho qualquer divergência, reentrega, nota fora, agendamento ou cadastro que tenha sumido. Divergências só somem da nuvem quando o administrador apaga pelo botão Apagar.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -7258,9 +7259,26 @@ function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) re
   f.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='x')){ f.remove(); return; } if(b&&b.dataset.a==='f'){ f.remove(); OP.romFiltro=id; opRender(); } });
   document.body.appendChild(f); }
 
+/* ================= v7.9.17 · Atualização nunca tira informação: backup antes, conferência depois e devolve o que faltar ================= */
+const ATU={ant:'',snap:null};
+function atuFoto(){ if(ATU.feita) return; ATU.feita=true; try{ ATU.ant=localStorage.getItem('healthSearch.versaoAnt')||''; const atual=String(HS_VERSAO);
+    if(ATU.ant!==atual){ /* foto do que este aparelho tinha ANTES de qualquer sincronização da versão nova */
+      const snap={em:new Date().toISOString(),de:ATU.ant,para:atual,dv:JSON.parse(JSON.stringify(S.divergencias||[])),re:JSON.parse(JSON.stringify((RE.ler().dias)||{})),fora:JSON.parse(JSON.stringify(S.foraReg||[])),ag:JSON.parse(JSON.stringify(S.agendamentos||[])),cadMot:JSON.parse(JSON.stringify(S.cadMot||[])),cadMotivos:JSON.parse(JSON.stringify(S.cadMotivos||[])),opForaInfo:JSON.parse(JSON.stringify(S.opForaInfo||{}))};
+      ATU.snap=snap; try{ localStorage.setItem('healthSearch.preAtualizacao',JSON.stringify(snap)); }catch(e){} localStorage.setItem('healthSearch.versaoAnt',atual); } }catch(e){ console.error(e); } }
+function atuDevolver(){ const sn=ATU.snap; if(!sn) return 0; let q=0;
+  /* divergências */ const dv=dvS(); const ids=new Set(dv.map(d=>d.id)); for(const d of sn.dv) if(d&&d.id&&!ids.has(d.id)){ dv.push(d); q++; }
+  /* reentregas (por dia, por NF+motivo) */ const D=RE.ler(); for(const [dia,ls] of Object.entries(sn.re||{})){ const L=D.dias[dia]=D.dias[dia]||[]; const tem=new Set(L.map(l=>z(l.nf)+'|'+rpNz(l.obs))); for(const l of (ls||[])){ const k=z(l.nf)+'|'+rpNz(l.obs); if(!tem.has(k)){ L.push(l); tem.add(k); q++; } } }
+  /* notas fora, agendamentos, cadastros */ const junta=(arr,novos,ch)=>{ const t=new Set(arr.map(ch)); for(const x of novos||[]) if(x&&!t.has(ch(x))){ arr.push(x); t.add(ch(x)); q++; } };
+  junta(S.foraReg=S.foraReg||[],sn.fora,x=>x.id); junta(S.agendamentos=S.agendamentos||[],sn.ag,x=>x.id||JSON.stringify(x)); junta(S.cadMot=S.cadMot||[],sn.cadMot,x=>x.nome); junta(S.cadMotivos=S.cadMotivos||[],sn.cadMotivos,x=>x);
+  S.opForaInfo=S.opForaInfo||{}; for(const [k,v] of Object.entries(sn.opForaInfo||{})) if(!S.opForaInfo[k]){ S.opForaInfo[k]=v; q++; }
+  if(q){ RE.gravar(); salvar(); try{ renderTudo(); }catch(e){} } return q; }
+{ const _ns=nuvSinc; let feito=false; nuvSinc=async function(){ try{ atuFoto(); }catch(e){} if(!feito&&ATU.snap&&Store.modo==='nuvem'&&opOnline()){ feito=true; try{ await nuvBackupNuvem('antes da atualização '+(ATU.snap.de||'?')+' → '+ATU.snap.para); }catch(e){} }
+    const r=await _ns.apply(this,arguments); if(ATU.snap&&!ATU.conferido&&!NUV.erro&&NUV.ult){ ATU.conferido=true; const q=atuDevolver(); if(q){ toast('🛡 Atualização: '+q+' informação(ões) que tinham sumido foram devolvidas.'); setTimeout(()=>nuvSinc(),1500); } } return r; }; }
+setTimeout(()=>{ if(Store.modo!=='nuvem'){ if(ATU.snap){ const q=atuDevolver(); if(q) toast('🛡 Atualização: '+q+' informação(ões) devolvidas.'); } } },3000);
+
 /* ---------- início ---------- */
 (async function(){
-  const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo);
+  const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo); try{ atuFoto(); }catch(e){}
   const pac=lerPacote(); const chegou=aplicarPacote(pac); if(chegou) salvar();
   montarDicionario(); aplicarTema(); geoInit(); aplicarRegraTodos();
   if(!Object.keys(S.cidAtend||{}).length && S.romaneios.length){ for(const r of S.romaneios) registrarCidades(r); FER_NOVAS=[]; salvar(); }
