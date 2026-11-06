@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.0.0', HS_DATA='04/11/2026';
+const HS_VERSAO='8.1.0', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5407,7 +5407,7 @@ const DV_ST={aberta:{t:'Aberta',c:'var(--no)'},apareceu:{t:'Apareceu no romaneio
 function dvS(){ return S.divergencias=S.divergencias||[]; }
 const dvNum=d=>'#'+String(d.n||0).padStart(3,'0');
 function dvAcha(ped,nf){ ped=z(ped); nf=z(nf); if(!ped&&!nf) return null; return dvS().find(d=>d.st!=='resolvida'&&((nf&&d.nf&&z(d.nf)===nf)||(ped&&d.ped&&z(d.ped)===ped)))||null; }
-const dvTexto=d=>`Pertence à divergência ${dvNum(d)} · ${d.tipo}${d.qtd?' · '+d.qtd+' vol.':''}${d.obs?' · '+d.obs:''} (aberta em ${fmtData(d.d)})`;
+const dvTexto=d=>`Pertence à divergência ${dvNum(d)}${d.tipo?' · '+d.tipo:''}${d.qtd?' · '+d.qtd+' vol.':''}${d.obs?' · '+d.obs:''} (aberta em ${fmtData(d.d)})`;
 /* romaneios carregados × divergências abertas: marca "apareceu" e devolve as que bateram */
 function dvVarrer(avisar){ const hits=[]; let mud=false;
   for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const d=dvAcha(row.ped,row.nf); if(!d) continue; hits.push({d,r,row});
@@ -6357,6 +6357,7 @@ const MAN=[
    ['Operação por romaneio','Abaixo dos cartões da Operação, “Por romaneio” mostra cada origem (DF, AQA, CAJ, MESA, Via Minas…) com quantas notas já foram bipadas e a barra de progresso; ✅ quando a origem inteira foi bipada. Embaixo, cada romaneio com o que falta. Toque num romaneio para abrir a lista com duas colunas: notas bipadas (e quem bipou) e notas faltando. Acima dos cartões há os botões “Romaneio: Todos · DF 0019486 · CAJ 0235414…”: escolhendo um, os cartões (Bipes, Conferidos, Baixa/Alta volumetria, Alto valor, Duplicados) e as listas passam a contar só aquele romaneio.'],
    ['Atualizações seguras','Toda vez que o app atualiza, antes de sincronizar ele guarda um backup na nuvem (“antes da atualização x → y”) e uma foto do que o aparelho tinha. Depois de atualizar, confere e devolve sozinho qualquer divergência, reentrega, nota fora, agendamento ou cadastro que tenha sumido. Divergências só somem da nuvem quando o administrador apaga pelo botão Apagar.'],
    ['Rotas','Menu Regiões → Rotas. O administrador ou um usuário com a opção “Roteirizador” ligada publica a folha de rota do dia (o PDF com PLACA, AGREGADO, cidades, VOLUMES, PARADAS e VALOR): o app lê cada veículo e mostra um cartão com a placa, o motorista e a sequência numerada das cidades. Todos os usuários veem e são avisados (aviso no app e notificação, se permitida). Para mudar, publique o PDF novo: o anterior vai para o histórico (até 15). Só administrador/roteirizador coloca o nome dos motoristas e tira a rota. Em Usuários, cada pessoa tem a opção Roteirizador (Ligado/Desligado); o administrador é sempre roteirizador.'],
+   ['Buscar completo','O resultado mostra também valor, conteúdo das caixas (XML), se já foi bipada hoje (quantas caixas e por quem), se é reentrega e se tem divergência aberta, com os botões 📋 Copiar (pedido, NF, cliente, cidade) e 🔎 Salesforce. Digite o nome de uma cidade (ex.: Lavras) para ver todas as notas dela hoje. Se não achar hoje, mostra em qual romaneio do Banco a nota estava em outro dia. Embaixo do campo ficam as últimas 20 buscas para repetir com um toque.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -7337,6 +7338,35 @@ document.addEventListener('change',e=>{ const c=e.target; if(!c.dataset||c.datas
 (function(){ const b=$('#nv-criar'); const p=$('#nv-u-papel'); if(!b||!p) return; p.closest('label').insertAdjacentHTML('afterend','<label style="display:flex;gap:6px;align-items:center">Roteirizador<input type="checkbox" id="nv-u-rot"></label>'); b.addEventListener('click',()=>{ const c=$('#nv-u-rot'); NV.rotNovo=c&&c.checked?String($('#nv-u-usuario').value||'').trim().toLowerCase():null; },true); })();
 setTimeout(()=>{ try{ rotaNotificar(rotaS()); }catch(e){} },6000);
 
+/* ================= v8.1.0 · Buscar completo: valor, conteúdo, bipe, reentrega, divergência, copiar, Salesforce, cidade, outro dia, histórico ================= */
+function bxBipes(ped,nf){ const h=hojeISO(); let L=(OP.dia===h&&OP.bipes&&OP.bipes.length)?OP.bipes:[]; if(!L.length){ try{ L=opLocalLer(h)||[]; }catch(e){} } const P=opK(ped), N=opK(nf); return L.filter(b=>b.status!=='fora'&&((P&&b.ped===P)||(N&&b.nf===N))); }
+function bxExtras(row,rom){ const ped=opK(row.ped), nf=opK(row.nf); const out=[];
+  try{ const v=opValor(ped,nf,row); if(v) out.push(`<div><dt>Valor</dt><dd>${opMoeda(v)}</dd></div>`); }catch(e){}
+  try{ const c=opConteudo(ped,nf); if(c) out.push(`<div class="largo"><dt>Conteúdo</dt><dd>${esc(c.texto)}${c.aviso?' <small class="falta">'+esc(c.aviso)+'</small>':''}</dd></div>`); }catch(e){}
+  const bs=bxBipes(ped,nf); const tot=volNum(row.vol)||0;
+  out.push(`<div class="largo"><dt>Conferência hoje</dt><dd>${bs.length?`<span style="color:var(--ok)">✔ bipada ${bs.length}${tot?'/'+tot:''}</span> <small class="sub">${esc(bs.slice(0,4).map(b=>(b.usuario||'').split(' ')[0]+' '+new Date(b.criado_em).toLocaleTimeString('pt-BR').slice(0,5)).join(' · '))}</small>`:'<span class="falta">ainda não bipada</span>'}</dd></div>`);
+  try{ const D=RE.ler(); const dias=Object.keys(D.dias||{}).sort().reverse(); for(const d of dias){ const l=(D.dias[d]||[]).find(x=>z(x.nf)===nf&&nf); if(l){ out.push(`<div class="largo"><dt>Reentrega</dt><dd style="color:#B197FC">${fmtData(d)} · ${esc(l.obs||'sem motivo')}</dd></div>`); break; } } }catch(e){}
+  try{ const dv=dvS().filter(d=>d.st!=='resolvida'&&((nf&&z(d.nf)===nf)||(ped&&z(d.ped)===ped))); if(dv.length) out.push(`<div class="largo"><dt>Divergência</dt><dd style="color:var(--no)">⚠ ${esc(dv.map(d=>dvNum(d)+' — '+(d.obs||d.tipo||'')).join(' · '))}</dd></div>`); }catch(e){}
+  const cp=[ped&&'Pedido '+ped,nf&&'NF '+nf,row.dest,[row.cid,row.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
+  return `<dl class="essenciais" style="margin-top:6px">${out.join('')}</dl><div class="acoes"><button class="btn mini" type="button" data-bx-copiar="${esc(cp)}">📋 Copiar</button>${ped||nf?`<button class="btn mini" type="button" data-sf-abrir="${esc(ped||nf)}">🔎 Salesforce</button>`:''}</div>`; }
+function bxOutroDia(n){ const k=opK(n); if(!k) return ''; const ach=[]; try{ const L=rbLocalLer(); for(const d of Object.keys(L).sort().reverse()){ if(d>=hojeISO()) continue; for(const g of Object.values(L[d])) for(const x of (g.rows||[])) if(opK(x.nf)===k||opK(x.ped)===k) ach.push({d,g,x}); if(ach.length>=5) break; } }catch(e){}
+  if(!ach.length) return ''; return `<div class="lista"><header><h3>Encontrei em outro dia (Banco de romaneios)</h3></header><div style="padding:8px 14px">${ach.map(a=>`<div style="padding:6px 0;border-bottom:1px solid var(--linha)">Estava no romaneio <b>${esc(a.g.numero||'?')}</b> de <b>${fmtData(a.d)}</b> · NF ${esc(opK(a.x.nf)||'—')}${a.x.ped?' · ped. '+esc(opK(a.x.ped)):''} · ${esc(a.x.dest||'')} · ${esc(a.x.cid||'')} · ${esc(a.x.vol||'')} vol.</div>`).join('')}</div></div>`; }
+function bxCidade(q){ const c=normCid(q); if(c.length<3) return ''; const hits=[]; for(const r of S.romaneios||[]) (r.rows||[]).forEach((x,i)=>{ if(normCid(x.cid||'')===c) hits.push({rom:r,row:x,i}); }); if(!hits.length) return '';
+  const vol=hits.reduce((t,h)=>t+(volNum(h.row.vol)||0),0); return `<div class="lista"><header><h3>Notas de ${esc(hits[0].row.cid)} hoje</h3><span class="cont">${hits.length} nota(s) · ${fmtN(vol)} volumes</span></header>${tabelaLinhas(hits)}</div>`; }
+{ const _m=mostrar; mostrar=function(res){ _m(res); try{ const box=$('#resultado'); if(!box) return;
+    if(res.tipo==='num'&&res.hits&&res.hits.length===1){ const h=res.hits[0]; const art=box.querySelector('article.res > div'); if(art) art.insertAdjacentHTML('beforeend',bxExtras(h.row,h.rom)); }
+    if(res.tipo==='num'&&res.hits&&!res.hits.length){ box.insertAdjacentHTML('beforeend',bxOutroDia(res.v||res.n)); const ss=box.querySelector('.acoes')||box.querySelector('article.res > div'); if(ss&&(res.v||res.n)) ss.insertAdjacentHTML('beforeend',`<div class="acoes"><button class="btn mini" type="button" data-sf-abrir="${esc(opK(res.v||res.n))}">🔎 Procurar no Salesforce</button></div>`); }
+    if(res.tipo==='txt'||(res.tipo==='num'&&false)){ const cid=bxCidade(ultima&&ultima.q||''); if(cid) box.insertAdjacentHTML('afterbegin',cid); }
+  }catch(e){ console.error(e); } }; }
+{ const _c=computar; computar=function(q,forced){ const r=_c(q,forced); try{ if((r.tipo==='txt'&&!r.hits.length)||r.tipo==='nada'){ const c=normCid(q); if(c&&(S.romaneios||[]).some(ro=>(ro.rows||[]).some(x=>normCid(x.cid||'')===c))) return {tipo:'txt',hits:[],v:q,cidade:true}; } }catch(e){} return r; }; }
+document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-bx-copiar]'); if(!b) return; try{ await navigator.clipboard.writeText(b.dataset.bxCopiar); toast('Copiado: '+b.dataset.bxCopiar); }catch(er){ toast(b.dataset.bxCopiar); } });
+/* histórico das últimas 20 buscas */
+function bxHist(){ try{ return JSON.parse(localStorage.getItem('healthSearch.buscas')||'[]'); }catch(e){ return []; } }
+function bxHistRender(){ let el=$('#bx-hist'); const ref=document.querySelector('#t-buscar .buscado')||$('#resultado'); if(!el){ const q=$('#q'); const host=q&&q.closest('form,.campo-busca,.busca')||q&&q.parentNode; if(!host) return; host.insertAdjacentHTML('afterend','<div id="bx-hist" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px"></div>'); el=$('#bx-hist'); }
+  const L=bxHist(); el.innerHTML=L.length?'<span class="sub" style="margin:0 4px 0 0;font-size:12px">Últimas:</span>'+L.map(q=>`<button type="button" class="btn mini" data-bx-h="${esc(q)}" style="padding:2px 9px;font-size:12px">${esc(q)}</button>`).join('')+'<button type="button" class="btn mini" data-bx-limpa="1" style="padding:2px 9px;font-size:12px;opacity:.7">limpar</button>':''; }
+{ const _ex=executar; executar=function(q,forced){ const t=String(q||'').trim(); if(t){ const L=bxHist().filter(x=>x!==t); L.unshift(t); try{ localStorage.setItem('healthSearch.buscas',JSON.stringify(L.slice(0,20))); }catch(e){} } const r=_ex.apply(this,arguments); try{ bxHistRender(); }catch(e){} return r; }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-bx-h],[data-bx-limpa]'); if(!b) return; if(b.dataset.bxLimpa){ try{ localStorage.removeItem('healthSearch.buscas'); }catch(er){} bxHistRender(); return; } executar(b.dataset.bxH); });
+setTimeout(()=>{ try{ bxHistRender(); }catch(e){} },1500);
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo); try{ atuFoto(); }catch(e){}
