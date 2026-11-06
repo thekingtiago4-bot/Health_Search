@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='7.9.12', HS_DATA='04/11/2026';
+const HS_VERSAO='7.9.13', HS_DATA='04/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4943,6 +4943,9 @@ function opLer(textos,origem){
   let cont=false;
   if(x&&!vol){ const tt=achados.reduce((t,a)=>t+(volNum(a.x.vol)||0),0)||tot||1; tot=tt;
     const ja=OP.bipes.filter(b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(!ped&&nf&&b.nf===nf))).length;
+    if(ja>0&&ja<tt&&!OP.forcarOutra){ const outros=OP.bipes.filter(b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(!ped&&nf&&b.nf===nf))&&b.usuario&&b.usuario!==opEu());
+      if(outros.length){ const quem=[...new Set(outros.map(b=>b.usuario.split(' ')[0]))].join(', '); OP.camGap=null; opMostrar({status:'dup',titulo:'Já bipado por '+quem+' ('+ja+' de '+tt+')',linha:'Se for OUTRA caixa deste pedido, toque em “É outra caixa”.'}); opOutraCaixa(textos,origem,quem,ja,tt); return; } }
+    OP.forcarOutra=false;
     if(ja>0&&ja<tt){ /* v7.9.12: pela câmera, a mesma etiqueta lida de novo sem sair da tela é a MESMA caixa */
       const ult=Math.max(0,...OP.bipes.filter(b=>(ped&&b.ped===ped)||(!ped&&nf&&b.nf===nf)).map(b=>new Date(b.criado_em).getTime()||0)); const cam=/camera/.test(origem||'')||OP.camGap!=null;
       if(cam&&(Date.now()-ult<1800||(OP.camGap!=null&&OP.camGap<1200))){ OP.camGap=null; opMostrar({status:'info',titulo:'Mesma caixa ('+ja+' de '+tt+')',linha:'Tire a câmera desta etiqueta e aponte para a próxima caixa.'}); return; }
@@ -5120,12 +5123,12 @@ function opRender(){ if(!$('#op-cards')) return; try{ opRegFaltas(); }catch(e){ 
   const pend=opPendentes(), us=[...new Set(OP.bipes.map(b=>b.usuario).filter(Boolean))].sort();
   const sel=$('#op-usu'); sel.innerHTML='<option value="">Todos os usuários</option>'+us.map(u=>`<option ${u===OP.usuario?'selected':''}>${esc(u)}</option>`).join('');
   const card=(f,n,t,cor)=>`<button class="op-card" type="button" data-f="${f}" aria-pressed="${OP.filtro===f}"><b>${fmtN(n)}</b><span>${cor?`<i style="background:${cor}"></i>`:''}${t}</span></button>`;
-  $('#op-cards').innerHTML=card('todos',c.todos,'Bipes')+card('ok',c.ok,'Conferidos',OP_ST.ok.c)+card('falta',pend.length,OP.dia===hojeISO()?'Notas faltando':'Faltando (só hoje)','var(--mudo)')+card('alto',pend.filter(it=>it.valor>=opAlto()).length,'💰 Alto valor faltando','#B45309')+card('semnota',c.semnota,'Sem nota',OP_ST.semnota.c)+card('fora',c.fora,'Fora do romaneio',OP_ST.fora.c)+card('dup',c.dup,'Duplicados',OP_ST.dup.c);
+  $('#op-cards').innerHTML=card('todos',c.todos,'Bipes')+card('ok',c.ok,'Conferidos',OP_ST.ok.c)+card('falta',pend.filter(it=>!opAltaVol(it)).length,OP.dia===hojeISO()?'Baixa volumetria (até 9 vol.) faltando':'Faltando (só hoje)','var(--mudo)')+card('altavol',pend.filter(opAltaVol).length,'Alta volumetria (10+ vol.)','#7950F2')+card('alto',pend.filter(it=>it.valor>=opAlto()).length,'💰 Alto valor faltando','#B45309')+card('semnota',c.semnota,'Sem nota',OP_ST.semnota.c)+card('fora',c.fora,'Fora do romaneio',OP_ST.fora.c)+card('dup',c.dup,'Duplicados',OP_ST.dup.c);
   opBadge(); opSinc(); opRenderLista(); }
 function opRenderLista(){ const el=$('#op-lista'); if(!el) return; const q=($('#op-filtro').value||'').toLowerCase().trim();
   const cas=s=>!q||String(s).toLowerCase().includes(q);
-  if(OP.filtro==='falta'||OP.filtro==='alto'){ const p=opPendentes().filter(it=>OP.filtro!=='alto'||it.valor>=opAlto()).filter(it=>cas([it.ped,it.nf,it.x.dest,it.x.cid,it.r.numero].join(' ')));
-    $('#op-tit-lista').textContent=opPorVol()?'Volumes que ainda não foram bipados (mais caros primeiro)':'Notas que ainda não foram bipadas (mais caras primeiro)';
+  if(OP.filtro==='falta'||OP.filtro==='alto'||OP.filtro==='altavol'){ const p=opPendentes().filter(it=>OP.filtro==='alto'?it.valor>=opAlto():OP.filtro==='altavol'?opAltaVol(it):!opAltaVol(it)).filter(it=>cas([it.ped,it.nf,it.x.dest,it.x.cid,it.r.numero].join(' ')));
+    $('#op-tit-lista').textContent=OP.filtro==='altavol'?'Alta volumetria (10 volumes ou mais) — bipar é opcional':OP.filtro==='falta'?'Baixa volumetria (até 9 volumes) que ainda não foi bipada':(opPorVol()?'Volumes que ainda não foram bipados (mais caros primeiro)':'Notas que ainda não foram bipadas (mais caras primeiro)');
     el.innerHTML=p.length?`<table class="op-tab"><thead><tr><th>Romaneio</th><th>Pedido</th><th>NF</th><th>Volumes</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Cliente</th><th class="m-oc">Cidade</th></tr></thead><tbody>${p.slice(0,800).map(it=>`<tr><td>${esc(it.r.numero)}</td><td>${esc(it.ped)}</td><td>${esc(it.nf)}</td><td>${opPorVol()?`${it.lidos} de ${it.esp}`:`${volNum(it.x.vol)||'?'} vol.`}${it.falta?` <span class="op-ct g" title="Romaneio mostra ${it.falta.esp}">só faltantes</span>`:''}</td><td>${opCtHtml((opConteudo(it.ped,it.nf)||{}).cod)}</td><td>${opValHtml(it.valor)}</td><td class="m-oc">${esc(it.x.dest)}</td><td class="m-oc">${esc(it.x.cid)}</td></tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.dia===hojeISO()?(S.romaneios.length?'Nada faltando. Tudo dos romaneios foi bipado. ✔':'Carregue os romaneios do dia para ver o que falta.'):'O que falta só é calculado para a operação de hoje.'}</div>`;
     return; }
   const lista=opVisiveis().filter(b=>OP.filtro==='todos'||b.status===OP.filtro).filter(b=>cas([b.ped,b.nf,b.dest,b.cid,b.usuario,b.romaneio,b.codigo].join(' ')));
@@ -6349,6 +6352,8 @@ const MAN=[
    ['Quem lançou e motivo duplicado','Cada reentrega mostra embaixo do motivo quem lançou, em qual aparelho e a hora (ex.: “✔ Tiago · Computador · 04:10”). Se a mesma NF for lançada duas vezes no mesmo dia com motivos diferentes (em aparelhos diferentes, por exemplo), o app avisa e pergunta qual vale: o 1º, o 2º ou manter os dois. A linha repetida fica marcada com ⚠ até decidir.'],
    ['Sem nota: cliente, cidade e volumes','Caixas “Sem nota” e “Fora do romaneio” completam sozinhas cliente, cidade e volumes procurando o pedido/NF em qualquer romaneio carregado ou do Banco que tenha esses dados (e pelo texto da etiqueta na câmera).'],
    ['Etiqueta ESPECIALIDADES CAJ (Mafra)','Nas etiquetas com “ESPECIALIDADES CAJ” no topo, o número grande em “Pedido” (ex.: 008267) é procurado como NOTA FISCAL (NF 8267), não como pedido — na leitura pela câmera e quando fica fora do romaneio. No campo da Operação também dá para digitar NF8267 para procurar só como nota.'],
+   ['Alta e Baixa volumetria','Na Operação, as notas que faltam bipar ficam em dois cartões: “Baixa volumetria (até 9 vol.)”, que é a lista a cobrar, e “Alta volumetria (10+ vol.)”, que não entra na Baixa; bipar as de alta é opcional e conta normal.'],
+   ['Vários usuários ao mesmo tempo','Os bipes de todos chegam ao vivo. Etiqueta com número da caixa já bipada por outra pessoa dá Duplicado. Etiqueta só com o pedido, já bipado por outra pessoa, mostra “Já bipado por Christian (2 de 4)” e só conta se tocar em “É outra caixa”.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (agendadas, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
  {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -7202,6 +7207,15 @@ function opAcharDados(ped,nf){ const P=opK(ped), N=opK(nf); const ok=x=>x&&(x.de
   try{ const L=rbLocalLer(); for(const d of Object.keys(L).sort().reverse()) for(const g of Object.values(L[d])) for(const x of (g.rows||[])) if(bate(x)&&ok(x)) return {dest:x.dest,cid:x.cid,tot:volNum(x.vol),nf:opK(x.nf)}; }catch(e){}
   return null; }
 { const _fp2=opForaPatch; opForaPatch=function(b){ _fp2(b); if(b&&['fora','pit','semnota'].includes(b.status)&&(!b.dest||!b.cid||!b.tot)){ const i=opAcharDados(b.ped,b.nf); if(i){ if(!b.dest&&i.dest) b.dest=String(i.dest); if(!b.cid&&i.cid) b.cid=String(i.cid); if(!b.tot&&i.tot) b.tot=i.tot; } } }; }
+
+/* ================= v7.9.13 · Alta/Baixa volumetria + vários usuários bipando ao mesmo tempo ================= */
+function opAltaVol(it){ const v=volNum(it&&it.x&&it.x.vol)||+(it&&it.esp)||0; return v>=10; }
+function opOutraCaixa(textos,origem,quem,ja,tt){ const old=document.getElementById('op-outra'); if(old) old.remove();
+  const f=document.createElement('div'); f.className='fundo'; f.id='op-outra'; f.style.zIndex='1700';
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:420px;text-align:center"><h2 style="margin-top:0;color:var(--amar)">Já bipado por ${esc(quem)}</h2><p>${ja} de ${tt} caixa(s) deste pedido já foram bipadas.</p><p class="sub">É a mesma caixa que ele bipou, ou outra caixa do mesmo pedido?</p>
+   <div style="display:grid;gap:8px;margin-top:12px"><button class="btn" data-o="n">É a mesma caixa (não contar)</button><button class="btn pri" data-o="s">É outra caixa — contar</button></div></div>`;
+  f.addEventListener('click',e=>{ const b=e.target.closest('[data-o]'); if(!b) return; f.remove(); if(b.dataset.o==='s'){ OP.forcarOutra=true; try{ opLer(textos,origem); }finally{ OP.forcarOutra=false; } } else opMostrar({status:'dup',titulo:'Mesma caixa — não contei',linha:'Passe a próxima caixa.'}); });
+  document.body.appendChild(f); }
 
 /* ---------- início ---------- */
 (async function(){
