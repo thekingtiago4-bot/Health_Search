@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.5.5', HS_DATA='09/11/2026';
+const HS_VERSAO='9.5.6', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9060,6 +9060,17 @@ evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
 { const _ap=evaAplicarVisual; evaAplicarVisual=function(){ _ap(); try{ const b=document.querySelector('#t-eva .evb:not(.evb-mini)'); if(b){ const st=b.dataset.st||''; b.outerHTML=evbSvg(evaVis()); const n=document.querySelector('#t-eva .evb:not(.evb-mini)'); n.dataset.st=st; n.addEventListener('click',()=>{ if(n.dataset.st==='duvida') return; evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); } }catch(e){ console.error(e); } }; }
 { const _et=evaTela; evaTela=function(){ _et(); try{ const b=document.querySelector('#t-eva .evb:not(.evb-mini)'); if(b&&!b.dataset.v955){ const st=b.dataset.st||''; b.outerHTML=evbSvg(evaVis()); const n=document.querySelector('#t-eva .evb:not(.evb-mini)'); n.dataset.v955=1; n.dataset.st=st; n.addEventListener('click',()=>{ if(n.dataset.st==='duvida') return; evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); } }catch(e){} }; }
 setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} },1500);
+
+/* ================= v9.5.6 · Roupa da EVA no banco (o admin escolhe, todos veem igual) ================= */
+try{ NUV_CAMPOS.push('evaVisual'); NUV_ADMIN.add('s:evaVisual'); }catch(e){}
+{ const _v=evaVis; evaVis=function(){ if(S.evaVisual&&typeof S.evaVisual==='object') return Object.assign({colete:false,capacete:false,laco:true,cor:'#EC4899'},S.evaVisual); return _v(); }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-ep="ok"]'); if(!b) return;
+  if(!nvAdmin()){ e.stopImmediatePropagation(); toast('A roupa da EVA é escolhida pelo administrador e vale para todos.'); const f=b.closest('.fundo'); if(f) f.remove(); return; }
+  const v={colete:$('#ep-colete').checked,capacete:$('#ep-capacete').checked,laco:$('#ep-laco').checked,cor:$('#ep-cor').value,em:new Date().toISOString()};
+  S.evaVisual=v; salvar(); setTimeout(()=>{ try{ nuvSinc(); }catch(x){} toast('EVA personalizada para todos os usuários!'); },200); },true);
+/* quando a roupa muda em outro aparelho, aplica na hora */
+let _evaVisH=''; setInterval(()=>{ try{ const h=JSON.stringify(S.evaVisual||null); if(h!==_evaVisH){ _evaVisH=h; evaAplicarVisual(); } }catch(e){} },3000);
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Roupa da EVA','Em 🎨 Personalizar EVA o administrador escolhe colete refletivo, capacete e a cor do laço. A escolha fica no banco e todos os usuários veem a EVA igual.']); })();
 
 </script>
 
