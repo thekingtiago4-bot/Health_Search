@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.5.4', HS_DATA='09/11/2026';
+const HS_VERSAO='9.5.5', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8995,6 +8995,71 @@ setInterval(()=>{ try{ if(document.hidden||$('#t-eva').hidden) return; if(evbDuv
 /* pulo também quando triste (personalidade) */
 (function(){ const st=document.createElement('style'); st.textContent='.evb[data-st="triste"] .corpo{animation:evbPulo .6s ease-out}'; document.head.appendChild(st); })();
 (function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Personalidade','A EVA reage ao dia: pula de alegria com a conferência alta, fica triste (e pula de nervoso) com muitas caixas fora do romaneio ou muitas reentregas, e avisa ocorrências abertas.']); })();
+
+/* ================= v9.5.5 · EVA redesenhada (grande e miniatura iguais) com roupa: colete, capacete, laço ================= */
+function evbSvg(v,extraCls){ v=v||evaVis(); const cor=v.cor||'#EC4899', escuro=v.cor?v.cor:'#DB2777';
+  const colete=v.colete?`
+   <g class="colete">
+    <defs><linearGradient id="evbVest" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FB923C"/><stop offset="1" stop-color="#EA580C"/></linearGradient></defs>
+    <path d="M58 160 Q56 142 76 138 L92 136 L97 168 L97 224 Q74 223 62 210 Q52 188 58 160 Z" fill="url(#evbVest)" stroke="#C2410C" stroke-width="2"/>
+    <path d="M142 160 Q144 142 124 138 L108 136 L103 168 L103 224 Q126 223 138 210 Q148 188 142 160 Z" fill="url(#evbVest)" stroke="#C2410C" stroke-width="2"/>
+    <g stroke-linecap="round"><path d="M57 184 Q77 190 97 188" stroke="#D1D5DB" stroke-width="8" fill="none"/><path d="M103 188 Q123 190 143 184" stroke="#D1D5DB" stroke-width="8" fill="none"/>
+     <path d="M59 204 Q78 210 97 208" stroke="#D1D5DB" stroke-width="8" fill="none"/><path d="M103 208 Q122 210 141 204" stroke="#D1D5DB" stroke-width="8" fill="none"/>
+     <path class="reflexo" d="M57 184 Q77 190 97 188 M103 188 Q123 190 143 184 M59 204 Q78 210 97 208 M103 208 Q122 210 141 204" stroke="#fff" stroke-width="2.5" fill="none"/></g>
+    <rect x="112" y="152" width="18" height="12" rx="3" fill="#EA580C" stroke="#C2410C" stroke-width="1.5"/><path d="M112 156 h18" stroke="#C2410C" stroke-width="1.2"/>
+    <rect x="70" y="153" width="14" height="9" rx="2" fill="#fff" stroke="#C2410C" stroke-width="1"/><text x="77" y="160" font-size="6" text-anchor="middle" font-family="Arial" font-weight="700" fill="#0f4c4c">HL</text>
+    <circle cx="99" cy="176" r="1.8" fill="#9CA3AF"/><circle cx="99" cy="196" r="1.8" fill="#9CA3AF"/><circle cx="99" cy="216" r="1.8" fill="#9CA3AF"/>
+   </g>`:'';
+  const capacete=v.capacete?`
+   <g class="capacete"><defs><linearGradient id="evbCap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDE047"/><stop offset="1" stop-color="#EAB308"/></linearGradient></defs>
+    <path d="M44 44 Q46 0 100 -2 Q154 0 156 44 Z" fill="url(#evbCap)" stroke="#CA8A04" stroke-width="2.5"/>
+    <path d="M100 -1 L100 42" stroke="#CA8A04" stroke-width="7" stroke-linecap="round"/><path d="M78 2 Q74 22 74 42 M122 2 Q126 22 126 42" stroke="#CA8A04" stroke-width="2" fill="none" opacity=".6"/>
+    <rect x="30" y="38" width="140" height="11" rx="5.5" fill="#EAB308" stroke="#CA8A04" stroke-width="2"/>
+    <ellipse cx="70" cy="14" rx="14" ry="6" fill="#fff" opacity=".45" transform="rotate(-20 70 14)"/>
+    <rect x="88" y="16" width="24" height="12" rx="3" fill="#fff" opacity=".9"/><text x="100" y="25" font-size="7.5" text-anchor="middle" font-family="Arial" font-weight="800" fill="#0f4c4c">EVA</text></g>`:'';
+  const laco=(v.laco&&!v.capacete)?`<g class="laco" transform="translate(146 24) rotate(16)"><path d="M0 0 L-28 -18 Q-36 0 -28 18 Z" fill="${cor}"/><path d="M0 0 L28 -18 Q36 0 28 18 Z" fill="${cor}"/><path d="M-6 -2 L-24 -12 M6 -2 L24 -12" stroke="#fff" stroke-width="2" opacity=".35" stroke-linecap="round"/><circle r="9" fill="${escuro}" stroke="#fff" stroke-opacity=".25" stroke-width="2"/></g>`:'';
+  const coleira=v.laco?`<path d="M72 140 Q100 154 128 140 L125 151 Q100 163 75 151 Z" fill="${cor}"/><circle cx="100" cy="158" r="5.5" fill="#FCD34D" stroke="#CA8A04" stroke-width="1.5"/>`:'';
+  return `<svg class="evb ${extraCls||''}" viewBox="-6 -10 212 272" aria-hidden="true">
+ <defs><radialGradient id="evbG" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="#fff"/><stop offset=".75" stop-color="#F1F3F6"/><stop offset="1" stop-color="#DCE0E6"/></radialGradient>
+  <radialGradient id="evbP" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#3F3F4A"/><stop offset="1" stop-color="#1F1F26"/></radialGradient></defs>
+ <ellipse class="sombra" cx="100" cy="252" rx="56" ry="8" fill="#000" opacity=".16"/>
+ <g class="corpo">
+  <ellipse cx="72" cy="228" rx="23" ry="16" fill="url(#evbP)"/><ellipse cx="128" cy="228" rx="23" ry="16" fill="url(#evbP)"/>
+  <ellipse cx="72" cy="231" rx="10" ry="7" fill="#F4A6B8"/><ellipse cx="128" cy="231" rx="10" ry="7" fill="#F4A6B8"/>
+  <circle cx="62" cy="224" r="3" fill="#F4A6B8"/><circle cx="82" cy="224" r="3" fill="#F4A6B8"/><circle cx="118" cy="224" r="3" fill="#F4A6B8"/><circle cx="138" cy="224" r="3" fill="#F4A6B8"/>
+  <ellipse cx="100" cy="184" rx="49" ry="47" fill="url(#evbG)" stroke="#2B2B33" stroke-width="3"/>
+  <ellipse cx="100" cy="192" rx="27" ry="27" fill="#F7F8FA"/>
+  ${colete}
+  <g class="braco-e"><path d="M56 158 Q26 172 36 202 Q46 214 62 198 Z" fill="url(#evbP)"/><ellipse cx="44" cy="200" rx="7" ry="5" fill="#F4A6B8" opacity=".9"/></g>
+  <g class="braco-d"><path d="M144 158 Q174 150 174 118 Q170 104 158 114 Q156 142 138 152 Z" fill="url(#evbP)"/><ellipse cx="165" cy="114" rx="6" ry="5" fill="#F4A6B8" opacity=".9"/></g>
+  ${coleira}
+ </g>
+ <g class="cabeca">
+  <circle cx="44" cy="30" r="23" fill="url(#evbP)"/><circle cx="156" cy="30" r="23" fill="url(#evbP)"/><circle cx="44" cy="30" r="11" fill="#F4A6B8"/><circle cx="156" cy="30" r="11" fill="#F4A6B8"/>
+  <ellipse cx="100" cy="80" rx="65" ry="57" fill="url(#evbG)" stroke="#2B2B33" stroke-width="3"/>
+  <ellipse cx="74" cy="78" rx="18.5" ry="23" transform="rotate(-18 74 78)" fill="url(#evbP)"/><ellipse cx="126" cy="78" rx="18.5" ry="23" transform="rotate(18 126 78)" fill="url(#evbP)"/>
+  <g class="olhos"><g class="olho"><circle cx="77" cy="78" r="9.5" fill="#fff"/><circle class="pupila" cx="79" cy="76" r="5" fill="#2B2B33"/><circle cx="81.5" cy="73.5" r="1.9" fill="#fff"/><circle cx="76.5" cy="79" r=".9" fill="#fff" opacity=".8"/></g>
+   <g class="olho"><circle cx="123" cy="78" r="9.5" fill="#fff"/><circle class="pupila" cx="125" cy="76" r="5" fill="#2B2B33"/><circle cx="127.5" cy="73.5" r="1.9" fill="#fff"/><circle cx="122.5" cy="79" r=".9" fill="#fff" opacity=".8"/></g></g>
+  <g class="olhos-feliz" opacity="0"><path d="M67 81 Q77 70 87 81" stroke="#fff" stroke-width="4.5" fill="none" stroke-linecap="round"/><path d="M113 81 Q123 70 133 81" stroke="#fff" stroke-width="4.5" fill="none" stroke-linecap="round"/></g>
+  <g class="sobr"><path class="s1" d="M63 51 Q74 45 87 51" stroke="#2B2B33" stroke-width="3.5" fill="none" stroke-linecap="round"/><path class="s2" d="M113 51 Q126 45 137 51" stroke="#2B2B33" stroke-width="3.5" fill="none" stroke-linecap="round"/></g>
+  <path d="M93 98 Q100 94 107 98 Q107 104 100 106 Q93 104 93 98 Z" fill="#2B2B33"/><ellipse cx="98" cy="98" rx="2" ry="1.2" fill="#fff" opacity=".5"/>
+  <path class="boca b-sorriso" d="M89 110 q11 10 22 0" stroke="#2B2B33" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <ellipse class="boca b-fala" cx="100" cy="113" rx="7.5" ry="5.5" fill="#7a1f3d" opacity="0"/>
+  <path class="boca b-triste" d="M90 117 q10 -8 20 0" stroke="#2B2B33" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0"/>
+  <ellipse cx="55" cy="104" rx="11" ry="6.5" fill="#F7B5C4" opacity=".75"/><ellipse cx="145" cy="104" rx="11" ry="6.5" fill="#F7B5C4" opacity=".75"/>
+  ${laco}${capacete}
+  <g class="pensa" opacity="0"><circle cx="170" cy="22" r="5" fill="#cbd5e1"/><circle cx="184" cy="10" r="7" fill="#cbd5e1"/><circle cx="198" cy="-4" r="9" fill="#cbd5e1"/></g>
+ </g>
+</svg>`; }
+/* a miniatura usa o mesmo desenho */
+let _evbN=0; const evbUnico=svg=>{ const k='u'+(++_evbN); return svg.replace(/id="(evb[A-Za-z]+)"/g,(m,i)=>`id="${i}${k}"`).replace(/url\(#(evb[A-Za-z]+)\)/g,(m,i)=>`url(#${i}${k})`); };
+{ const _bs=evbSvg; evbSvg=function(v,c){ return evbUnico(_bs(v,c)); }; }
+evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
+(function(){ const st=document.createElement('style'); st.textContent=`.evb .reflexo{animation:evbRefl 2.4s infinite}@keyframes evbRefl{0%,100%{opacity:.25}50%{opacity:1}}
+#eva-bt .evb,.eva-cab .av .evb,#ep-prev .evb{width:100%;height:100%}.evb-mini .pensa,.evb-mini .olhos-feliz{display:none}`; document.head.appendChild(st); })();
+{ const _ap=evaAplicarVisual; evaAplicarVisual=function(){ _ap(); try{ const b=document.querySelector('#t-eva .evb:not(.evb-mini)'); if(b){ const st=b.dataset.st||''; b.outerHTML=evbSvg(evaVis()); const n=document.querySelector('#t-eva .evb:not(.evb-mini)'); n.dataset.st=st; n.addEventListener('click',()=>{ if(n.dataset.st==='duvida') return; evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); } }catch(e){ console.error(e); } }; }
+{ const _et=evaTela; evaTela=function(){ _et(); try{ const b=document.querySelector('#t-eva .evb:not(.evb-mini)'); if(b&&!b.dataset.v955){ const st=b.dataset.st||''; b.outerHTML=evbSvg(evaVis()); const n=document.querySelector('#t-eva .evb:not(.evb-mini)'); n.dataset.v955=1; n.dataset.st=st; n.addEventListener('click',()=>{ if(n.dataset.st==='duvida') return; evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); } }catch(e){} }; }
+setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} },1500);
 
 </script>
 
