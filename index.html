@@ -2316,7 +2316,7 @@ const fmtR=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function valTxt(row){ const v=valNota(row); return v==null?'<span class="corte" title="Sem XML desta nota">—</span>':fmtR(v); }
 function valTotTxt(hits){ let t=0,n=0,f=0; const vist=new Set(); for(const h of hits){ const k=opK(h.row.nf||''); if(vist.has(k)) continue; vist.add(k); const v=valNota(h.row); if(v==null) f++; else { t+=v; n++; } } return n?`<span>Valor <b>${fmtR(t)}</b>${f?` <small style="opacity:.7">(${f} sem XML)</small>`:''}</span>`:''; }
 function valRodape(hits,ped){ let t=0,f=0; const vist=new Set(); for(const h of hits){ const k=opK(h.row.nf||''); if(vist.has(k)) continue; vist.add(k); const v=valNota(h.row); if(v==null) f++; else t+=v; }
-  return `<tfoot><tr class="val-tot"><td colspan="${ped?8:7}">Total${f?` <small>(${f} nota(s) sem XML)</small>`:''}</td><td class="vol val">${fmtR(t)}</td></tr></tfoot>`; }
+  return `<tfoot><tr class="val-tot"><td colspan="${ped?9:8}">Total${f?` <small>(${f} nota(s) sem XML)</small>`:''}</td><td class="vol val">${fmtR(t)}</td></tr></tfoot>`; }
 (function(){ const st=document.createElement('style'); st.textContent=`.lista table{width:100%}.lista td.val,.lista th.vol{white-space:nowrap}.lista td.sec,.lista td.forte{white-space:normal}.val-tot td{font-weight:800;border-top:2px solid var(--linha);padding-top:10px;padding-bottom:10px}.val-tot td:first-child{text-align:right}@media (max-width:1400px){.lista td,.lista th{padding-left:7px;padding-right:7px}}@media (max-width:1100px){.lista table{font-size:.88em}.lista td,.lista th{padding-left:5px;padding-right:5px}}`; document.head.appendChild(st); })();
 function tabelaLinhas(hits,opts={}){
   const marca=row=>{ const a=agDaLinha(row); if(opts.neutro) return a?quad('ag','p'):''; return quad(a?'ag':'ok','p'); };
@@ -4121,7 +4121,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.0.4', HS_DATA='09/11/2026';
+const HS_VERSAO='9.0.5', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
