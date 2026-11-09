@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.5.7', HS_DATA='09/11/2026';
+const HS_VERSAO='9.5.8', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9076,12 +9076,64 @@ let _evaVisH=''; setInterval(()=>{ try{ const h=JSON.stringify(S.evaVisual||null
 (function(){ const st=document.createElement('style'); st.textContent=`#app-att{top:calc(12px + env(safe-area-inset-top,0px))!important;bottom:auto!important;z-index:1800!important;border-radius:999px!important;padding:6px 6px 6px 14px!important;background:linear-gradient(90deg,#0f4c4c,#12806f)!important;border:1px solid rgba(255,255,255,.2);font-size:.85rem!important;max-width:min(520px,calc(100vw - 24px))!important}
 #app-att span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#app-att .btn{border-radius:999px!important;background:#fff!important;color:#0f4c4c!important;border:0!important}
 @media (max-width:860px){#app-att{top:calc(64px + env(safe-area-inset-top,0px))!important}}
-body:has(#nv-tela:not([hidden])) #app-att{display:none!important}`; document.head.appendChild(st);
+body:has(#nv-tela:not([hidden])) :is(#app-att,#eva-balao){display:none!important}`; document.head.appendChild(st);
   const a=$('#app-att'); if(!a) return; const ok=$('#app-att-ok'); ok.textContent='Atualizar';
   new MutationObserver(()=>{ const s=a.querySelector('span'); const m=s&&s.textContent.match(/Nova versão\s*([\d.]+)/); if(m&&!s.dataset.v957){ s.dataset.v957=1; s.innerHTML=`✨ Nova versão <b>${esc(m[1])}</b>`; a.title='Seus dados ficam salvos: o app envia tudo para a nuvem antes de atualizar.'; } }).observe(a,{childList:true,subtree:true});
   ok.addEventListener('click',async e=>{ if(ok.dataset.ok) return; e.stopImmediatePropagation(); ok.disabled=true; ok.textContent='Salvando…'; try{ if(typeof opOnline==='function'&&opOnline()) await nuvSinc(); }catch(x){} ok.dataset.ok=1; ok.disabled=false; ok.click(); },true);
   document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(j=>{ const c=(x,y)=>{ x=String(x).split('.').map(Number); y=String(y).split('.').map(Number); for(let i=0;i<3;i++){ const d=(x[i]||0)-(y[i]||0); if(d) return d; } return 0; }; if(j.versao&&c(j.versao,HS_VERSAO)>0){ a.querySelector('span').innerHTML=`✨ Nova versão <b>${esc(j.versao)}</b>`; a.hidden=false; } }).catch(()=>{}); } });
   const s=MAN.find(x=>x.id==='menu2026'); if(s) s.passos.push(['✨ Nova versão','Com o app aberto, ele confere a cada 5 minutos (e quando você volta para a aba) se saiu versão nova. Aparece no topo “✨ Nova versão — Atualizar”. Ao tocar, o app salva tudo na nuvem e atualiza.']); })();
+
+/* ================= v9.5.8 · Tela de login com o logo animado ================= */
+const HS_LOGO_ANIM=`<svg class="hsl" viewBox="0 0 120 120" aria-hidden="true">
+ <defs><linearGradient id="hslBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0c3a40"/><stop offset="1" stop-color="#072a2f"/></linearGradient>
+  <linearGradient id="hslA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9af5ea"/><stop offset="1" stop-color="#4fd1c5"/></linearGradient>
+  <filter id="hslGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+ <rect class="hsl-cx" x="6" y="6" width="108" height="108" rx="26" fill="url(#hslBg)"/>
+ <circle class="hsl-halo" cx="60" cy="60" r="34" fill="none" stroke="#6fe3d6" stroke-width="1.5" opacity="0"/>
+ <circle class="hsl-anel" cx="60" cy="60" r="30" fill="none" stroke="url(#hslA)" stroke-width="5" stroke-linecap="round" pathLength="100" transform="rotate(-90 60 60)" filter="url(#hslGlow)"/>
+ <g class="hsl-ticks" stroke="#6fe3d6" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M60 16v5M60 99v5M16 60h5M99 60h5"/></g>
+ <g class="hsl-agulha" filter="url(#hslGlow)"><path d="M60 26 L68 60 L60 94 L52 60 Z" fill="url(#hslA)"/><path d="M60 26 L68 60 L60 60 Z" fill="#d9fffa"/><path d="M60 94 L52 60 L60 60 Z" fill="#2c9c92"/>
+  <path d="M38 60 L60 54 L82 60 L60 66 Z" fill="#6fe3d6" opacity=".85"/><circle cx="60" cy="60" r="4.2" fill="#072a2f" stroke="#d9fffa" stroke-width="1.6"/></g>
+ <circle class="hsl-brilho" cx="60" cy="26" r="2.2" fill="#fff"/>
+</svg>`;
+(function(){ const st=document.createElement('style'); st.textContent=`
+#nv-tela{background:radial-gradient(1200px 700px at 50% -10%,#17656a 0%,#0f4c4c 38%,#082f33 100%)!important;overflow:hidden}
+#nv-tela::before,#nv-tela::after{content:"";position:absolute;border-radius:50%;pointer-events:none;border:1px dashed rgba(111,227,214,.16)}
+#nv-tela::before{width:min(140vmin,1100px);aspect-ratio:1;animation:hslGira 90s linear infinite}
+#nv-tela::after{width:min(95vmin,760px);aspect-ratio:1;border-style:solid;border-color:rgba(111,227,214,.08);animation:hslGira 60s linear infinite reverse}
+.nv-caixa{position:relative;z-index:1;border-radius:20px!important;box-shadow:0 30px 80px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.06)!important}
+.nv-intro .nv-caixa{animation:hslSobe .7s .9s cubic-bezier(.2,.8,.2,1) both}
+.nv-marca{align-items:center!important;text-align:center;gap:2px;margin:-74px 0 4px!important}
+.nv-marca .hsl{width:104px;height:104px;filter:drop-shadow(0 14px 26px rgba(0,0,0,.4));margin-bottom:8px}
+.nv-marca b{font-size:1.75rem!important;letter-spacing:.01em}
+.nv-marca span{letter-spacing:.22em;text-transform:uppercase;font-size:.7rem!important}
+.hsl-agulha{transform-origin:60px 60px;transform-box:view-box;animation:hslBalanca 6s ease-in-out infinite}
+.hsl-anel{stroke-dasharray:100;stroke-dashoffset:0}
+.hsl-halo{transform-origin:60px 60px;transform-box:view-box;animation:hslPulso 3.2s ease-out infinite}
+.hsl-brilho{transform-origin:60px 60px;transform-box:view-box;animation:hslOrbita 7s linear infinite;opacity:.9}
+.nv-intro .hsl-cx{transform-origin:60px 60px;transform-box:view-box;animation:hslPop .6s cubic-bezier(.2,1.4,.4,1) both}
+.nv-intro .hsl-anel{animation:hslTraco 1.1s .25s ease-out both}
+.nv-intro .hsl-ticks{animation:hslFade .5s 1.1s both}
+.nv-intro .hsl-agulha{animation:hslAssenta 1.9s .35s cubic-bezier(.3,1.5,.5,1) both,hslBalanca 6s 2.3s ease-in-out infinite}
+.nv-intro .nv-marca b{animation:hslLetra .7s 1.1s both}.nv-intro .nv-marca span{animation:hslLetra .7s 1.3s both}
+.nv-intro .nv-marca .hsl{animation:hslDesce .8s cubic-bezier(.2,.9,.2,1) both}
+@keyframes hslGira{to{transform:rotate(360deg)}}
+@keyframes hslPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes hslTraco{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+@keyframes hslFade{from{opacity:0}to{opacity:.55}}
+@keyframes hslAssenta{0%{transform:rotate(-540deg) scale(.2);opacity:0}45%{opacity:1}70%{transform:rotate(18deg) scale(1)}85%{transform:rotate(-8deg)}100%{transform:rotate(0)}}
+@keyframes hslBalanca{0%,100%{transform:rotate(0)}25%{transform:rotate(5deg)}50%{transform:rotate(-3deg)}75%{transform:rotate(2deg)}}
+@keyframes hslPulso{0%{transform:scale(.9);opacity:.5}100%{transform:scale(1.5);opacity:0}}
+@keyframes hslOrbita{to{transform:rotate(360deg)}}
+@keyframes hslLetra{from{opacity:0;transform:translateY(8px);letter-spacing:.4em}to{opacity:1;transform:none}}
+@keyframes hslDesce{from{opacity:0;transform:translateY(-30px) scale(.8)}to{opacity:1;transform:none}}
+@keyframes hslSobe{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@media (max-height:640px){.nv-marca{margin-top:-40px!important}.nv-marca .hsl{width:72px;height:72px}}
+@media (prefers-reduced-motion:reduce){#nv-tela *,#nv-tela::before,#nv-tela::after{animation:none!important}}`; document.head.appendChild(st); })();
+{ let _intro=true; const _nt=nvTela; nvTela=function(html){ const f=_nt(html); try{ const el=document.getElementById('nv-tela'); const m=el.querySelector('.nv-marca'); if(m) m.innerHTML=HS_LOGO_ANIM+'<b>Health Search</b><span>Relatórios Precisos</span>';
+    el.classList.toggle('nv-intro',_intro); if(_intro){ _intro=false; setTimeout(()=>el.classList.remove('nv-intro'),3200); } }catch(e){} return f; }; }
+/* mesma animação na tela de carregamento */
+(function(){ const s=document.getElementById('hs-splash'); if(!s||s.hidden||s.style.display==='none') return; const r=s.querySelector('.r'); if(r){ r.outerHTML='<div class="nv-intro" style="width:96px;height:96px">'+HS_LOGO_ANIM.replace(/hsl(Bg|A|Glow)/g,'hslS$1')+'</div>'; } })();
 
 </script>
 
