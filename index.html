@@ -4121,7 +4121,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.1.1', HS_DATA='09/11/2026';
+const HS_VERSAO='9.2.0', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6231,7 +6231,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     /* 2) sobe o que mudou aqui */
     const sobe=[]; const eu=opEu(); const agora=nuvLocal();
     if(nvAdmin()&&NUV.aal==null){ try{ const {data:al}=await NV.cli.auth.mfa.getAuthenticatorAssuranceLevel(); NUV.aal=al&&al.currentLevel||''; }catch(e){ NUV.aal=''; } }
-    const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>!admOk&&NUV_ADMIN.has(k);
+    const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>(k==='s:geo'&&!NUV.publicarGeo)||(!admOk&&NUV_ADMIN.has(k)); /* v9.2.0: mapa só sobe pelo 📤 Publicar mapa */
     if(nvAdmin()&&!admOk&&[...agora.keys()].some(k=>NUV_ADMIN.has(k)&&NUV.h[k]!==nuvHash(agora.get(k).valor))) NUV.avisoAal='Suas alterações em regiões/Correção estão guardadas neste aparelho, mas só vão para o banco depois que você entrar com a verificação em 2 etapas (saia e entre de novo).'; for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
     for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)&&(!k.startsWith('dv:')||(NUV.apagar&&NUV.apagar.has(k)))) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
     let recusados=[]; for(let i=0;i<sobe.length;i+=50){ const lote=sobe.slice(i,i+50); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r));
@@ -8764,6 +8764,61 @@ document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&!e.altKey&&(
    ['Desfazer em 10 segundos','Depois de salvar uma divergência, uma avaria ou lançar uma reentrega pela Busca, aparece embaixo “↶ Desfazer” por 10 segundos. Clicou sem querer? Desfaça.'],
    ['Ctrl+K','De qualquer tela, aperte Ctrl+K: o app abre a Busca com o cursor pronto para digitar NF, pedido, cidade ou cliente.']]}); })();
 { const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/(linha do tempo|historico|historia).*\d{5,}/.test(t)){ const m=t.match(/\d{5,}/); setTimeout(()=>linhaTempo({nf:m[0],ped:m[0]}),200); return `Abrindo a linha do tempo da nota <b>${esc(z(m[0]))}</b>. 🐼`; } if(/\b(ctrl ?k|atalho)/.test(t)) return 'Aperte <b>Ctrl+K</b> em qualquer tela para buscar uma NF, pedido, cidade ou cliente. Na Busca, cada nota tem Divergência, Avaria, Reentrega e Linha do tempo, e tudo pode ser desfeito em 10 segundos. 🐼'; return _ee(txt); }; }
+
+/* ================= v9.1.2 · backup só do administrador; os demais só salvam ================= */
+{ const _vd=vsnDiaria; vsnDiaria=async function(){ if(!(typeof nvAdmin==='function'&&nvAdmin())) return; return _vd(); }; }
+{ const _sa=hsSalvarAgora; hsSalvarAgora=async function(){ if(typeof nvAdmin==='function'&&nvAdmin()) return _sa();
+    if(!opOnline()){ toast('Sem internet: está guardado neste aparelho e sobe sozinho quando a conexão voltar.'); return; }
+    const b=$('#hs-salvar'); if(b){ b.disabled=true; b.textContent='⏳ Salvando…'; }
+    try{ await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro); toast('✔ Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.'); }
+    catch(e){ toast('⚠ Não consegui salvar na nuvem: '+(e.message||e)+' — os dados continuam guardados neste aparelho.'); }
+    finally{ if(b){ b.disabled=false; b.textContent='💾 Salvar'; } } }; }
+function bkSoAdmin(){ const adm=typeof nvAdmin==='function'&&nvAdmin(); for(const id of ['re-bkp','re-rest','bkn-bt','bkn-rest','uso-bt','bkf-bt']){ const el=document.getElementById(id); if(el) el.hidden=!adm; }
+  const a=document.querySelector('.bk-auto'); if(a) a.hidden=!adm; if(!adm){ try{ localStorage.removeItem('healthSearch.bkAuto'); }catch(e){} }
+  const s=document.getElementById('hs-salvar'); if(s&&!s._v912){ s._v912=1; s.onclick=()=>hsSalvarAgora(); } if(s) s.title=adm?'Salvar na nuvem agora (Ctrl+S) e guardar uma versão permanente. Botão direito: ver as versões salvas.':'Salvar na nuvem agora (Ctrl+S). Tudo também é salvo sozinho a cada mudança.'; }
+setInterval(bkSoAdmin,3000); setTimeout(bkSoAdmin,1500);
+document.addEventListener('contextmenu',e=>{ if(e.target.closest&&e.target.closest('#hs-salvar')&&!(typeof nvAdmin==='function'&&nvAdmin())){ e.preventDefault(); e.stopImmediatePropagation(); } },true);
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#re-bkp,#re-rest,#bkn-bt,#bkn-rest,#uso-bt,#bkf-bt'); if(b&&!(typeof nvAdmin==='function'&&nvAdmin())){ e.preventDefault(); e.stopImmediatePropagation(); toast('Só o administrador faz e restaura backups.'); } },true);
+(function(){ const s=MAN.find(x=>x.passos&&x.passos.some(p=>/Salvar na nuvem e versões/.test(p[0]))); if(s) s.passos.push(['Quem faz backup','Backup do dia, versões permanentes, backup físico e restauração são só do administrador. Os demais usuários usam o 💾 Salvar, que envia na hora o que mudou no aparelho para a nuvem.']); })();
+
+
+/* ================= v9.2.0 · Mapa publicado: só o admin publica; os outros baixam e guardam ================= */
+const geoConta=x=>{ try{ return (x&&x.listas||[]).reduce((t,l)=>t+((l.cidades||l.itens||[]).length||0),0); }catch(e){ return 0; } };
+const GEOP={ch:'healthSearch.geoPub'};
+function geoPubLer(){ try{ return JSON.parse(localStorage.getItem(GEOP.ch)||'null'); }catch(e){ return null; } }
+function geoPendente(){ return !!(S.geo&&NUV.h&&NUV.h['s:geo']&&nuvHash(S.geo)!==NUV.h['s:geo']); }
+/* trava: nunca aplicar um mapa vindo de fora que esteja vazio ou muito menor que o deste aparelho */
+{ const _ap=nuvAplicar; nuvAplicar=function(chave,valor,apagado){
+    if(chave==='s:geo'){ const loc=geoConta(S.geo), rem=apagado?0:geoConta(valor);
+      if(loc>0&&(rem===0||rem<loc*0.5)){ console.warn('mapa recusado',loc,rem); toast(`⚠ Chegou um mapa com ${rem} cidades (este aparelho tem ${loc}). Mantive o daqui. Se foi de propósito, o administrador publica de novo.`); NUV.h['s:geo']=apagado?'x':nuvHash(valor); return; }
+      try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:new Date().toISOString(),cid:rem})); }catch(e){} }
+    return _ap(chave,valor,apagado); }; }
+async function geoPublicar(){ if(!nvAdmin()){ toast('Só o administrador publica o mapa.'); return; } if(!opOnline()){ toast('Sem internet: publique quando a conexão voltar.'); return; }
+  const novo=geoConta(S.geo), ant=(geoPubLer()||{}).cid||0;
+  if(novo===0){ toast('O mapa está vazio: não publiquei. Use Correção → Recuperar regiões.'); return; }
+  if(ant&&novo<ant*0.8&&!await confirmar('Publicar mapa menor?',`O mapa publicado tinha ${ant} cidades e este tem ${novo}. Publicar mesmo assim?`,'Publicar')) return;
+  NUV.publicarGeo=true; const b=$('#geo-pub'); if(b){ b.disabled=true; b.textContent='⏳ Publicando…'; }
+  try{ await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro);
+    try{ await NV.cli.from('hs_sync').upsert({chave:'bkp:s:geo:'+new Date().toISOString(),tipo:'s',valor:S.geo,apagado:false,atualizado_por:opEu()}); }catch(e){}
+    try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:new Date().toISOString(),cid:novo})); }catch(e){}
+    toast(`✔ Mapa publicado (${novo} cidades). Todos recebem esta versão.`); }
+  catch(e){ toast('⚠ Não publiquei: '+(e.message||e)+' — as mudanças continuam neste aparelho.'); }
+  finally{ NUV.publicarGeo=false; geoPubBarra(); } }
+function geoPubBarra(){ const t=document.getElementById('t-geo'); if(!t) return; let el=document.getElementById('geo-pub-bar');
+  if(!nvAdmin()){ if(el) el.remove(); return; }
+  if(!el){ t.querySelector('.sub').insertAdjacentHTML('afterend','<div id="geo-pub-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 10px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--linha)"><span id="geo-pub-txt"></span><button class="btn pri mini" type="button" id="geo-pub">📤 Publicar mapa</button></div>'); el=document.getElementById('geo-pub-bar'); $('#geo-pub').onclick=geoPublicar; }
+  const p=geoPendente(), info=geoPubLer(); el.style.borderColor=p?'#E8590C':'var(--linha)';
+  $('#geo-pub-txt').innerHTML=p?'<b style="color:#E8590C">Alterações no mapa não publicadas.</b> Só você vê. Clique em Publicar para todos receberem.':`Mapa publicado${info?' em '+esc(new Date(info.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):''}${info&&info.cid?' · '+info.cid+' cidades':''}.`;
+  const b=$('#geo-pub'); if(b){ b.disabled=false; b.textContent='📤 Publicar mapa'; } }
+setInterval(()=>{ try{ geoPubBarra(); }catch(e){} },3000);
+window.addEventListener('beforeunload',e=>{ try{ if(nvAdmin()&&geoPendente()){ e.preventDefault(); e.returnValue=''; } }catch(x){} });
+{ const _na=nexAvisos; nexAvisos=function(){ const a=_na(); try{ if(nvAdmin()&&geoPendente()) a.unshift({cor:'#E8590C',txt:'<b>Mapa com alterações não publicadas</b> — Geolocalização → 📤 Publicar mapa',acao:'geo'}); }catch(e){} return a; }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="geo"]'); if(b) setTimeout(()=>irPara('geo'),50); });
+(function(){ const i=MAN.findIndex(s=>/Geolocaliza/i.test(s.t)); const item={id:'mapa-pub',t:'Mapa publicado',img:'mural',intro:'O mapa é só visual e fica guardado em cada aparelho. Só o administrador publica mudanças.',
+  passos:[['Editar','O administrador pinta as cidades como sempre. As mudanças ficam só no aparelho dele até publicar; aparece o aviso “Alterações no mapa não publicadas”.'],
+   ['📤 Publicar mapa','Na Geolocalização, clique em Publicar mapa. Todos recebem a nova versão e guardam no aparelho (funciona sem internet). Cada publicação fica guardada como cópia.'],
+   ['Proteção','O app não publica mapa vazio, pede confirmação se o mapa ficar bem menor, e nenhum aparelho aceita receber um mapa vazio ou com menos da metade das cidades.']]};
+  MAN.splice(i>=0?i+1:MAN.length,0,item); })();
 
 </script>
 

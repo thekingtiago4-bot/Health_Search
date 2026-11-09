@@ -1,1 +1,1 @@
-{"versao":"9.1.1","data":"2026-11-09","novidades":"Menos uso do banco: sincroniza só o que mudou, ao vivo checa a cada 5 min, aba escondida não consulta, aviso claro quando o banco não responde"}
+{"versao":"9.2.0","data":"2026-11-09","novidades":"Mapa publicado (só o admin publica, trava contra mapa vazio); backup e versões só do administrador"}
