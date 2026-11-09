@@ -837,7 +837,7 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
       <dl><dt>Romaneios</dt><dd id="r-rom">0</dd><dt>Notas</dt><dd id="r-nf">0</dd><dt>Volumes</dt><dd id="r-vol">0</dd><dt>Agendados hoje</dt><dd id="r-hoje">0</dd><dt>Pesquisas hoje</dt><dd id="r-pesq">0</dd></dl>
       <div class="salvo"><i></i><span id="r-salvo">Salvo neste navegador</span></div>
       <div class="salvo" id="r-receb-box" hidden><i style="background:#FCD187"></i><span id="r-receb"></span></div>
-      <div class="autoria-pre"></div><button class="tema" id="bt-legenda" type="button"><span class="quadrinhos" aria-hidden="true"><i style="background:var(--ok)"></i><i style="background:var(--amar)"></i><i style="background:var(--no)"></i></span><span>Legenda das cores</span></button>
+      <div class="autoria-pre"></div><button class="tema" id="bt-legenda" type="button" style="display:none"><span class="quadrinhos" aria-hidden="true"><i style="background:var(--ok)"></i><i style="background:var(--amar)"></i><i style="background:var(--no)"></i></span><span>Legenda das cores</span></button>
       <button class="tema" id="bt-tema"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span id="tema-lbl">Tema escuro</span></button>
       <div class="autoria">Desenvolvido por <b>Tiago</b><br>© 2026 Health Search · Todos os direitos reservados</div>
     </div>
@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.6.0', HS_DATA='08/11/2026';
+const HS_VERSAO='8.6.1', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5052,7 +5052,7 @@ async function opCamAbrir(){
   try{ OP.det=OP.det||await opDetector(); }catch(e){ stream.getTracks().forEach(t=>t.stop()); toast(e.message); return; }
   opSom('info');
   const f=document.createElement('div'); f.id='op-cam'; f.innerHTML=`<video playsinline muted autoplay></video><div class="mira"></div><div class="msg"><b>Aponte para a etiqueta</b>Leio os QR Codes sozinho, não precisa apertar nada.</div>
-    <div class="op-camleg">${OP_LEG}</div><div class="pausa" hidden>Próxima leitura em <b>0,5</b> s…</div><div class="bar"><button class="btn" type="button" data-a="luz">🔦 Lanterna</button><button class="btn pri" type="button" data-a="sair">Fechar</button></div>`;
+    <div class="pausa" hidden>Próxima leitura em <b>0,5</b> s…</div><div class="bar"><button class="btn" type="button" data-a="luz">🔦 Lanterna</button><button class="btn pri" type="button" data-a="sair">Fechar</button></div>`;
   document.body.appendChild(f); const v=f.querySelector('video'); v.srcObject=stream; OP.cam=stream; try{ await v.play(); }catch(e){}
   const tr=stream.getVideoTracks()[0]; let luz=false;
   try{ const c=tr.getCapabilities&&tr.getCapabilities(); if(c&&c.focusMode&&c.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}); if(!(c&&c.torch)) f.querySelector('[data-a="luz"]').hidden=true; }catch(e){}
@@ -6377,6 +6377,7 @@ const MAN=[
    ['Layout e ajuda','Cada tela tem um botão (?) ao lado do título que abre a parte certa do Manual. Os grupos do menu (Operação, Regiões, Ferramentas, Administração) abrem e fecham clicando no nome; Rotas fica junto da Operação. Sem internet aparece só um selo pequeno ao lado do ☁. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam num cartão “Problemas” (toque nos números pequenos para ver só um tipo). No celular e no tablet as tabelas viram cartões, sem rolagem para os lados.']]},
 {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
   passos:[['Liberar a câmera','Na primeira vez toque em “🔓 Liberar câmera” e permita o acesso no navegador.'],
+   ['Cores do bipe','🟢 Verde = conferido · 🟡 Amarelo = sem nota · 🔴 Vermelho = fora do romaneio (separe) · 🟣 Roxo = reentrega · 🟠 Laranja = agendada (não vai) · Rosa-escuro = divergência · Azul-petróleo = caixa que faltou · 🔵 Azul = duplicado. A câmera não mostra mais esta legenda na tela: ela fica aqui no Manual e no (?) da Operação.'],
    ['Abrir câmera','Toque em “📷 Abrir câmera”, coloque a etiqueta inteira dentro da moldura e segure firme até o bipe. Espere meio segundo e passe a próxima.'],
    ['Etiquetas sem QR Code','O app lê o texto da etiqueta sozinho: 9 de Julho (NF no topo), CEI Comércio (NF no centro), Macromed (NF no meio), Health Quality/Cordis (código de barras) e etiquetas só com a NF.'],
    ['CREMER e Pitágoras','CREMER é reconhecida pela faixa preta com “CREMER” e ligada ao romaneio pelo pedido, cliente e cidade. Pitágoras (cliente MAFRA HOSPITALAR) sai como “Fora · Pitágoras” em laranja.'],
@@ -7692,7 +7693,7 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
   montarDicionario(); aplicarTema(); geoInit(); aplicarRegraTodos();
   if(!Object.keys(S.cidAtend||{}).length && S.romaneios.length){ for(const r of S.romaneios) registrarCidades(r); FER_NOVAS=[]; salvar(); }
   renderTudo(); irPara('buscar'); atualizarFeriados();
-  if(!S.introOff) abrirIntro();
+  /* v8.6.1: pop-up de legenda ao abrir desligado */
   if(chegou) toast(`Romaneios recebidos (${fmtQuando(pac.geradoEm)}): ${S.pacoteInfo.rom} romaneio(s), ${S.pacoteInfo.notas} notas. Já pode buscar.`);
   if(Store.modo==='exe'){ setInterval(()=>fetch('/__hr/ping',{headers:HDR}).catch(()=>{}),4000);
     window.addEventListener('focus',async()=>{ try{ const r=await fetch('/__hr/estado',{cache:'no-store',headers:HDR}); const j=await r.json(); if(j&&j.dados&&JSON.stringify(j.dados)!==JSON.stringify(S)){ S=Object.assign(S,j.dados); montarDicionario(); renderTudo(); } }catch(e){} }); }
