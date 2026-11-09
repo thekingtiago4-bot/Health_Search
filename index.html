@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.5.0', HS_DATA='09/11/2026';
+const HS_VERSAO='9.5.1', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8798,6 +8798,38 @@ document.addEventListener('keydown',e=>{ const c=$('#op-campo'); if(!c||$('#t-op
 
 (function(){ const mq=matchMedia('(max-width:860px)'); const mover=()=>{ const s=document.getElementById('nx-sino'), bar=document.getElementById('mb-bar'); if(!s||!bar) return; if(mq.matches){ if(s.parentNode!==bar){ const last=bar.querySelector('button:last-of-type'); bar.insertBefore(s,last); } } else if(s.parentNode===bar) document.body.appendChild(s); };
   setInterval(mover,1500); mq.addEventListener?mq.addEventListener('change',mover):0; })();
+
+/* ================= v9.5.1 · Buscar: sem filtro, histórico apagável abaixo, busca em tudo, desmarcar notas e totais com paradas/peso ================= */
+(function(){ const m=document.querySelector('.modos'); if(m) m.style.display='none'; try{ modo='auto'; }catch(e){} })();
+/* busca por qualquer dado da nota */
+buscaTxt=function(q,md){ const toks=N(q).split(' ').filter(Boolean); if(!toks.length) return [];
+  return todasLinhas().filter(({row,rom})=>{ const a=N([row.dest,row.rem,row.cid,row.uf,row.ped,row.nf,rom&&rom.numero,rom&&rom.base,rom&&rom.motorista,row.end,row.bairro].filter(Boolean).join(' ')); return toks.every(t=>a.includes(t)); }); };
+const pesoNota=row=>{ const p=parseFloat(String(row&&row.peso||'').replace(',','.')); if(p) return p; const x=S.opXml&&S.opXml[opK(row&&row.nf||'')]; const q=x&&parseFloat(String(x.peso||x.pesoB||x.pesoL||'').replace(',','.')); return q||0; };
+const fmtKg=v=>v.toLocaleString('pt-BR',{maximumFractionDigits:1})+' kg';
+let BUSCA_OFF=new Set();
+function buscaResumo(){ const box=$('#resultado'); if(!box) return; const trs=[...box.querySelectorAll('tr[data-rom][data-i]')]; if(!trs.length) return;
+  const vist=new Set(), par=new Set(); let notas=0,vol=0,peso=0,val=0,semV=0;
+  for(const tr of trs){ const r=S.romaneios.find(x=>x.id===tr.dataset.rom); const row=r&&r.rows[+tr.dataset.i]; if(!row) continue; const k=opK(row.nf||'')||tr.dataset.rom+tr.dataset.i; const off=BUSCA_OFF.has(k); tr.style.opacity=off?.38:''; const cb=tr.querySelector('.bs-cb'); if(cb) cb.checked=!off;
+    if(off||vist.has(k)) continue; vist.add(k); if(volNum(row.vol)===0) continue; notas++; vol+=volNum(row.vol)||0; peso+=pesoNota(row); const v=valNota(row); if(v==null) semV++; else val+=v; par.add(N(row.dest)+'|'+N(row.cid)); }
+  let el=$('#bs-tot'); if(!el){ el=document.createElement('div'); el.id='bs-tot'; el.className='bs-tot'; const lista=box.querySelector('.lista'); (lista||box).insertAdjacentElement('beforebegin',el); }
+  el.innerHTML=`<span><b>${fmtN(notas)}</b> notas</span><span><b>${fmtN(par.size)}</b> paradas</span><span><b>${fmtN(vol)}</b> volumes</span><span><b>${fmtKg(peso)}</b></span><span><b>${fmtR(val)}</b>${semV?` <small>(${semV} sem XML)</small>`:''}</span>${BUSCA_OFF.size?`<button class="btn mini" type="button" id="bs-todas">Marcar todas</button>`:''}<small class="sec" style="flex-basis:100%">Desmarque notas para ver quanto sobra (vale só para esta pesquisa). Paradas: cada cliente conta 1.</small>`; }
+{ const _m=mostrar; mostrar=function(res){ if(res&&res.tipo==='vazio'){ $('#resultado').innerHTML=''; buscaHist(); return; } BUSCA_OFF=new Set(); _m(res);
+    try{ const box=$('#resultado'); box.querySelectorAll('table').forEach(tb=>{ const trs=tb.querySelectorAll('tbody tr[data-rom][data-i]'); if(!trs.length) return; const h=tb.querySelector('thead tr'); if(h&&!h.querySelector('.bs-h')) h.insertAdjacentHTML('afterbegin','<th class="bs-h" title="Desmarque para tirar da soma">✓</th>'); trs.forEach(tr=>{ if(!tr.querySelector('.bs-cb')) tr.insertAdjacentHTML('afterbegin','<td class="bs-c"><input type="checkbox" class="bs-cb" checked aria-label="Contar esta nota"></td>'); }); const f=tb.querySelector('tfoot tr td'); if(f) f.colSpan=(+f.colSpan||1)+1; });
+      buscaResumo(); }catch(e){ console.error(e); } buscaHist(); }; }
+document.addEventListener('click',e=>{ const cb=e.target.closest&&e.target.closest('.bs-cb,.bs-c'); if(cb){ e.stopPropagation(); const tr=cb.closest('tr'); const r=S.romaneios.find(x=>x.id===tr.dataset.rom); const row=r&&r.rows[+tr.dataset.i]; const k=opK(row&&row.nf||'')||tr.dataset.rom+tr.dataset.i; const inp=tr.querySelector('.bs-cb'); if(e.target!==inp) inp.checked=!inp.checked; if(inp.checked) BUSCA_OFF.delete(k); else BUSCA_OFF.add(k); buscaResumo(); return; }
+  if(e.target.id==='bs-todas'){ BUSCA_OFF=new Set(); buscaResumo(); } },true);
+/* histórico abaixo da pesquisa, apagável */
+function buscaHist(){ const t=$('#t-buscar'); if(!t) return; let el=$('#bs-hist'); if(!el){ el=document.createElement('div'); el.id='bs-hist'; $('#resultado').insertAdjacentElement('afterend',el); }
+  const H=(S.historico||[]).filter((h,i,a)=>a.findIndex(x=>N(x.q)===N(h.q))===i).slice(0,30);
+  el.innerHTML=H.length?`<div class="lista" style="margin-top:14px"><header><h3>Pesquisas recentes</h3><span class="cont"><button class="btn mini" type="button" id="bs-h-limpar">Limpar tudo</button></span></header><div class="rolagem"><table><tbody>${H.map(h=>`<tr class="clicavel" data-bs-q="${esc(h.q)}"><td class="nf">${esc(h.q)}</td><td class="sec">${esc(h.resumo||'')}</td><td class="sec" style="white-space:nowrap">${esc(new Date(h.quando).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))}</td><td style="width:40px"><button class="op-x" type="button" title="Apagar" data-bs-del="${esc(h.q)}">✕</button></td></tr>`).join('')}</tbody></table></div></div>`:''; }
+document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest) return; let b;
+  if((b=t.closest('[data-bs-del]'))){ e.stopPropagation(); const q=N(b.dataset.bsDel); S.historico=(S.historico||[]).filter(h=>N(h.q)!==q); salvar(); buscaHist(); try{ renderHistorico(); }catch(x){} return; }
+  if(t.id==='bs-h-limpar'){ if(!await confirmar('Limpar pesquisas','Apagar todas as pesquisas recentes?','Limpar')) return; S.historico=[]; salvar(); buscaHist(); return; }
+  if((b=t.closest('[data-bs-q]'))&&$('#t-buscar').contains(b)){ const q=$('#q'); q.value=b.dataset.bsQ; executar(b.dataset.bsQ); window.scrollTo({top:0,behavior:'smooth'}); } });
+(function(){ const st=document.createElement('style'); st.textContent=`.bs-tot{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;margin:10px 0;padding:10px 14px;border-radius:12px;background:var(--sup);border:1.5px solid var(--linha)}.bs-tot b{font-size:1.1rem}.bs-c{width:34px;text-align:center}.bs-cb{width:18px;height:18px;cursor:pointer}`; document.head.appendChild(st); setTimeout(()=>{ if($('#resultado')&&!$('#resultado').innerHTML.trim()) buscaHist(); },1500); })();
+(function(){ const s=MAN.find(x=>/Buscar/i.test(x.t)); if(s&&s.passos) s.passos.unshift(['Buscar qualquer coisa','Digite NF, pedido, cliente, destinatário, remetente, cidade, romaneio ou motorista. Não precisa escolher o tipo: a busca é sempre em tudo.'],['Desmarcar notas','No resultado, desmarque o ✓ das notas que não vão: o total recalcula notas, paradas (cada cliente conta 1), volumes, peso e valor. Bom para montar rota. Vale só para aquela pesquisa.'],['Pesquisas recentes','Abaixo da busca ficam as pesquisas recentes. Toque para repetir; ✕ apaga a linha.']); })();
+/* ---- Romaneios: só Carregados e Banco de dados ---- */
+(function(){ const seg=document.querySelector('.rom-sub'); if(!seg) return; const x=seg.querySelector('[data-rom-sub="excel"]'); if(x) x.style.display='none'; const bd=seg.querySelector('[data-rom-sub="banco"]'); if(bd) bd.textContent='Banco de dados'; const bt=$('#t-excel'); if(bt) bt.hidden=true; })();
 
 </script>
 
