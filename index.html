@@ -4121,7 +4121,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.2.2', HS_DATA='09/11/2026';
+const HS_VERSAO='9.3.0', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8857,6 +8857,103 @@ async function roboSqlChecar(){ try{ if(!nvAdmin()||!opOnline()) return; const {
   $('#robo-sql-ok').onclick=()=>{ try{ localStorage.setItem('healthSearch.roboSqlVisto',v.em); }catch(e){} el.remove(); }; }catch(e){} }
 setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&NV.perfil){ clearInterval(t); roboSqlChecar(); setInterval(()=>{ if(!document.hidden) roboSqlChecar(); },30*60e3); } else if(++n>120) clearInterval(t); },2000); },6000);
 (function(){ const s=MAN.find(x=>x.passos&&x.passos.some(p=>/Quem faz backup/.test(p[0]))); if(s) s.passos.push(['🛢 Banco atualizado','Quando uma atualização precisa mudar o banco, o robô “SQL automático” do GitHub aplica sozinho (ninguém precisa rodar SQL). O administrador vê um aviso verde “Banco atualizado” com o que mudou, ou vermelho se falhar (aí nada é alterado).']); })();
+
+/* ================= v9.3.0 · Reorganização: menu por momento do trabalho, Backups num lugar só, bipar só no NexBip, Romaneios enxuto ================= */
+(function(){ try{
+  const nav=document.querySelector('.nav'); if(!nav) return;
+  const st=document.createElement('style'); st.textContent=`.nav .ng2{display:flex;align-items:center;gap:6px;width:100%;background:none;border:0;cursor:pointer;font:600 .6875rem/1 "Barlow Semi Condensed","Barlow",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(195,226,224,.62);padding:14px 10px 6px;text-align:left}
+  .nav .ng2:first-child{padding-top:2px}.nav .ng2 .seta{margin-left:auto;opacity:.6;font-size:10px}.nav .ng2 .qt{margin-left:4px}.nav .ng2-box[hidden]{display:none}.nav .ng2-box{display:flex;flex-direction:column;gap:2px}
+  details.mais{position:relative;display:inline-block}details.mais>summary{list-style:none;cursor:pointer}details.mais>summary::-webkit-details-marker{display:none}
+  details.mais .mais-menu{position:absolute;z-index:40;right:0;top:calc(100% + 4px);min-width:220px;display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:12px;background:var(--sup,#12302f);border:1px solid var(--linha);box-shadow:0 10px 26px rgba(0,0,0,.35)}
+  details.mais .mais-menu .btn{width:100%;justify-content:flex-start;text-align:left}`; document.head.appendChild(st);
+  const GR=[['Operação do dia',['buscar','romaneios','operacao','conftotal','rotadia','viaminas','registro']],
+    ['Ocorrências',['reentregas','divergencias','avarias','fora']],
+    ['Planejamento',['agenda','feriados','geo']],
+    ['Relatórios e ajuda',['relatorios','gestor','reldireto','manual']],
+    ['Administração',['correcao','cadastros','usuarios','backups'],true]];
+  const btn=t=>nav.querySelector(`[data-tela="${t}"]`);
+  /* telas novas: Backups e Relatórios */
+  const mk=(id,html)=>{ const b=document.createElement('button'); b.dataset.tela=id; b.innerHTML=html; return b; };
+  if(!btn('backups')) nav.appendChild(mk('backups','<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg><span class="lbl">Backups</span>'));
+  if(!btn('relatorios')) nav.appendChild(mk('relatorios','<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 17v-3M12 17v-6M16 17v-2"/></svg><span class="lbl">Relatórios</span>'));
+  const usados=new Set(GR.flatMap(g=>g[1]));
+  const sobras=[...nav.querySelectorAll('[data-tela]')].filter(b=>!usados.has(b.dataset.tela));
+  let fech={}; try{ fech=JSON.parse(localStorage.getItem('healthSearch.menu2')||'{}'); }catch(e){}
+  const frag=document.createDocumentFragment();
+  for(const [nome,telas,adm] of GR){ const h=document.createElement('button'); h.type='button'; h.className='ng2'; h.dataset.grupo=nome; if(adm){ h.id='nav-grupo-adm2'; }
+    h.innerHTML=`<span>${nome}</span><span class="qt" hidden>0</span><span class="seta">▾</span>`; const box=document.createElement('div'); box.className='ng2-box';
+    for(const t of telas){ const b=btn(t); if(b){ b.style.display=''; box.appendChild(b); } }
+    const abrir=v=>{ box.hidden=!v; h.querySelector('.seta').textContent=v?'▾':'▸'; h.setAttribute('aria-expanded',String(v)); };
+    abrir(!fech[nome]); h.onclick=()=>{ fech[nome]=!box.hidden; try{ localStorage.setItem('healthSearch.menu2',JSON.stringify(fech)); }catch(e){} abrir(box.hidden); };
+    frag.append(h,box); }
+  /* esconder o que ficou de fora (Histórico vai para dentro da Busca; telas guardadas) */
+  const guard=document.createElement('div'); guard.hidden=true; guard.id='nav-guardados'; sobras.forEach(b=>guard.appendChild(b));
+  [...nav.children].forEach(c=>c.remove()); nav.append(frag,guard);
+  const admVis=()=>{ const h=document.getElementById('nav-grupo-adm2'); if(!h) return; const a=typeof nvAdmin==='function'&&nvAdmin(); h.hidden=!a; h.nextElementSibling.hidden=!a||h.getAttribute('aria-expanded')==='false';
+    for(const t of ['correcao','usuarios','backups']){ const b=btn(t); if(b) b.hidden=!a; } };
+  setInterval(()=>{ try{ admVis(); for(const h of nav.querySelectorAll('.ng2')){ const box=h.nextElementSibling; let n=0; box.querySelectorAll('.qt').forEach(q=>{ if(!q.hidden) n+=+q.textContent||0; }); const q=h.querySelector('.qt'); q.hidden=!n||h.getAttribute('aria-expanded')!=='false'; q.textContent=n; } }catch(e){} },1500); admVis();
+  nav.addEventListener('click',e=>{ const b=e.target.closest('[data-tela]'); if(b&&(b.dataset.tela==='backups'||b.dataset.tela==='relatorios')) irPara(b.dataset.tela); });
+  const _ir=irPara; irPara=function(t){ _ir(t); try{ const b=btn(t); const box=b&&b.closest('.ng2-box'); if(box&&box.hidden){ box.hidden=false; const h=box.previousElementSibling; h.setAttribute('aria-expanded','true'); h.querySelector('.seta').textContent='▾'; }
+      if(t==='backups'||t==='relatorios'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-'+t); $$('.nav [data-tela]').forEach(x=>{ if(x.dataset.tela===t) x.setAttribute('aria-current','page'); else x.removeAttribute('aria-current'); }); (t==='backups'?bkTela:relTela)(); } }catch(e){ console.error(e); } };
+}catch(e){ console.error('menu 9.3',e); } })();
+
+/* ---- Administração → Backups (só admin) ---- */
+(function(){ const sec=document.createElement('section'); sec.className='tela'; sec.id='t-backups'; sec.hidden=true;
+  sec.innerHTML=`<h1>Backups</h1><p class="sub">Tudo de backup num lugar só (só o administrador vê). O robô do GitHub também faz um backup completo todo dia às 03:17.</p>
+  <h2 style="margin-top:14px">Banco online</h2><div id="bk-banco" class="barra" style="flex-wrap:wrap;gap:8px"></div>
+  <h2 style="margin-top:18px">Versões permanentes</h2><div class="barra" style="flex-wrap:wrap;gap:8px"><button class="btn mini" type="button" id="bk-vsn">🕘 Ver versões salvas (💾)</button><small class="sec">Cada 💾 Salvar do administrador guarda uma versão completa.</small></div>
+  <h2 style="margin-top:18px">Arquivo (backup completo em arquivo)</h2><div id="bk-arq" class="barra" style="flex-wrap:wrap;gap:8px"></div>
+  <h2 style="margin-top:18px">Mapa</h2><div id="bk-geo" class="barra" style="flex-wrap:wrap;gap:8px"><button class="btn mini" type="button" id="bk-geo-rec">🗺️ Recuperar regiões</button></div>`;
+  const r=document.getElementById('t-romaneios'); r.parentNode.insertBefore(sec,r);
+  $('#bk-vsn').onclick=()=>{ const s=$('#hs-salvar'); if(s) s.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); };
+  $('#bk-geo-rec').onclick=()=>{ try{ if(!$('#geo-rec')) renderCorrecao(); const b=$('#geo-rec'); if(b) b.click(); else toast('Abra Correção → Recuperar regiões.'); }catch(e){ toast('Abra Correção → Recuperar regiões.'); } };
+})();
+function bkTela(){ if(!nvAdmin()){ $('#t-backups').innerHTML='<h1>Backups</h1><p>Só o administrador.</p>'; return; }
+  try{ if(!$('#bkn-bt')&&$('#cor-corpo')) renderCorrecao(); }catch(e){}
+  const bar=$('#bkn-bt')&&$('#bkn-bt').closest('.barra'); if(bar&&!$('#bk-banco').contains(bar)){ bar.style.margin='0'; $('#bk-banco').appendChild(bar); }
+  const top=$('#re-lanc .re-topo'); if(top) for(const id of ['re-bkp','re-rest','re-desfazer','re-rest-arq']){ const e=document.getElementById(id); if(e&&!$('#bk-arq').contains(e)) $('#bk-arq').appendChild(e); }
+  const au=document.querySelector('.bk-auto'); if(au&&!$('#bk-arq').contains(au)) $('#bk-arq').appendChild(au);
+  const geo=$('#t-geo')&&[...$('#t-geo').querySelectorAll('button')].find(b=>/Restaurar listas originais/.test(b.textContent)); if(geo&&!$('#bk-geo').contains(geo)) $('#bk-geo').appendChild(geo); }
+setTimeout(()=>{ try{ for(const id of ['re-bkp','re-rest','re-desfazer']){ const e=document.getElementById(id); if(e&&!$('#t-backups').contains(e)) e.style.display='none'; } const au=document.querySelector('.bk-auto'); if(au&&!$('#t-backups').contains(au)) au.style.display='none'; }catch(e){} },1200);
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-tela="backups"]')) setTimeout(()=>{ ['re-bkp','re-rest','re-desfazer'].forEach(id=>{ const x=document.getElementById(id); if(x) x.style.display=''; }); const au=document.querySelector('.bk-auto'); if(au) au.style.display=''; },60); });
+{ const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); try{ const b=$('#bkn-bt'); const bar=b&&b.closest('.barra'); if(bar&&$('#cor-corpo')&&$('#cor-corpo').contains(bar)){ bar.remove(); $('#cor-corpo').insertAdjacentHTML('afterbegin','<p class="sec" style="margin:0 0 10px">💾 Backups agora ficam em <a href="#" data-ir-bk>Administração → Backups</a>.</p>'); } }catch(e){} }; }
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-ir-bk]')){ e.preventDefault(); irPara('backups'); } });
+
+/* ---- Relatórios (todos os PDFs num lugar) ---- */
+(function(){ const sec=document.createElement('section'); sec.className='tela'; sec.id='t-relatorios'; sec.hidden=true;
+  sec.innerHTML=`<h1>Relatórios</h1><p class="sub">Todos os relatórios num lugar só. Cada botão gera o mesmo relatório de antes.</p><div id="rel-lista" class="op-cards" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"></div>`;
+  const r=document.getElementById('t-romaneios'); r.parentNode.insertBefore(sec,r); })();
+const REL=[['📄 Reentregas · relatório do período','#re-painel button','Relatório PDF','reentregas'],['📄 Reentregas · semanal','#re-painel button','Semanal','reentregas'],['📄 Fora do romaneio · semanal','#t-fora button','Relatório semanal','fora'],['📊 Painel mensal da gerência','#t-gestor button','PDF','gestor'],['📄 Relatório Direto (Via Minas)','#t-reldireto button','Gerar planilha','reldireto']];
+function relTela(){ const el=$('#rel-lista'); el.innerHTML=REL.map((r,i)=>`<button class="op-card" type="button" data-rel="${i}" style="text-align:left"><b style="font-size:1.05rem">${r[0]}</b><span>abre a tela e gera</span></button>`).join(''); }
+document.addEventListener('click',e=>{ const c=e.target.closest&&e.target.closest('[data-rel]'); if(!c) return; const r=REL[+c.dataset.rel]; irPara(r[3]); setTimeout(()=>{ const b=[...document.querySelectorAll(r[1])].find(x=>x.textContent.includes(r[2])); if(b) b.click(); else toast('Abri a tela: use o botão '+r[2]+'.'); },350); });
+
+/* ---- Bipar só no NexBip: depois do bipe, quadrados Divergência e Avaria ---- */
+{ const _om=opMostrar; opMostrar=function(r){ _om(r); try{ if(!(r&&(r._ped||r._nf))) return; const row={ped:r._ped,nf:r._nf,dest:r._dest,cid:r._cid};
+    const h=dvavBarra([{row}]).replace(/<button class="btn mini" type="button" data-dvav-acao="tempo">[^<]*<\/button>/,''); const el=$('#op-res'); el.insertAdjacentHTML('beforeend',`<div class="dvav-wrap" style="margin-top:8px;color:var(--txt,#fff)">${h}</div>`); window._dvavRes={hits:[{row}]}; }catch(e){ console.error(e); } }; }
+(function(){ for(const id of ['t-divergencias','t-avarias']){ const s=document.getElementById(id); if(!s) continue; const bip=s.querySelector('.op-bip'); if(bip){ bip.style.display='none'; bip.insertAdjacentHTML('afterend',`<p class="sec" style="margin:4px 0 10px">📷 Para registrar, bipe a caixa no <a href="#" data-ir-nexbip>NexBip</a> (ou pesquise na Busca) e marque o quadrado <b>${id==='t-avarias'?'Avaria':'Divergência'}</b>.</p>`); } } })();
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-ir-nexbip]')){ e.preventDefault(); irPara('operacao'); } });
+
+/* ---- Romaneios: só “carregar” em cima; resto em ⋯ Mais; Banco de romaneios vira sub-aba; sem arquivo de WhatsApp ---- */
+(function(){ try{ const z=$('#bt-zap'); if(z) z.style.display='none';
+  const bar=z&&z.closest('.barra'); if(bar){ const m=document.createElement('details'); m.className='mais'; m.innerHTML='<summary class="btn mini">⋯ Mais</summary><div class="mais-menu"></div>'; for(const id of ['bt-xl-todos','bt-csv','bt-reset']){ const b=document.getElementById(id); if(b) m.querySelector('.mais-menu').appendChild(b); } bar.appendChild(m);
+    document.addEventListener('click',e=>{ if(!m.contains(e.target)) m.open=false; }); }
+  const seg=document.querySelector('.rom-sub'), rb=$('#rb'); if(seg&&rb){ seg.insertAdjacentHTML('beforeend','<button type="button" data-rom-sub="banco" aria-pressed="false">Banco de romaneios</button>'); rb.hidden=true;
+    seg.addEventListener('click',e=>{ const b=e.target.closest('[data-rom-sub]'); if(!b) return; const banco=b.dataset.romSub==='banco'; rb.hidden=!banco;
+      if(banco){ e.stopImmediatePropagation(); seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); $('#rom-carregados').hidden=true; $('#t-excel').hidden=true; } else { seg.querySelector('[data-rom-sub="banco"]').setAttribute('aria-pressed','false'); } },true); }
+  const h=$('#rom-carregados'); if(h){ const p=[...h.querySelectorAll('p,.sec,small')].find(x=>/Gerar arquivo para WhatsApp/.test(x.textContent)); if(p) p.textContent='Coloque aqui os PDFs dos romaneios do dia e depois os XMLs (mesmo nome do romaneio). Todos os colegas recebem na hora.'; }
+}catch(e){ console.error(e); } })();
+
+/* ---- Reentregas: título certo; Excel padronizado; Histórico dentro da Busca ---- */
+(function(){ const h=$('#h-re'); if(h&&h.firstChild&&h.firstChild.nodeType===3) h.firstChild.textContent='Reentregas ';
+  const pad=()=>{ document.querySelectorAll('button').forEach(b=>{ if(b.dataset.xlPad) return; const t=b.textContent.trim(); if(/^(Exportar Excel \(CSV\)|Exportar planilha|Baixar Excel)$/.test(t)){ b.dataset.xlPad=1; b.title=t; b.textContent='⬇ Excel'; } }); };
+  pad(); setInterval(pad,4000); })();
+
+/* ---- Manual / EVA ---- */
+(function(){ MAN.unshift({id:'menu2026',t:'Como o menu está organizado',img:'mural',intro:'O menu segue o dia de trabalho. Clique no nome do grupo para abrir ou fechar.',
+  passos:[['Operação do dia','Buscar, Romaneios, NexBip, Conferência total, Rotas, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências, Avarias e Fora do romaneio. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],
+   ['Planejamento','Agendamentos, Feriados e Geolocalização.'],['Relatórios e ajuda','Relatórios (todos os PDFs num lugar), Painel do gestor, Relatório Direto e este Manual.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups (todos os backups e restaurações num lugar só).'],
+   ['Romaneios','Em cima só o carregar. Excel, planilha e “Remover todos” ficam em ⋯ Mais. O Banco de romaneios é a 3ª sub-aba. O arquivo de WhatsApp saiu: o app é online para todos.'],['Excel','Todo botão de planilha agora se chama ⬇ Excel.'],['Histórico','As últimas buscas ficam dentro da própria Busca.']]}); })();
+{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/onde (fica|esta|está)|cade|cadê/.test(t)){ const M={backup:'Administração → Backups',relatorio:'Relatórios e ajuda → Relatórios',divergen:'Ocorrências → Divergências (para registrar: bipe no NexBip e marque o quadrado)',avaria:'Ocorrências → Avarias',banco:'Romaneios → sub-aba Banco de romaneios',excel:'botão ⬇ Excel em cada tela',historico:'dentro da Busca (últimas buscas)'}; for(const [k,v] of Object.entries(M)) if(t.includes(k)) return `Fica em <b>${v}</b>. 🐼`; } return _ee(txt); }; }
 
 </script>
 
