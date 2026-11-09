@@ -2212,7 +2212,7 @@ function montarDicionario(){
 const volNum=v=>{ const t=String(v??'').trim(); return /^\d+$/.test(t)?parseInt(t,10):null; };
 const ehZero=row=>volNum(row.vol)===0;
 function contar(rows){ const c={linhas:rows.length,notas:0,vol:0,zero:0}; for(const r of rows){ const v=volNum(r.vol); if(v===0){ c.zero++; continue; } c.notas++; if(v) c.vol+=v; } return c; }
-const contarHits=hits=>contar(hits.map(h=>h.row));
+const contarHits=hits=>{ const vist=new Set(); return contar(hits.map(h=>h.row).filter(r=>{ const k=opK(r&&r.nf||''); if(!k) return true; if(vist.has(k)) return false; vist.add(k); return true; })); }; /* v9.0.6: mesma NF em 2 romaneios conta 1 vez */
 const fmtN=n=>Number(n||0).toLocaleString('pt-BR');
 const ZERO_TIT='Nota com 0 volume: aparece na lista, mas não entra no total de notas nem de volumes';
 function totaisTxt(c){ return `<span>Notas <b>${fmtN(c.notas)}</b></span><span>Volumes <b>${fmtN(c.vol)}</b></span>${c.zero?`<span class="chip-zero" title="${ZERO_TIT}">${c.zero} nota(s) com 0 volume</span>`:''}`; }
@@ -4121,7 +4121,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.0.5', HS_DATA='09/11/2026';
+const HS_VERSAO='9.0.6', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
