@@ -4121,7 +4121,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.3.0', HS_DATA='09/11/2026';
+const HS_VERSAO='9.3.1', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8954,6 +8954,25 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[d
    ['Planejamento','Agendamentos, Feriados e Geolocalização.'],['Relatórios e ajuda','Relatórios (todos os PDFs num lugar), Painel do gestor, Relatório Direto e este Manual.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups (todos os backups e restaurações num lugar só).'],
    ['Romaneios','Em cima só o carregar. Excel, planilha e “Remover todos” ficam em ⋯ Mais. O Banco de romaneios é a 3ª sub-aba. O arquivo de WhatsApp saiu: o app é online para todos.'],['Excel','Todo botão de planilha agora se chama ⬇ Excel.'],['Histórico','As últimas buscas ficam dentro da própria Busca.']]}); })();
 { const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/onde (fica|esta|está)|cade|cadê/.test(t)){ const M={backup:'Administração → Backups',relatorio:'Relatórios e ajuda → Relatórios',divergen:'Ocorrências → Divergências (para registrar: bipe no NexBip e marque o quadrado)',avaria:'Ocorrências → Avarias',banco:'Romaneios → sub-aba Banco de romaneios',excel:'botão ⬇ Excel em cada tela',historico:'dentro da Busca (últimas buscas)'}; for(const [k,v] of Object.entries(M)) if(t.includes(k)) return `Fica em <b>${v}</b>. 🐼`; } return _ee(txt); }; }
+
+/* ================= v9.3.1 · 📲 Grupo da operação (WhatsApp) ================= */
+try{ NUV_CAMPOS.push('zapGrupo'); NUV_ADMIN.add('s:zapGrupo'); }catch(e){}
+const zapLink=()=>{ const g=S.zapGrupo; return g&&/^https:\/\/chat\.whatsapp\.com\//.test(g.link||'')?g.link:''; };
+{ const _wo=window.open.bind(window); window.open=function(url,...r){ try{ const u=String(url||''); const m=u.match(/^https:\/\/wa\.me\/\?text=(.*)$/); const g=zapLink();
+    if(m&&g){ const txt=decodeURIComponent(m[1]); zapEscolher(txt,()=>_wo(u,...r),()=>_wo(g,...r)); return null; } }catch(e){} return _wo(url,...r); }; }
+function zapEscolher(txt,contato,grupo){ const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:420px"><h2>Enviar pelo WhatsApp</h2>
+  <p class="sec" style="margin:0 0 12px">${esc(S.zapGrupo.nome||'Grupo da operação')}: o texto vai copiado; no grupo é só <b>colar</b> (segurar no campo → Colar) e enviar.</p>
+  <div class="botoes" style="flex-direction:column;align-items:stretch;gap:8px"><button class="btn pri" type="button" data-z="g">📲 ${esc(S.zapGrupo.nome||'Grupo da operação')}</button><button class="btn" type="button" data-z="c">👤 Escolher contato</button><button class="btn" type="button" data-z="x">Cancelar</button></div></div>`;
+  document.body.appendChild(f); f.onclick=async e=>{ const b=e.target.closest('[data-z]'); if(!b) return; f.remove(); if(b.dataset.z==='g'){ try{ await navigator.clipboard.writeText(txt); toast('✔ Texto copiado. Cole no grupo e envie.'); }catch(x){ toast('Copie o texto e cole no grupo.'); } grupo(); } else if(b.dataset.z==='c') contato(); }; }
+function zapConfig(){ if(!nvAdmin()){ toast('Só o administrador.'); return; } const g=S.zapGrupo||{}; const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:480px"><h2>📲 Grupo da operação</h2>
+  <p class="sec">No WhatsApp: abra o grupo → nome do grupo → <b>Convidar via link</b> → Copiar link. Cole aqui. Todos os usuários passam a ter o botão do grupo ao enviar.</p>
+  <label class="av-l">Nome<input id="zg-n" value="${esc(g.nome||'Grupo da operação')}"></label><label class="av-l">Link do grupo<input id="zg-l" placeholder="https://chat.whatsapp.com/..." value="${esc(g.link||'')}"></label>
+  <div class="botoes"><button class="btn" type="button" data-r="limpar">Tirar grupo</button><button class="btn" type="button" data-r="0">Cancelar</button><button class="btn pri" type="button" data-r="1">Salvar</button></div></div>`;
+  document.body.appendChild(f); f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(!b) return; const r=b.dataset.r;
+    if(r==='1'){ const l=f.querySelector('#zg-l').value.trim(); if(!/^https:\/\/chat\.whatsapp\.com\/\S+$/.test(l)){ toast('O link precisa começar com https://chat.whatsapp.com/'); return; } S.zapGrupo={nome:f.querySelector('#zg-n').value.trim()||'Grupo da operação',link:l,em:new Date().toISOString()}; salvar(); toast('✔ Grupo salvo.'); }
+    if(r==='limpar'){ S.zapGrupo={nome:'',link:'',em:new Date().toISOString()}; salvar(); toast('Grupo tirado.'); } f.remove(); }; }
+setInterval(()=>{ try{ const t=$('#t-cadastros'); if(!t||!nvAdmin()||$('#zg-bt')) return; const h=t.querySelector('.sub')||t.querySelector('h1'); h.insertAdjacentHTML('afterend','<div class="barra" style="margin:6px 0 10px"><button class="btn mini" type="button" id="zg-bt">📲 Grupo da operação (WhatsApp)</button></div>'); $('#zg-bt').onclick=zapConfig; }catch(e){} },2000);
+(function(){ const s=MAN.find(x=>x.id==='menu2026'); if(s) s.passos.push(['📲 Grupo da operação','O administrador cadastra o link do grupo em Cadastros → 📲 Grupo da operação. Ao enviar qualquer texto pelo WhatsApp (fechamento do turno, Registro, Via Minas…), aparece o botão do grupo: o texto vai copiado e o grupo abre; é só colar e enviar. O WhatsApp não deixa o app escrever direto num grupo, por isso o colar.']); })();
 
 </script>
 
