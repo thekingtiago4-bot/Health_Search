@@ -4121,7 +4121,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.2.1', HS_DATA='09/11/2026';
+const HS_VERSAO='9.2.2', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8845,6 +8845,18 @@ document.addEventListener('change',e=>{ const t=e.target; if(!t.dataset||t.datas
   if(r&&r.o){ corAlias(k,r.o.c); toast(`UF corrigida: ${e2.nome}/${e2.uf} reconhecida.`); } else { salvar(); try{ renderCorrecao(); }catch(x){} toast(`UF corrigida para ${e2.uf}. Agora diga qual cidade é.`); } });
 document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-cor-nrec-del]'); if(!b) return; const k=b.dataset.corNrecDel; if(!nvAdmin()){ toast('Só o administrador.'); return; }
   if(!await confirmar('Descartar','Tirar esta linha de “Cidades não reconhecidas”?','Descartar')) return; delete S.cidAtend[k]; salvar(); try{ renderCorrecao(); }catch(x){} });
+
+
+/* v9.2.2 · aviso do robô SQL automático (só admin) */
+async function roboSqlChecar(){ try{ if(!nvAdmin()||!opOnline()) return; const {data}=await NV.cli.from('hs_sync').select('valor').eq('chave','robo:sql').maybeSingle(); const v=data&&data.valor; if(!v||!v.em) return;
+  let visto=''; try{ visto=localStorage.getItem('healthSearch.roboSqlVisto')||''; }catch(e){}
+  if(v.ok&&v.em<=visto) return; let el=$('#robo-sql'); if(!el){ el=document.createElement('div'); el.id='robo-sql'; el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:96px;z-index:1550;color:#fff;padding:8px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center;max-width:94vw;font-size:var(--fs-sm)'; document.body.appendChild(el); }
+  el.style.background=v.ok?'#1f6f43':'#8a1c1c';
+  el.innerHTML=v.ok?`<span>🛢 <b>Banco atualizado</b> ${esc(new Date(v.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))}: ${(v.aplicados||[]).map(esc).join(' · ')||'ok'}</span><button class="btn mini" type="button" id="robo-sql-ok">OK</button>`
+    :`<span>⚠ <b>Robô de SQL falhou</b> ${esc(new Date(v.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))}: ${esc(String(v.erro||'').slice(0,120))}. Nada foi alterado no banco. Me avise.</span><button class="btn mini" type="button" id="robo-sql-ok">✕</button>`;
+  $('#robo-sql-ok').onclick=()=>{ try{ localStorage.setItem('healthSearch.roboSqlVisto',v.em); }catch(e){} el.remove(); }; }catch(e){} }
+setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&NV.perfil){ clearInterval(t); roboSqlChecar(); setInterval(()=>{ if(!document.hidden) roboSqlChecar(); },30*60e3); } else if(++n>120) clearInterval(t); },2000); },6000);
+(function(){ const s=MAN.find(x=>x.passos&&x.passos.some(p=>/Quem faz backup/.test(p[0]))); if(s) s.passos.push(['🛢 Banco atualizado','Quando uma atualização precisa mudar o banco, o robô “SQL automático” do GitHub aplica sozinho (ninguém precisa rodar SQL). O administrador vê um aviso verde “Banco atualizado” com o que mudou, ou vermelho se falhar (aí nada é alterado).']); })();
 
 </script>
 

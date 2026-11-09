@@ -36,14 +36,25 @@ jobs:
           DB=""
           command -v psql >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client)
           psql -v ON_ERROR_STOP=1 -q -c "create table if not exists public.hs_migracoes (nome text primary key, aplicado_em timestamptz not null default now()); alter table public.hs_migracoes enable row level security; revoke all on public.hs_migracoes from anon, authenticated;"
-          n=0
+          n=0; feitos=""; atual=""
+          avisar(){ python3 - "$1" "$2" "$3" <<'PY' | psql -q -v ON_ERROR_STOP=0 >/dev/null 2>&1 || true
+          import sys,json,datetime
+          ok,feitos,erro=sys.argv[1]=='1',[x for x in sys.argv[2].split('|') if x],sys.argv[3]
+          v=json.dumps({'ok':ok,'em':datetime.datetime.utcnow().isoformat()+'Z','aplicados':feitos,'erro':erro},ensure_ascii=False).replace("'","''")
+          print(f"insert into public.hs_sync(chave,tipo,valor,apagado,atualizado_por) values ('robo:sql','robo','{v}'::jsonb,false,'robô SQL') on conflict (chave) do update set valor=excluded.valor, atualizado_por=excluded.atualizado_por;")
+          PY
+          }
+          trap 'avisar 0 "$feitos" "falhou em: ${atual}"' ERR
           for f in $(ls sql/migracoes/*.sql 2>/dev/null | sort); do
             nome=$(basename "$f")
             ja=$(psql -tA -c "select 1 from public.hs_migracoes where nome='${nome}'")
             if [ "$ja" = "1" ]; then echo "✓ já aplicado: $nome"; continue; fi
-            echo "▶ aplicando: $nome"
+            echo "▶ aplicando: $nome"; atual="$nome"
             psql -v ON_ERROR_STOP=1 -1 -q -f "$f"
             psql -q -c "insert into public.hs_migracoes(nome) values ('${nome}')"
+            desc=$(grep -m1 -E '^-- ' "$f" | sed -E 's/^-- *//; s/\|/-/g' | cut -c1-90)
+            feitos="${feitos}|${desc:-$nome}"
             echo "✔ aplicado: $nome"; n=$((n+1))
           done
+          if [ "$n" -gt 0 ]; then avisar 1 "$feitos" ""; fi
           echo "Concluído: $n arquivo(s) novo(s) aplicado(s)."

@@ -1,1 +1,1 @@
-{"versao":"9.2.1","data":"2026-11-09","novidades":"Chamados: admin apaga qualquer chamado e não abre chamado. Correção: corrigir UF e descartar linha em Cidades não reconhecidas"}
+{"versao":"9.2.2","data":"2026-11-09","novidades":"Aviso no app quando o robô de SQL atualiza o banco (ou falha)"}
