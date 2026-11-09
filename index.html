@@ -2310,11 +2310,16 @@ function detalhesLinha(h){ const r=h.row, ro=h.rom;
   <div class="resto"><span>${esc(r.dest)}</span><span>${esc(r.cid)}/${esc(r.uf)}${chipFer(r)}</span><span>viagem ${esc(ro.dataViagem||'–')}</span></div>`;
 }
 function faixaAg(a){ if(!a) return ''; return `<div class="faixa-ag">${quad('ag','p')}<span>Para <b>${esc(fmtData(a.data))}${a.hora?' às '+esc(a.hora):''}</b>${a.obs?' — '+esc(a.obs):''}</span></div>`; }
+/* v9.0.3: valor da nota vindo dos XMLs (NF-e → vNF; Softlog → valor produtos) */
+function valNota(row){ const k=opK(row&&row.nf||''); if(!k) return null; const x=S.opXml&&S.opXml[k]; if(x&&x.valor) return +x.valor; const R=S.rdXml||{}; for(const d of Object.keys(R).sort().reverse()){ const n=R[d]&&R[d][k]; if(n&&typeof n==='object'&&n.vprod) return +n.vprod; } return null; }
+const fmtR=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function valTxt(row){ const v=valNota(row); return v==null?'<span class="corte" title="Sem XML desta nota">—</span>':fmtR(v); }
+function valTotTxt(hits){ let t=0,n=0,f=0; const vist=new Set(); for(const h of hits){ const k=opK(h.row.nf||''); if(vist.has(k)) continue; vist.add(k); const v=valNota(h.row); if(v==null) f++; else { t+=v; n++; } } return n?`<span>Valor <b>${fmtR(t)}</b>${f?` <small style="opacity:.7">(${f} sem XML)</small>`:''}</span>`:''; }
 function tabelaLinhas(hits,opts={}){
   const marca=row=>{ const a=agDaLinha(row); if(opts.neutro) return a?quad('ag','p'):''; return quad(a?'ag':'ok','p'); };
   const ped=!opts.neutro;
-  return `<div class="rolagem"><table><thead><tr><th></th>${ped?'<th>Pedido</th>':''}<th>NF</th><th class="vol">Volumetria</th><th>Remetente</th><th>Romaneio</th><th>Destinatário</th><th>Cidade</th><th>UF</th></tr></thead><tbody>${
-    hits.map(h=>`<tr class="clicavel" data-rom="${esc(h.rom.id)}" data-i="${h.i}"><td>${marca(h.row)}</td>${ped?`<td class="nf">${h.row.ped?esc(h.row.ped):'<span class="corte">—</span>'}</td>`:''}<td class="nf">${esc(h.row.nf)}</td><td class="vol">${volTxt(h.row.vol)}</td><td class="forte">${esc(h.row.rem)}</td><td class="nf">${esc(h.rom.numero)} <span class="base">${esc(h.rom.base)}</span></td><td class="sec">${esc(h.row.dest)}</td><td class="sec">${esc(h.row.cid)}${chipFer(h.row)}</td><td class="sec">${esc(h.row.uf)}</td></tr>`).join('')
+  return `<div class="rolagem"><table><thead><tr><th></th>${ped?'<th>Pedido</th>':''}<th>NF</th><th class="vol">Volumetria</th><th class="vol">Valor</th><th>Remetente</th><th>Romaneio</th><th>Destinatário</th><th>Cidade</th><th>UF</th></tr></thead><tbody>${
+    hits.map(h=>`<tr class="clicavel" data-rom="${esc(h.rom.id)}" data-i="${h.i}"><td>${marca(h.row)}</td>${ped?`<td class="nf">${h.row.ped?esc(h.row.ped):'<span class="corte">—</span>'}</td>`:''}<td class="nf">${esc(h.row.nf)}</td><td class="vol">${volTxt(h.row.vol)}</td><td class="vol">${valTxt(h.row)}</td><td class="forte">${esc(h.row.rem)}</td><td class="nf">${esc(h.rom.numero)} <span class="base">${esc(h.rom.base)}</span></td><td class="sec">${esc(h.row.dest)}</td><td class="sec">${esc(h.row.cid)}${chipFer(h.row)}</td><td class="sec">${esc(h.row.uf)}</td></tr>`).join('')
   }</tbody></table></div>`;
 }
 function cartao(st,titulo,corpo){ return `<article class="res novo">${quad(st)}<div><div class="tit ${st}">${titulo}</div>${corpo}</div></article>`; }
@@ -2339,7 +2344,7 @@ function mostrar(res){
         (a?'':`<div class="acoes"><button class="btn mini" data-ver="${esc(h.rom.id)}" data-i="${h.i}">Ver no romaneio</button><button class="btn mini" data-agendar="${esc(h.row.nf)}" data-obs="${esc(h.row.dest+' — '+h.row.cid)}">Agendar esta NF</button></div>`));
       return; }
     if(res.hits.length>1){ const roms=new Set(res.hits.map(h=>h.rom.id)); const algumAg=res.hits.some(h=>agDaLinha(h.row));
-      box.innerHTML=cartao(algumAg?'ag':'ok', `${res.hits.length} resultados encontrados`, cab+`<div class="local"><span>${tipoTxt} <b>${esc(res.v)}</b></span>${totaisTxt(contarHits(res.hits))}<span>em ${roms.size} romaneio(s): ${[...new Set(res.hits.map(h=>h.rom.numero+' ('+h.rom.base+')'))].map(esc).join(', ')}</span></div>${roms.size>1?'<p class="aviso">Aparece em mais de um romaneio — confira se não houve duplicidade.</p>':''}`)+
+      box.innerHTML=cartao(algumAg?'ag':'ok', `${res.hits.length} resultados encontrados`, cab+`<div class="local"><span>${tipoTxt} <b>${esc(res.v)}</b></span>${totaisTxt(contarHits(res.hits))}${valTotTxt(res.hits)}<span>em ${roms.size} romaneio(s): ${[...new Set(res.hits.map(h=>h.rom.numero+' ('+h.rom.base+')'))].map(esc).join(', ')}</span></div>${roms.size>1?'<p class="aviso">Aparece em mais de um romaneio — confira se não houve duplicidade.</p>':''}`)+
         `<div class="lista"><header><h3>Notas</h3><span class="cont">clique para ver no romaneio</span></header>${tabelaLinhas(res.hits)}</div>`; return; }
     // não achou
     if(res.ag){ box.innerHTML=cartao('ag','Agendado',cab+faixaAg(res.ag)+'<p class="sub" style="margin:0">Ainda não está nos romaneios carregados.</p>'); return; }
@@ -2361,7 +2366,7 @@ function mostrar(res){
   // texto
   if(!res.hits.length){ box.innerHTML=cartao('no',`Nada encontrado para “${esc(res.q)}”`,`<p class="sub" style="margin:0">${({cli:'Procurei só no destinatário.',rem:'Procurei só no remetente.',cid:'Procurei só na cidade.'})[res.md]||'Procurei em destinatário, remetente e cidade.'} Tente uma parte do nome — os nomes longos vêm cortados no PDF.</p>`); return; }
   const algumAg=res.hits.some(h=>agDaLinha(h.row)); const lim=res.hits.slice(0,300);
-  box.innerHTML = cartao(algumAg?'ag':'ok', `${res.hits.length} resultado(s) para “${esc(res.q)}”`, `<div class="local"><span>em ${new Set(res.hits.map(h=>h.rom.id)).size} romaneio(s)</span>${totaisTxt(contarHits(res.hits))}${algumAg?'<span>amarelo = agendado</span>':''}</div>`)+
+  box.innerHTML = cartao(algumAg?'ag':'ok', `${res.hits.length} resultado(s) para “${esc(res.q)}”`, `<div class="local"><span>em ${new Set(res.hits.map(h=>h.rom.id)).size} romaneio(s)</span>${totaisTxt(contarHits(res.hits))}${valTotTxt(res.hits)}${algumAg?'<span>amarelo = agendado</span>':''}</div>`)+
     `<div class="lista"><header><h3>Notas</h3><span class="cont">${res.hits.length>300?'mostrando 300 de '+res.hits.length:'clique para ver no romaneio'}</span></header>${tabelaLinhas(lim)}</div>`;
 }
 function buscaCampo(q,campo){ const toks=N(q).split(' ').filter(Boolean); if(!toks.length) return [];
@@ -4113,7 +4118,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.0.2', HS_DATA='09/11/2026';
+const HS_VERSAO='9.0.3', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);

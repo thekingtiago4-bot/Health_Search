@@ -1,1 +1,1 @@
-{"versao":"9.0.2","data":"2026-11-09","novidades":"XML unificado com cabeçalho e formatação iguais aos do Softlog. Ao carregar XMLs em Romaneios, a EVA intervém sozinha: conserta acentos, mostra totais, alerta notas repetidas e oferece o XML unificado"}
+{"versao":"9.0.3","data":"2026-11-09","novidades":"Busca mostra o valor de cada nota (dos XMLs) e o valor total do resultado"}
