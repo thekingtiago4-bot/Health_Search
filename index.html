@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.5.0', HS_DATA='08/11/2026';
+const HS_VERSAO='8.6.0', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6368,7 +6368,10 @@ const MAN=[
    ['💾 Salvar na nuvem e versões permanentes','Tudo o que você muda sobe sozinho para o banco online (Supabase) em cerca de 1,5 s e chega ao vivo nos outros aparelhos: quem abrir o app recebe sempre a última versão salva. O botão 💾 Salvar, no canto inferior direito (ou Ctrl+S), força o envio na hora e grava uma VERSÃO COMPLETA permanente. O administrador é o aparelho mestre: só o app dele (e o robô do GitHub, toda noite) grava as cópias oficiais; nos outros usuários o 💾 Salvar só envia as mudanças. O mapa vai dentro de cada cópia completa, junto com todas as abas. Uma cópia completa é feita por dia no app do administrador. Essas versões ninguém apaga nem altera, nem o administrador. Para ver: botão direito no 💾 Salvar, ou ☁ → 🕘 Versões salvas; o administrador pode “♻ Voltar para esta” (antes o estado atual é salvo, então dá para desfazer).'],
    ['📦 Backup físico e liberar espaço','Na aba Correção (administrador): “📦 Backup físico + liberar espaço” baixa TUDO num arquivo “Health Search backup dd-mm-aaaa.json.gz”, abre o arquivo de novo para conferir e só então pergunta se pode liberar espaço. Liberar apaga do banco online apenas o que tem mais de 90 dias (bipes, romaneios do banco, reentregas, versões e cópias); os últimos 90 dias ficam online para as reentregas funcionarem. Para trazer de volta: “Restaurar” com o arquivo. Quando o banco passa de 70% dos 500 MB, aparece um aviso no topo só para o administrador. Guarde o arquivo em dois lugares (área de trabalho + pen drive ou Google Drive).'],
    ['🤖 Robô de backup (GitHub)','Toda noite o GitHub roda sozinho um robô que copia o banco inteiro para um repositório PRIVADO (Health_Search_Backups), sem depender de ninguém logado. Ele também mantém o Supabase ativo (o plano gratuito pausa o projeto depois de 7 dias sem uso).'],
-   ['Bloquear um usuário','Em Usuários, desative a pessoa: na mesma hora ela é banida do login, as sessões abertas caem e o banco recusa qualquer leitura ou gravação dela, mesmo se o app ainda estiver aberto.'],
+   ['Bloquear um usuário','Em Usuários, desative a pessoa: na mesma hora ela é banida do login, as sessões abertas caem e o banco recusa qualquer leitura ou gravação dela. Em TODOS os aparelhos onde ela entrou, assim que o aparelho tiver internet (em até 1 minuto com o app aberto), o app apaga a cópia offline e mostra “Acesso bloqueado”.'],
+   ['Uso sem internet','O app funciona offline com a última cópia guardada. Por segurança, se o aparelho ficar mais de 3 dias sem falar com o servidor, ele pede internet para abrir (para conferir se o acesso continua liberado).'],
+   ['Edição ao mesmo tempo','Se duas pessoas editarem o mesmo registro quase juntas, vale a última edição; as duas ficam na Auditoria (antes e depois). No mapa, as cidades marcadas por cada um são juntadas.'],
+   ['🧠 Cérebro (aprendizado)','A cada bipe que dá certo o app aprende: o formato de cada QR Code (onde está o pedido ou a NF), a posição do número em cada modelo de etiqueta lida por texto (OCR), as letras que o OCR confunde com números e o nome dos clientes como aparece na etiqueta. Quando a etiqueta não traz o número legível, ele procura no romaneio do dia o cliente daquela cidade (se for um só). Todos os aparelhos aprendem juntos. Para ver ou zerar: Correção → 🧠 Cérebro.'],
    ['Mapa com dois aparelhos ao mesmo tempo','Se duas pessoas (ou dois aparelhos) mexerem nas regiões ao mesmo tempo, o app junta as duas versões cidade a cidade: o que cada um marcou ou tirou é mantido. Se a mesma cidade foi colocada em regiões diferentes, vale a última marcação feita no aparelho que está sincronizando. Antes, a versão online podia substituir o mapa inteiro do aparelho.'],
    ['Atualizações seguras','Toda vez que o app atualiza, antes de sincronizar ele guarda um backup na nuvem (“antes da atualização x → y”) e uma foto do que o aparelho tinha. Depois de atualizar, confere e devolve sozinho qualquer divergência, reentrega, nota fora, agendamento ou cadastro que tenha sumido. Divergências só somem da nuvem quando o administrador apaga pelo botão Apagar.'],
    ['Layout e ajuda','Cada tela tem um botão (?) ao lado do título que abre a parte certa do Manual. Os grupos do menu (Operação, Regiões, Ferramentas, Administração) abrem e fecham clicando no nome; Rotas fica junto da Operação. Sem internet aparece só um selo pequeno ao lado do ☁. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam num cartão “Problemas” (toque nos números pequenos para ver só um tipo). No celular e no tablet as tabelas viram cartões, sem rolagem para os lados.']]},
@@ -7257,6 +7260,93 @@ async function bkfBackupFisico(){ if(!opOnline()||!nvAdmin()){ toast('Só o admi
   }catch(e){ console.error(e); toast('⚠ Backup físico: '+(e.message||e)); } }
 { const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const b=$('#bkn-bt'); if(!b||$('#bkf-bt')) return; b.insertAdjacentHTML('afterend',' <button class="btn mini pri" id="bkf-bt" type="button" title="Baixa tudo num arquivo, confere, e oferece apagar do banco online o que tem mais de 90 dias">📦 Backup físico + liberar espaço</button> <small class="sec" id="uso-txt"></small>');
   $('#bkf-bt').onclick=()=>bkfBackupFisico(); const u=$('#uso-txt'); if(u) usoLer().then(d=>{ if(d) u.textContent='· banco online: '+d.pct+'% de 500 MB'; }); }; }
+/* ================= v8.6.0 · Bloqueio apaga a cópia do aparelho + validade offline + 🧠 Cérebro (mini IA que aprende as etiquetas) ================= */
+/* ---- 1) usuário bloqueado: na próxima vez que o aparelho falar com o servidor, apaga tudo dele ---- */
+function blqApagarAparelho(motivo){ try{ for(const k of Object.keys(localStorage)) if(/^(healthSearch|healthRomaneio|hs[._]|sb-)/.test(k)) localStorage.removeItem(k); }catch(e){}
+  try{ sessionStorage.clear(); }catch(e){}
+  try{ caches.keys().then(ks=>ks.filter(k=>/^hs-/.test(k)).forEach(k=>caches.delete(k))); }catch(e){}
+  try{ navigator.serviceWorker&&navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())); }catch(e){}
+  try{ if(window.indexedDB&&indexedDB.databases) indexedDB.databases().then(ds=>ds.forEach(d=>d.name&&indexedDB.deleteDatabase(d.name))); }catch(e){}
+  try{ S={}; }catch(e){}
+  document.body.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0F4B55;color:#fff;font-family:system-ui;padding:24px;text-align:center"><div><h1 style="margin:0 0 10px">Acesso bloqueado</h1><p>${motivo||'Seu usuário foi desativado pelo administrador.'}<br>Os dados do Health Search foram removidos deste aparelho.</p></div></div>`; }
+async function blqChecar(){ try{ if(!NV||!NV.cli||!NV.user||!navigator.onLine) return;
+    const {data,error}=await NV.cli.rpc('hs_meu_status');
+    if(error){ if(/banned|banido/i.test(error.message||'')) blqApagarAparelho(); return; }
+    try{ localStorage.setItem('healthSearch.ultContato',new Date().toISOString()); }catch(e){}
+    if(data&&data.existe&&data.ativo===false) blqApagarAparelho();
+  }catch(e){} }
+/* o login também denuncia o banimento (sessão derrubada ou "User is banned") */
+async function blqChecarSessao(){ try{ if(!NV||!NV.cli||!navigator.onLine) return; const {error}=await NV.cli.auth.getUser(); if(error&&/banned/i.test(error.message||'')) blqApagarAparelho(); }catch(e){} }
+(function(){ let n=0; const t=setInterval(()=>{ if(!(typeof NV!=='undefined'&&NV.cli)){ if(++n>120) clearInterval(t); return; } clearInterval(t); blqChecar(); blqChecarSessao();
+  setInterval(()=>{ if(!document.hidden){ blqChecar(); blqChecarSessao(); } },60000); window.addEventListener('online',()=>{ blqChecar(); blqChecarSessao(); }); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) blqChecar(); }); },1000); })();
+/* ---- 2) validade da cópia offline: sem falar com o servidor por 3 dias, o app pede internet para abrir ---- */
+const OFF_DIAS=3;
+function offChecar(){ try{ if(navigator.onLine){ const o=$('#off-trava'); if(o) o.remove(); return; } const u=localStorage.getItem('healthSearch.ultContato'); if(!u) return;
+    if(Date.now()-new Date(u).getTime()<OFF_DIAS*864e5) return; if($('#off-trava')) return;
+    const d=document.createElement('div'); d.id='off-trava'; d.style.cssText='position:fixed;inset:0;z-index:3000;background:#0F4B55;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:system-ui';
+    d.innerHTML=`<div><h2 style="margin:0 0 8px">Conecte à internet</h2><p>Este aparelho está há mais de ${OFF_DIAS} dias sem falar com o servidor.<br>Por segurança, o Health Search só abre depois de conferir seu acesso online.</p></div>`; document.body.appendChild(d); }catch(e){} }
+setTimeout(offChecar,2000); setInterval(offChecar,30000); window.addEventListener('online',()=>{ offChecar(); setTimeout(blqChecar,1500); }); window.addEventListener('offline',offChecar);
+{ const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); try{ if(!NUV.erro&&opOnline()) localStorage.setItem('healthSearch.ultContato',new Date().toISOString()); }catch(e){} return r; }; }
+
+/* ---- 3) 🧠 Cérebro: aprende com cada bipe que deu certo, e todos os aparelhos aprendem juntos (vai para a nuvem em S.cerebro) ---- */
+if(!NUV_CAMPOS.includes('cerebro')) NUV_CAMPOS.push('cerebro');
+function cer(){ const c=S.cerebro=S.cerebro&&typeof S.cerebro==='object'?S.cerebro:{}; c.qr=c.qr||{}; c.mod=c.mod||{}; c.ali=c.ali||{}; c.troca=c.troca||{}; c.st=c.st||{lidos:0,ajudas:0,aprendeu:0}; return c; }
+function cerMudou(){ cer().em=new Date().toISOString(); salvar(); }
+const cerNz=s=>rpNz(s).replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+/* forma de um QR: números viram N{tamanho}, letras viram A; separadores ficam */
+function cerSig(t){ return String(t||'').slice(0,160).replace(/[A-Za-z]+/g,'a').replace(/\d+/g,m=>'N'+Math.min(m.length,20)); }
+/* QR: antes de ler, se a forma já é conhecida, tira o número certo direto da posição aprendida */
+{ const _ol=opLer; opLer=function(textos,origem){ textos=(textos||[]).map(String); const idx=opIndice(); const C=cer(); let extra=[];
+    for(const t of textos){ if(t.includes('@')||/^\d+$/.test(t.trim())) continue; const a=C.qr[cerSig(t)]; const nums=t.match(/\d+/g)||[]; if(!a){ const hs=[...new Set(nums.map(opK).filter(n=>n.length>=4&&(idx.nf.has(n)||idx.ped.has(n))))]; if(hs.length===1) extra.push(hs[0]); continue; } const v=opK(nums[a.i]||'');
+      if(v&&(idx.nf.has(v)||idx.ped.has(v))){ extra.push(v); C.st.ajudas++; } }
+    const antes=OP.bipes.length; const r=_ol.call(this,extra.length?[...extra,...textos]:textos,origem); const b=OP.bipes[0];
+    try{ C.st.lidos++; if(OP.bipes.length>antes&&b&&b.status!=='fora'&&b.status!=='dup'){ let novo=false;
+        for(const t of textos){ if(t.includes('@')||/^\d+$/.test(t.trim())) continue; const nums=(t.match(/\d+/g)||[]).map(opK); const i=nums.findIndex(n=>n&&(n===b.nf||n===b.ped));
+          if(i>=0){ const s=cerSig(t); const o=C.qr[s]; if(!o||o.i!==i){ C.qr[s]={i,tipo:nums[i]===b.nf?'nf':'ped',ok:(o&&o.i===i?o.ok:0)+1}; novo=true; } else o.ok++; } }
+        if(novo){ C.st.aprendeu++; cerMudou(); } } }catch(e){}
+    return r; }; }
+/* OCR: guarda as linhas lidas para aprender a POSIÇÃO do número em cada modelo de etiqueta */
+const CERx={linhas:[]};
+{ const _ei=etqInterpretar; etqInterpretar=function(linhas){ CERx.linhas=(linhas||[]).map(l=>String(l).toUpperCase().replace(/\s+/g,' ').trim()).filter(Boolean); const r=_ei.call(this,linhas);
+    if(r&&!r.modelo&&CERx.linhas.length){ r.chaveMod='L:'+cerNz(CERx.linhas[0]).replace(/[0-9]/g,'').slice(0,18); } return r; }; }
+const cerDig=s=>{ const T=cer().troca; return String(s||'').toUpperCase().replace(/[OQDU]/g,'0').replace(/[IL|!T]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2').replace(/G/g,'6').replace(/[A-Z]/g,c=>T[c]||c).replace(/\D/g,''); };
+function cerModKey(p){ return p&&(p.modelo||p.chaveMod)||''; }
+/* acha o candidato pela posição aprendida: mesma etiqueta = número na mesma linha relativa, depois do mesmo texto */
+function cerCandidatos(p){ const C=cer(), k=cerModKey(p), m=k&&C.mod[k]; const L=CERx.linhas; if(!m||!L.length) return [];
+  const out=[]; for(const ps of (m.pos||[]).slice().sort((a,b)=>b.ok-a.ok)){ let ls=L.map((l,i)=>({l,i})).filter(o=>ps.pre&&cerNz(o.l).includes(ps.pre));
+      if(!ls.length){ const i=Math.round(ps.y*(L.length-1)); ls=[L[i-1],L[i],L[i+1]].map((l,j)=>({l,i:i-1+j})).filter(o=>o.l); }
+      for(const o of ls){ const tok=(o.l.match(/[0-9OQDILSBZG]{4,12}/g)||[]); for(const t of tok){ const d=cerDig(t); if(d.length>=4&&d.length<=9) out.push(opK(d)); } } }
+  return [...new Set(out)]; }
+/* cliente + cidade: quando o número não sai, procura no romaneio do dia o cliente daquela cidade (só se for um único) */
+function cerPorCliente(p,idx){ const dn=cerNz(p.dest||''), cn=cerNz(p.cid||''); if(dn.length<4) return ''; const ali=cer().ali[dn]; const alvo=ali||dn;
+  const hits=new Map(); for(const its of idx.nf.values()) for(const it of its){ const x=it.x; const xd=cerNz(x.dest||''); if(!xd) continue;
+    const bate=xd===alvo||(alvo.length>=6&&(xd.startsWith(alvo.slice(0,8))||alvo.startsWith(xd.slice(0,8)))); if(!bate) continue; if(cn&&x.cid&&cerNz(x.cid)!==cn&&!cerNz(x.cid).startsWith(cn.slice(0,5))) continue; hits.set(opK(x.nf),x); }
+  return hits.size===1?[...hits.keys()][0]:''; }
+{ const _le=opLerEtiqueta; opLerEtiqueta=function(p){ if(!p) return false; const idx=opIndice(); const C=cer();
+    if(!p.pit&&!p.cremer){ const jaAcha=[...(p.nfs||[]),...(p.nums||[])].some(n=>idx.nf.has(opK(n))||idx.ped.has(opK(n)));
+      if(!jaAcha){ const c=cerCandidatos(p).find(n=>idx.nf.has(n)||idx.ped.has(n))||cerPorCliente(p,idx);
+        if(c){ C.st.ajudas++; OP.extra={tot:p.tot||null}; opLer([c],'texto+cérebro'); cerAprenderOcr(p); return true; } } }
+    const r=_le.call(this,p); if(r) cerAprenderOcr(p); return r; }; }
+/* depois de um bipe por texto que achou a nota, aprende: linha do número, texto antes dele, trocas de letra por número e o nome do cliente */
+function cerAprenderOcr(p){ try{ const b=OP.bipes[0]; if(!b||b.status==='fora'||b.status==='dup'||!/texto/.test(b.tipo||'')) return; const C=cer(); const L=CERx.linhas; const alvo=b.nf||b.ped; if(!alvo||!L.length) return;
+    let mudou=false; const k=cerModKey(p);
+    for(let i=0;i<L.length;i++){ const tok=L[i].match(/[0-9OQDILSBZG]{4,12}/g)||[]; for(const t of tok){ if(opK(cerDig(t))!==alvo) continue;
+        if(k){ const m=C.mod[k]=C.mod[k]||{pos:[],ok:0}; m.ok++; const antes=cerNz(L[i].slice(0,L[i].indexOf(t))).replace(/[0-9]/g,'').trim().split(' ').slice(-2).join(' ');
+          const y=L.length>1?+(i/(L.length-1)).toFixed(2):0; let ps=m.pos.find(o=>(antes&&o.pre===antes)||(!antes&&Math.abs(o.y-y)<.08)); if(ps) ps.ok++; else { m.pos.push({pre:antes,y,ok:1}); m.pos=m.pos.sort((a,b)=>b.ok-a.ok).slice(0,4); C.st.aprendeu++; } mudou=true; }
+        if(/\D/.test(t)) { for(const ch of new Set(t.replace(/\d/g,''))) { C.troca['_'+ch]=(C.troca['_'+ch]||0)+1; } mudou=true; } } }
+    const dn=cerNz(p.dest||''), xd=cerNz(b.dest||''); if(dn.length>=4&&xd&&dn!==xd&&!C.ali[dn]){ C.ali[dn]=xd; C.st.aprendeu++; mudou=true; if(Object.keys(C.ali).length>800){ const ks=Object.keys(C.ali); for(const kk of ks.slice(0,ks.length-800)) delete C.ali[kk]; } }
+    if(mudou) cerMudou(); }catch(e){ console.error('cerebro',e); } }
+/* painel do Cérebro (Correção, administrador) */
+function cerTela(){ const C=cer(); const nq=Object.keys(C.qr).length, nm=Object.keys(C.mod).length, na=Object.keys(C.ali).length;
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:520px;max-height:85vh;overflow:auto"><h2 style="margin-top:0">🧠 Cérebro do Health Search</h2><p class="sub">Aprende sozinho com cada bipe que dá certo, em todos os aparelhos ao mesmo tempo. Não precisa de internet para usar o que já aprendeu.</p>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0"><div class="card" style="padding:10px"><b style="font-size:1.4em">${fmtN(nq)}</b><br><small>formatos de QR Code</small></div><div class="card" style="padding:10px"><b style="font-size:1.4em">${fmtN(nm)}</b><br><small>modelos de etiqueta (texto)</small></div><div class="card" style="padding:10px"><b style="font-size:1.4em">${fmtN(na)}</b><br><small>nomes de clientes reconhecidos</small></div><div class="card" style="padding:10px"><b style="font-size:1.4em">${fmtN(C.st.ajudas)}</b><br><small>leituras que o Cérebro resolveu</small></div></div>
+   ${nm?'<p class="sub" style="margin:6px 0">Modelos: '+Object.entries(C.mod).map(([k,m])=>esc(k.replace(/^L:/,'')||'?')+' ('+m.ok+')').join(' · ')+'</p>':''}
+   <div style="display:flex;justify-content:space-between;margin-top:12px">${nvAdmin()?'<button class="btn" data-c="z">Zerar o que aprendeu</button>':'<span></span>'}<button class="btn pri" data-c="x">Fechar</button></div></div>`;
+  f.addEventListener('click',async e=>{ const b=e.target.closest('[data-c]'); if(e.target===f||(b&&b.dataset.c==='x')){ f.remove(); return; }
+    if(b&&b.dataset.c==='z'&&await confirmar('Zerar o Cérebro','Apagar tudo o que o Cérebro aprendeu (formatos de QR, modelos de etiqueta e nomes)? Ele recomeça do zero.','Zerar')){ S.cerebro={}; cerMudou(); f.remove(); toast('Cérebro zerado.'); } });
+  document.body.appendChild(f); }
+{ const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const b=$('#bkf-bt')||$('#bkn-bt'); if(!b||$('#cer-bt')) return; b.insertAdjacentHTML('afterend',' <button class="btn mini" id="cer-bt" type="button">🧠 Cérebro</button>'); $('#cer-bt').onclick=cerTela; }; }
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
