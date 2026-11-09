@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.7.2', HS_DATA='08/11/2026';
+const HS_VERSAO='8.7.3', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7744,7 +7744,7 @@ setTimeout(ajudaBotoes,1200); setTimeout(ajudaBotoes,4000);
 /* ================= v8.2.0 · Menu: Rotas junto da Operação e grupos que abrem/fecham ================= */
 (function(){ try{ const nav=document.querySelector('.nav'); if(!nav) return; const rot=nav.querySelector('[data-tela="rotadia"]'), ag=nav.querySelector('[data-tela="agenda"]'); if(rot&&ag) ag.insertAdjacentElement('beforebegin',rot);
   let fech={}; try{ fech=JSON.parse(localStorage.getItem('healthSearch.menuFechado')||'{}'); }catch(e){}
-  const grupos=[...nav.querySelectorAll('.nav-grupo')]; const aplicar=()=>{ for(const g of grupos){ const k=g.textContent.replace(/[▾▸]/g,'').trim(); const f=!!fech[k]; g.dataset.fechado=f?'1':''; let el=g.nextElementSibling; while(el&&!el.classList.contains('nav-grupo')){ if(!el.matches('[aria-current="page"]')) el.style.display=f?'none':''; el=el.nextElementSibling; } g.querySelector('.ng-seta')&&(g.querySelector('.ng-seta').textContent=f?'▸':'▾'); } };
+  const grupos=[...nav.querySelectorAll('.nav-grupo')].filter(g=>g.tagName!=='BUTTON'); const aplicar=()=>{ for(const g of grupos){ const k=g.textContent.replace(/[▾▸]/g,'').trim(); const f=!!fech[k]; g.dataset.fechado=f?'1':''; let el=g.nextElementSibling; while(el&&!(el.classList.contains('nav-grupo')&&el.tagName!=='BUTTON')){ if(!el.matches('[aria-current="page"]')) el.style.display=f?'none':''; el=el.nextElementSibling; } g.querySelector('.ng-seta')&&(g.querySelector('.ng-seta').textContent=f?'▸':'▾'); } };
   for(const g of grupos){ g.style.cursor='pointer'; g.style.userSelect='none'; g.title='Clique para abrir/fechar este grupo'; g.insertAdjacentHTML('beforeend',' <span class="ng-seta" style="opacity:.6;font-size:10px">▾</span>'); g.addEventListener('click',()=>{ const k=g.textContent.replace(/[▾▸]/g,'').trim(); fech[k]=!fech[k]; try{ localStorage.setItem('healthSearch.menuFechado',JSON.stringify(fech)); }catch(e){} aplicar(); }); }
   const norm=()=>{ const n={}; for(const g of grupos){ const k=g.textContent.replace(/[▾▸]/g,'').trim(); n[k]=fech[k]||fech[g.textContent.trim()]; } fech=n; }; norm(); aplicar(); }catch(e){ console.error(e); } })();
 
