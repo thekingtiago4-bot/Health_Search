@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.9.6', HS_DATA='08/11/2026';
+const HS_VERSAO='8.9.7', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6382,6 +6382,7 @@ const MAN=[
    ['📊 Painel mensal da gerência','No Painel do gestor: escolha o mês e toque em “📄 Gerar PDF”. Sai uma página com reentregas por motivo, semana, cidade e motorista; divergências do mês por origem e por tipo; notas fora do romaneio por origem e motivo; e as cidades de MG mais atendidas (do Relatório Direto). Bom para apresentar à gerência.'],
    ['Alerta do robô de backup','Se o backup automático da noite falhar ou passar mais de 30 horas sem backup, aparece um aviso vermelho no topo só para o administrador.'],
    ['📄 Relatório Direto (Via Minas)','No menu, logo abaixo de Via Minas. Os XMLs podem ser jogados na aba Romaneios (junto com os PDFs) ou em “📥 Inserir XMLs” aqui; escolha o XML do romaneio LKR × AQA do dia: o relatório do Softlog em planilha XML (uma linha por nota) ou os XMLs de cada nota (com o mesmo nome do romaneio, ex.: “LKR X AQA 09-11.xml”; o dia vem do dd-mm do nome). “📄 Gerar planilha” monta a lista só com destinos em MG e estas cidades de SP: São João da Boa Vista, São José do Rio Pardo, Vargem, Espírito Santo do Pinhal, Caconde, Águas da Prata, Andradas, Cajuru, Santa Rosa de Viterbo, Porto Ferreira, Descalvado, Pirassununga, Tambaú, Santa Cruz das Palmeiras, Divinolândia, Tapiratiba, São Sebastião da Grama, Aguaí, Cássia dos Coqueiros, Santo Antônio da Alegria e Casa Branca. Colunas: destinatário, CEP, endereço, número, bairro, cidade, UF, peso e valor dos produtos. Se ainda não houver XMLs do dia, aparece um aviso. Depois: “🖨 Imprimir / PDF” ou “⬇ Planilha (Excel)”. Cada dia gerado entra no histórico “Cidades de MG que mais atendemos”, no fim da mesma tela (gerar de novo no mesmo dia substitui, não soma em dobro).'],
+   ['Etiquetas difíceis (a EVA se esforça)','Se a primeira leitura do texto não achar a nota, a EVA tenta sozinha outras passadas: só a etiqueta amarela, o centro da imagem, a imagem inteira e a leitura invertida (para letra branca em fundo preto, como o número do pedido). Ela junta tudo o que leu, testa cada número como pedido e como NF e, se não bater, procura cliente + cidade no romaneio do dia. Na tela aparece “🐼 A EVA está se esforçando…”: segure a caixa parada. Bilhete escrito à mão não é lido com segurança — use o número impresso ou o código de barras.'],
    ['Caixa fora do romaneio','Quando a caixa não está no romaneio do dia, o app lê o texto da própria etiqueta (só o papel branco, ampliado) e já registra a linha completa: pedido e volumes pelo QR Code, cliente e cidade pelo texto. Se não conseguir ler, procura no banco de romaneios e no XML das notas; se ainda faltar, use ✏ para digitar ou 📷 para reler a etiqueta.'],
    ['Operação: NexBip e Conferência total','No menu, “Operação” abre duas sub-abas. NexBip é onde se bipa: abrir a câmera (ou usar o leitor), ver o resultado de cada bipe, desfazer o último bipe, fechamento do turno e a lista dos bipes do dia. Conferência total mostra o andamento: a porcentagem geral de notas conferidas, a porcentagem por origem (CAJ, MESA, DF, Via Minas…), os cartões de faltando (baixa/alta volumetria, sem nota, fora, duplicados), cada romaneio com o que falta (tocar num cartão — ex.: Alto valor — abre a lista das notas logo abaixo; tocar de novo ou ✕ fecha) e, em Ferramentas, o XML das notas e o diagnóstico de reentrega. O número ao lado de Conferência total no menu é a porcentagem já conferida. O dia da operação vira sozinho à meia-noite; se alguém abrir outro dia de propósito, aparece um aviso amarelo com “Voltar para hoje”, e a Conferência total (que é sempre de hoje) não mostra porcentagem enquanto isso.'],
    ['Cores do bipe','🟢 Verde = conferido · 🟡 Amarelo = sem nota · 🔴 Vermelho = fora do romaneio (separe) · 🟣 Roxo = reentrega · 🟠 Laranja = agendada (não vai) · Rosa-escuro = divergência · Azul-petróleo = caixa que faltou · 🔵 Azul = duplicado. A câmera não mostra mais esta legenda na tela: ela fica aqui no Manual e no (?) da Operação.'],
@@ -7988,6 +7989,44 @@ function ctLista(){ const sec=$('#t-conftotal'); if(!sec||sec.hidden) return; co
 { const _r=opRender; opRender=function(){ const r=_r.apply(this,arguments); try{ ctLista(); }catch(e){ console.error(e); } return r; }; }
 /* voltando ao NexBip, a lista de bipes volta ao normal */
 { const _ir=irPara; irPara=function(t){ if(t==='operacao'&&OP.filtro&&OP.filtro!=='todos'&&OP.filtro!=='ok'){ OP.filtro='todos'; } _ir(t); }; }
+/* ================= v8.9.7 · EVA se esforça na leitura: várias passadas (recorte, centro, inteira, invertida), etiqueta amarela e isopor ================= */
+/* recorte: aceita etiqueta amarela e recusa área sem texto (isopor branco) */
+{ const _rec=etqRecorte; etqRecorte=function(src,W,H){ const R=_rec(src,W,H); if(!R) return null; try{ const c=document.createElement('canvas'); const w=160,h=Math.max(20,Math.round(R.h*160/R.w)); c.width=w; c.height=h; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,R.x,R.y,R.w,R.h,0,0,w,h);
+      const d=x.getImageData(0,0,w,h).data; let esc_=0; for(let i=0;i<d.length;i+=4) if(d[i]+d[i+1]+d[i+2]<240) esc_++; if(esc_/(w*h)<0.03) return null; }catch(e){} return R; }; }
+function etqRecAmarelo(src,W,H){ const sw=200, sh=Math.round(H*sw/W); const c=document.createElement('canvas'); c.width=sw; c.height=sh; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,0,0,sw,sh); const d=x.getImageData(0,0,sw,sh).data;
+  let x0=sw,y0=sh,x1=-1,y1=-1,n=0; for(let y=0;y<sh;y++) for(let i=0;i<sw;i++){ const k=(y*sw+i)*4, r=d[k],g=d[k+1],b=d[k+2]; if(r>150&&g>130&&b<110&&r-b>70&&g-b>60){ n++; if(i<x0)x0=i; if(i>x1)x1=i; if(y<y0)y0=y; if(y>y1)y1=y; } }
+  if(n<sw*sh*0.04||x1<0) return null; const k=W/sw; return {x:Math.max(0,(x0-3)*k),y:Math.max(0,(y0-3)*k),w:Math.min(W,(x1-x0+6)*k),h:Math.min(H,(y1-y0+6)*k)}; }
+function etqQuadro(src,R,inv){ const W=src.videoWidth||src.width, H=src.videoHeight||src.height; R=R||{x:0,y:0,w:W,h:H}; const w=1500, h=Math.max(40,Math.round(R.h*w/R.w)); const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const cx=cv.getContext('2d',{willReadFrequently:true}); cx.filter=(inv?'invert(1) ':'')+'grayscale(1) contrast(1.6)'; cx.drawImage(src,R.x,R.y,R.w,R.h,0,0,w,h); return cv; }
+/* a primeira leitura falhou? tenta outras passadas e junta tudo */
+function etqAchouAlgo(p,idx){ if(!p) return false; const ns=[...(p.nfs||[]),...(p.nums||[])].map(opK); return ns.some(n=>idx.nf.has(n)||idx.ped.has(n)); }
+{ const _oo=opOcr; opOcr=async function(v){ const p=await _oo(v); try{ const OCR=window.HS_OCR; if(!OCR||!OCR.tem()) return p; const idx=opIndice(); if(etqAchouAlgo(p,idx)) return p;
+      const W=v.videoWidth||v.width, H=v.videoHeight||v.height; const amar=etqRecAmarelo(v,W,H); const centro={x:W*.1,y:H*.22,w:W*.8,h:H*.56};
+      const passes=[amar&&['amarela',amar,false],['centro',centro,false],['inteira',null,false],amar&&['amarela invertida',amar,true],['centro invertido',centro,true]].filter(Boolean);
+      const msg=document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; OCRK.ocupado=true; let linhas=[]; const t0=Date.now();
+      for(const [nome,R,inv] of passes){ if(Date.now()-t0>4500) break; if(msg) msg.innerHTML=`<b>🐼 A EVA está se esforçando…</b>lendo de novo (${nome}). Segure firme.`;
+        try{ const ws=await OCR.ler(etqQuadro(v,R,inv)); const L=etqLinhas(ws.filter(w=>w.conf>30)); linhas=linhas.concat(L); const pp=etqInterpretar(linhas); if(etqAchouAlgo(pp,idx)||(pp.dest&&pp.cid&&cerPorCliente(pp,idx))){ linhas=linhas; break; } }catch(e){} }
+      OCRK.ocupado=false; OCRK.ult=Date.now(); if(msg&&ant) msg.innerHTML=ant; if(!linhas.length) return p;
+      const q=etqInterpretar(linhas); const base=p||{nfs:[],nums:[]}; /* junta: números de todas as passadas (inclusive números soltos de 6+ dígitos) */
+      const soltos=[...new Set(linhas.join(' ').match(/\b\d{5,9}\b/g)||[])]; const res=Object.assign({},q,base);
+      res.nfs=[...new Set([...(base.nfs||[]),...(q.nfs||[])])]; res.nums=[...new Set([...(base.nums||[]),...(q.nums||[]),...soltos])];
+      for(const k of ['dest','cid','tot','vol','uf']) if(!res[k]&&q[k]) res[k]=q[k]; if(!base.dest&&q.dest) res.dest=q.dest; if(!base.cid&&q.cid) res.cid=q.cid;
+      CERx.linhas=linhas.map(l=>String(l).toUpperCase().replace(/\s+/g,' ').trim()); return res; }catch(e){ console.error('eva ocr',e); return p; } }; }
+/* duas notas do mesmo cliente/cidade: desempata pelos últimos dígitos lidos (ex.: leu 24870 → pedido 044870) */
+{ const _oo=opOcr; opOcr=async function(v){ const p=await _oo(v); try{ if(!p) return p; const idx=opIndice(); if(etqAchouAlgo(p,idx)) return p; const lidos=(p.nums||[]).concat(p.nfs||[]).map(x=>String(x).replace(/\D/g,'')).filter(x=>x.length>=4);
+      if(!lidos.length) return p; const dn=cerNz(p.dest||''), cn=cerNz(p.cid||''); const cand=new Set();
+      for(const [k,its] of [...idx.ped.entries(),...idx.nf.entries()]) for(const it of its){ const x=it.x; if(dn.length>=4&&!cerNz(x.dest||'').startsWith(dn.slice(0,8))) continue; if(cn&&x.cid&&!cerNz(x.cid).startsWith(cn.slice(0,5))) continue;
+        if(lidos.some(l=>k.endsWith(l.slice(-4))||l.endsWith(k.slice(-4)))) cand.add(k); }
+      if(cand.size===1) p.nums=[...cand].concat(p.nums||[]); }catch(e){} return p; }; }
+/* ---- bipes que caíram no dia errado (app aberto desde antes da meia-noite): volta cada bipe para o dia em que foi feito ---- */
+function opBipeHora(b){ const t=parseInt(String(b.local_id||'').slice(0,8),36); return t>1.6e12&&t<4e12?t:null; }
+function opCorrigirDias(){ let mov=0; try{ const hoje=hojeISO(); for(let i=1;i<=3;i++){ const dia=new Date(Date.now()-i*864e5); const k=diaLocal(dia.getTime()); const L=opLocalLer(k); if(!L.length) continue; const fica=[], vai={};
+      for(const b of L){ const t=opBipeHora(b); const d=t?diaLocal(t):k; if(d!==k&&d<=hoje){ b.dia=d; (vai[d]=vai[d]||[]).push(b); } else fica.push(b); }
+      if(!Object.keys(vai).length) continue; localStorage.setItem(OP_LOCAL+k,JSON.stringify(fica));
+      for(const [d,bs] of Object.entries(vai)){ const T=opLocalLer(d); const ids=new Set(T.map(b=>b.local_id)); for(const b of bs) if(!ids.has(b.local_id)){ T.push(b); mov++; } T.sort((a,b)=>(opBipeHora(b)||0)-(opBipeHora(a)||0)); localStorage.setItem(OP_LOCAL+d,JSON.stringify(T.slice(0,5000))); } } }catch(e){ console.error(e); }
+  if(mov){ try{ if(OP.dia) opAbrirDia(OP.dia); }catch(e){} toast(`🐼 Achei ${mov} bipe(s) que tinham ficado no dia anterior (o app estava aberto desde antes da meia-noite) e devolvi para o dia certo.`); }
+  return mov; }
+setTimeout(opCorrigirDias,3500);
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
