@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.6.1', HS_DATA='08/11/2026';
+const HS_VERSAO='8.6.2', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6377,6 +6377,7 @@ const MAN=[
    ['Layout e ajuda','Cada tela tem um botão (?) ao lado do título que abre a parte certa do Manual. Os grupos do menu (Operação, Regiões, Ferramentas, Administração) abrem e fecham clicando no nome; Rotas fica junto da Operação. Sem internet aparece só um selo pequeno ao lado do ☁. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam num cartão “Problemas” (toque nos números pequenos para ver só um tipo). No celular e no tablet as tabelas viram cartões, sem rolagem para os lados.']]},
 {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
   passos:[['Liberar a câmera','Na primeira vez toque em “🔓 Liberar câmera” e permita o acesso no navegador.'],
+   ['Caixa fora do romaneio','Quando a caixa não está no romaneio do dia, o app lê o texto da própria etiqueta (só o papel branco, ampliado) e já registra a linha completa: pedido e volumes pelo QR Code, cliente e cidade pelo texto. Se não conseguir ler, procura no banco de romaneios e no XML das notas; se ainda faltar, use ✏ para digitar ou 📷 para reler a etiqueta.'],
    ['Cores do bipe','🟢 Verde = conferido · 🟡 Amarelo = sem nota · 🔴 Vermelho = fora do romaneio (separe) · 🟣 Roxo = reentrega · 🟠 Laranja = agendada (não vai) · Rosa-escuro = divergência · Azul-petróleo = caixa que faltou · 🔵 Azul = duplicado. A câmera não mostra mais esta legenda na tela: ela fica aqui no Manual e no (?) da Operação.'],
    ['Abrir câmera','Toque em “📷 Abrir câmera”, coloque a etiqueta inteira dentro da moldura e segure firme até o bipe. Espere meio segundo e passe a próxima.'],
    ['Etiquetas sem QR Code','O app lê o texto da etiqueta sozinho: 9 de Julho (NF no topo), CEI Comércio (NF no centro), Macromed (NF no meio), Health Quality/Cordis (código de barras) e etiquetas só com a NF.'],
@@ -7348,6 +7349,34 @@ function cerTela(){ const C=cer(); const nq=Object.keys(C.qr).length, nm=Object.
     if(b&&b.dataset.c==='z'&&await confirmar('Zerar o Cérebro','Apagar tudo o que o Cérebro aprendeu (formatos de QR, modelos de etiqueta e nomes)? Ele recomeça do zero.','Zerar')){ S.cerebro={}; cerMudou(); f.remove(); toast('Cérebro zerado.'); } });
   document.body.appendChild(f); }
 { const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const b=$('#bkf-bt')||$('#bkn-bt'); if(!b||$('#cer-bt')) return; b.insertAdjacentHTML('afterend',' <button class="btn mini" id="cer-bt" type="button">🧠 Cérebro</button>'); $('#cer-bt').onclick=cerTela; }; }
+window.etqRecorte=function(src,W,H){ const sw=240, sh=Math.round(H*sw/W); const c=document.createElement('canvas'); c.width=sw; c.height=sh; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,0,0,sw,sh);
+  const d=x.getImageData(0,0,sw,sh).data; const br=(i)=>{ const r=d[i],g=d[i+1],b=d[i+2]; return r>185&&g>185&&b>185&&Math.max(r,g,b)-Math.min(r,g,b)<40; };
+  const M=new Uint8Array(sw*sh); for(let i=0;i<sw*sh;i++) M[i]=br(i*4)?1:0;
+  /* maior retângulo branco: linhas com bastante branco e contínuas */
+  const rows=[]; for(let y=0;y<sh;y++){ let n=0; for(let xx=0;xx<sw;xx++) n+=M[y*sw+xx]; rows.push(n/sw); }
+  let best=null, ini=-1; for(let y=0;y<=sh;y++){ const ok=y<sh&&(rows[y]>0.25||(rows.slice(y,y+6).some(v=>v>0.25)&&rows.slice(Math.max(0,y-6),y).some(v=>v>0.25))); if(ok&&ini<0) ini=y; if(!ok&&ini>=0){ const len=y-ini; if(!best||len>best[1]-best[0]) best=[ini,y]; ini=-1; } }
+  if(!best||best[1]-best[0]<sh*0.06) return null; const [y0,y1]=best;
+  const cols=[]; for(let xx=0;xx<sw;xx++){ let n=0; for(let y=y0;y<y1;y++) n+=M[y*sw+xx]; cols.push(n/(y1-y0)); }
+  let bc=null; ini=-1; for(let xx=0;xx<=sw;xx++){ const ok=xx<sw&&cols[xx]>0.35; if(ok&&ini<0) ini=xx; if(!ok&&ini>=0){ if(!bc||xx-ini>bc[1]-bc[0]) bc=[ini,xx]; ini=-1; } }
+  if(!bc) return null; const k=W/sw; const pad=4;
+  return {x:Math.max(0,(bc[0]-pad)*k),y:Math.max(0,(y0-pad)*k),w:Math.min(W,(bc[1]-bc[0]+2*pad)*k),h:Math.min(H,(y1-y0+2*pad)*k)}; };
+/* v8.6.2: OCR lê só a etiqueta (recorte do papel branco, ampliado) — mais rápido e mais certo */
+{ const _of=opFrame; opFrame=function(v){ try{ const W=v.videoWidth||v.width, H=v.videoHeight||v.height; const R=etqRecorte(v,W,H);
+      if(R&&R.h>H*0.08&&R.w>W*0.2){ const w=1500, h=Math.round(R.h*w/R.w); const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d',{willReadFrequently:true}); cx.filter='grayscale(1) contrast(1.5)'; cx.drawImage(v,R.x,R.y,R.w,R.h,0,0,w,h); return cv; } }catch(e){}
+    return _of(v); }; }
+/* v8.6.2: cliente = nome depois do código (ex.: 4205670001 – M R CIRURGIA PLASTIC); cidade = linha "CIDADE UF" que existe no cadastro; volumes nunca da data */
+const ETQ_UF='AC|AL|AM|AP|BA|CE|DF|ES|GO|MA|MG|MS|MT|PA|PB|PE|PI|PR|RJ|RN|RO|RR|RS|SC|SE|SP|TO';
+{ const _ei=etqInterpretar; etqInterpretar=function(linhas){ const r=_ei.call(this,linhas); try{ const L=(linhas||[]).map(l=>String(l).toUpperCase().replace(/[|]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+    for(const l of L){ const m=l.match(/\b\d{7,11}\s*[-–—~=]*\s*([A-ZÀ-Ü][A-ZÀ-Ü0-9 .&'\/-]{3,45})/); if(m&&!/PALLET|DATA|HORA|PEDID/.test(l)){ const n=m[1].replace(/[^A-ZÀ-Ü0-9 .&'\/-]+$/,'').replace(/\s+[A-Z&]$/,'').trim(); if(n.length>=4){ r.dest=n; break; } } }
+    const valida=(c,uf)=>{ try{ return typeof resolverCidade==='function'&&resolverCidade(c,uf).o; }catch(e){ return false; } };
+    let achou=''; for(const l of L){ const re=new RegExp("([A-ZÀ-Ü' ]{3,40}?)\\s*[-–—~=]*\\s*\\b("+ETQ_UF+")\\b","g"); let m; while((m=re.exec(l))){ const c=m[1].replace(/^(CIDADE|BAIRRO|CENTRO)\s*:?\s*/,'').trim(); if(c.length<3||/^(CENTRO|ROTA|ZONA|DOCA|SITE)$/.test(c)) continue;
+        const w=c.split(' '); for(let k=0;k<w.length&&!achou;k++){ const cc=w.slice(k).join(' '); if(cc.length>=3&&valida(cc,m[2])){ achou=cc; r.uf=m[2]; } } if(achou) break; } if(achou) break; }
+    if(achou) r.cid=achou; else if(/^(CENTRO|BAIRRO)$/.test(r.cid||'')) r.cid='';
+    const T=L.join('\n'); const vm=T.match(/VOL(?:UME)?S?\.?\s*[:.]?\s*(\d{1,3})\s*(?:\/|DE)\s*(\d{1,3})(?![\d\/])/);
+    if(vm){ r.vol=+vm[1]; r.tot=+vm[2]; } else if(r.vol&&new RegExp('\\b0?'+r.vol+'\\s*\\/\\s*0?'+r.tot+'\\s*\\/\\s*\\d{2,4}').test(T)){ r.vol=null; r.tot=null; }
+  }catch(e){ console.error('etq',e); } return r; }; }
+/* v8.6.2: fora do romaneio também procura no XML das notas (cliente) */
+{ const _ad=opAcharDados; opAcharDados=function(ped,nf){ const r=_ad(ped,nf); if(r) return r; try{ const P=opK(ped), N=opK(nf); for(const x of Object.values(S.opXml||{})) if((N&&x.nf===N)||(P&&x.ped===P)) return {dest:x.cli,cid:'',tot:(x.vols||[]).reduce((t,v)=>t+(v.q||0),0)||null,nf:x.nf}; }catch(e){} return null; }; }
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
