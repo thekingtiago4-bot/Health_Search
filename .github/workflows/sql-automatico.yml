@@ -21,16 +21,29 @@ jobs:
           # diagnóstico sem mostrar a senha
           case "$DB" in postgresql://*|postgres://*) echo "formato: começa certo";; *) echo "::error::O segredo não começa com postgresql:// (confira se colou o texto inteiro, sem aspas nem espaços)"; exit 1;; esac
           echo "tem @: $(echo "$DB" | grep -c @)  ·  servidor: $(echo "$DB" | sed -E 's#.*@##; s#[:/].*##' | sed -E 's#^[^.]*#…#')  ·  espaços: $(echo -n "$DB" | tr -cd ' ' | wc -c)"
+          # lê o endereço em partes (aceita senha com caracteres especiais e tira colchetes que sobraram)
+          eval "$(python3 - <<'PY'
+          import os,shlex
+          u=os.environ['DB'].strip()
+          r=u.split('://',1)[1]; cred,_,hp=r.rpartition('@'); user,_,pw=cred.partition(':')
+          pw=pw.strip(); pw=pw[1:-1] if pw.startswith('[') and pw.endswith(']') else pw
+          hostport,_,db=hp.partition('/'); db=(db.split('?')[0] or 'postgres'); host,_,port=hostport.partition(':')
+          for k,v in dict(PGUSER=user,PGPASSWORD=pw,PGHOST=host,PGPORT=port or '5432',PGDATABASE=db,PGSSLMODE='require').items(): print(f'export {k}={shlex.quote(v)}')
+          PY
+          )"
+          echo "::add-mask::$PGPASSWORD"
+          echo "colchetes na senha: $( [ "$(echo "$DB" | grep -c '\[')" = "1" ] && echo sim-removidos || echo não )"
+          DB=""
           command -v psql >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client)
-          psql "$DB" -v ON_ERROR_STOP=1 -q -c "create table if not exists public.hs_migracoes (nome text primary key, aplicado_em timestamptz not null default now()); alter table public.hs_migracoes enable row level security; revoke all on public.hs_migracoes from anon, authenticated;"
+          psql -v ON_ERROR_STOP=1 -q -c "create table if not exists public.hs_migracoes (nome text primary key, aplicado_em timestamptz not null default now()); alter table public.hs_migracoes enable row level security; revoke all on public.hs_migracoes from anon, authenticated;"
           n=0
           for f in $(ls sql/migracoes/*.sql 2>/dev/null | sort); do
             nome=$(basename "$f")
-            ja=$(psql "$DB" -tA -c "select 1 from public.hs_migracoes where nome='${nome}'")
+            ja=$(psql -tA -c "select 1 from public.hs_migracoes where nome='${nome}'")
             if [ "$ja" = "1" ]; then echo "✓ já aplicado: $nome"; continue; fi
             echo "▶ aplicando: $nome"
-            psql "$DB" -v ON_ERROR_STOP=1 -1 -q -f "$f"
-            psql "$DB" -q -c "insert into public.hs_migracoes(nome) values ('${nome}')"
+            psql -v ON_ERROR_STOP=1 -1 -q -f "$f"
+            psql -q -c "insert into public.hs_migracoes(nome) values ('${nome}')"
             echo "✔ aplicado: $nome"; n=$((n+1))
           done
           echo "Concluído: $n arquivo(s) novo(s) aplicado(s)."
