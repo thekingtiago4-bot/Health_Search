@@ -17,3 +17,7 @@ Todos podem ser rodados de novo sem apagar dados.
 | — | VERIFICAR-tudo.sql | Só confere se está tudo certo (não altera nada) |
 
 Os arquivos 6.7.0, 6.9.0, 7.0.0, 7.1.0, 7.2.0 e 7.4.0 separados já estão dentro do TUDO (nº 3).
+
+## Daqui em diante: automático
+Todo SQL novo vai para `sql/migracoes/` e o robô **SQL automático** (GitHub Actions) aplica sozinho no Supabase, uma vez só, ao publicar.
+O que já foi aplicado fica na tabela `hs_migracoes`. Para rodar de novo na mão: GitHub → Actions → SQL automático → Run workflow.

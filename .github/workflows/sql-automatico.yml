@@ -1,0 +1,32 @@
+name: SQL automático
+# Aplica no Supabase, uma única vez cada, os arquivos novos de sql/migracoes/ (em ordem de nome).
+on:
+  push:
+    branches: [main]
+    paths: ['sql/migracoes/**']
+  workflow_dispatch:
+concurrency: { group: sql-automatico, cancel-in-progress: false }
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar SQLs novos
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DB:-}" ]; then echo "::error::Falta o segredo SUPABASE_DB_URL"; exit 1; fi
+          command -v psql >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client)
+          psql "$DB" -v ON_ERROR_STOP=1 -q -c "create table if not exists public.hs_migracoes (nome text primary key, aplicado_em timestamptz not null default now()); alter table public.hs_migracoes enable row level security; revoke all on public.hs_migracoes from anon, authenticated;"
+          n=0
+          for f in $(ls sql/migracoes/*.sql 2>/dev/null | sort); do
+            nome=$(basename "$f")
+            ja=$(psql "$DB" -tA -c "select 1 from public.hs_migracoes where nome='${nome}'")
+            if [ "$ja" = "1" ]; then echo "✓ já aplicado: $nome"; continue; fi
+            echo "▶ aplicando: $nome"
+            psql "$DB" -v ON_ERROR_STOP=1 -1 -q -f "$f"
+            psql "$DB" -q -c "insert into public.hs_migracoes(nome) values ('${nome}')"
+            echo "✔ aplicado: $nome"; n=$((n+1))
+          done
+          echo "Concluído: $n arquivo(s) novo(s) aplicado(s)."
