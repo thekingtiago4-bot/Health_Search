@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.8.2', HS_DATA='08/11/2026';
+const HS_VERSAO='8.8.4', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6377,7 +6377,7 @@ const MAN=[
    ['Layout e ajuda','Cada tela tem um botão (?) ao lado do título que abre a parte certa do Manual. Os grupos do menu (Operação, Regiões, Ferramentas, Administração) abrem e fecham clicando no nome; Rotas fica junto da Operação. Sem internet aparece só um selo pequeno ao lado do ☁. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam num cartão “Problemas” (toque nos números pequenos para ver só um tipo). No celular e no tablet as tabelas viram cartões, sem rolagem para os lados.']]},
 {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
   passos:[['Liberar a câmera','Na primeira vez toque em “🔓 Liberar câmera” e permita o acesso no navegador.'],
-   ['🤖 EVA — a assistente','A EVA é a pandinha de lacinho rosa no canto inferior direito, acima do 💾 Salvar. Toque nela e escreva o que precisa: “procura 442872”, “cliente unimed”, “quem atende Itanhandu MG”, “reentregas de hoje”, “bipados hoje”, “divergências”, “o que você aprendeu” ou “ajuda”. Ela usa o 🧠 Cérebro: quando não tem certeza numa etiqueta (um QR Code de formato novo, ou um cliente que bate com mais de uma nota), ela anota a dúvida e o administrador responde em “❓ Dúvidas” — a resposta vira aprendizado para todos os aparelhos. Regras fixas da EVA: ela é só uma assistente interna, usa apenas os dados da empresa que já estão no app, nunca envia nada para fora (não usa internet, IA externa, e-mail, WhatsApp, link ou arquivo), só mostra o que o usuário logado já pode ver e recusa qualquer pedido de enviar ou compartilhar dados. Escreva “regras” para ela repetir. O número laranja na EVA é a quantidade de dúvidas esperando resposta.'],
+   ['🤖 EVA — a assistente','A EVA é a pandinha de corpinho inteiro e lacinho rosa, acenando no canto inferior direito, acima do 💾 Salvar. Toque nela e escreva o que precisa: “procura 442872”, “cliente unimed”, “quem atende Itanhandu MG”, “reentregas de hoje”, “bipados hoje”, “divergências”, “o que você aprendeu”, “quais regiões”, “cidades da região Minas Gerais”, “como faço backup físico?” (ela responde pelo Manual) ou “ajuda”. Ela usa o 🧠 Cérebro: quando não tem certeza numa etiqueta (um QR Code de formato novo, ou um cliente que bate com mais de uma nota), ela anota a dúvida e o administrador responde em “❓ Dúvidas” — a resposta vira aprendizado para todos os aparelhos. Regras fixas da EVA: ela é só uma assistente interna, usa apenas os dados da empresa que já estão no app, nunca envia nada para fora (não usa internet, IA externa, e-mail, WhatsApp, link ou arquivo), só mostra o que o usuário logado já pode ver e recusa qualquer pedido de enviar ou compartilhar dados. Escreva “regras” para ela repetir. O número laranja na EVA é a quantidade de dúvidas esperando resposta.'],
    ['📊 Painel mensal da gerência','No Painel do gestor: escolha o mês e toque em “📄 Gerar PDF”. Sai uma página com reentregas por motivo, semana, cidade e motorista; divergências do mês por origem e por tipo; notas fora do romaneio por origem e motivo; e as cidades de MG mais atendidas (do Relatório Direto). Bom para apresentar à gerência.'],
    ['Alerta do robô de backup','Se o backup automático da noite falhar ou passar mais de 30 horas sem backup, aparece um aviso vermelho no topo só para o administrador.'],
    ['📄 Relatório Direto (Via Minas)','No menu, logo abaixo de Via Minas. Os XMLs podem ser jogados na aba Romaneios (junto com os PDFs) ou em “📥 Inserir XMLs” aqui; escolha o XML do romaneio LKR × AQA do dia: o relatório do Softlog em planilha XML (uma linha por nota) ou os XMLs de cada nota (com o mesmo nome do romaneio, ex.: “LKR X AQA 09-11.xml”; o dia vem do dd-mm do nome). “📄 Gerar planilha” monta a lista só com destinos em MG e estas cidades de SP: São João da Boa Vista, São José do Rio Pardo, Vargem, Espírito Santo do Pinhal, Caconde, Águas da Prata, Andradas, Cajuru, Santa Rosa de Viterbo, Porto Ferreira, Descalvado, Pirassununga, Tambaú, Santa Cruz das Palmeiras, Divinolândia, Tapiratiba, São Sebastião da Grama, Aguaí, Cássia dos Coqueiros, Santo Antônio da Alegria e Casa Branca. Colunas: destinatário, CEP, endereço, número, bairro, cidade, UF, peso e valor dos produtos. Se ainda não houver XMLs do dia, aparece um aviso. Depois: “🖨 Imprimir / PDF” ou “⬇ Planilha (Excel)”. Cada dia gerado entra no histórico “Cidades de MG que mais atendemos”, no fim da mesma tela (gerar de novo no mesmo dia substitui, não soma em dobro).'],
@@ -7473,17 +7473,24 @@ function rdRender(){ const el=$('#rd-corpo'); if(!el) return; const di=RD.dia; c
     if(ps.length) return _imp.call(this,ps); }; }
 /* ================= v8.8.0 · EVA — a assistente do Health Search (usa o 🧠 Cérebro; procura, responde e pergunta quando tem dúvida) ================= */
 const EVA={aberta:false,msgs:[]};
-const EVA_SVG=`<svg viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true">
- <circle cx="32" cy="34" r="29" fill="#E6F7F4"/>
- <circle cx="15" cy="17" r="8" fill="#2B2B33"/><circle cx="49" cy="17" r="8" fill="#2B2B33"/><circle cx="15" cy="17" r="3.6" fill="#F4A6B8"/><circle cx="49" cy="17" r="3.6" fill="#F4A6B8"/>
- <ellipse cx="32" cy="36" rx="22" ry="19.5" fill="#FFFFFF" stroke="#2B2B33" stroke-width="1.6"/>
- <ellipse cx="23" cy="35" rx="6.2" ry="7.6" transform="rotate(-18 23 35)" fill="#2B2B33"/><ellipse cx="41" cy="35" rx="6.2" ry="7.6" transform="rotate(18 41 35)" fill="#2B2B33"/>
- <circle cx="24" cy="35" r="3" fill="#fff"><animate attributeName="r" values="3;3;.4;3" keyTimes="0;.92;.96;1" dur="4.5s" repeatCount="indefinite"/></circle><circle cx="40" cy="35" r="3" fill="#fff"><animate attributeName="r" values="3;3;.4;3" keyTimes="0;.92;.96;1" dur="4.5s" repeatCount="indefinite"/></circle>
- <circle cx="25" cy="34" r="1.6" fill="#2B2B33"/><circle cx="41" cy="34" r="1.6" fill="#2B2B33"/>
- <ellipse cx="32" cy="43" rx="2.6" ry="1.9" fill="#2B2B33"/><path d="M29 46q3 2.6 6 0" stroke="#2B2B33" stroke-width="1.5" fill="none" stroke-linecap="round"/>
- <ellipse cx="17.5" cy="44" rx="3.6" ry="2.2" fill="#F7B5C4" opacity=".85"/><ellipse cx="46.5" cy="44" rx="3.6" ry="2.2" fill="#F7B5C4" opacity=".85"/>
- <g transform="translate(43 13) rotate(18)"><path d="M0 0 L-9 -6 Q-11 0 -9 6 Z" fill="#EC4899"/><path d="M0 0 L9 -6 Q11 0 9 6 Z" fill="#EC4899"/><circle r="3" fill="#DB2777"/><path d="M-6.5 -2.5 Q-4.5 0 -6.5 2.5 M6.5 -2.5 Q4.5 0 6.5 2.5" stroke="#fff" stroke-width=".9" fill="none" opacity=".7"/></g>
-</svg>`;
+const EVA_SVG=`<svg viewBox="0 0 64 80" width="100%" height="100%" aria-hidden="true">
+ <ellipse cx="32" cy="77" rx="17" ry="2.6" fill="#000" opacity=".18"/>
+ <g><animateTransform attributeName="transform" type="translate" values="0 0;0 -1.2;0 0" dur="3s" repeatCount="indefinite"/>
+ <ellipse cx="22.5" cy="71" rx="7" ry="5.4" fill="#2B2B33"/><ellipse cx="41.5" cy="71" rx="7" ry="5.4" fill="#2B2B33"/><ellipse cx="22.5" cy="72" rx="3.2" ry="2.3" fill="#F4A6B8"/><ellipse cx="41.5" cy="72" rx="3.2" ry="2.3" fill="#F4A6B8"/>
+ <ellipse cx="32" cy="57" rx="15" ry="14.5" fill="#FFFFFF" stroke="#2B2B33" stroke-width="1.4"/>
+ <ellipse cx="32" cy="59" rx="8.5" ry="8.5" fill="#F3F4F6"/>
+ <path d="M17.5 50 Q9 55 12.5 63 Q15 66 19 62 Z" fill="#2B2B33"/>
+ <g transform="rotate(-8 46 49)"><path d="M46 51 Q55 44 54 34 Q52 30 49 33 Q48 42 43 47 Z" fill="#2B2B33"><animateTransform attributeName="transform" type="rotate" values="0 46 50;-14 46 50;0 46 50;-14 46 50;0 46 50" dur="2.6s" repeatCount="indefinite"/></path></g>
+ <path d="M24 44 Q32 48 40 44 L39 47 Q32 50.5 25 47 Z" fill="#EC4899"/>
+ <circle cx="15" cy="10" r="7" fill="#2B2B33"/><circle cx="49" cy="10" r="7" fill="#2B2B33"/><circle cx="15" cy="10" r="3.2" fill="#F4A6B8"/><circle cx="49" cy="10" r="3.2" fill="#F4A6B8"/>
+ <ellipse cx="32" cy="26" rx="20" ry="17.5" fill="#FFFFFF" stroke="#2B2B33" stroke-width="1.5"/>
+ <ellipse cx="24" cy="25" rx="5.6" ry="6.8" transform="rotate(-18 24 25)" fill="#2B2B33"/><ellipse cx="40" cy="25" rx="5.6" ry="6.8" transform="rotate(18 40 25)" fill="#2B2B33"/>
+ <circle cx="25" cy="25" r="2.7" fill="#fff"><animate attributeName="r" values="2.7;2.7;.4;2.7" keyTimes="0;.92;.96;1" dur="4.5s" repeatCount="indefinite"/></circle><circle cx="39" cy="25" r="2.7" fill="#fff"><animate attributeName="r" values="2.7;2.7;.4;2.7" keyTimes="0;.92;.96;1" dur="4.5s" repeatCount="indefinite"/></circle>
+ <circle cx="25.8" cy="24.2" r="1.4" fill="#2B2B33"/><circle cx="39.8" cy="24.2" r="1.4" fill="#2B2B33"/>
+ <ellipse cx="32" cy="32" rx="2.4" ry="1.7" fill="#2B2B33"/><path d="M29.3 34.6q2.7 2.4 5.4 0" stroke="#2B2B33" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+ <ellipse cx="18.5" cy="32" rx="3.2" ry="2" fill="#F7B5C4" opacity=".85"/><ellipse cx="45.5" cy="32" rx="3.2" ry="2" fill="#F7B5C4" opacity=".85"/>
+ <g transform="translate(44 7) rotate(18)"><path d="M0 0 L-8.5 -5.5 Q-10.5 0 -8.5 5.5 Z" fill="#EC4899"/><path d="M0 0 L8.5 -5.5 Q10.5 0 8.5 5.5 Z" fill="#EC4899"/><circle r="2.8" fill="#DB2777"/></g>
+ </g></svg>`;
 function evaDuv(){ const c=cer(); c.duv=Array.isArray(c.duv)?c.duv:[]; return c.duv; }
 function evaPendentes(){ return evaDuv().filter(d=>!d.resp); }
 /* ---- dúvidas: a EVA pergunta quando o Cérebro não tem certeza ---- */
@@ -7518,7 +7525,7 @@ function evaEntender(txt){ const t=evaN(txt); const num=(txt.match(/\d{4,12}/g)|
   if(/regras|privacidade|seguranca|vaza|sigilo/.test(t)) return EVA_REGRAS;
   if(/\b(envi|mand|compartilh|export|encaminh|transfer|copi|baix|upload|post|public)\w*\b.*\b(whats|zap|e-?mail|gmail|link|fora|externo|internet|arquivo|planilha|pdf|site|grupo|telegram|drive|nuvem)/.test(t)||/\b(whats(app)?|e-?mail|telegram)\b/.test(t)) return 'Não posso enviar nem compartilhar dados para fora do app. '+EVA_REGRAS;
   if(/^(oi|ola|bom dia|boa tarde|boa noite|e ai)\b/.test(t)) return `Oi${NV&&NV.perfil&&NV.perfil.nome?', '+esc(String(NV.perfil.nome).split(' ')[0]):''}! Sou a EVA. Me peça uma nota, um pedido, um cliente, uma cidade, ou "reentregas de hoje".`;
-  if(/ajuda|o que voce faz|comandos/.test(t)) return `Posso:<br>• <b>procurar</b> NF, pedido ou cliente (ex.: "procura 442872", "cliente unimed")<br>• dizer <b>qual região/base atende</b> uma cidade (ex.: "quem atende Itanhandu MG")<br>• abrir <b>reentregas</b>, <b>divergências</b>, <b>fora do romaneio</b>, <b>rotas</b>, <b>relatório direto</b><br>• contar o que foi <b>bipado hoje</b><br>• e, quando eu tiver dúvida numa etiqueta, eu te pergunto aqui.`;
+  if(/ajuda|o que voce faz|comandos/.test(t)) return `Posso:<br>• <b>procurar</b> NF, pedido ou cliente (ex.: "procura 442872", "cliente unimed")<br>• dizer <b>qual região/base atende</b> uma cidade (ex.: "quem atende Itanhandu MG")<br>• abrir <b>reentregas</b>, <b>divergências</b>, <b>fora do romaneio</b>, <b>rotas</b>, <b>relatório direto</b><br>• contar o que foi <b>bipado hoje</b><br>• listar <b>regiões e bases</b> e as <b>cidades de cada uma</b> (ex.: "cidades da região Minas Gerais")<br>• responder <b>como usar o app</b> (ex.: "como faço o backup físico?")<br>• e, quando eu tiver dúvida numa etiqueta, eu te pergunto aqui.`;
   if(/duvida/.test(t)) return evaDuvHtml();
   if(/(quem atende|qual base|qual regiao|atende|regiao de|base de)/.test(t)){ const nome=txt.replace(/.*?(quem atende|qual (a )?base|qual (a )?regi[aã]o|atende|regi[aã]o de|base de)\s*(a cidade de|a cidade|de|do|da)?\s*/i,'').replace(/[?.!]+$/,'').trim(); const c=nome&&evaCidade(nome);
     if(c) return `<b>${esc(c.cidade)}</b><br>Região: <b>${esc(c.regiao||'sem região marcada')}</b>${c.base?'<br>Base: <b>'+esc(c.base)+'</b>':''}`; return nome?`Não achei a cidade "${esc(nome)}". Tente com a UF, ex.: "quem atende Itanhandu MG".`:'Qual cidade?'; }
@@ -7542,10 +7549,10 @@ function evaBadge(){ const n=nvAdmin()?evaPendentes().length:0; const b=$('#eva-
 function evaFala(html,quem){ EVA.msgs.push({html,quem}); if(EVA.msgs.length>60) EVA.msgs.shift(); evaDesenhar(); }
 function evaDesenhar(){ const c=$('#eva-msgs'); if(!c) return; c.innerHTML=EVA.msgs.map(m=>`<div class="eva-m ${m.quem==='eu'?'eu':''}">${m.html}</div>`).join(''); c.scrollTop=c.scrollHeight; }
 function evaAbrir(v){ EVA.aberta=v; const p=$('#eva-painel'); if(!p) return; p.hidden=!v; if(v){ if(!EVA.msgs.length){ evaFala(`Oi! Eu sou a <b>EVA</b>, a assistente do Health Search. Me pergunte uma nota, um pedido, um cliente ou uma cidade.${nvAdmin()&&evaPendentes().length?'<br>Tenho <b>'+evaPendentes().length+'</b> dúvida(s) para você — toque em "Dúvidas".':''}`); } setTimeout(()=>$('#eva-in').focus(),50); } }
-(function(){ const st=document.createElement('style'); st.textContent=`#eva-bt{position:fixed;right:22px;bottom:66px;z-index:1500;width:56px;height:56px;border-radius:50%;border:0;padding:0;background:transparent;cursor:pointer;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));transition:transform .15s}#eva-bt:hover{transform:scale(1.07)}
- #eva-qt{position:absolute;top:-2px;right:-2px;background:#E8590C;color:#fff;border-radius:10px;min-width:20px;height:20px;font:700 12px/20px system-ui;text-align:center;padding:0 5px}
- #eva-painel{position:fixed;right:14px;bottom:130px;z-index:1550;width:min(380px,calc(100vw - 28px));height:min(520px,calc(100vh - 120px));background:var(--fundo,#0F2027);color:var(--tinta,#fff);border:1px solid var(--linha);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
- #eva-painel[hidden]{display:none}.eva-cab{display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(90deg,#DB2777,#9D174D);color:#fff}.eva-cab .av{width:38px;height:38px}.eva-cab b{font-size:1.05em}.eva-cab small{opacity:.8;display:block}
+(function(){ const st=document.createElement('style'); st.textContent=`#eva-bt{position:fixed;right:20px;bottom:64px;z-index:1500;width:54px;height:68px;border-radius:0;border:0;padding:0;background:transparent;cursor:pointer;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));transition:transform .15s}#eva-bt:hover{transform:scale(1.07)}
+ #eva-qt{position:absolute;top:0;right:-4px;background:#E8590C;color:#fff;border-radius:10px;min-width:20px;height:20px;font:700 12px/20px system-ui;text-align:center;padding:0 5px}
+ #eva-painel{position:fixed;right:14px;bottom:140px;z-index:1550;width:min(380px,calc(100vw - 28px));height:min(520px,calc(100vh - 120px));background:var(--fundo,#0F2027);color:var(--tinta,#fff);border:1px solid var(--linha);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
+ #eva-painel[hidden]{display:none}.eva-cab{display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(90deg,#DB2777,#9D174D);color:#fff}.eva-cab .av{width:34px;height:42px}.eva-cab b{font-size:1.05em}.eva-cab small{opacity:.8;display:block}
  #eva-msgs{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}.eva-m{background:var(--sup);border-radius:12px 12px 12px 4px;padding:8px 10px;max-width:90%;font-size:var(--fs-sm);line-height:1.4}.eva-m.eu{align-self:flex-end;background:#0E7490;color:#fff;border-radius:12px 12px 4px 12px}
  .eva-m code{word-break:break-all;font-size:.85em}.eva-duv{border-top:1px solid var(--linha);padding-top:6px;margin-top:6px}.eva-duv:first-child{border:0;margin:0;padding:0}.eva-ops{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
  .eva-chips{display:flex;gap:6px;overflow-x:auto;padding:6px 10px;border-top:1px solid var(--linha)}.eva-chips button{white-space:nowrap}
@@ -7601,6 +7608,37 @@ async function roboChecar(){ try{ if(!nvAdmin()||!opOnline()) return; const {dat
     el.innerHTML=`<span>⚠ <b>Robô de backup</b>: ${v.ok===false?'o backup da noite <b>falhou</b>'+(v.erro?' ('+esc(String(v.erro).slice(0,80))+')':''):'sem backup há '+Math.round(h)+' h'}. Confira a aba Actions do repositório Health_Search_Backups ou faça o backup físico.</span><button class="btn mini" type="button" onclick="this.parentNode.remove()">✕</button>`;
   }catch(e){} }
 (function(){ let n=0; const t=setInterval(()=>{ if(!(typeof NV!=='undefined'&&NV.perfil)){ if(++n>180) clearInterval(t); return; } clearInterval(t); roboChecar(); setInterval(()=>{ if(!document.hidden) roboChecar(); },3*3600e3); },1000); })();
+/* ================= v8.8.3 · EVA sabe o Manual inteiro e as regiões/bases do mapa ================= */
+const EVA_PARE=new Set('a o as os um uma de da do das dos e em no na nos nas para pra por com como que qual quais onde quando eu me meu minha voce tem ter faz fazer fica ficar e eh ser esta isso essa esse app aplicativo health search eva ajuda funciona usar uso sobre ao aos'.split(' '));
+function evaPalavras(t){ return evaN(t).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!EVA_PARE.has(w)).map(w=>w.replace(/(oes|aes|ais|eis|s)$/,'')); }
+function evaManual(txt){ const ws=evaPalavras(txt); if(!ws.length) return null; const res=[];
+  for(const sec of (typeof MAN!=='undefined'?MAN:[])) for(const [ti,tx] of (sec.passos||[])){ const T=evaN(ti), X=evaN(String(tx).replace(/<[^>]+>/g,'')); let sc=0;
+    for(const w of ws){ if(T.includes(w)) sc+=3; else if(evaN(sec.t).includes(w)) sc+=1.5; if(X.includes(w)) sc+=1; } if(sc>0) res.push({sc:sc/Math.sqrt(ws.length),sec,ti,tx}); }
+  res.sort((a,b)=>b.sc-a.sc); return res[0]&&res[0].sc>=1.6?res.slice(0,2).filter((r,i)=>i===0||r.sc>=res[0].sc*0.8):null; }
+function evaManualHtml(rs){ return rs.map(r=>`<b>${esc(r.ti)}</b> <small style="opacity:.7">(${esc(r.sec.t)})</small><br>${String(r.tx).replace(/<(?!\/?(b|i|br)\b)[^>]*>/g,'').slice(0,520)}${String(r.tx).length>520?'…':''}<br><button type="button" class="btn mini" data-eva-man="${esc(r.sec.id)}" style="margin-top:6px">📖 Abrir no Manual</button>`).join('<hr style="border:0;border-top:1px solid var(--linha);margin:8px 0">'); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-eva-man]'); if(b){ ajudaAbrir(b.dataset.evaMan); } });
+/* regiões e bases do mapa */
+function evaListas(tipo){ return ((S.geo&&S.geo.listas)||[]).filter(l=>!tipo||l.tipo===tipo); }
+function evaAcharLista(nome){ const n=evaN(nome).replace(/^(regiao|base|da|de|do)\s+/g,'').trim(); if(n.length<2) return null; const L=evaListas(); const cmp=l=>[l.nome,...(l.alias||[])].map(evaN);
+  return L.find(l=>cmp(l).some(x=>x===n))||L.find(l=>cmp(l).some(x=>x.includes(n)||n.includes(x)))||L.find(l=>cmp(l).some(x=>n.split(' ').filter(w=>w.length>2).every(w=>x.includes(w))))||null; }
+function evaCidadesDa(l){ const I=ibge(); return (l.cidades||[]).map(c=>I.cod.get(+c)).filter(Boolean).map(o=>o.n+'/'+o.u).sort((a,b)=>a.localeCompare(b,'pt-BR')); }
+function evaListaHtml(l){ const cs=evaCidadesDa(l); const tp=l.tipo==='base'?'Base':'Região'; if(!cs.length) return `${tp} <b>${esc(l.nome)}</b> ainda não tem cidades marcadas no mapa.`;
+  const ufs={}; for(const c of cs){ const u=c.split('/').pop(); ufs[u]=(ufs[u]||0)+1; }
+  return `${tp} <b>${esc(l.nome)}</b>: <b>${fmtN(cs.length)}</b> cidade(s) (${Object.entries(ufs).map(([u,n])=>u+' '+n).join(' · ')}).<details style="margin-top:6px"${cs.length<=40?' open':''}><summary style="cursor:pointer">Ver as cidades</summary><div style="max-height:220px;overflow:auto;margin-top:4px">${cs.map(esc).join(', ')}</div></details>`; }
+{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt);
+    /* regras e sigilo continuam valendo antes de tudo */
+    if(/regras|privacidade|seguranca|vaza|sigilo|whats|e-?mail|telegram/.test(t)) return _ee(txt);
+    if(/^(quais|quantas|lista|listar|mostra)\b.*\b(regioes|regiao|bases)\b$/.test(t)||/^(regioes|bases)\??$/.test(t)){ const R=evaListas('regiao'), B=evaListas('base');
+      return `<b>Regiões</b> (${R.length}): ${R.map(l=>esc(l.nome)+' <small>('+fmtN((l.cidades||[]).length)+')</small>').join(' · ')||'nenhuma'}<br><b>Bases</b> (${B.length}): ${B.map(l=>esc(l.nome)+' <small>('+fmtN((l.cidades||[]).length)+')</small>').join(' · ')||'nenhuma'}<br><small>Peça "cidades da região X" para ver a lista.</small>`; }
+    const m=t.match(/(?:cidades?|municipios?|quantas cidades)\s+(?:que\s+)?(?:a\s+|o\s+)?(?:da|de|do|na|no|atendid[ao]s?\s+pel[ao]|pertencem\s+a|tem\s+(?:a|na|no)?)\s*(?:regiao|base)?\s*(?:de|do|da)?\s*(.+)$/)||t.match(/(?:regiao|base)\s+(.+?)\s+(?:tem\s+)?(?:quais|quantas)?\s*cidades/)||t.match(/^(?:quais|que)\s+cidades\s+(?:a\s+|o\s+)?(.+?)\s+atende/);
+    if(m){ const l=evaAcharLista(m[1].replace(/[?.!]+$/,'')); if(l) return evaListaHtml(l); return `Não achei uma região ou base chamada "${esc(m[1])}". `+evaEntender('quais regioes'); }
+    const l1=/^(regiao|base)\s+/.test(t)&&evaAcharLista(t); if(l1) return evaListaHtml(l1);
+    /* perguntas sobre o app: resposta do Manual */
+    const pergunta=/^(como|onde|o que|oque|pra que|para que|qual a funcao|explica|me explica|me ensina|tem como|da pra|posso|consigo|existe|serve)\b/.test(t)||/\?$/.test(txt.trim());
+    if(pergunta&&!/(quem atende|qual base|qual regiao)/.test(t)){ const rs=evaManual(txt); if(rs) return evaManualHtml(rs); }
+    const r=_ee(txt);
+    if(/^Procurei <b>/.test(r)&&!/\d{4,}/.test(txt)){ const rs=evaManual(txt); if(rs&&rs[0].sc>=2.5) return evaManualHtml(rs)+'<br><small>(Também procurei na Busca.)</small>'; }
+    return r; }; }
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
