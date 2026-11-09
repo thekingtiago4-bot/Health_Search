@@ -33,5 +33,4 @@ begin
   if tg_op = 'DELETE' then return old; end if; return new;
 end $$;
 
--- índice para a sincronização buscar só o que mudou (se já existir, não faz nada)
-create index if not exists hs_sync_atualizado_em_idx on public.hs_sync (atualizado_em);
+-- (o índice de atualizado_em já existe desde a 6.7.0)
