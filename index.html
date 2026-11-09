@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.9.8', HS_DATA='08/11/2026';
+const HS_VERSAO='8.9.9', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4982,7 +4982,7 @@ function opXmlLer(txt,nome){ const d=new DOMParser().parseFromString(txt,'text/x
     valor:+tx('vNF',inf.getElementsByTagName('ICMSTot')[0])||0,g:itens.some(i=>i.g),s:itens.some(i=>!i.g),med:itens.some(i=>i.med),mat:itens.some(i=>!i.med),vols,itens:itens.slice(0,40),em:hojeISO()}; }
 async function opXmlImportar(files){ const xs=files.filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); if(!xs.length){ toast('Escolha arquivos .xml das notas.'); return; }
   S.opXml=S.opXml||{}; let ok=0,rep=0; const erros=[];
-  for(const f of xs){ try{ const n=opXmlLer(await f.text(),f.name); if(!n.nf) throw new Error(f.name+': sem número de NF.'); if(S.opXml[n.nf]) rep++; S.opXml[n.nf]=n; ok++; }catch(e){ erros.push(e.message); } }
+  for(const f of xs){ try{ const n=opXmlLer(await rdTexto(f),f.name); if(!n.nf) throw new Error(f.name+': sem número de NF.'); if(S.opXml[n.nf]) rep++; S.opXml[n.nf]=n; ok++; }catch(e){ erros.push(e.message); } }
   salvar(); opXmlInfo(); opRender();
   const g=Object.values(S.opXml).filter(n=>n.g).length;
   $('#op-xml-res').textContent=`${ok} XML(s) lido(s)${rep?` (${rep} atualizado(s))`:''}${erros.length?` · ${erros.length} com erro`:''} · ${g} nota(s) com gelado`;
@@ -7387,6 +7387,8 @@ const ETQ_UF='AC|AL|AM|AP|BA|CE|DF|ES|GO|MA|MG|MS|MT|PA|PB|PE|PI|PR|RJ|RN|RO|RR|
 { const _ad=opAcharDados; opAcharDados=function(ped,nf){ const r=_ad(ped,nf); if(r) return r; try{ const P=opK(ped), N=opK(nf); for(const x of Object.values(S.opXml||{})) if((N&&x.nf===N)||(P&&x.ped===P)) return {dest:x.cli,cid:'',tot:(x.vols||[]).reduce((t,v)=>t+(v.q||0),0)||null,nf:x.nf}; }catch(e){} return null; }; }
 /* ================= v8.7.0 · Via Minas › Relatório Direto (LKR × AQA: MG + cidades de SP da rota, pelos XMLs) ================= */
 const RD_SP=['SAO JOAO DA BOA VISTA','SAO JOSE DO RIO PARDO','VARGEM','ESPIRITO SANTO DO PINHAL','CACONDE','AGUAS DA PRATA','ANDRADAS','CAJURU','SANTA ROSA DE VITERBO','PORTO FERREIRA','DESCALVADO','PIRASSUNUNGA','TAMBAU','SANTA CRUZ DAS PALMEIRAS','DIVINOLANDIA','TAPIRATIBA','SAO SEBASTIAO DA GRAMA','AGUAI','CASSIA DOS COQUEIROS','SANTO ANTONIO DA ALEGRIA','CASA BRANCA'];
+/* v8.9.9: XML do Softlog vem em ISO-8859-1 — lê como UTF-8 e, se não der, como ISO-8859-1 (acentos certos) */
+async function rdTexto(f){ const buf=await f.arrayBuffer(); try{ return new TextDecoder('utf-8',{fatal:true}).decode(buf); }catch(e){ return new TextDecoder('iso-8859-1').decode(buf); } }
 const rdN=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 const RD_SPN=new Set(RD_SP.map(rdN).concat(['SANTA ROSA DO VITERBO']));
 function rdEntra(n){ const uf=String(n.uf||'').toUpperCase(); if(uf==='MG') return true; if(uf==='SP'){ const c=rdN(n.mun); return RD_SPN.has(c)||(c==='ANDRADAS'); } return false; }
@@ -7415,10 +7417,10 @@ function rdDiaDoNome(nome,padrao){ const m=String(nome||'').match(/(\d{2})[-_.](
 function rdGuardar(notas,dia){ S.rdXml=S.rdXml||{}; const L=S.rdXml[dia]=S.rdXml[dia]||{}; let n=0; for(const x of notas){ if(!x.nf) continue; if(!L[x.nf]) n++; L[x.nf]=x; }
   const lim=new Date(Date.now()-10*864e5).toISOString().slice(0,10); for(const k of Object.keys(S.rdXml)) if(k<lim) delete S.rdXml[k]; S.rdXml.em=new Date().toISOString(); return n; }
 async function rdImportar(files,diaTela){ const xs=[...files].filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); if(!xs.length){ toast('Escolha os arquivos .xml das notas.'); return; }
-  let tot=0,nov=0; const erros=[]; for(const f of xs){ try{ const ns=rdLerXml(await f.text(),f.name); if(!ns.length) throw new Error('não é XML de NF-e'); const dia=rdDiaDoNome(f.name,diaTela); nov+=rdGuardar(ns,dia); tot+=ns.length; }catch(e){ erros.push(f.name+': '+e.message); } }
+  let tot=0,nov=0; const erros=[]; for(const f of xs){ try{ const ns=rdLerXml(await rdTexto(f),f.name); if(!ns.length) throw new Error('não é XML de NF-e'); const dia=rdDiaDoNome(f.name,diaTela); nov+=rdGuardar(ns,dia); tot+=ns.length; }catch(e){ erros.push(f.name+': '+e.message); } }
   salvar(); rdRender(); const qr=rdNotas(diaTela).length; toast(`Relatório Direto: ${fmtN(tot)} nota(s) lida(s) de ${fmtN(xs.length)} arquivo(s) · ${fmtN(qr)} da rota (MG + SP).${erros.length?' ⚠ '+erros.slice(0,2).join(' · '):''}`); }
 /* XML colocado na Operação com nome do LKR também entra aqui */
-{ const _ox=opXmlImportar; opXmlImportar=async function(files){ const r=await _ox.apply(this,arguments); try{ const ls=[...files].filter(f=>/lkr/i.test(f.name)&&/\.xml$/i.test(f.name)); if(ls.length){ for(const f of ls){ const ns=rdLerXml(await f.text(),f.name); rdGuardar(ns,rdDiaDoNome(f.name,hojeISO())); } salvar(); } }catch(e){} return r; }; }
+{ const _ox=opXmlImportar; opXmlImportar=async function(files){ const r=await _ox.apply(this,arguments); try{ const ls=[...files].filter(f=>/lkr/i.test(f.name)&&/\.xml$/i.test(f.name)); if(ls.length){ for(const f of ls){ const ns=rdLerXml(await rdTexto(f),f.name); rdGuardar(ns,rdDiaDoNome(f.name,hojeISO())); } salvar(); } }catch(e){} return r; }; }
 /* notas do relatório: XMLs do dia, só MG + cidades de SP da lista */
 function rdNotas(dia){ const L=(S.rdXml||{})[dia]||{}; return Object.values(L).filter(x=>x&&x.nf&&rdEntra(x)).sort((a,b)=>(a.uf+a.mun+a.dest).localeCompare(b.uf+b.mun+b.dest)); }
 const rdMoeda=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}), rdKg=v=>(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' kg';
