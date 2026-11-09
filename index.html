@@ -948,8 +948,8 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
       <p class="sub">Coloque aqui os PDFs do dia. Depois toque em “Gerar arquivo para WhatsApp”: quem abrir o arquivo já recebe os romaneios carregados, sem precisar dos PDFs.</p>
       <label class="soltar" id="soltar" tabindex="0">
         <svg class="pilha" width="54" height="54" viewBox="0 0 54 54" fill="none" aria-hidden="true"><rect x="12" y="6" width="30" height="38" rx="3" fill="var(--sup2)" stroke="var(--linha)" stroke-width="2"/><rect x="8" y="10" width="30" height="38" rx="3" fill="var(--sup)" stroke="var(--teal)" stroke-width="2"/><path d="M15 22h16M15 28h16M15 34h10" stroke="var(--teal)" stroke-width="2" stroke-linecap="round"/></svg>
-        <div><b>Arraste os PDFs dos romaneios para cá</b><span>ou clique para escolher os arquivos</span></div>
-        <input type="file" id="arq" accept="application/pdf,.pdf" multiple class="sr">
+        <div><b>Arraste os PDFs dos romaneios e os XMLs das notas para cá</b><span>ou clique para escolher os arquivos (pode misturar PDF e XML)</span></div>
+        <input type="file" id="arq" accept="application/pdf,.pdf,.xml,text/xml" multiple class="sr">
       </label>
       <div id="status-imp" role="status"></div>
       <div class="barra">
@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.7.0', HS_DATA='08/11/2026';
+const HS_VERSAO='8.7.1', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6377,7 +6377,7 @@ const MAN=[
    ['Layout e ajuda','Cada tela tem um botão (?) ao lado do título que abre a parte certa do Manual. Os grupos do menu (Operação, Regiões, Ferramentas, Administração) abrem e fecham clicando no nome; Rotas fica junto da Operação. Sem internet aparece só um selo pequeno ao lado do ☁. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam num cartão “Problemas” (toque nos números pequenos para ver só um tipo). No celular e no tablet as tabelas viram cartões, sem rolagem para os lados.']]},
 {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
   passos:[['Liberar a câmera','Na primeira vez toque em “🔓 Liberar câmera” e permita o acesso no navegador.'],
-   ['📄 Relatório Direto (Via Minas)','No menu, logo abaixo de Via Minas. Em “📥 Inserir XMLs” escolha os XMLs do romaneio LKR × AQA do dia (com o mesmo nome do romaneio, ex.: “LKR X AQA 09-11.xml”; o dia vem do dd-mm do nome). “📄 Gerar planilha” monta a lista só com destinos em MG e estas cidades de SP: São João da Boa Vista, São José do Rio Pardo, Vargem, Espírito Santo do Pinhal, Caconde, Águas da Prata, Andradas, Cajuru, Santa Rosa de Viterbo, Porto Ferreira, Descalvado, Pirassununga, Tambaú, Santa Cruz das Palmeiras, Divinolândia, Tapiratiba, São Sebastião da Grama, Aguaí, Cássia dos Coqueiros, Santo Antônio da Alegria e Casa Branca. Colunas: destinatário, CEP, endereço, número, bairro, cidade, UF, peso e valor dos produtos. Se ainda não houver XMLs do dia, aparece um aviso. Depois: “🖨 Imprimir / PDF” ou “⬇ Planilha (Excel)”. Cada dia gerado entra no histórico “Cidades de MG que mais atendemos”, no fim da mesma tela (gerar de novo no mesmo dia substitui, não soma em dobro).'],
+   ['📄 Relatório Direto (Via Minas)','No menu, logo abaixo de Via Minas. Os XMLs podem ser jogados na aba Romaneios (junto com os PDFs) ou em “📥 Inserir XMLs” aqui; escolha os XMLs do romaneio LKR × AQA do dia (com o mesmo nome do romaneio, ex.: “LKR X AQA 09-11.xml”; o dia vem do dd-mm do nome). “📄 Gerar planilha” monta a lista só com destinos em MG e estas cidades de SP: São João da Boa Vista, São José do Rio Pardo, Vargem, Espírito Santo do Pinhal, Caconde, Águas da Prata, Andradas, Cajuru, Santa Rosa de Viterbo, Porto Ferreira, Descalvado, Pirassununga, Tambaú, Santa Cruz das Palmeiras, Divinolândia, Tapiratiba, São Sebastião da Grama, Aguaí, Cássia dos Coqueiros, Santo Antônio da Alegria e Casa Branca. Colunas: destinatário, CEP, endereço, número, bairro, cidade, UF, peso e valor dos produtos. Se ainda não houver XMLs do dia, aparece um aviso. Depois: “🖨 Imprimir / PDF” ou “⬇ Planilha (Excel)”. Cada dia gerado entra no histórico “Cidades de MG que mais atendemos”, no fim da mesma tela (gerar de novo no mesmo dia substitui, não soma em dobro).'],
    ['Caixa fora do romaneio','Quando a caixa não está no romaneio do dia, o app lê o texto da própria etiqueta (só o papel branco, ampliado) e já registra a linha completa: pedido e volumes pelo QR Code, cliente e cidade pelo texto. Se não conseguir ler, procura no banco de romaneios e no XML das notas; se ainda faltar, use ✏ para digitar ou 📷 para reler a etiqueta.'],
    ['Cores do bipe','🟢 Verde = conferido · 🟡 Amarelo = sem nota · 🔴 Vermelho = fora do romaneio (separe) · 🟣 Roxo = reentrega · 🟠 Laranja = agendada (não vai) · Rosa-escuro = divergência · Azul-petróleo = caixa que faltou · 🔵 Azul = duplicado. A câmera não mostra mais esta legenda na tela: ela fica aqui no Manual e no (?) da Operação.'],
    ['Abrir câmera','Toque em “📷 Abrir câmera”, coloque a etiqueta inteira dentro da moldura e segure firme até o bipe. Espere meio segundo e passe a próxima.'],
@@ -7441,7 +7441,7 @@ function rdRender(){ const el=$('#rd-corpo'); if(!el) return; const di=RD.dia; c
   $('#rd-per').value=per; $('#rd-per').onchange=e=>{ RD.per=e.target.value; rdRender(); };
   $('#rd-dia').onchange=e=>{ RD.dia=e.target.value||hojeISO(); rdRender(); }; $('#rd-ins').onclick=()=>$('#rd-arq').click(); $('#rd-arq').onchange=e=>{ rdImportar(e.target.files,RD.dia); e.target.value=''; };
   $('#rd-ger').onclick=rdGerar; if($('#rd-pdf')) $('#rd-pdf').onclick=rdImprimir; if($('#rd-csv')) $('#rd-csv').onclick=rdPlanilha;
-  el.ondragover=e=>{ e.preventDefault(); }; el.ondrop=e=>{ e.preventDefault(); rdImportar(e.dataTransfer.files,RD.dia); }; }
+  el.ondragover=e=>{ e.preventDefault(); }; el.ondrop=e=>{ e.preventDefault(); e.stopPropagation(); rdImportar(e.dataTransfer.files,RD.dia); }; }
 (function(){ const st=document.createElement('style'); st.textContent=`.rd-barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}.rd-barra label{display:flex;gap:6px;align-items:center}
  .rd-tab{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}.rd-tab th,.rd-tab td{border-bottom:1px solid var(--linha);padding:5px 6px;text-align:left;vertical-align:top}.rd-tab th{position:sticky;top:0;background:var(--sup)}
  .rd-rank{display:flex;flex-direction:column;gap:4px}.rd-lin{display:grid;grid-template-columns:42px minmax(140px,1.3fr) 1fr auto;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--linha)}
@@ -7455,6 +7455,10 @@ function rdRender(){ const el=$('#rd-corpo'); if(!el) return; const di=RD.dia; c
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=document.querySelector('.nav [data-tela="reldireto"]'); if(t==='reldireto'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-reldireto'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); rdRender(); } else if(bt) bt.removeAttribute('aria-current'); };
   document.querySelector('.nav [data-tela="reldireto"]').addEventListener('click',()=>irPara('reldireto'));
 })();
+/* v8.7.1: aba Romaneios também recebe os XMLs (vão para o Relatório Direto e para a Operação: valor, conteúdo) */
+{ const _imp=importar; importar=async function(files){ const fs=[...(files||[])]; const xs=fs.filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)), ps=fs.filter(f=>!xs.includes(f));
+    if(xs.length){ try{ await opXmlImportar(xs); }catch(e){} await rdImportar(xs,hojeISO()); }
+    if(ps.length) return _imp.call(this,ps); }; }
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
