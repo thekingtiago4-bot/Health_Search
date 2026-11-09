@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.0.0', HS_DATA='09/11/2026';
+const HS_VERSAO='9.0.2', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8053,25 +8053,121 @@ function xcConsertar(t){ t=String(t||'').replace(/^﻿/,'');
 async function xcLer(files){ const out=[], erros=[]; for(const f of files){ try{ const t=await rdTexto(f); let ns=rdLerXml(t,f.name);
       if(!ns.length){ const n=(typeof opXmlLer==='function')?opXmlLer(t,f.name):null; if(n&&n.nf) ns=[n]; }
       if(!ns.length) throw new Error('não reconheci notas neste arquivo'); const rom=f.name.replace(/\.[^.]+$/,'').replace(/_/g,' ').replace(/^Romaneio\s*/i,'').replace(/^[-\s]+/,'').trim();
-      for(const n of ns) out.push(Object.assign({rom,dia:rdDiaDoNome(f.name,hojeISO())},n)); }catch(e){ erros.push(f.name+': '+e.message); } } return {out,erros}; }
-function xcXml(L){ const H=['ROMANEIO','DATA','NÚMERO NF','REMETENTE','DESTINATÁRIO','CEP','ENDEREÇO','NÚMERO','BAIRRO','CIDADE DESTINO','UF','VOLUMES','PESO','VALOR PRODUTOS','CHAVE NFE'];
-  const x=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); const cel=(v,num)=>`<Cell><Data ss:Type="${num&&v!==''&&v!=null?'Number':'String'}">${x(v)}</Data></Cell>`;
-  const linhas=L.map(n=>'<Row>'+[n.rom,n.dia,n.nf,n.rem,n.dest,(n.cep||'').replace(/\D/g,''),n.end,n.nro,n.bai,n.mun,n.uf].map(v=>cel(v)).join('')+cel(n.vol??'',1)+cel(n.peso,1)+cel(n.vprod,1)+cel(n.chave)+'</Row>');
-  return `<?xml version="1.0" encoding="utf-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n<Worksheet ss:Name="NOTAS"><Table>\n<Row>${H.map(h=>cel(h)).join('')}</Row>\n${linhas.join('\n')}\n</Table></Worksheet></Workbook>\n`; }
-function xcBaixar(L){ const b=new Blob([xcXml(L)],{type:'application/xml;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='Romaneios_unificados_'+(L[0]&&L[0].dia||hojeISO())+'.XML'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
+      const LS=xcLinhas(t,ns); ns.forEach((n,i)=>out.push(Object.assign({rom,dia:rdDiaDoNome(f.name,hojeISO()),linha:LS[i]},n))); }catch(e){ erros.push(f.name+': '+e.message); } } return {out,erros}; }
+const XC_COLS=['NÚMERO NF','REMETENTE','CNPJ/CPF DESTINATÁRIO','DESTINATÁRIO','CEP','ENDEREÇO','NÚMERO','BAIRRO','CIDADE DESTINO','UF','REGIÃO','VOLUMES','PESO','VALOR NF IND','VALOR PRODUTOS','CHAVE NFE'];
+const XC_NUM=new Set([11,12,13,14]), XC_LARG=[75,416,150,416,75,833,75,2083,416,75,75,75,75,75,75,366];
+/* linha completa (16 colunas Softlog) de cada nota: copia a planilha original; para NF-e monta a partir dos campos */
+function xcLinhas(t,ns){ const d=new DOMParser().parseFromString(t,'text/xml'); const rows=[...d.getElementsByTagName('Row')].map(r=>{ const cs=[]; let i=0; for(const c of r.getElementsByTagName('Cell')){ const ix=c.getAttribute('ss:Index'); if(ix) i=(+ix)-1; cs[i++]=c.textContent.trim(); } return cs; });
+  const hi=rows.findIndex(r=>r.some(c=>rdN(c)==='CEP')&&r.some(c=>rdN(c)==='DESTINATARIO')); const M={};
+  if(hi>=0){ const H=rows[hi].map(rdN); const ix=XC_COLS.map(h=>H.indexOf(rdN(h))); for(const r of rows.slice(hi+1)){ const nf=opK(r[ix[0]]||''); if(nf) M[nf]=ix.map(i=>i>=0?(r[i]??''):''); } }
+  return ns.map(n=>M[n.nf]||[String(n.nf).padStart(9,'0'),n.rem||'','',n.dest||'',(n.cep||'').replace(/\D/g,''),n.end||'',n.nro||'',n.bai||'',n.mun||'',n.uf||'','',n.vol??'',n.peso??'',n.vprod??'',n.vprod??'',n.chave||'']); }
+function xcXml(L){ const x=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); const agora=new Date().toISOString().slice(0,19)+'Z';
+  const bd=c=>`   <Borders>\n    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${c}"/>\n    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${c}"/>\n    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${c}"/>\n    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${c}"/>\n   </Borders>\n`;
+  const est=(id,al,fmt)=>`  <Style ss:ID="${id}">\n   <Alignment ss:Horizontal="${al}" ss:Vertical="Center"/>\n   <Font ss:FontName="MS Sans Serif" x:Family="Swiss" ss:Size="9" ss:Color="#000000"\n    ss:Bold="0" ss:Italic="0" ss:StrikeThrough="0"/>\n   <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>\n${fmt?`   <NumberFormat ss:Format="${fmt}"/>\n`:''}${bd('#C0C0C0')}  </Style>\n`;
+  const roms=[...new Set(L.map(n=>n.rom))];
+  const cab=XC_COLS.map(h=>`     <Cell ss:StyleID="h00001"><Data ss:Type="String">${h}</Data></Cell>\n`).join('');
+  const lin=L.map(n=>'   <Row ss:AutoFitHeight="0">\n'+n.linha.map((v,i)=>{ const num=XC_NUM.has(i)&&v!==''&&isFinite(+v); return `     <Cell ss:StyleID="${num?(i>=13?'c00003':'c00002'):'c00001'}"><Data ss:Type="${num?'Number':'String'}">${x(v)}</Data></Cell>\n`; }).join('')+'   </Row>\n').join('');
+  return `<?xml version="1.0" encoding="iso-8859-1"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <LastAuthor>SoftLog_Tecnologia</LastAuthor>
+  <Created>${agora}</Created>
+  <LastSaved>${agora}</LastSaved>
+  <Version>01.13</Version>
+ </DocumentProperties>
+ <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
+  <WindowHeight>8130</WindowHeight>
+  <WindowWidth>15135</WindowWidth>
+  <WindowTopX>120</WindowTopX>
+  <WindowTopY>45</WindowTopY>
+  <ProtectStructure>False</ProtectStructure>
+  <ProtectWindows>False</ProtectWindows>
+ </ExcelWorkbook>
+<Styles>
+
+<Style ss:ID="Default" ss:Name="Normal">
+<Alignment ss:Vertical="Center"/>
+<Borders/>
+<Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="10" ss:Color="#000000"/>
+<Interior/>
+<NumberFormat/>
+<Protection/>
+</Style>
+
+  <Style ss:ID="h00001">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="10" ss:Color="#FFFFFF"
+    ss:Bold="1" ss:Italic="0" ss:StrikeThrough="0"/>
+   <Interior ss:Color="#000080" ss:Pattern="Solid"/>
+${bd('#646464')}  </Style>
+${est('c00001','Left')}${est('c00002','Right','#,##0.0000')}${est('c00003','Right','#,##0.00')}
+<Style ss:ID="s330">
+<Alignment ss:Vertical="Bottom"/>
+<Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="12" ss:Color="#000000" ss:Bold="1"/>
+</Style>
+
+<Style ss:ID="s331">
+<Alignment ss:Vertical="Bottom"/>
+<Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="10" ss:Color="#000000" ss:Bold="1"/>
+</Style>
+
+</Styles>
+ <Worksheet ss:Name="RELATÓRIO DE NOTAS FISCAIS PARA">
+  <Table ss:ExpandedColumnCount="16" ss:ExpandedRowCount="${L.length+5}" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultRowHeight="13">
+   
+${XC_LARG.map(w=>`   <Column ss:AutoFitWidth="0" ss:Width="${w}"/>\n`).join('')}
+
+   <Row ss:Index="1" ss:AutoFitHeight="0" ss:StyleID="s330">   <Cell><Data ss:Type="String">RELATÓRIO DE NOTAS FISCAIS PARA CONFERÊNCIA</Data></Cell>   </Row>    <Row ss:Index="3" ss:AutoFitHeight="0" ss:StyleID="s331">   <Cell><Data ss:Type="String">Número de Romaneios / ${x(roms.join(' · '))}</Data></Cell>   </Row>    <Row ss:Index="5" ss:AutoFitHeight="0" ss:Height="19">
+${cab}   </Row>
+
+${lin}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <PageSetup>
+    <Header x:Margin="0.31496062000000002"/>
+    <Footer x:Margin="0.31496062000000002"/>
+    <PageMargins x:Bottom="0.78740157499999996" x:Left="0.511811024"
+     x:Right="0.511811024" x:Top="0.78740157499999996"/>
+   </PageSetup>
+   <Unsynced/>
+   <Print>
+    <ValidPrinterInfo/>
+    <PaperSizeIndex>9</PaperSizeIndex>
+    <HorizontalResolution>300</HorizontalResolution>
+    <VerticalResolution>300</VerticalResolution>
+   </Print>
+   <Selected/>
+   
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+   	
+ </Worksheet>
+</Workbook>		
+`.replace(/\n/g,'\r\n'); }
+function xcLatin1(t){ const u=new Uint8Array(t.length); for(let i=0;i<t.length;i++){ const c=t.charCodeAt(i); u[i]=c<256?c:63; } return u; }
+function xcBaixar(L){ const b=new Blob([xcLatin1(xcXml(L))],{type:'application/xml'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='Romaneios_unificados_'+(L[0]&&L[0].dia||hojeISO())+'.XML'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
 const XC={L:[],files:[]};
-async function evaArquivos(files){ const fs=[...files]; if(!fs.length) return; evaAbrir(true); evaFala('📎 '+fs.length+' arquivo(s)','eu'); const {out,erros}=await xcLer(fs); XC.L=out; XC.files=fs.filter(f=>!erros.some(e=>e.startsWith(f.name+':')));
+async function evaArquivos(files,op){ op=op||{}; const fs=[...files]; if(!fs.length) return; evaAbrir(true); evaFala(op.importado?'📂 Vi que você carregou '+fs.length+' XML(s) em Romaneios. Deixa comigo:':'📎 '+fs.length+' arquivo(s)',op.importado?'':'eu'); const {out,erros}=await xcLer(fs); XC.L=out; XC.files=fs.filter(f=>!erros.some(e=>e.startsWith(f.name+':')));
   if(!out.length){ evaFala('Não consegui ler nenhuma nota desses arquivos. 😕<br>'+erros.map(esc).join('<br>')); return; }
   const g={}; for(const n of out){ const k=n.rom; g[k]=g[k]||{n:0,v:0,p:0}; g[k].n++; g[k].v+=+n.vol||0; g[k].p+=+n.peso||0; }
   const cnt={}; out.forEach(n=>cnt[n.nf]=(cnt[n.nf]||0)+1); const dup=Object.keys(cnt).filter(k=>cnt[k]>1);
   const T=Object.values(g).reduce((a,x)=>({n:a.n+x.n,v:a.v+x.v,p:a.p+x.p}),{n:0,v:0,p:0}); const f=x=>x.toLocaleString('pt-BR',{maximumFractionDigits:1});
   evaFala(`Converti tudo para um formato limpo ✅<br>${Object.entries(g).map(([k,x])=>`• <b>${esc(k)}</b>: ${x.n} notas · ${x.v} vol · ${f(x.p)} kg`).join('<br>')}<br><b>Total: ${T.n} notas · ${T.v} volumes · ${f(T.p)} kg</b>${dup.length?`<br>⚠ Nota em mais de um romaneio: <b>${dup.map(esc).join(', ')}</b>`:''}${erros.length?'<br>⚠ '+erros.map(esc).join('<br>⚠ '):''}
-   <br><button type="button" class="btn mini" data-xc="csv" style="margin-top:6px">⬇ Baixar XML unificado</button> <button type="button" class="btn mini pri" data-xc="imp" style="margin-top:6px">📥 Importar no app</button>`); }
+   <br><button type="button" class="btn mini" data-xc="csv" style="margin-top:6px">⬇ Baixar XML unificado</button> ${op.importado?'<br>✔ Já importei tudo no Relatório Direto e na Operação.':'<button type="button" class="btn mini pri" data-xc="imp" style="margin-top:6px">📥 Importar no app</button>'}`); }
 document.addEventListener('click',async e=>{ const b=e.target.closest('[data-xc]'); if(!b) return; if(b.dataset.xc==='csv'){ xcBaixar(XC.L); return; }
   if(b.dataset.xc==='imp'&&XC.files.length){ b.disabled=true; try{ await opXmlImportar(XC.files); }catch(_){} await rdImportar(XC.files,hojeISO()); evaFala('Pronto, importei no Relatório Direto e na Operação. 👍'); } });
 (function(){ const f=$('#eva-f'); if(!f) return; f.insertAdjacentHTML('afterbegin','<button type="button" class="btn" id="eva-clip" title="Enviar XML para a EVA converter" aria-label="Enviar arquivos">📎</button><input type="file" id="eva-arq" accept=".xml,text/xml" multiple hidden>');
   $('#eva-clip').onclick=()=>$('#eva-arq').click(); $('#eva-arq').onchange=e=>{ evaArquivos(e.target.files); e.target.value=''; };
   const p=$('#eva-painel'); if(p){ p.addEventListener('dragover',e=>e.preventDefault()); p.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); evaArquivos(e.dataTransfer.files); }); } })();
+/* v9.0.1: EVA intervém sozinha quando XMLs entram pela aba Romaneios (conserta, resume, alerta repetidas, oferece o XML unificado) */
+{ const _imp2=importar; importar=async function(files){ const xs=[...(files||[])].filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); const r=await _imp2.apply(this,arguments); if(xs.length){ try{ await evaArquivos(xs,{importado:true}); }catch(e){} } return r; }; }
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
