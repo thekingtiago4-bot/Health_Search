@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.5.2', HS_DATA='09/11/2026';
+const HS_VERSAO='9.5.3', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8879,6 +8879,121 @@ document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.close
   MAN.push({id:'eva-ensino',t:'EVA — conversar e ensinar',img:'mural',intro:'Configurações → EVA abre a EVA no centro da tela.',passos:[['Conversar','Todos podem tirar dúvidas, pedir para procurar notas, cidades, ocorrências e rotas.'],['Ensinar (admin)','O administrador escreve regras (“o que ela deve saber”) e perguntas com a resposta certa, com foto se quiser. A EVA passa a responder isso para todos.'],['Perguntar o que ela aprendeu','Pergunte “quais são suas regras?”.']]});
   const g=MAN.find(x=>/gestor/i.test(x.t)); if(g&&g.passos) g.passos.unshift(['Ao vivo','O Painel do gestor atualiza sozinho a cada 30 segundos: % conferido, bipes por hora e por pessoa, ocorrências abertas, avarias por tipo, reentregas por motivo, motorista e dia.']);
   const r=MAN.find(x=>/^Rotas|ROTAS/i.test(x.t)); if(r&&r.passos) r.passos.push(['Histórico por dia','O último upload de cada dia fica guardado. À meia-noite a rota do dia vai para o histórico; escolha o dia na lista “Último upload de cada dia”.']); })();
+
+/* ================= v9.5.3 · EVA animada na aba EVA (expressões, gestos, interação) ================= */
+const EVA_BIG=`<svg class="evb" viewBox="0 0 200 260" aria-hidden="true">
+ <defs><radialGradient id="evbG" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#EEF0F4"/></radialGradient></defs>
+ <ellipse class="sombra" cx="100" cy="250" rx="54" ry="8" fill="#000" opacity=".18"/>
+ <g class="corpo">
+  <ellipse cx="72" cy="226" rx="22" ry="16" fill="#2B2B33"/><ellipse cx="128" cy="226" rx="22" ry="16" fill="#2B2B33"/><ellipse cx="72" cy="229" rx="10" ry="7" fill="#F4A6B8"/><ellipse cx="128" cy="229" rx="10" ry="7" fill="#F4A6B8"/>
+  <ellipse cx="100" cy="182" rx="48" ry="46" fill="url(#evbG)" stroke="#2B2B33" stroke-width="3"/><ellipse cx="100" cy="188" rx="27" ry="27" fill="#F3F4F6"/>
+  <g class="braco-e"><path d="M56 158 Q28 172 38 200 Q46 210 60 196 Z" fill="#2B2B33"/></g>
+  <g class="braco-d"><path d="M144 158 Q172 150 172 120 Q168 108 158 116 Q156 142 138 152 Z" fill="#2B2B33"/></g>
+  <path d="M74 140 Q100 152 126 140 L123 150 Q100 161 77 150 Z" fill="#EC4899"/>
+ </g>
+ <g class="cabeca">
+  <circle cx="44" cy="30" r="22" fill="#2B2B33"/><circle cx="156" cy="30" r="22" fill="#2B2B33"/><circle cx="44" cy="30" r="10" fill="#F4A6B8"/><circle cx="156" cy="30" r="10" fill="#F4A6B8"/>
+  <ellipse cx="100" cy="80" rx="64" ry="56" fill="url(#evbG)" stroke="#2B2B33" stroke-width="3"/>
+  <ellipse cx="74" cy="78" rx="18" ry="22" transform="rotate(-18 74 78)" fill="#2B2B33"/><ellipse cx="126" cy="78" rx="18" ry="22" transform="rotate(18 126 78)" fill="#2B2B33"/>
+  <g class="olhos"><g class="olho"><circle cx="77" cy="78" r="9" fill="#fff"/><circle class="pupila" cx="79" cy="76" r="4.6" fill="#2B2B33"/><circle cx="81" cy="74" r="1.6" fill="#fff"/></g>
+   <g class="olho"><circle cx="123" cy="78" r="9" fill="#fff"/><circle class="pupila" cx="125" cy="76" r="4.6" fill="#2B2B33"/><circle cx="127" cy="74" r="1.6" fill="#fff"/></g></g>
+  <g class="olhos-feliz" opacity="0"><path d="M68 80 Q77 70 86 80" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M114 80 Q123 70 132 80" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+  <g class="sobr"><path class="s1" d="M64 52 Q74 46 86 52" stroke="#2B2B33" stroke-width="3.5" fill="none" stroke-linecap="round"/><path class="s2" d="M114 52 Q126 46 136 52" stroke="#2B2B33" stroke-width="3.5" fill="none" stroke-linecap="round"/></g>
+  <ellipse cx="100" cy="100" rx="7.5" ry="5.4" fill="#2B2B33"/>
+  <path class="boca b-sorriso" d="M90 109 q10 9 20 0" stroke="#2B2B33" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <ellipse class="boca b-fala" cx="100" cy="112" rx="7" ry="5" fill="#7a1f3d" opacity="0"/>
+  <path class="boca b-triste" d="M91 115 q9 -7 18 0" stroke="#2B2B33" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0"/>
+  <ellipse cx="56" cy="104" rx="10" ry="6" fill="#F7B5C4" opacity=".8"/><ellipse cx="144" cy="104" rx="10" ry="6" fill="#F7B5C4" opacity=".8"/>
+  <g transform="translate(144 26) rotate(18)"><path d="M0 0 L-26 -17 Q-32 0 -26 17 Z" fill="#EC4899"/><path d="M0 0 L26 -17 Q32 0 26 17 Z" fill="#EC4899"/><circle r="8.5" fill="#DB2777"/></g>
+  <g class="pensa" opacity="0"><circle cx="168" cy="20" r="5" fill="#cbd5e1"/><circle cx="182" cy="8" r="7" fill="#cbd5e1"/><circle cx="196" cy="-6" r="9" fill="#cbd5e1"/></g>
+ </g>
+</svg>`;
+(function(){ const st=document.createElement('style'); st.textContent=`
+#t-eva .eva-palco{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:18px;align-items:start;max-width:1100px;margin:0 auto}
+#t-eva .eva-centro{max-width:none}
+.eva-boneca{position:sticky;top:16px;display:flex;flex-direction:column;align-items:center;gap:10px;user-select:none}
+.eva-balao{position:relative;background:var(--sup);border:1.5px solid var(--linha);border-radius:16px;padding:10px 14px;font-size:.95rem;max-width:280px;min-height:42px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.eva-balao::after{content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);border:9px solid transparent;border-top-color:var(--linha);border-bottom:0}
+.evb{width:min(260px,100%);height:auto;cursor:pointer;overflow:visible}
+.evb .corpo,.evb .cabeca{transform-origin:100px 230px;transform-box:view-box}
+.evb .corpo{animation:evbResp 3.2s ease-in-out infinite}
+.evb .cabeca{animation:evbCab 4s ease-in-out infinite}
+.evb .olho{transform-box:fill-box;transform-origin:center;animation:evbPisca 5s infinite}
+.evb .braco-d{transform-box:view-box;transform-origin:146px 156px}
+.evb .braco-e{transform-box:view-box;transform-origin:58px 160px}
+.evb .boca,.evb .olhos,.evb .olhos-feliz,.evb .pensa,.evb .sobr path{transition:opacity .2s,transform .25s}
+.evb .pupila{transition:transform .3s}
+@keyframes evbResp{50%{transform:translateY(-3px) scale(1.01)}}
+@keyframes evbCab{0%,100%{transform:rotate(0)}30%{transform:rotate(-2deg)}70%{transform:rotate(2deg)}}
+@keyframes evbPisca{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.08)}}
+@keyframes evbAceno{0%,100%{transform:rotate(0)}20%{transform:rotate(-28deg)}40%{transform:rotate(6deg)}60%{transform:rotate(-28deg)}80%{transform:rotate(6deg)}}
+@keyframes evbFala{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1.2)}}
+@keyframes evbPulo{0%,100%{transform:translateY(0)}40%{transform:translateY(-22px)}60%{transform:translateY(-18px)}}
+@keyframes evbPensa{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes evbNao{0%,100%{transform:rotate(0)}25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
+.evb[data-st="acenando"] .braco-d{animation:evbAceno 1.6s ease-in-out}
+.evb[data-st="falando"] .b-sorriso{opacity:0}.evb[data-st="falando"] .b-fala{opacity:1;transform-box:fill-box;transform-origin:center;animation:evbFala .22s infinite}
+.evb[data-st="feliz"] .olhos{opacity:0}.evb[data-st="feliz"] .olhos-feliz{opacity:1}.evb[data-st="feliz"] .corpo,.evb[data-st="feliz"] .cabeca{animation:evbPulo .7s ease-out}
+.evb[data-st="triste"] .b-sorriso{opacity:0}.evb[data-st="triste"] .b-triste{opacity:1}.evb[data-st="triste"] .s1{transform:rotate(14deg) translate(2px,-2px)}.evb[data-st="triste"] .s2{transform:rotate(-14deg) translate(-2px,-2px)}.evb[data-st="triste"] .cabeca{animation:evbNao .9s}
+.evb[data-st="pensando"] .pensa{opacity:1;animation:evbPensa 1s infinite}.evb[data-st="pensando"] .pupila{transform:translate(3px,-4px)}.evb[data-st="pensando"] .braco-e{transform:rotate(38deg) translate(10px,-24px)}.evb[data-st="pensando"] .sobr .s2{transform:translateY(-5px)}
+.evb[data-st="ouvindo"] .pupila{transform:translate(-3px,3px)}.evb[data-st="ouvindo"] .cabeca{animation:none;transform:rotate(-5deg)}
+body:has(#t-eva:not([hidden])) :is(#eva-bt,#eva-balao){display:none!important}
+#t-eva #eva-x{display:none!important}
+#t-eva .eva-centro{min-width:0;width:100%;max-width:100%;overflow:hidden}#t-eva #eva-painel{width:100%!important;max-width:100%!important;min-width:0!important}#t-eva #eva-painel *{min-width:0}#t-eva .eva-cab small{white-space:normal}
+@media (max-width:860px){#t-eva .eva-palco{grid-template-columns:minmax(0,1fr)}#t-eva #eva-painel{height:62vh!important}#t-eva #eva-painel>div:has(>button){flex-wrap:nowrap;overflow-x:auto}.eva-boneca{position:static;flex-direction:row;justify-content:center}.evb{width:130px}.eva-balao{max-width:220px;font-size:.85rem}.eva-balao::after{left:auto;right:-9px;bottom:50%;transform:translateY(50%);border:9px solid transparent;border-left-color:var(--linha);border-right:0}}`; document.head.appendChild(st); })();
+const EVB={t:null};
+function evbEstado(st,ms){ const s=document.querySelector('#t-eva .evb'); if(!s) return; clearTimeout(EVB.t); s.dataset.st=''; void s.getBoundingClientRect(); s.dataset.st=st; if(ms) EVB.t=setTimeout(()=>{ s.dataset.st=''; },ms); }
+function evbDiz(html){ const b=$('#evb-balao'); if(b) b.innerHTML=html; }
+const EVB_FRASES=['Oi! Tô aqui pra ajudar 🐼','Pode me perguntar sobre qualquer nota, cidade ou rota!','Sabia que eu aviso quando você bipa um volume caro? 💰','Hihi, cócegas! 😄','Quer que eu procure alguma coisa?','Bom trabalho hoje! 💪'];
+{ const _et=evaTela; evaTela=function(){ const t=$('#t-eva'); if(t&&!$('#eva-palco')){ const c=$('#eva-centro'); const pal=document.createElement('div'); pal.className='eva-palco'; pal.id='eva-palco'; c.parentNode.insertBefore(pal,c); pal.innerHTML=`<div class="eva-boneca"><div class="eva-balao" id="evb-balao">Oi!</div>${EVA_BIG}</div>`; pal.appendChild(c);
+      pal.querySelector('.evb').addEventListener('click',()=>{ evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); }
+    _et();
+    const nome=((NV&&NV.perfil&&NV.perfil.nome)||'').split(' ')[0]; const h=new Date().getHours(); const sd=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+    evbDiz(`${sd}${nome?', <b>'+esc(nome)+'</b>':''}! Como posso ajudar? 🐼`); evbEstado('acenando',1700);
+    const inp=$('#eva-in'); if(inp&&!inp.dataset.evb){ inp.dataset.evb=1; let tt=null; inp.addEventListener('input',()=>{ if($('#t-eva').hidden) return; const s=document.querySelector('#t-eva .evb'); if(s&&s.dataset.st!=='pensando'&&s.dataset.st!=='falando') evbEstado('ouvindo'); clearTimeout(tt); tt=setTimeout(()=>{ const s2=document.querySelector('#t-eva .evb'); if(s2&&s2.dataset.st==='ouvindo') evbEstado(''); },1500); }); }
+  }; }
+{ const _f=evaFala; evaFala=function(html,quem){ _f(html,quem); try{ if($('#t-eva').hidden) return;
+    if(quem==='eu'){ evbEstado('pensando'); evbDiz('Hmm, deixa eu ver… 🤔'); return; }
+    const txt=String(html).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(); const ruim=/não (encontrei|achei|sei|consegui)|nenhum|⚠|erro|problema/i.test(txt); const ms=Math.min(4000,700+txt.length*25);
+    setTimeout(()=>{ evbEstado('falando',ms); evbDiz(esc(txt.length>140?txt.slice(0,137)+'…':txt)); setTimeout(()=>evbEstado(ruim?'triste':'feliz',ruim?1200:900),ms); },350);
+  }catch(e){} }; }
+/* de vez em quando ela olha em volta / acena sozinha */
+setInterval(()=>{ try{ if($('#t-eva').hidden||document.hidden) return; const s=document.querySelector('#t-eva .evb'); if(!s||s.dataset.st) return; const r=Math.random(); if(r<.25) evbEstado('acenando',1700); else if(r<.5) evbEstado('ouvindo',1200); }catch(e){} },9000);
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.unshift(['EVA ao vivo','Na aba EVA ela aparece grande ao lado do chat: acena quando você chega, inclina a cabeça enquanto você digita, pensa enquanto procura, fala a resposta no balão, fica feliz quando acha e triste quando não acha. Clique nela para brincar. Nessa aba o botão do cantinho some.']); })();
+
+
+/* ---- EVA levanta a mão quando tem dúvida ---- */
+(function(){ const st=document.createElement('style'); st.textContent=`.evb[data-st="duvida"] .braco-e{transform:rotate(150deg) translate(-6px,8px);transition:transform .35s}.evb[data-st="duvida"] .pupila{transform:translate(2px,-4px)}.evb[data-st="duvida"] .sobr .s1{transform:translateY(-5px)}.evb[data-st="duvida"] .corpo{animation:evbResp 1.2s ease-in-out infinite}
+#eva-bt.tem-duvida::after{content:"✋";position:absolute;top:-6px;left:-6px;font-size:20px;animation:evbPensa 1.2s infinite}`; document.head.appendChild(st); })();
+function evbDuvidas(){ try{ return evaPendentes().length; }catch(e){ return 0; } }
+setInterval(()=>{ try{ const n=evbDuvidas(); const bt=$('#eva-bt'); if(bt) bt.classList.toggle('tem-duvida',n>0&&nvAdmin());
+  if($('#t-eva').hidden||document.hidden) return; const s=document.querySelector('#t-eva .evb'); if(!s) return;
+  if(n&&nvAdmin()&&(!s.dataset.st||s.dataset.st==='duvida')){ if(s.dataset.st!=='duvida'){ evbEstado('duvida'); evbDiz(`✋ Tenho ${n} dúvida${n>1?'s':''}! Me toca para eu perguntar.`); } }
+  else if(s.dataset.st==='duvida'&&!n) evbEstado(''); }catch(e){} },2000);
+document.addEventListener('click',e=>{ const s=e.target.closest&&e.target.closest('#t-eva .evb'); if(!s||s.dataset.st!=='duvida') return; e.stopImmediatePropagation(); const b=[...document.querySelectorAll('#eva-painel button')].find(x=>/Dúvidas/.test(x.textContent)); if(b) b.click(); },true);
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Mão levantada','Quando a EVA tem uma dúvida (ex.: uma etiqueta ou cidade que ela não tem certeza), ela levanta a mão ✋ — na aba EVA e no botão do cantinho. O administrador toca nela e responde; ela aprende.']); })();
+
+
+/* ---- EVA com personalidade: humor pelo andamento do dia ---- */
+function evbHumor(){ const hoje=hojeISO(); const bip=((OP&&OP.bipes)||[]).filter(b=>diaLocal(new Date(b.criado_em||0).toISOString())===hoje);
+  const fora=bip.filter(b=>b.status==='fora').length, notas=todasLinhas().length, conf=new Set(bip.filter(b=>b.status!=='fora').map(b=>opK(b.nf||'')).filter(Boolean)).size, pct=notas?Math.round(100*Math.min(conf,notas)/notas):0;
+  let reH=0; try{ reH=(RE.ler().dias[hoje]||[]).length; }catch(e){}
+  const av=dvS().filter(d=>d.st!=='resolvida').length; const pick=a=>a[Math.floor(Math.random()*a.length)];
+  if(fora>=10) return {st:'triste',pulo:true,txt:pick([`Ai ai… <b>${fora}</b> caixas fora do romaneio hoje 😟 Bora puxar essas notas?`,`<b>${fora}</b> fora do romaneio?! Tô preocupada 😣`])};
+  if(fora>=5) return {st:'triste',txt:pick([`Hmm, já são <b>${fora}</b> fora do romaneio hoje. Fica de olho! 👀`,`<b>${fora}</b> caixas fora do romaneio… não gosto disso 😕`])};
+  if(notas&&pct>=95) return {st:'feliz',pulo:true,txt:pick([`<b>${pct}%</b> conferido! Vocês são demais! 🎉🐼`,`Uhuul! <b>${pct}%</b> do dia conferido! 🥳`])};
+  if(notas&&pct>=60) return {st:'feliz',txt:pick([`Tá indo bem! <b>${pct}%</b> conferido 💪`,`Mais da metade! <b>${pct}%</b> já foi 😄`])};
+  if(reH>=5) return {st:'triste',txt:`Hoje já temos <b>${reH}</b> reentregas… vamos caprichar 🙏`};
+  if(av) return {st:'',txt:`Tem <b>${av}</b> ocorrência(s) aberta(s) esperando alguém 🧐`};
+  if(notas&&!bip.length) return {st:'acenando',txt:pick(['Os romaneios chegaram! Bora bipar? 📦','Tudo pronto pra começar a conferência! 🚀'])};
+  return {st:'',txt:pick(EVB_FRASES)}; }
+function evbReage(){ const s=document.querySelector('#t-eva .evb'); if(!s||(s.dataset.st&&s.dataset.st!=='')||$('#t-eva').hidden) return; const h=evbHumor(); evbDiz(h.txt);
+  if(h.pulo){ const st=h.st||'feliz'; evbEstado(st,800); setTimeout(()=>evbEstado(st,800),850); setTimeout(()=>evbEstado(st==='triste'?'triste':'feliz',800),1700); } else if(h.st) evbEstado(h.st,h.st==='acenando'?1700:1200); }
+{ const _et=evaTela; evaTela=function(){ _et(); setTimeout(()=>{ try{ if(!evbDuvidas()||!nvAdmin()) evbReage(); }catch(e){} },2300); }; }
+setInterval(()=>{ try{ if(document.hidden||$('#t-eva').hidden) return; if(evbDuvidas()&&nvAdmin()) return; evbReage(); }catch(e){} },25000);
+/* pulo também quando triste (personalidade) */
+(function(){ const st=document.createElement('style'); st.textContent='.evb[data-st="triste"] .corpo{animation:evbPulo .6s ease-out}'; document.head.appendChild(st); })();
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Personalidade','A EVA reage ao dia: pula de alegria com a conferência alta, fica triste (e pula de nervoso) com muitas caixas fora do romaneio ou muitas reentregas, e avisa ocorrências abertas.']); })();
 
 </script>
 
