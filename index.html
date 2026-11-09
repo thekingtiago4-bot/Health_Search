@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.5.1', HS_DATA='09/11/2026';
+const HS_VERSAO='9.5.2', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8830,6 +8830,55 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest) re
 (function(){ const s=MAN.find(x=>/Buscar/i.test(x.t)); if(s&&s.passos) s.passos.unshift(['Buscar qualquer coisa','Digite NF, pedido, cliente, destinatário, remetente, cidade, romaneio ou motorista. Não precisa escolher o tipo: a busca é sempre em tudo.'],['Desmarcar notas','No resultado, desmarque o ✓ das notas que não vão: o total recalcula notas, paradas (cada cliente conta 1), volumes, peso e valor. Bom para montar rota. Vale só para aquela pesquisa.'],['Pesquisas recentes','Abaixo da busca ficam as pesquisas recentes. Toque para repetir; ✕ apaga a linha.']); })();
 /* ---- Romaneios: só Carregados e Banco de dados ---- */
 (function(){ const seg=document.querySelector('.rom-sub'); if(!seg) return; const x=seg.querySelector('[data-rom-sub="excel"]'); if(x) x.style.display='none'; const bd=seg.querySelector('[data-rom-sub="banco"]'); if(bd) bd.textContent='Banco de dados'; const bt=$('#t-excel'); if(bt) bt.hidden=true; })();
+
+/* ================= v9.5.2 · Painel do gestor ao vivo · Rotas com histórico por dia · EVA que aprende ================= */
+{ const _g=gestorRender; gestorRender=function(){ _g.apply(this,arguments); try{ const g=$('#t-gestor .gs-grid'); if(!g) return;
+    const hoje=hojeISO(); const bip=((OP&&OP.bipes)||[]).filter(b=>{ const d=new Date(b.criado_em||0); return diaLocal(d.toISOString())===hoje; });
+    const hr=new Map(); for(const b of bip){ const h=String(new Date(b.criado_em).getHours()).padStart(2,'0')+'h'; hr.set(h,(hr.get(h)||0)+1); }
+    const pu=new Map(); for(const b of bip){ const u=(b.usuario||'?').split(' ')[0]; pu.set(u,(pu.get(u)||0)+1); }
+    const L=dvS().filter(d=>d.st!=='resolvida'); const oc=[['Divergência · falta',L.filter(d=>!avEh(d)&&d.tipo==='Falta de volume').length],['Divergência · sobra',L.filter(d=>!avEh(d)&&d.tipo==='Sobra de volume').length],['Avarias',L.filter(avEh).length],['Voltaram no romaneio',L.filter(d=>d.st==='apareceu').length]];
+    const avt=new Map(); for(const d of dvS().filter(avEh)) avt.set(d.sub||'Outro',(avt.get(d.sub||'Outro')||0)+1);
+    const notasHoje=todasLinhas().length, confer=new Set(bip.map(b=>opK(b.nf||'')).filter(Boolean)).size;
+    g.insertAdjacentHTML('afterbegin',`<div class="gs-box" style="grid-column:1/-1;display:flex;gap:22px;flex-wrap:wrap;align-items:center"><span class="gs-vivo">● ao vivo</span><span><b style="font-size:22px">${notasHoje?Math.round(100*Math.min(confer,notasHoje)/notasHoje):0}%</b> conferido hoje</span><span><b style="font-size:22px">${fmtN(bip.length)}</b> bipes hoje</span><span><b style="font-size:22px">${fmtN(L.length)}</b> ocorrências abertas</span><span><b style="font-size:22px">${fmtN((CH&&CH.lista||[]).filter(c=>['Aberto','Em análise'].includes(c.status)).length)}</b> chamados abertos</span></div>`);
+    g.insertAdjacentHTML('beforeend',gestorBarras('Bipes por hora (hoje)',[...hr].sort(),null,'#4DABF7')+gestorBarras('Bipes por pessoa (hoje)',[...pu].sort((a,b)=>b[1]-a[1]),null,'#FFA94D')+gestorBarras('Ocorrências abertas',oc,null,'#E8590C')+gestorBarras('Avarias por tipo (todas)',[...avt].sort((a,b)=>b[1]-a[1]),null,AV_COR));
+  }catch(e){ console.error(e); } }; }
+setInterval(()=>{ try{ if(!document.hidden&&!$('#t-gestor').hidden) gestorRender(); }catch(e){} },30000);
+(function(){ const st=document.createElement('style'); st.textContent='.gs-vivo{color:#2f9e44;font-weight:700;animation:gsP 2s infinite}@keyframes gsP{50%{opacity:.4}}'; document.head.appendChild(st); })();
+
+/* Rotas: o último upload de cada dia fica guardado; à meia-noite a rota do dia vai para o histórico */
+{ const _p=rotaPublicar; rotaPublicar=async function(nova){ await _p(nova); try{ const R=rotaS(); if(R.atual){ R.dias=R.dias||{}; R.dias[diaLocal(R.atual.em)]=R.atual; const ks=Object.keys(R.dias).sort(); while(ks.length>90) delete R.dias[ks.shift()]; salvar(); } }catch(e){} }; }
+setInterval(()=>{ try{ const R=rotaS(); if(!R.atual||!rotEhRoteirizador()) return; const d=diaLocal(R.atual.em); if(d<hojeISO()){ R.dias=R.dias||{}; R.dias[d]=R.atual; R.hist=[R.atual].concat(R.hist||[]).slice(0,15); R.atual=null; salvar(); nuvSinc(); try{ rotaRender(); }catch(e){} } }catch(e){} },60000);
+{ const _r=rotaRender; rotaRender=function(){ _r(); try{ const R=rotaS(); const ds=Object.keys(R.dias||{}).sort().reverse(); const sel=$('#rot-hist'); if(!ds.length) return; if(sel&&!sel.dataset.dias){ sel.dataset.dias=1; sel.insertAdjacentHTML('beforeend',`<optgroup label="Último upload de cada dia">${ds.map(d=>`<option value="dia:${d}" ${ROT.ver===R.dias[d].id?'selected':''}>${fmtData(d)} (último do dia)</option>`).join('')}</optgroup>`); } }catch(e){} }; }
+document.addEventListener('change',e=>{ const s=e.target; if(s.id!=='rot-hist'||!String(s.value).startsWith('dia:')) return; e.stopImmediatePropagation(); const R=rotaS(); const r=R.dias[s.value.slice(4)]; if(!r) return; if(!(R.hist||[]).some(h=>h.id===r.id)) R.hist=(R.hist||[]).concat([r]); ROT.ver=r.id; rotaRender(); },true);
+
+/* EVA que aprende: o admin ensina regras, perguntas e respostas (com foto); todos aproveitam */
+try{ NUV_CAMPOS.push('evaEnsino'); NUV_ADMIN.add('s:evaEnsino'); }catch(e){}
+const evaE=()=>S.evaEnsino=S.evaEnsino||{regras:[],fatos:[]};
+function evaFatoAcha(txt){ const t=evaN(txt); const L=evaE().fatos; let melhor=null,mp=0; for(const f of L){ const ks=evaN(f.p).split(/\s+/).filter(w=>w.length>2); if(!ks.length) continue; const hit=ks.filter(w=>t.includes(w)).length/ks.length; if(hit>mp){ mp=hit; melhor=f; } } return mp>=0.75?melhor:null; }
+{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt);
+  if(/\b(suas|quais) regras\b|o que (te|voce) ensin/.test(t)){ const R=evaE().regras; return R.length?'<b>Regras que o administrador me ensinou:</b><br>'+R.map((r,i)=>`${i+1}. ${esc(r.txt)}`).join('<br>'):'Ainda não tenho regras ensinadas. 🐼'; }
+  const f=evaFatoAcha(txt); if(f) return esc(f.r).replace(/\n/g,'<br>')+(f.foto?`<br><img src="${f.foto}" alt="" style="max-width:100%;border-radius:10px;margin-top:6px">`:'')+' 🐼';
+  return _ee(txt); }; }
+function evaEnsinoRender(){ const c=$('#eva-centro'); if(!c) return; let el=$('#eva-ens'); if(!nvAdmin()){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='eva-ens'; c.appendChild(el); }
+  const E=evaE(); el.innerHTML=`<div class="aj-card" style="margin-top:14px"><h2>🎓 Ensinar a EVA (só administrador)</h2>
+   <p class="sec" style="margin:0 0 10px">Ensine como se ensina uma criança: uma regra por vez, ou uma pergunta com a resposta certa (pode pôr foto). Tudo vale para todos os usuários.</p>
+   <h3 style="font-size:.95rem;margin:10px 0 6px">Regras que ela segue</h3><div style="display:flex;gap:8px"><input id="ee-regra" placeholder="Ex.: Nota da MESA que volta outro dia é reentrega" style="flex:1"><button class="btn pri mini" type="button" id="ee-regra-ok">Ensinar</button></div>
+   <ol style="margin:8px 0 0;padding-left:20px">${E.regras.map((r,i)=>`<li>${esc(r.txt)} <button class="op-x" type="button" data-ee-dr="${i}">✕</button></li>`).join('')}</ol>
+   <h3 style="font-size:.95rem;margin:16px 0 6px">Perguntas e respostas</h3><div style="display:grid;gap:8px"><input id="ee-p" placeholder="Quando perguntarem… (ex.: onde fica o gelo)"><textarea id="ee-r" rows="2" placeholder="Responda… (ex.: As caixas de gelo ficam na câmara fria, prateleira 2)"></textarea><div style="display:flex;gap:8px;align-items:center"><label class="btn mini" style="cursor:pointer">📷 Foto (opcional)<input type="file" accept="image/*" id="ee-f" hidden></label><span id="ee-fpv" class="sec"></span><button class="btn pri mini" type="button" id="ee-ok" style="margin-left:auto">Ensinar</button></div></div>
+   <div style="margin-top:10px">${E.fatos.map((f,i)=>`<div class="ee-f"><b>${esc(f.p)}</b><span>${esc(f.r)}</span>${f.foto?'<em>📷</em>':''}<button class="op-x" type="button" data-ee-df="${i}">✕</button></div>`).join('')||'<p class="sec">Nenhuma ainda.</p>'}</div></div>`; }
+let _eeFoto='';
+document.addEventListener('change',async e=>{ if(e.target.id==='ee-f'){ _eeFoto=await avFoto(e.target.files[0]); $('#ee-fpv').textContent=_eeFoto?'foto pronta ✓':''; } });
+document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.closest('#eva-ens')) return; const E=evaE(); let b;
+  if(t.id==='ee-regra-ok'){ const v=$('#ee-regra').value.trim(); if(!v) return; E.regras.push({txt:v,em:new Date().toISOString()}); salvar(); evaEnsinoRender(); toast('🐼 A EVA aprendeu a regra.'); return; }
+  if(t.id==='ee-ok'){ const p=$('#ee-p').value.trim(), r=$('#ee-r').value.trim(); if(!p||!r){ toast('Escreva a pergunta e a resposta.'); return; } E.fatos.push({p,r,foto:_eeFoto,em:new Date().toISOString()}); _eeFoto=''; salvar(); evaEnsinoRender(); toast('🐼 A EVA aprendeu.'); return; }
+  if((b=t.closest('[data-ee-dr]'))){ E.regras.splice(+b.dataset.eeDr,1); salvar(); evaEnsinoRender(); return; }
+  if((b=t.closest('[data-ee-df]'))){ E.fatos.splice(+b.dataset.eeDf,1); salvar(); evaEnsinoRender(); } });
+{ const _et=evaTela; evaTela=function(){ _et(); evaEnsinoRender(); }; }
+(function(){ const st=document.createElement('style'); st.textContent='.ee-f{display:grid;grid-template-columns:1fr 2fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--linha)}@media(max-width:600px){.ee-f{grid-template-columns:1fr auto}}'; document.head.appendChild(st);
+  MAN.push({id:'eva-ensino',t:'EVA — conversar e ensinar',img:'mural',intro:'Configurações → EVA abre a EVA no centro da tela.',passos:[['Conversar','Todos podem tirar dúvidas, pedir para procurar notas, cidades, ocorrências e rotas.'],['Ensinar (admin)','O administrador escreve regras (“o que ela deve saber”) e perguntas com a resposta certa, com foto se quiser. A EVA passa a responder isso para todos.'],['Perguntar o que ela aprendeu','Pergunte “quais são suas regras?”.']]});
+  const g=MAN.find(x=>/gestor/i.test(x.t)); if(g&&g.passos) g.passos.unshift(['Ao vivo','O Painel do gestor atualiza sozinho a cada 30 segundos: % conferido, bipes por hora e por pessoa, ocorrências abertas, avarias por tipo, reentregas por motivo, motorista e dia.']);
+  const r=MAN.find(x=>/^Rotas|ROTAS/i.test(x.t)); if(r&&r.passos) r.passos.push(['Histórico por dia','O último upload de cada dia fica guardado. À meia-noite a rota do dia vai para o histórico; escolha o dia na lista “Último upload de cada dia”.']); })();
 
 </script>
 
