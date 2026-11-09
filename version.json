@@ -1,1 +1,1 @@
-{"versao":"9.1.0","data":"2026-11-09","novidades":"Divergência e Avaria direto na Busca, aba Avarias, reentrega colorida pela divergência, ações rápidas, Desfazer 10 s e Ctrl+K"}
+{"versao":"9.1.1","data":"2026-11-09","novidades":"Menos uso do banco: sincroniza só o que mudou, ao vivo checa a cada 5 min, aba escondida não consulta, aviso claro quando o banco não responde"}
