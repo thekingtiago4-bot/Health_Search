@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.7.3', HS_DATA='08/11/2026';
+const HS_VERSAO='8.8.0', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6377,6 +6377,9 @@ const MAN=[
    ['Layout e ajuda','Cada tela tem um botão (?) ao lado do título que abre a parte certa do Manual. Os grupos do menu (Operação, Regiões, Ferramentas, Administração) abrem e fecham clicando no nome; Rotas fica junto da Operação. Sem internet aparece só um selo pequeno ao lado do ☁. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam num cartão “Problemas” (toque nos números pequenos para ver só um tipo). No celular e no tablet as tabelas viram cartões, sem rolagem para os lados.']]},
 {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
   passos:[['Liberar a câmera','Na primeira vez toque em “🔓 Liberar câmera” e permita o acesso no navegador.'],
+   ['🤖 EVA — a assistente','A EVA é o robozinho no canto inferior direito, acima do 💾 Salvar. Toque nela e escreva o que precisa: “procura 442872”, “cliente unimed”, “quem atende Itanhandu MG”, “reentregas de hoje”, “bipados hoje”, “divergências”, “o que você aprendeu” ou “ajuda”. Ela usa o 🧠 Cérebro: quando não tem certeza numa etiqueta (um QR Code de formato novo, ou um cliente que bate com mais de uma nota), ela anota a dúvida e o administrador responde em “❓ Dúvidas” — a resposta vira aprendizado para todos os aparelhos. O número laranja na EVA é a quantidade de dúvidas esperando resposta.'],
+   ['📊 Painel mensal da gerência','No Painel do gestor: escolha o mês e toque em “📄 Gerar PDF”. Sai uma página com reentregas por motivo, semana, cidade e motorista; divergências do mês por origem e por tipo; notas fora do romaneio por origem e motivo; e as cidades de MG mais atendidas (do Relatório Direto). Bom para apresentar à gerência.'],
+   ['Alerta do robô de backup','Se o backup automático da noite falhar ou passar mais de 30 horas sem backup, aparece um aviso vermelho no topo só para o administrador.'],
    ['📄 Relatório Direto (Via Minas)','No menu, logo abaixo de Via Minas. Os XMLs podem ser jogados na aba Romaneios (junto com os PDFs) ou em “📥 Inserir XMLs” aqui; escolha o XML do romaneio LKR × AQA do dia: o relatório do Softlog em planilha XML (uma linha por nota) ou os XMLs de cada nota (com o mesmo nome do romaneio, ex.: “LKR X AQA 09-11.xml”; o dia vem do dd-mm do nome). “📄 Gerar planilha” monta a lista só com destinos em MG e estas cidades de SP: São João da Boa Vista, São José do Rio Pardo, Vargem, Espírito Santo do Pinhal, Caconde, Águas da Prata, Andradas, Cajuru, Santa Rosa de Viterbo, Porto Ferreira, Descalvado, Pirassununga, Tambaú, Santa Cruz das Palmeiras, Divinolândia, Tapiratiba, São Sebastião da Grama, Aguaí, Cássia dos Coqueiros, Santo Antônio da Alegria e Casa Branca. Colunas: destinatário, CEP, endereço, número, bairro, cidade, UF, peso e valor dos produtos. Se ainda não houver XMLs do dia, aparece um aviso. Depois: “🖨 Imprimir / PDF” ou “⬇ Planilha (Excel)”. Cada dia gerado entra no histórico “Cidades de MG que mais atendemos”, no fim da mesma tela (gerar de novo no mesmo dia substitui, não soma em dobro).'],
    ['Caixa fora do romaneio','Quando a caixa não está no romaneio do dia, o app lê o texto da própria etiqueta (só o papel branco, ampliado) e já registra a linha completa: pedido e volumes pelo QR Code, cliente e cidade pelo texto. Se não conseguir ler, procura no banco de romaneios e no XML das notas; se ainda faltar, use ✏ para digitar ou 📷 para reler a etiqueta.'],
    ['Cores do bipe','🟢 Verde = conferido · 🟡 Amarelo = sem nota · 🔴 Vermelho = fora do romaneio (separe) · 🟣 Roxo = reentrega · 🟠 Laranja = agendada (não vai) · Rosa-escuro = divergência · Azul-petróleo = caixa que faltou · 🔵 Azul = duplicado. A câmera não mostra mais esta legenda na tela: ela fica aqui no Manual e no (?) da Operação.'],
@@ -7468,6 +7471,120 @@ function rdRender(){ const el=$('#rd-corpo'); if(!el) return; const di=RD.dia; c
 { const _imp=importar; importar=async function(files){ const fs=[...(files||[])]; const xs=fs.filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)), ps=fs.filter(f=>!xs.includes(f));
     if(xs.length){ try{ await opXmlImportar(xs); }catch(e){} await rdImportar(xs,hojeISO()); }
     if(ps.length) return _imp.call(this,ps); }; }
+/* ================= v8.8.0 · EVA — a assistente do Health Search (usa o 🧠 Cérebro; procura, responde e pergunta quando tem dúvida) ================= */
+const EVA={aberta:false,msgs:[]};
+const EVA_SVG=`<svg viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="evg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#0E7490"/></linearGradient></defs>
+ <circle cx="32" cy="34" r="26" fill="url(#evg)"/><rect x="14" y="22" width="36" height="24" rx="12" fill="#0B2A33"/><circle cx="25" cy="34" r="4.2" fill="#7CF5E4"><animate attributeName="r" values="4.2;4.2;.6;4.2" keyTimes="0;.92;.96;1" dur="4s" repeatCount="indefinite"/></circle><circle cx="39" cy="34" r="4.2" fill="#7CF5E4"><animate attributeName="r" values="4.2;4.2;.6;4.2" keyTimes="0;.92;.96;1" dur="4s" repeatCount="indefinite"/></circle>
+ <path d="M27 41q5 3 10 0" stroke="#7CF5E4" stroke-width="2" fill="none" stroke-linecap="round"/><line x1="32" y1="8" x2="32" y2="14" stroke="#0E7490" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="7" r="3.2" fill="#2DD4BF"/></svg>`;
+function evaDuv(){ const c=cer(); c.duv=Array.isArray(c.duv)?c.duv:[]; return c.duv; }
+function evaPendentes(){ return evaDuv().filter(d=>!d.resp); }
+/* ---- dúvidas: a EVA pergunta quando o Cérebro não tem certeza ---- */
+function evaNovaDuvida(d){ const L=evaDuv(); if(L.some(x=>!x.resp&&x.chave===d.chave)) return; L.unshift(Object.assign({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),em:new Date().toISOString(),por:(typeof opEu==='function'?opEu():'')},d)); if(L.length>200) L.length=200; cerMudou(); evaBadge(); }
+/* QR de formato novo que não achou nada: qual dos números é o pedido/NF? */
+{ const _ol=opLer; opLer=function(textos,origem){ const r=_ol.apply(this,arguments); try{ const b=OP.bipes[0]; if(b&&b.status==='fora'){ for(const t of (textos||[]).map(String)){ if(t.includes('@')||/^\d+$/.test(t.trim())) continue; const nums=(t.match(/\d+/g)||[]).filter(n=>n.length>=4); if(nums.length<2) continue; const s=cerSig(t); if(cer().qr[s]) continue;
+        evaNovaDuvida({tipo:'qr',chave:'qr:'+s,texto:`Li um QR Code de um formato que ainda não conheço:<br><code>${esc(t.slice(0,80))}</code><br>Qual destes números é o <b>pedido ou a NF</b>?`,opcoes:nums.slice(0,6).map((n,i)=>({v:String((t.match(/\d+/g)||[]).indexOf(n)),t:n})).concat([{v:'-',t:'Nenhum'}]),sig:s}); break; } } }catch(e){} return r; }; }
+/* etiqueta lida por texto com cliente que bate com mais de uma nota no romaneio do dia */
+{ const _pc=cerPorCliente; cerPorCliente=function(p,idx){ const r=_pc(p,idx); try{ if(!r&&p&&p.dest&&cerNz(p.dest).length>=4){ const dn=cerNz(p.dest), cn=cerNz(p.cid||''); const op=[];
+      for(const its of idx.nf.values()) for(const it of its){ const x=it.x, xd=cerNz(x.dest||''); if(!xd) continue; if(xd===dn||(dn.length>=6&&(xd.startsWith(dn.slice(0,8))||dn.startsWith(xd.slice(0,8))))){ if(!cn||!x.cid||cerNz(x.cid).startsWith(cn.slice(0,5))) op.push({v:opK(x.nf),t:`NF ${x.nf} · ${x.dest}${x.cid?' · '+x.cid:''}${x.vol?' · '+x.vol+' vol':''}`}); } }
+      const un=[...new Map(op.map(o=>[o.v,o])).values()]; if(un.length>1) evaNovaDuvida({tipo:'cli',chave:'cli:'+dn+'|'+hojeISO(),texto:`A etiqueta de <b>${esc(p.dest)}</b>${p.cid?' ('+esc(p.cid)+')':''} bate com ${un.length} notas do romaneio de hoje. Quando aparecer de novo, qual devo escolher?`,opcoes:un.slice(0,6).concat([{v:'-',t:'Deixar para conferir na hora'}]),dn}); } }catch(e){} return r; }; }
+function evaResponder(id,v){ const d=evaDuv().find(x=>x.id===id); if(!d) return; d.resp=v; d.respEm=new Date().toISOString(); d.respPor=(typeof opEu==='function'?opEu():''); const C=cer();
+  if(d.tipo==='qr'&&v!=='-'){ C.qr[d.sig]={i:+v,tipo:'ped',ok:1}; C.st.aprendeu++; }
+  if(d.tipo==='cli'&&v!=='-'){ C.fixo=C.fixo||{}; C.fixo[d.dn]={nf:v,dia:hojeISO()}; C.st.aprendeu++; }
+  cerMudou(); evaBadge(); }
+/* resposta de cliente ambíguo vale para o mesmo dia */
+{ const _pc=cerPorCliente; cerPorCliente=function(p,idx){ try{ const f=(cer().fixo||{})[cerNz(p&&p.dest||'')]; if(f&&f.dia===hojeISO()&&idx.nf.has(f.nf)) return f.nf; }catch(e){} return _pc(p,idx); }; }
+
+/* ---- conversa: entende pedidos simples em português ---- */
+function evaN(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
+function evaBuscar(txt){ irPara('buscar'); const q=$('#q'); q.value=txt; q.dispatchEvent(new Event('input')); try{ $('#f-busca').requestSubmit(); }catch(e){ $('#f-busca').dispatchEvent(new Event('submit',{cancelable:true})); } }
+function evaCidade(nome){ try{ const t=nome.toUpperCase().replace(/\s*[-\/]\s*([A-Z]{2})$/,' $1'); const m=t.match(/^(.*?)\s+([A-Z]{2})$/); const r=m?resolverCidade(m[1],m[2]):resolverCidade(t,''); if(!r||!r.o) return null;
+    const cod=r.o.c; const rg=geoClass(cod,'regiao'), bs=geoClass(cod,'base'); const nm=ids=>(ids&&ids.ids||[]).map(i=>(geoLista(i)||{}).nome).filter(Boolean).join(', ');
+    return {cidade:r.o.n+'/'+(r.o.u||''),regiao:nm(rg),base:nm(bs)}; }catch(e){ return null; } }
+function evaEntender(txt){ const t=evaN(txt); const num=(txt.match(/\d{4,12}/g)||[]);
+  if(/^(oi|ola|bom dia|boa tarde|boa noite|e ai)\b/.test(t)) return `Oi${NV&&NV.perfil&&NV.perfil.nome?', '+esc(String(NV.perfil.nome).split(' ')[0]):''}! Sou a EVA. Me peça uma nota, um pedido, um cliente, uma cidade, ou "reentregas de hoje".`;
+  if(/ajuda|o que voce faz|comandos/.test(t)) return `Posso:<br>• <b>procurar</b> NF, pedido ou cliente (ex.: "procura 442872", "cliente unimed")<br>• dizer <b>qual região/base atende</b> uma cidade (ex.: "quem atende Itanhandu MG")<br>• abrir <b>reentregas</b>, <b>divergências</b>, <b>fora do romaneio</b>, <b>rotas</b>, <b>relatório direto</b><br>• contar o que foi <b>bipado hoje</b><br>• e, quando eu tiver dúvida numa etiqueta, eu te pergunto aqui.`;
+  if(/duvida/.test(t)) return evaDuvHtml();
+  if(/(quem atende|qual base|qual regiao|atende|regiao de|base de)/.test(t)){ const nome=txt.replace(/.*?(quem atende|qual (a )?base|qual (a )?regi[aã]o|atende|regi[aã]o de|base de)\s*(a cidade de|a cidade|de|do|da)?\s*/i,'').replace(/[?.!]+$/,'').trim(); const c=nome&&evaCidade(nome);
+    if(c) return `<b>${esc(c.cidade)}</b><br>Região: <b>${esc(c.regiao||'sem região marcada')}</b>${c.base?'<br>Base: <b>'+esc(c.base)+'</b>':''}`; return nome?`Não achei a cidade "${esc(nome)}". Tente com a UF, ex.: "quem atende Itanhandu MG".`:'Qual cidade?'; }
+  if(/reentrega/.test(t)){ irPara('reentregas'); const n=+($('#qt-re')||{}).textContent||0; return `Abri as <b>Reentregas</b>. Hoje tem <b>${fmtN(n)}</b> lançada(s).`; }
+  if(/divergen/.test(t)){ irPara('divergencias'); const n=+($('#qt-dv')||{}).textContent||0; return `Abri as <b>Divergências</b>: <b>${fmtN(n)}</b> em aberto.`; }
+  if(/fora do romaneio|\bfora\b/.test(t)){ irPara('fora'); return 'Abri as notas <b>fora do romaneio</b>.'; }
+  if(/relatorio direto|lkr/.test(t)){ irPara('reldireto'); return 'Abri o <b>Relatório Direto</b>.'; }
+  if(/\brota/.test(t)){ irPara('rotadia'); return 'Abri as <b>Rotas</b> do dia.'; }
+  if(/bipad|bipe|conferid|operacao/.test(t)){ const bs=(OP.bipes||[]).filter(b=>b.dia===hojeISO()); const c=s=>bs.filter(b=>b.status===s).length; irPara('operacao');
+    return `Hoje: <b>${fmtN(bs.length)}</b> bipe(s) — ${fmtN(c('ok'))} conferido(s), ${fmtN(c('semnota'))} sem nota, ${fmtN(c('fora'))} fora do romaneio, ${fmtN(c('dup'))} duplicado(s).`; }
+  if(/cerebro|aprendeu/.test(t)){ const C=cer(); return `Já aprendi <b>${fmtN(Object.keys(C.qr).length)}</b> formato(s) de QR, <b>${fmtN(Object.keys(C.mod).length)}</b> modelo(s) de etiqueta e <b>${fmtN(Object.keys(C.ali).length)}</b> nome(s) de cliente. Resolvi <b>${fmtN(C.st.ajudas)}</b> leitura(s) sozinha.`; }
+  if(num.length){ evaBuscar(num.join(' ')); return `Procurei <b>${esc(num.join(', '))}</b> na Busca. O resultado está na tela.`; }
+  const alvo=txt.replace(/^(procura(r)?|busca(r)?|acha(r)?|encontra(r)?|cliente|me (mostra|acha)|onde (esta|está))\s*(o|a|os|as|pelo|pela|nota|pedido|nf)?\s*/i,'').trim();
+  if(alvo.length>=3){ evaBuscar(alvo); return `Procurei <b>${esc(alvo)}</b> na Busca.`; }
+  return 'Não entendi. Escreva "ajuda" para ver o que eu sei fazer.'; }
+function evaDuvHtml(){ const P=evaPendentes(); if(!P.length) return 'Não tenho nenhuma dúvida agora. 🙂';
+  if(!nvAdmin()) return `Tenho ${fmtN(P.length)} dúvida(s), mas quem responde é o administrador.`;
+  return P.slice(0,5).map(d=>`<div class="eva-duv">${d.texto}<div class="eva-ops">${d.opcoes.map(o=>`<button type="button" class="btn mini" data-eva-r="${d.id}" data-v="${esc(o.v)}">${esc(o.t)}</button>`).join('')}</div></div>`).join(''); }
+/* ---- interface ---- */
+function evaBadge(){ const n=nvAdmin()?evaPendentes().length:0; const b=$('#eva-qt'); if(b){ b.textContent=n; b.hidden=!n; } }
+function evaFala(html,quem){ EVA.msgs.push({html,quem}); if(EVA.msgs.length>60) EVA.msgs.shift(); evaDesenhar(); }
+function evaDesenhar(){ const c=$('#eva-msgs'); if(!c) return; c.innerHTML=EVA.msgs.map(m=>`<div class="eva-m ${m.quem==='eu'?'eu':''}">${m.html}</div>`).join(''); c.scrollTop=c.scrollHeight; }
+function evaAbrir(v){ EVA.aberta=v; const p=$('#eva-painel'); if(!p) return; p.hidden=!v; if(v){ if(!EVA.msgs.length){ evaFala(`Oi! Eu sou a <b>EVA</b>, a assistente do Health Search. Me pergunte uma nota, um pedido, um cliente ou uma cidade.${nvAdmin()&&evaPendentes().length?'<br>Tenho <b>'+evaPendentes().length+'</b> dúvida(s) para você — toque em "Dúvidas".':''}`); } setTimeout(()=>$('#eva-in').focus(),50); } }
+(function(){ const st=document.createElement('style'); st.textContent=`#eva-bt{position:fixed;right:22px;bottom:66px;z-index:1500;width:56px;height:56px;border-radius:50%;border:0;padding:0;background:transparent;cursor:pointer;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));transition:transform .15s}#eva-bt:hover{transform:scale(1.07)}
+ #eva-qt{position:absolute;top:-2px;right:-2px;background:#E8590C;color:#fff;border-radius:10px;min-width:20px;height:20px;font:700 12px/20px system-ui;text-align:center;padding:0 5px}
+ #eva-painel{position:fixed;right:14px;bottom:130px;z-index:1550;width:min(380px,calc(100vw - 28px));height:min(520px,calc(100vh - 120px));background:var(--fundo,#0F2027);color:var(--tinta,#fff);border:1px solid var(--linha);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
+ #eva-painel[hidden]{display:none}.eva-cab{display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(90deg,#0E7490,#115E59);color:#fff}.eva-cab .av{width:34px;height:34px}.eva-cab b{font-size:1.05em}.eva-cab small{opacity:.8;display:block}
+ #eva-msgs{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}.eva-m{background:var(--sup);border-radius:12px 12px 12px 4px;padding:8px 10px;max-width:90%;font-size:var(--fs-sm);line-height:1.4}.eva-m.eu{align-self:flex-end;background:#0E7490;color:#fff;border-radius:12px 12px 4px 12px}
+ .eva-m code{word-break:break-all;font-size:.85em}.eva-duv{border-top:1px solid var(--linha);padding-top:6px;margin-top:6px}.eva-duv:first-child{border:0;margin:0;padding:0}.eva-ops{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+ .eva-chips{display:flex;gap:6px;overflow-x:auto;padding:6px 10px;border-top:1px solid var(--linha)}.eva-chips button{white-space:nowrap}
+ .eva-f{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--linha)}.eva-f input{flex:1;min-width:0}`; document.head.appendChild(st);
+  const b=document.createElement('button'); b.id='eva-bt'; b.type='button'; b.title='EVA — assistente'; b.setAttribute('aria-label','Abrir a EVA'); b.innerHTML=EVA_SVG+'<span id="eva-qt" hidden>0</span>'; b.onclick=()=>evaAbrir(!EVA.aberta); document.body.appendChild(b);
+  const p=document.createElement('div'); p.id='eva-painel'; p.hidden=true; p.setAttribute('role','dialog'); p.setAttribute('aria-label','EVA');
+  p.innerHTML=`<div class="eva-cab"><span class="av">${EVA_SVG}</span><div style="flex:1"><b>EVA</b><small>assistente do Health Search</small></div><button type="button" id="eva-x" aria-label="Fechar" style="background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px">✕</button></div><div id="eva-msgs" aria-live="polite"></div>
+   <div class="eva-chips"><button class="btn mini" data-eva-c="dúvidas">❓ Dúvidas</button><button class="btn mini" data-eva-c="reentregas de hoje">Reentregas</button><button class="btn mini" data-eva-c="bipados hoje">Bipados hoje</button><button class="btn mini" data-eva-c="divergências">Divergências</button><button class="btn mini" data-eva-c="o que você aprendeu">🧠 Aprendizado</button><button class="btn mini" data-eva-c="ajuda">Ajuda</button></div>
+   <form class="eva-f" id="eva-f"><input id="eva-in" type="text" placeholder="Ex.: procura 442872 · quem atende Itanhandu MG" autocomplete="off"><button class="btn pri">Enviar</button></form>`;
+  document.body.appendChild(p);
+  const falar=txt=>{ if(!txt.trim()) return; evaFala(esc(txt),'eu'); let r; try{ r=evaEntender(txt); }catch(e){ r='Tive um problema para entender isso.'; console.error(e); } setTimeout(()=>evaFala(r),180); };
+  $('#eva-f').addEventListener('submit',e=>{ e.preventDefault(); const i=$('#eva-in'); falar(i.value); i.value=''; });
+  p.addEventListener('click',e=>{ const c=e.target.closest('[data-eva-c]'); if(c){ falar(c.dataset.evaC); return; } const r=e.target.closest('[data-eva-r]'); if(r){ evaResponder(r.dataset.evaR,r.dataset.v); r.closest('.eva-duv').innerHTML='✔ Anotado. Obrigada! Vou usar isso nas próximas leituras.'; } if(e.target.closest('#eva-x')) evaAbrir(false); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&EVA.aberta){ evaAbrir(false); e.stopPropagation(); } },true);
+  setInterval(evaBadge,5000); setTimeout(evaBadge,3000); })();
+
+/* ================= v8.8.0 · Painel mensal da gerência (PDF) ================= */
+function mensalHTML(mes){ const ini=mes+'-01', fimD=new Date(+mes.slice(0,4),+mes.slice(5,7),0), fim=mes+'-'+String(fimD.getDate()).padStart(2,'0'), dentro=d=>d&&d>=ini&&d<=fim;
+  const nomeMes=new Date(ini+'T12:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const fo=foraS().filter(x=>dentro(x.dia)); const re=(typeof rpTodas==='function'?rpTodas():[]).filter(x=>dentro(x.d)); const dvs=dvS();
+  const dvN=dvs.filter(x=>dentro(String(x.d||'').slice(0,10))), dvR=dvs.filter(x=>x.st==='resolvida'&&dentro(String(((x.hist||[]).slice(-1)[0]||{}).em||'').slice(0,10))), dvA=dvs.filter(x=>x.st!=='resolvida');
+  const top=(l,f,n)=>{ const m=new Map(); for(const x of l){ const k=f(x)||'(não informado)'; m.set(k,(m.get(k)||0)+1); } return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n||8); };
+  const barras=(t,it,tot)=>{ const mx=it.length?it[0][1]:1; return `<div class="bx"><h4>${t}</h4>${it.length?it.map(([k,v])=>`<div class="ln"><span class="nm">${esc(k)}</span><span class="br"><i style="width:${Math.max(3,Math.round(100*v/mx))}%"></i></span><b>${fmtN(v)}${tot?' · '+rpPct(v,tot):''}</b></div>`).join(''):'<p class="v">Sem registros no mês.</p>'}</div>`; };
+  const val=re.reduce((s,x)=>s+(+x.l.val||0),0), vol=re.reduce((s,x)=>s+(+x.l.qtd||0),0);
+  /* cidades mais atendidas (Relatório Direto) */ const H=S.rdHist||{}; const C={}; let diasRd=0; for(const [d,v] of Object.entries(H)){ if(!dentro(d)||!v||!v.cid) continue; diasRd++; for(const [k,c] of Object.entries(v.cid)){ C[k]=(C[k]||0)+c.n; } }
+  const cid=Object.entries(C).sort((a,b)=>b[1]-a[1]).slice(0,15); const totCid=Object.values(C).reduce((a,b)=>a+b,0);
+  /* reentregas por semana do mês */ const sem=new Map(); for(const x of re){ const s='Semana '+Math.ceil(+x.d.slice(8,10)/7); sem.set(s,(sem.get(s)||0)+1); }
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Painel mensal Health Search · ${nomeMes}</title><style>
+  @page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#1b2b2e;margin:0;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #0F5560;padding-bottom:6px;margin-bottom:8px}header h1{margin:0;font-size:21px;color:#0E3B43;text-transform:capitalize}header small{color:#5d7376}
+  .kp{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 10px}.kp div{border:1px solid #d5e2e2;border-radius:8px;padding:7px 9px;color:#5d7376;font-size:10px}.kp b{display:block;font-size:18px;color:#0E3B43}
+  h2{font-size:13px;margin:12px 0 5px;color:#fff;background:#0F5560;padding:4px 8px;border-radius:6px}.g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .bx{border:1px solid #e1eaea;border-radius:8px;padding:6px 8px;break-inside:avoid}.bx h4{margin:0 0 4px;font-size:11px;color:#0F5560}.ln{display:grid;grid-template-columns:1.3fr 1fr auto;gap:6px;align-items:center;border-bottom:1px dotted #e1eaea;padding:2px 0}
+  .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.br{height:7px;background:#eef4f4;border-radius:4px;overflow:hidden}.br i{display:block;height:100%;background:#0E7490}.v{color:#8aa}
+  footer{margin-top:12px;color:#8aa;font-size:9.5px;display:flex;justify-content:space-between}</style></head><body>
+  <header><div><h1>Painel mensal da operação · ${nomeMes}</h1><small>Base AQA · ${fmtData(ini)} a ${fmtData(fim)} · gerado por ${esc(opEu())} em ${new Date().toLocaleString('pt-BR')}</small></div><small><b>Health Search</b><br>Relatórios Precisos</small></header>
+  <div class="kp"><div>Reentregas<b>${fmtN(re.length)}</b></div><div>Volumes reentregues<b>${fmtN(vol)}</b></div><div>Valor reentregue<b>${reMoeda(val)}</b></div><div>Notas fora do romaneio<b>${fmtN(fo.length)}</b></div>
+   <div>Divergências novas<b>${fmtN(dvN.length)}</b></div><div>Divergências resolvidas<b>${fmtN(dvR.length)}</b></div><div>Divergências em aberto<b>${fmtN(dvA.length)}</b></div><div>Notas no Relatório Direto<b>${fmtN(totCid)}</b></div></div>
+  <h2>Reentregas por motivo</h2><div class="g">${barras('Motivos',top(re,rpMotivo,10),re.length)}${barras('Por semana do mês',[...sem.entries()].sort(),re.length)}${barras('Cidades com mais reentregas',top(re,rpCidade,10),re.length)}${barras('Motoristas',top(re,rpMot,10),re.length)}</div>
+  <h2>Divergências por origem</h2><div class="g">${barras('Novas no mês por origem (remetente)',top(dvN,x=>x.rem,10),dvN.length)}${barras('Novas no mês por tipo',top(dvN,x=>x.tipo,10),dvN.length)}</div>
+  <h2>Fora do romaneio</h2><div class="g">${barras('Por origem',top(fo,x=>x.origem,10),fo.length)}${barras('Por motivo',top(fo,x=>x.motivo,10),fo.length)}</div>
+  <h2>Cidades de MG que mais atendemos (Relatório Direto · ${fmtN(diasRd)} dia(s))</h2><div class="g">${barras('Notas por cidade',cid.slice(0,8),totCid)}${barras('Continuação',cid.slice(8,15),totCid)}</div>
+  <footer><span>© ${new Date().getFullYear()} Tiago Souza · Health Search — todos os direitos reservados</span><span>${nomeMes}</span></footer><script>onload=()=>setTimeout(()=>print(),400)<\/script></body></html>`; }
+function mensalAbrir(mes){ const w=window.open('','_blank'); if(!w){ toast('Permita pop-ups para gerar o PDF.'); return; } w.document.write(mensalHTML(mes||hojeISO().slice(0,7))); w.document.close(); }
+{ const _gr=gestorRender; gestorRender=function(){ _gr.apply(this,arguments); const c=$('#gs-corpo'); if(!c||$('#gs-mensal')) return; const ms=[]; for(let i=0;i<12;i++){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-i); ms.push(d.toISOString().slice(0,7)); }
+  c.insertAdjacentHTML('afterbegin',`<div class="card" id="gs-mensal" style="padding:12px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>📊 Painel mensal da gerência</b><span class="sub">reentregas por motivo, divergências por origem, fora do romaneio e cidades mais atendidas</span><span style="flex:1"></span><select id="gs-mes">${ms.map(m=>`<option value="${m}">${new Date(m+'-15').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</option>`).join('')}</select><button class="btn pri" type="button" id="gs-pdf">📄 Gerar PDF</button></div>`);
+  $('#gs-pdf').onclick=()=>mensalAbrir($('#gs-mes').value); }; }
+
+/* ================= v8.8.0 · Alerta do robô de backup (mural/topo do admin) ================= */
+async function roboChecar(){ try{ if(!nvAdmin()||!opOnline()) return; const {data}=await NV.cli.from('hs_sync').select('valor,atualizado_em').eq('chave','robo:backup').maybeSingle(); if(!data||!data.valor) return;
+    const v=data.valor, h=(Date.now()-new Date(v.em||data.atualizado_em).getTime())/36e5; const ruim=v.ok===false||h>30; let el=$('#robo-aviso');
+    if(!ruim){ if(el) el.remove(); return; } if(!el){ el=document.createElement('div'); el.id='robo-aviso'; el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:52px;z-index:1550;background:#8a1c1c;color:#fff;padding:8px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center;max-width:94vw;font-size:var(--fs-sm)'; document.body.appendChild(el); }
+    el.innerHTML=`<span>⚠ <b>Robô de backup</b>: ${v.ok===false?'o backup da noite <b>falhou</b>'+(v.erro?' ('+esc(String(v.erro).slice(0,80))+')':''):'sem backup há '+Math.round(h)+' h'}. Confira a aba Actions do repositório Health_Search_Backups ou faça o backup físico.</span><button class="btn mini" type="button" onclick="this.parentNode.remove()">✕</button>`;
+  }catch(e){} }
+(function(){ let n=0; const t=setInterval(()=>{ if(!(typeof NV!=='undefined'&&NV.perfil)){ if(++n>180) clearInterval(t); return; } clearInterval(t); roboChecar(); setInterval(()=>{ if(!document.hidden) roboChecar(); },3*3600e3); },1000); })();
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }

@@ -20,4 +20,5 @@ const pasta = `backups/${aa}/${mm}`; mkdirSync(pasta, { recursive: true });
 writeFileSync(`${pasta}/Health Search backup ${dd}-${mm}-${aa}.json.gz`, gz);
 let log = ''; try { log = readFileSync('registro.txt', 'utf8'); } catch {}
 writeFileSync('registro.txt', log + `${dd}/${mm}/${aa} ${agora.toTimeString().slice(0, 5)} · ${Object.entries(cont).map(([t, n]) => t + '=' + n).join(' ')} · ${(gz.length / 1048576).toFixed(2)} MB${dump.erros ? ' · AVISOS: ' + dump.erros.join('; ') : ''}\n`);
+await fetch(`${URL_}/rest/v1/hs_sync`,{method:'POST',headers:{...H,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify({chave:'robo:backup',tipo:'robo',valor:{ok:true,em:new Date().toISOString(),mb:+(gz.length/1048576).toFixed(2),cont},atualizado_por:'robô GitHub'})}).catch(()=>{});
 console.log('Backup OK', cont, (gz.length / 1048576).toFixed(2) + ' MB');

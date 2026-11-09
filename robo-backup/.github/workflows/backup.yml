@@ -24,3 +24,10 @@ jobs:
           git add -A
           git commit -m "Backup $(TZ=America/Sao_Paulo date +%d-%m-%Y)" || echo "nada novo"
           git push
+      - name: Avisar o app se falhar
+        if: failure()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          curl -s -X POST "$SUPABASE_URL/rest/v1/hs_sync" -H "apikey: $SUPABASE_SERVICE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" -H "Content-Type: application/json" -H "Prefer: resolution=merge-duplicates" -d "{\"chave\":\"robo:backup\",\"tipo\":\"robo\",\"valor\":{\"ok\":false,\"em\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"erro\":\"falha no GitHub Actions\"},\"atualizado_por\":\"robô GitHub\"}"
