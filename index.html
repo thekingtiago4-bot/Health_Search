@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.9.9', HS_DATA='08/11/2026';
+const HS_VERSAO='9.0.0', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8042,6 +8042,36 @@ function rmXmlStatus(r){ const stem=rmStem(r.arquivo||''); let nome=false; for(c
  .rm-q.ok{background:rgba(34,197,94,.15);border-color:#22C55E;color:#16A34A}.rm-q.falta{background:rgba(234,179,8,.18);border-color:#EAB308;color:#A16207}`; document.head.appendChild(st); })();
 /* depois de ler o XML, redesenha os quadradinhos */
 { const _ri=relImportar; relImportar=async function(){ const r=await _ri.apply(this,arguments); try{ renderRomaneios(); }catch(e){} return r; }; }
+/* ================= v9.0.0 · Conversor universal de XML (EVA): qualquer codificação ou acento estragado vira texto perfeito ================= */
+const XC_DIC={'N?MERO':'NÚMERO','DESTINAT?RIO':'DESTINATÁRIO','ENDERE?O':'ENDEREÇO','REGI?O':'REGIÃO','RELAT?RIO':'RELATÓRIO','CONFER?NCIA':'CONFERÊNCIA','N?mero':'Número','EMISS?O':'EMISSÃO','DESCRI??O':'DESCRIÇÃO'};
+function xcConsertar(t){ t=String(t||'').replace(/^﻿/,'');
+  if(/Ã[\u0080-¿]|Ã[‡‰“”•]/.test(t)){ try{ const b=new Uint8Array([...t].map(c=>c.charCodeAt(0)&255)); const u=new TextDecoder('utf-8',{fatal:true}).decode(b); t=u; }catch(e){} }
+  if(t.includes('�')){ for(const [k,v] of Object.entries(XC_DIC)) t=t.split(k.replace(/\?/g,'�')).join(v); t=t.replace(/�/g,' '); }
+  return t.replace(/encoding="[^"]*"/i,'encoding="utf-8"'); }
+{ const _rt=rdTexto; rdTexto=async function(f){ return xcConsertar(await _rt(f)); }; }
+/* lê qualquer XML (NF-e ou planilha Softlog) e devolve linhas padronizadas */
+async function xcLer(files){ const out=[], erros=[]; for(const f of files){ try{ const t=await rdTexto(f); let ns=rdLerXml(t,f.name);
+      if(!ns.length){ const n=(typeof opXmlLer==='function')?opXmlLer(t,f.name):null; if(n&&n.nf) ns=[n]; }
+      if(!ns.length) throw new Error('não reconheci notas neste arquivo'); const rom=f.name.replace(/\.[^.]+$/,'').replace(/_/g,' ').replace(/^Romaneio\s*/i,'').replace(/^[-\s]+/,'').trim();
+      for(const n of ns) out.push(Object.assign({rom,dia:rdDiaDoNome(f.name,hojeISO())},n)); }catch(e){ erros.push(f.name+': '+e.message); } } return {out,erros}; }
+function xcXml(L){ const H=['ROMANEIO','DATA','NÚMERO NF','REMETENTE','DESTINATÁRIO','CEP','ENDEREÇO','NÚMERO','BAIRRO','CIDADE DESTINO','UF','VOLUMES','PESO','VALOR PRODUTOS','CHAVE NFE'];
+  const x=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); const cel=(v,num)=>`<Cell><Data ss:Type="${num&&v!==''&&v!=null?'Number':'String'}">${x(v)}</Data></Cell>`;
+  const linhas=L.map(n=>'<Row>'+[n.rom,n.dia,n.nf,n.rem,n.dest,(n.cep||'').replace(/\D/g,''),n.end,n.nro,n.bai,n.mun,n.uf].map(v=>cel(v)).join('')+cel(n.vol??'',1)+cel(n.peso,1)+cel(n.vprod,1)+cel(n.chave)+'</Row>');
+  return `<?xml version="1.0" encoding="utf-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n<Worksheet ss:Name="NOTAS"><Table>\n<Row>${H.map(h=>cel(h)).join('')}</Row>\n${linhas.join('\n')}\n</Table></Worksheet></Workbook>\n`; }
+function xcBaixar(L){ const b=new Blob([xcXml(L)],{type:'application/xml;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='Romaneios_unificados_'+(L[0]&&L[0].dia||hojeISO())+'.XML'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
+const XC={L:[],files:[]};
+async function evaArquivos(files){ const fs=[...files]; if(!fs.length) return; evaAbrir(true); evaFala('📎 '+fs.length+' arquivo(s)','eu'); const {out,erros}=await xcLer(fs); XC.L=out; XC.files=fs.filter(f=>!erros.some(e=>e.startsWith(f.name+':')));
+  if(!out.length){ evaFala('Não consegui ler nenhuma nota desses arquivos. 😕<br>'+erros.map(esc).join('<br>')); return; }
+  const g={}; for(const n of out){ const k=n.rom; g[k]=g[k]||{n:0,v:0,p:0}; g[k].n++; g[k].v+=+n.vol||0; g[k].p+=+n.peso||0; }
+  const cnt={}; out.forEach(n=>cnt[n.nf]=(cnt[n.nf]||0)+1); const dup=Object.keys(cnt).filter(k=>cnt[k]>1);
+  const T=Object.values(g).reduce((a,x)=>({n:a.n+x.n,v:a.v+x.v,p:a.p+x.p}),{n:0,v:0,p:0}); const f=x=>x.toLocaleString('pt-BR',{maximumFractionDigits:1});
+  evaFala(`Converti tudo para um formato limpo ✅<br>${Object.entries(g).map(([k,x])=>`• <b>${esc(k)}</b>: ${x.n} notas · ${x.v} vol · ${f(x.p)} kg`).join('<br>')}<br><b>Total: ${T.n} notas · ${T.v} volumes · ${f(T.p)} kg</b>${dup.length?`<br>⚠ Nota em mais de um romaneio: <b>${dup.map(esc).join(', ')}</b>`:''}${erros.length?'<br>⚠ '+erros.map(esc).join('<br>⚠ '):''}
+   <br><button type="button" class="btn mini" data-xc="csv" style="margin-top:6px">⬇ Baixar XML unificado</button> <button type="button" class="btn mini pri" data-xc="imp" style="margin-top:6px">📥 Importar no app</button>`); }
+document.addEventListener('click',async e=>{ const b=e.target.closest('[data-xc]'); if(!b) return; if(b.dataset.xc==='csv'){ xcBaixar(XC.L); return; }
+  if(b.dataset.xc==='imp'&&XC.files.length){ b.disabled=true; try{ await opXmlImportar(XC.files); }catch(_){} await rdImportar(XC.files,hojeISO()); evaFala('Pronto, importei no Relatório Direto e na Operação. 👍'); } });
+(function(){ const f=$('#eva-f'); if(!f) return; f.insertAdjacentHTML('afterbegin','<button type="button" class="btn" id="eva-clip" title="Enviar XML para a EVA converter" aria-label="Enviar arquivos">📎</button><input type="file" id="eva-arq" accept=".xml,text/xml" multiple hidden>');
+  $('#eva-clip').onclick=()=>$('#eva-arq').click(); $('#eva-arq').onchange=e=>{ evaArquivos(e.target.files); e.target.value=''; };
+  const p=$('#eva-painel'); if(p){ p.addEventListener('dragover',e=>e.preventDefault()); p.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); evaArquivos(e.dataTransfer.files); }); } })();
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }

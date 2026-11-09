@@ -1,1 +1,1 @@
-{"versao":"8.9.9","data":"2026-11-09","novidades":"XMLs do Softlog em ISO-8859-1 agora são lidos (acentos) em Romaneios, Relatório Direto e Operação"}
+{"versao":"9.0.0","data":"2026-11-09","novidades":"EVA converte qualquer XML (codificação ou acentos estragados) em um XML único e limpo, com totais, notas repetidas e importação direta"}
