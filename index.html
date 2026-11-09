@@ -4121,7 +4121,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.0.6', HS_DATA='09/11/2026';
+const HS_VERSAO='9.1.0', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5410,7 +5410,7 @@ document.addEventListener('pointerup',()=>{ if(MU.edit&&document.querySelector('
     if(mudou) muSalvarDoDom(); } });
 
 /* ================= v6.3.5 · ABA DIVERGÊNCIAS: registro, alerta quando o pedido/NF reaparece (romaneio, bipe, busca, mural) ================= */
-const DV_TIPOS=['Falta de volume','Sobra de volume','Avaria','Mercadoria trocada','Nota sem mercadoria','Mercadoria sem nota','Etiqueta errada','Outro'];
+const DV_TIPOS=['Falta de volume','Sobra de volume','Outro']; /* v9.1.0: avaria tem aba própria */
 const DV_ST={aberta:{t:'Aberta',c:'var(--no)'},apareceu:{t:'Apareceu no romaneio',c:'#E8590C'},resolvida:{t:'Resolvida',c:'var(--ok)'}};
 function dvS(){ return S.divergencias=S.divergencias||[]; }
 const dvNum=d=>'#'+String(d.n||0).padStart(3,'0');
@@ -5497,12 +5497,12 @@ function dvParaReentregas(d){ try{ const D=RE.ler(); const dia=reHoje(); D.dias[
     toast(`Divergência ${dvNum(d)} lançada em Reentregas de ${fmtData(dia).slice(0,5)}.`); }catch(e){ console.error(e); toast('Resolvida, mas não consegui lançar em Reentregas.'); } }
 function dvPerguntar(tit,txt){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>${esc(tit)}</h2><p>${esc(txt)}</p><textarea rows="3" style="width:100%;box-sizing:border-box;border:1.5px solid var(--linha);border-radius:var(--r);padding:8px;font:inherit;background:var(--sup);color:inherit"></textarea><div class="botoes"><button class="btn" data-r="0">Cancelar</button><button class="btn pri" data-r="1">Confirmar</button></div></div>`;
   document.body.appendChild(f); const ta=f.querySelector('textarea'); ta.focus(); f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(!b) return; f.remove(); res(b.dataset.r==='1'?ta.value.trim():null); }; f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ f.remove(); res(null); } }); }); }
-function dvRender(){ if(!$('#dv-cards')) return; const L=dvS(), F=window.DVF||{filtro:'abertas'}; const c={abertas:L.filter(d=>d.st!=='resolvida').length,apareceu:L.filter(d=>d.st==='apareceu').length,resolvida:L.filter(d=>d.st==='resolvida').length,todas:L.length};
+function dvRender(){ if(!$('#dv-cards')) return; const L=dvSo(), F=window.DVF||{filtro:'abertas'}; const c={abertas:L.filter(d=>d.st!=='resolvida').length,apareceu:L.filter(d=>d.st==='apareceu').length,resolvida:L.filter(d=>d.st==='resolvida').length,todas:L.length};
   const card=(f,n,t,cor)=>`<button class="op-card" type="button" data-f="${f}" aria-pressed="${F.filtro===f}"><b>${n}</b><span>${cor?`<i style="background:${cor}"></i>`:''}${t}</span></button>`;
   $('#dv-cards').innerHTML=card('abertas',c.abertas,'Abertas',DV_ST.aberta.c)+card('apareceu',c.apareceu,'Apareceram no romaneio',DV_ST.apareceu.c)+card('resolvida',c.resolvida,'Resolvidas',DV_ST.resolvida.c)+card('todas',c.todas,'Todas');
   dvBadge(); dvRenderLista(); }
 function dvRenderLista(){ const el=$('#dv-lista'); if(!el) return; const F=window.DVF||{filtro:'abertas'}; const q=N($('#dv-filtro').value||'');
-  const L=dvS().filter(d=>F.filtro==='todas'||(F.filtro==='abertas'?d.st!=='resolvida':d.st===F.filtro)).filter(d=>!q||N([d.ped,d.nf,d.cli,d.rem,d.tipo,d.obs,dvNum(d)].join(' ')).includes(q)).sort((a,b)=>(b.st==='apareceu')-(a.st==='apareceu')||(b.n||0)-(a.n||0));
+  const L=dvSo().filter(d=>F.filtro==='todas'||(F.filtro==='abertas'?d.st!=='resolvida':d.st===F.filtro)).filter(d=>!q||N([d.ped,d.nf,d.cli,d.rem,d.tipo,d.obs,dvNum(d)].join(' ')).includes(q)).sort((a,b)=>(b.st==='apareceu')-(a.st==='apareceu')||(b.n||0)-(a.n||0));
   $('#dv-tit').textContent={abertas:'Divergências abertas',apareceu:'Apareceram no romaneio',resolvida:'Resolvidas',todas:'Todas as divergências'}[F.filtro];
   el.innerHTML=L.length?`<table class="op-tab"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Vol.</th><th class="m-oc">Cliente</th><th>Observação</th><th></th></tr></thead><tbody>${L.map(d=>`<tr><td><b>${dvNum(d)}</b><div class="dv-hist">${fmtData(d.d)}${d.por?' · '+esc(d.por):''}</div></td><td class="dv-st" style="color:${DV_ST[d.st].c}">${DV_ST[d.st].t}${d.apareceu?`<div class="dv-hist">rom. ${esc(d.apareceu.rom)} em ${fmtData(d.apareceu.d)}</div>`:''}${d.res?`<div class="dv-hist">${fmtData(d.res.d)} · ${esc(d.res.obs||'')}</div>`:''}</td><td>${esc(d.tipo)}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${d.qtd||''}</td><td class="m-oc">${esc(d.cli||'')}${d.rem?`<div class="dv-hist">${esc(d.rem)}</div>`:''}</td><td>${esc(d.obs||'')}</td>
     <td><div class="dv-acoes">${d.st!=='resolvida'?`<button class="btn mini pri" type="button" data-dv="resolver" data-id="${d.id}">Resolver</button>`:`<button class="btn mini" type="button" data-dv="reabrir" data-id="${d.id}">Reabrir</button>`}<button class="btn mini" type="button" data-dv="editar" data-id="${d.id}">Editar</button>${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar" data-dv="apagar" data-id="${d.id}">✕</button>`:''}</div></td></tr>`).join('')}</tbody></table>`:'<div class="vazio-lista">Nenhuma divergência aqui.</div>'; }
@@ -8526,6 +8526,238 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
   if(Store.modo==='exe'){ setInterval(()=>fetch('/__hr/ping',{headers:HDR}).catch(()=>{}),4000);
     window.addEventListener('focus',async()=>{ try{ const r=await fetch('/__hr/estado',{cache:'no-store',headers:HDR}); const j=await r.json(); if(j&&j.dados&&JSON.stringify(j.dados)!==JSON.stringify(S)){ S=Object.assign(S,j.dados); montarDicionario(); renderTudo(); } }catch(e){} }); }
 })();
+/* ================= v9.1.0 · Divergência/Avaria direto na Busca + aba Avarias + reentrega colorida ================= */
+const DV_COR={'Falta de volume':'#E8590C','Sobra de volume':'#8B5A2B','Avaria':'#7048E8','Outro':'#868E96'};
+const AV_COR='#7048E8';
+const AV_TIPOS=['Caixa amassada','Caixa molhada','Caixa violada/aberta','Produto quebrado','Gelo derretido/temperatura','Outro'];
+const AV_SOL=['Entregue com ressalva','Devolvida ao remetente','Reposta pelo remetente','Descartada','Volta como reentrega'];
+const avEh=d=>!!d&&d.cat==='av';
+const dvCor=d=>avEh(d)?AV_COR:(DV_COR[d&&d.tipo]||'#C2255C');
+const avNum=d=>'AV-'+String(d.n||0).padStart(3,'0');
+const dvavNum=d=>avEh(d)?avNum(d):dvNum(d);
+function dvSo(){ return dvS().filter(d=>!avEh(d)); }
+function avS(){ return dvS().filter(avEh); }
+const dvavBate=(d,ped,nf)=>(nf&&d.nf&&z(d.nf)===nf)||(ped&&d.ped&&z(d.ped)===ped);
+/* divergência ≠ avaria: cada uma procura só no seu tipo */
+dvAcha=function(ped,nf){ ped=z(ped); nf=z(nf); if(!ped&&!nf) return null; return dvSo().find(d=>d.st!=='resolvida'&&dvavBate(d,ped,nf))||null; };
+function avAcha(ped,nf){ ped=z(ped); nf=z(nf); if(!ped&&!nf) return null; return avS().find(d=>d.st!=='resolvida'&&dvavBate(d,ped,nf))||null; }
+{ const _v=dvVarrer; dvVarrer=function(avisar){ const h=_v(avisar); let mud=false;
+    for(const r of S.romaneios||[]) for(const row of r.rows||[]){ const a=avAcha(row.ped,row.nf); if(a&&a.st==='aberta'){ a.st='apareceu'; a.apareceu={d:hojeISO(),rom:r.numero||'',nf:z(row.nf),vol:row.vol||''}; mud=true; } }
+    if(mud) salvar(); try{ avBadge(); }catch(e){} return h; }; }
+dvBadge=function(){ const q=$('#qt-dv'); if(q){ const n=dvSo().filter(d=>d.st!=='resolvida').length; q.textContent=n; q.hidden=!n; } try{ avBadge(); }catch(e){} };
+function avBadge(){ const q=$('#qt-av'); if(!q) return; const n=avS().filter(d=>d.st!=='resolvida').length; q.textContent=n; q.hidden=!n; }
+const dvEu=()=>(NV.perfil&&NV.perfil.nome)||'Este aparelho';
+const dvNovoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+/* gravar divergência a partir de uma nota já identificada (busca, bipe) */
+async function dvRegistrar(l){ const v=await dvJanelaFalta(l); if(!v) return null; if(v.tipo==='Falta de volume'&&!v.qtd){ toast('Informe quantos volumes faltam.'); return dvRegistrar(l); }
+  const L=dvS(), eu=dvEu(), ag=new Date().toISOString(), row=l.row||{}; let d=dvAcha(l.ped,l.nf);
+  const obs=v.obs||(v.tipo==='Falta de volume'&&v.qtd?`faltavam ${v.qtd} volume(s)${volNum(row.vol)?' de '+volNum(row.vol):''}`:'');
+  if(d){ Object.assign(d,{tipo:v.tipo,qtd:v.qtd,obs}); (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Atualizada'}); }
+  else { const n=dvSo().reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:dvNovoId(),n,d:hojeISO(),ped:z(l.ped),nf:z(l.nf),tipo:v.tipo,qtd:v.qtd,cli:String(row.dest||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pela Busca'}]}; L.push(d); }
+  salvar(); try{ dvRender(); }catch(e){} toast(`✔ Divergência ${dvNum(d)} salva em Dados → Divergências: ${v.tipo}${v.qtd?' · '+v.qtd+' vol.':''}.`); return d; }
+
+/* foto pequena (para não pesar no banco) */
+function avFoto(file){ return new Promise(res=>{ if(!file){ res(''); return; } const img=new Image(), u=URL.createObjectURL(file);
+  img.onload=()=>{ const m=640, k=Math.min(1,m/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(u); res(c.toDataURL('image/jpeg',.6)); };
+  img.onerror=()=>{ URL.revokeObjectURL(u); res(''); }; img.src=u; }); }
+function avJanela(l){ return new Promise(res=>{ const ja=avAcha(l.ped,l.nf); const row=l.row||{}; const vol=volNum(row.vol)||l.tot||null; let foto=ja&&ja.foto||'';
+  const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:460px;border-top:6px solid ${AV_COR}">
+    <h2>${ja?'Atualizar avaria '+esc(avNum(ja)):'Registrar avaria'}</h2>
+    <p style="margin:0 0 10px"><b>Pedido ${esc(l.ped||'—')} · NF ${esc(l.nf||'—')}</b><br>${esc(row.dest||'')}${row.cid?' · '+esc(row.cid):''}${vol?` · nota com <b>${vol}</b> vol.`:''}${l.rom?' · romaneio '+esc(l.rom.numero||''):''}</p>
+    <label class="av-l">Quantos volumes avariados?<input type="number" min="1" inputmode="numeric" id="avj-q" value="${ja&&ja.qtd?ja.qtd:''}" style="font-size:1.6rem;padding:10px;border:2px solid ${AV_COR};border-radius:10px;background:var(--sup);color:inherit"></label>
+    <label class="av-l">Tipo de avaria<select id="avj-t">${AV_TIPOS.map(t=>`<option ${(ja&&ja.sub)===t?'selected':''}>${t}</option>`).join('')}</select></label>
+    <label class="av-l">Observação (opcional)<input id="avj-o" value="${esc(ja&&ja.obs||'')}" placeholder="Ex.: 2 caixas amassadas na lateral"></label>
+    <label class="av-l">Foto (opcional)<input type="file" accept="image/*" capture="environment" id="avj-f"></label><div id="avj-pv">${foto?`<img src="${foto}" alt="Foto da avaria" style="max-width:100%;max-height:160px;border-radius:8px;margin-top:6px">`:''}</div>
+    <div class="botoes"><button class="btn" data-r="0" type="button">Cancelar</button><button class="btn pri" data-r="1" type="button" style="background:${AV_COR};border-color:${AV_COR}">Salvar avaria</button></div></div>`;
+  document.body.appendChild(f); const q=f.querySelector('#avj-q'); setTimeout(()=>q.focus(),30);
+  f.querySelector('#avj-f').onchange=async e=>{ foto=await avFoto(e.target.files[0]); f.querySelector('#avj-pv').innerHTML=foto?`<img src="${foto}" alt="Foto da avaria" style="max-width:100%;max-height:160px;border-radius:8px;margin-top:6px">`:''; };
+  const fim=ok=>{ const v={qtd:+q.value||null,sub:f.querySelector('#avj-t').value,obs:f.querySelector('#avj-o').value.trim(),foto}; f.remove(); res(ok?v:null); };
+  f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(b) fim(b.dataset.r==='1'); };
+  f.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id!=='avj-f'){ e.preventDefault(); fim(true); } if(e.key==='Escape') fim(false); }); }); }
+async function avRegistrar(l){ const v=await avJanela(l); if(!v) return null; if(!v.qtd){ toast('Informe quantos volumes estão avariados.'); return avRegistrar(l); }
+  const L=dvS(), eu=dvEu(), ag=new Date().toISOString(), row=l.row||{}; let d=avAcha(l.ped,l.nf);
+  if(d){ Object.assign(d,{qtd:v.qtd,sub:v.sub,obs:v.obs,foto:v.foto}); (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Atualizada'}); }
+  else { const n=avS().reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:dvNovoId(),cat:'av',n,d:hojeISO(),ped:z(l.ped),nf:z(l.nf),tipo:'Avaria',sub:v.sub,qtd:v.qtd,cli:String(row.dest||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),obs:v.obs,foto:v.foto,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta'}]}; L.push(d); }
+  salvar(); avRender(); toast(`✔ Avaria ${avNum(d)} salva em Dados → Avarias: ${v.sub} · ${v.qtd} vol.`); return d; }
+async function avBipar(textos){ const l=dvLeitura(textos); if(!l||(!l.ped&&!l.nf)){ toast('Não reconheci o código.'); return; } opSom('info'); await avRegistrar(l); setTimeout(()=>{ const c=$('#av-bip'); if(c&&!TOQUE) c.focus(); },50); }
+
+/* ---- aba Dados → Avarias ---- */
+(function avMontar(){
+  const st=document.createElement('style'); st.textContent=`
+.av-l{display:flex;flex-direction:column;gap:4px;font-weight:600;margin-top:10px}.av-l select,.av-l input:not([type=number]){padding:8px;border:1.5px solid var(--linha);border-radius:8px;background:var(--sup);color:inherit;font:inherit;font-weight:400}
+.dvav-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:8px 0 2px;padding:10px 12px;border:1.5px dashed var(--linha);border-radius:12px;background:var(--sup)}
+.dvav-bar .nf{font-weight:700;margin-right:auto}
+.dvav-q{display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:7px 12px;border:2px solid var(--c);border-radius:10px;font-weight:700;color:var(--c);user-select:none;background:transparent}
+.dvav-q input{width:20px;height:20px;accent-color:var(--c);cursor:pointer;margin:0}
+.dvav-q.on{background:var(--c);color:#fff}
+.dvav-q small{font-weight:500;opacity:.9}
+.dvav-selo{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;color:#fff;font-size:.78rem;font-weight:700;white-space:nowrap}
+.dvav-obs{display:block;font-size:.78rem;margin-top:2px;opacity:.85}
+.dvav-leg{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}.dvav-leg span{display:inline-flex;align-items:center;gap:5px;font-size:.8rem}.dvav-leg i{width:12px;height:12px;border-radius:3px;display:inline-block}`;
+  document.head.appendChild(st);
+  const dvb=document.querySelector('.nav [data-tela="divergencias"]'); if(!dvb) return;
+  dvb.insertAdjacentHTML('afterend',`<button data-tela="avarias"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m9 9 2 3-2 3M15 9l-2 3 2 3"/></svg><span class="lbl">Avarias</span><span class="qt" id="qt-av" hidden>0</span></button>`);
+  const sec=document.createElement('section'); sec.className='tela'; sec.id='t-avarias'; sec.hidden=true; sec.setAttribute('aria-labelledby','h-av');
+  sec.innerHTML=`<h1 id="h-av">Avarias</h1>
+  <p class="sub">Caixas amassadas, molhadas, violadas, produto quebrado ou gelo derretido. Registre aqui, na Busca (quadrado “Avaria”) ou bipando. Se a nota voltar num romaneio, ela aparece em roxo no aviso de reentregas.</p>
+  <div class="op-bip"><button class="btn pri grande" type="button" id="av-bt-cam" style="background:${AV_COR};border-color:${AV_COR}">📷 Bipar pela câmera</button><input id="av-bip" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Bipe a nota ou a etiqueta: abre a janela da avaria" aria-label="Bipar nota com avaria" style="flex:1;min-width:220px;font-size:1.1rem;padding:12px 14px;border:2px solid ${AV_COR};border-radius:var(--r);background:var(--sup);color:inherit"></div>
+  <div class="op-cards" id="av-cards"></div>
+  <div class="barra"><h2 id="av-tit">Avarias abertas</h2><input id="av-filtro" class="filtro" placeholder="Filtrar pedido, NF, cliente, tipo, observação" autocomplete="off"><button class="btn mini" type="button" id="av-csv">Exportar Excel (CSV)</button></div>
+  <div id="av-lista"></div>`;
+  const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
+  window.AVF={filtro:'abertas'};
+  $('#av-filtro').oninput=avRenderLista;
+  $('#av-cards').onclick=e=>{ const b=e.target.closest('[data-f]'); if(!b) return; AVF.filtro=b.dataset.f; avRender(); };
+  $('#av-bip').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=e.target.value.trim(); e.target.value=''; if(v) avBipar(v); } });
+  $('#av-bt-cam').onclick=()=>{ OP.destino=avBipar; opCamAbrir().then(()=>{ const m=document.querySelector('#op-cam .msg'); if(m) m.innerHTML='<b>Avaria</b>Aponte para a etiqueta ou a nota. Depois informe quantos volumes estão avariados.'; }); };
+  $('#av-csv').onclick=()=>{ const linhas=[['Nº','Aberta em','Situação','Tipo','Pedido','NF','Volumes','Cliente','Cidade','Observação','Aberta por','Solução','Resolvida em']];
+    for(const d of avS()) linhas.push([avNum(d),fmtData(d.d),DV_ST[d.st].t,d.sub,d.ped,d.nf,d.qtd||'',d.cli,d.cid||'',d.obs,d.por,d.res?d.res.sol||'':'',d.res?fmtData(d.res.d):'']);
+    const csv='﻿'+linhas.map(l=>l.map(v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(';')).join('\r\n'); baixar(new Blob([csv],{type:'text/csv;charset=utf-8'}),`Avarias_${hojeISO()}.csv`); };
+  $('#av-lista').onclick=async e=>{ const b=e.target.closest('[data-av]'); if(!b) return; const d=dvS().find(x=>x.id===b.dataset.id); if(!d) return; const eu=dvEu(), ag=new Date().toISOString(), a=b.dataset.av;
+    if(a==='foto'){ const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>Foto da avaria ${esc(avNum(d))}</h2><img src="${d.foto}" alt="Foto da avaria" style="max-width:100%;border-radius:8px"><div class="botoes"><button class="btn pri" type="button">Fechar</button></div></div>`; document.body.appendChild(f); f.onclick=ev=>{ if(ev.target===f||ev.target.closest('button')) f.remove(); }; return; }
+    if(a==='editar'){ await avRegistrar({ped:d.ped,nf:d.nf,row:{dest:d.cli,cid:d.cid}}); return; }
+    if(a==='resolver'){ const sol=await avSolucao(d); if(!sol) return; d.st='resolvida'; d.res={d:hojeISO(),obs:sol.obs,sol:sol.sol,por:eu}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Resolvida: '+sol.sol+(sol.obs?' · '+sol.obs:'')}); if(sol.sol==='Volta como reentrega') dvParaReentregas(Object.assign({},d,{tipo:'Avaria · '+(d.sub||''),res:{d:hojeISO(),obs:sol.obs||sol.sol}})); }
+    if(a==='reabrir'){ d.st='aberta'; delete d.res; delete d.apareceu; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Reaberta'}); }
+    if(a==='apagar'){ if(!opAdmin()&&opOnline()){ toast('Só o administrador apaga avaria.'); return; } if(!await confirmar('Apagar avaria',`Apagar ${avNum(d)} de vez?`,'Apagar')) return; S.divergencias=dvS().filter(x=>x!==d); try{ (NUV.apagar=NUV.apagar||new Set()).add('dv:'+d.id); }catch(e){} }
+    salvar(); avRender(); };
+  const _ir=irPara; irPara=function(t){ _ir(t); if(t==='avarias'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-avarias'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+      const sub=document.querySelector('.nav [data-tela="avarias"]').closest('.nav-sub'); if(sub){ sub.hidden=false; const g=sub.previousElementSibling; if(g&&g.classList.contains('nav-grupo')) g.setAttribute('aria-expanded','true'); }
+      dvVarrer(false); avRender(); setTimeout(()=>{ if(!TOQUE) $('#av-bip').focus(); },0); } };
+  document.querySelector('.nav [data-tela="avarias"]').addEventListener('click',()=>irPara('avarias'));
+  setTimeout(avBadge,500);
+})();
+function avSolucao(d){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:440px;border-top:6px solid ${AV_COR}"><h2>Resolver avaria ${esc(avNum(d))}</h2>
+  <label class="av-l">O que foi feito?<select id="avs-s">${AV_SOL.map(s=>`<option>${s}</option>`).join('')}</select></label>
+  <label class="av-l">Observação (opcional)<input id="avs-o" placeholder="Ex.: cliente aceitou com ressalva no canhoto"></label>
+  <p class="sub" style="margin:8px 0 0">“Volta como reentrega” lança a nota nas Reentregas de hoje com o motivo da avaria.</p>
+  <div class="botoes"><button class="btn" data-r="0" type="button">Cancelar</button><button class="btn pri" data-r="1" type="button">Confirmar</button></div></div>`;
+  document.body.appendChild(f); f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(!b) return; const v={sol:f.querySelector('#avs-s').value,obs:f.querySelector('#avs-o').value.trim()}; f.remove(); res(b.dataset.r==='1'?v:null); };
+  f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ f.remove(); res(null); } }); }); }
+function avRender(){ avBadge(); if(!$('#av-cards')) return; const L=avS(), F=window.AVF||{filtro:'abertas'}; const c={abertas:L.filter(d=>d.st!=='resolvida').length,apareceu:L.filter(d=>d.st==='apareceu').length,resolvida:L.filter(d=>d.st==='resolvida').length,todas:L.length};
+  const card=(f,n,t,cor)=>`<button class="op-card" type="button" data-f="${f}" aria-pressed="${F.filtro===f}"><b>${n}</b><span>${cor?`<i style="background:${cor}"></i>`:''}${t}</span></button>`;
+  $('#av-cards').innerHTML=card('abertas',c.abertas,'Abertas',AV_COR)+card('apareceu',c.apareceu,'Voltaram no romaneio',DV_ST.apareceu.c)+card('resolvida',c.resolvida,'Resolvidas',DV_ST.resolvida.c)+card('todas',c.todas,'Todas');
+  avRenderLista(); }
+function avRenderLista(){ const el=$('#av-lista'); if(!el) return; const F=window.AVF||{filtro:'abertas'}; const q=N($('#av-filtro').value||'');
+  const L=avS().filter(d=>F.filtro==='todas'||(F.filtro==='abertas'?d.st!=='resolvida':d.st===F.filtro)).filter(d=>!q||N([d.ped,d.nf,d.cli,d.cid,d.sub,d.obs,avNum(d)].join(' ')).includes(q)).sort((a,b)=>(b.st==='apareceu')-(a.st==='apareceu')||(b.n||0)-(a.n||0));
+  $('#av-tit').textContent={abertas:'Avarias abertas',apareceu:'Voltaram no romaneio',resolvida:'Resolvidas',todas:'Todas as avarias'}[F.filtro];
+  el.innerHTML=L.length?`<table class="op-tab"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Vol.</th><th class="m-oc">Cliente</th><th>Observação</th><th></th></tr></thead><tbody>${L.map(d=>`<tr style="box-shadow:inset 4px 0 0 ${AV_COR}"><td><b>${avNum(d)}</b><div class="dv-hist">${fmtData(d.d)}${d.por?' · '+esc(d.por):''}</div></td><td class="dv-st" style="color:${DV_ST[d.st].c}">${DV_ST[d.st].t}${d.apareceu?`<div class="dv-hist">rom. ${esc(d.apareceu.rom)} em ${fmtData(d.apareceu.d)}</div>`:''}${d.res?`<div class="dv-hist">${fmtData(d.res.d)} · ${esc(d.res.sol||'')}${d.res.obs?' · '+esc(d.res.obs):''}</div>`:''}</td><td>${esc(d.sub||'')}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${d.qtd||''}</td><td class="m-oc">${esc(d.cli||'')}${d.cid?`<div class="dv-hist">${esc(d.cid)}</div>`:''}</td><td>${esc(d.obs||'')}</td>
+    <td><div class="dv-acoes">${d.foto?`<button class="btn mini" type="button" data-av="foto" data-id="${d.id}">📷 Foto</button>`:''}${d.st!=='resolvida'?`<button class="btn mini pri" type="button" data-av="resolver" data-id="${d.id}">Resolver</button>`:`<button class="btn mini" type="button" data-av="reabrir" data-id="${d.id}">Reabrir</button>`}${d.st!=='resolvida'?`<button class="btn mini" type="button" data-av="editar" data-id="${d.id}">Editar</button>`:''}${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar" data-av="apagar" data-id="${d.id}">✕</button>`:''}</div></td></tr>`).join('')}</tbody></table>`:'<div class="vazio-lista">Nenhuma avaria aqui.</div>'; }
+
+/* ---- Busca: quadrados "Divergência" e "Avaria" em cada nota encontrada ---- */
+function dvavBarra(hits){ const vist=new Set(), out=[]; for(const h of hits||[]){ const row=h.row||{}; const k=z(row.nf)||('P'+z(row.ped)); if(!k||vist.has(k)) continue; vist.add(k);
+    const dv=dvAcha(row.ped,row.nf), av=avAcha(row.ped,row.nf);
+    out.push(`<div class="dvav-bar" data-dvav-nf="${esc(z(row.nf))}" data-dvav-ped="${esc(z(row.ped))}"><span class="nf">NF ${esc(z(row.nf)||'—')}${row.ped?` · ped. ${esc(z(row.ped))}`:''}</span>
+     <label class="dvav-q${dv?' on':''}" style="--c:${dv?dvCor(dv):DV_COR['Falta de volume']}"><input type="checkbox" data-dvav="dv" ${dv?'checked':''}> Divergência${dv?` <small>${esc(dvNum(dv))}${dv.qtd?' · '+dv.qtd+' vol.':''}</small>`:''}</label>
+     <label class="dvav-q${av?' on':''}" style="--c:${AV_COR}"><input type="checkbox" data-dvav="av" ${av?'checked':''}> Avaria${av?` <small>${esc(avNum(av))} · ${av.qtd||''} vol.</small>`:''}</label></div>`); }
+  return out.join(''); }
+{ const _m=mostrar; mostrar=function(res){ _m(res); try{ if(res&&Array.isArray(res.hits)&&res.hits.length&&(res.tipo==='num'||res.hits.length<=8)){ const box=$('#resultado'); const old=box.querySelector('.dvav-wrap'); if(old) old.remove(); box.insertAdjacentHTML('afterbegin',`<div class="dvav-wrap">${dvavBarra(res.hits)}</div>`); window._dvavRes=res; } }catch(e){ console.error(e); } }; }
+document.addEventListener('click',async e=>{ const cb=e.target.closest&&e.target.closest('input[data-dvav]'); if(!cb) return; e.preventDefault();
+  const bar=cb.closest('.dvav-bar'); const nf=bar.dataset.dvavNf, ped=bar.dataset.dvavPed;
+  const hit=todasLinhas().find(({row})=>(nf&&z(row.nf)===nf)||(ped&&z(row.ped)===ped));
+  const l={ped:ped||(hit&&z(hit.row.ped))||'',nf:nf||(hit&&z(hit.row.nf))||'',row:hit&&hit.row,rom:hit&&hit.rom,tot:null};
+  if(cb.dataset.dvav==='dv') await dvRegistrar(l); else await avRegistrar(l);
+  const res=window._dvavRes; const w=document.querySelector('#resultado .dvav-wrap'); if(w&&res) w.innerHTML=dvavBarra(res.hits); });
+
+/* ---- pop-up "Reentregas detectadas": linha inteira na cor da divergência/avaria ---- */
+function dvavDaNota(k,re){ const ped=z(re&&re.ped||(String(k).startsWith('P')?String(k).slice(1):'')), nf=String(k).startsWith('P')?'':z(k);
+  const L=dvS().filter(d=>d.st!=='resolvida'&&dvavBate(d,ped,nf)); return {dv:L.find(d=>!avEh(d))||null,av:L.find(avEh)||null}; }
+{ const _a=nexAbrirSuspeitas; nexAbrirSuspeitas=async function(){ const r=await _a.apply(this,arguments);
+  try{ const f=[...document.querySelectorAll('.fundo')].reverse().find(x=>/Reentregas detectadas/.test((x.querySelector('h2')||{}).textContent||'')); if(!f) return r;
+    const n=nexS(); let tem=0;
+    for(const tr of f.querySelectorAll('tr[data-k]')){ const k=tr.dataset.k, re=n.reent[k]; const {dv,av}=dvavDaNota(k,re); const d=dv||av; if(!d) continue; tem++;
+      const cor=dvCor(d); tr.style.background=cor+'2E'; tr.style.boxShadow=`inset 6px 0 0 ${cor}`; tr.dataset.dvavId=[dv&&dv.id,av&&av.id].filter(Boolean).join(',');
+      const td=tr.querySelector('td'); const selo=x=>`<span class="dvav-selo" style="background:${dvCor(x)}">${avEh(x)?'Avaria '+esc(avNum(x))+' · '+esc(x.sub||''):'Divergência '+esc(dvNum(x))+' · '+esc(x.tipo)}${x.qtd?' · '+x.qtd+' vol.':''}</span>${x.obs?`<span class="dvav-obs">${esc(x.obs)} (${fmtData(x.d)}${x.por?' · '+esc(x.por):''})</span>`:''}`;
+      td.insertAdjacentHTML('beforeend','<br>'+[dv,av].filter(Boolean).map(selo).join('<br>'));
+      const m=tr.querySelector('[data-mot]'); if(m&&!m.value) m.value=avEh(d)?`AVARIA ${avNum(d)} - ${d.sub||''}${d.qtd?' ('+d.qtd+' vol.)':''}`:`DIVERGÊNCIA ${dvNum(d)} - ${d.tipo}${d.qtd?' ('+d.qtd+' vol.)':''}`; }
+    if(tem){ const p=f.querySelector('p'); p.insertAdjacentHTML('afterend',`<div class="dvav-leg"><b style="font-size:.85rem;margin-right:4px">${tem} nota(s) com ocorrência registrada:</b>${Object.entries(DV_COR).filter(([t])=>t!=='Outro').map(([t,c])=>`<span><i style="background:${c}"></i>${t}</span>`).join('')}<span><i style="background:${DV_COR['Outro']}"></i>Outro</span></div>`); }
+    const ok=f.querySelector('[data-a="ok"]'); if(ok) ok.addEventListener('click',()=>{ const eu=dvEu(), ag=new Date().toISOString(); let mud=false;
+      for(const tr of f.querySelectorAll('tr[data-dvav-id]')){ if(tr.querySelector('[data-ign]').checked||!tr.querySelector('[data-mot]').value.trim()) continue;
+        for(const id of tr.dataset.dvavId.split(',')){ const d=dvS().find(x=>x.id===id); if(!d) continue; d.reent={d:hojeISO(),motivo:tr.querySelector('[data-mot]').value.trim()}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Voltou como reentrega'}); mud=true; } }
+      if(mud) salvar(); },{capture:true}); }catch(e){ console.error(e); }
+  return r; }; }
+
+/* ---- EVA ---- */
+evaDivergencias=(function(_f){ return function(t){ const L=S.divergencias; S.divergencias=dvSo(); try{ return _f(t); } finally{ S.divergencias=L; } }; })(evaDivergencias);
+function evaAvarias(){ const A=avS().filter(d=>d.st!=='resolvida').sort((a,b)=>String(a.d).localeCompare(String(b.d))); if(!A.length) return 'Nenhuma avaria em aberto. 🎉';
+  return `<b>${fmtN(A.length)}</b> avaria(s) em aberto:<br>`+A.slice(0,30).map(d=>`🟣 <b>${avNum(d)}</b> · NF ${esc(d.nf||'—')} · ${esc(d.sub||'')} · ${d.qtd||'?'} vol. · ${esc(d.cli||'')} (${fmtData(d.d)})${d.st==='apareceu'?' · <b>voltou no romaneio</b>':''}`).join('<br>'); }
+function evaNotaOcorr(t){ const m=t.match(/\d{5,}/); if(!m) return null; const k=z(m[0]); const L=dvS().filter(d=>z(d.nf)===k||z(d.ped)===k); if(!L.length) return null;
+  return L.map(d=>`${avEh(d)?'🟣 Avaria '+avNum(d)+' · '+esc(d.sub||''):'🟠 Divergência '+dvNum(d)+' · '+esc(d.tipo)}${d.qtd?' · '+d.qtd+' vol.':''} · ${DV_ST[d.st].t}${d.reent?' · virou reentrega em '+fmtData(d.reent.d):''}${d.obs?'<br>'+esc(d.obs):''}`).join('<br><br>'); }
+{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt).replace(/[?!.]+$/,'').trim();
+  if(/\bavaria/.test(t)&&!/\d{5,}/.test(t)) return evaAvarias();
+  if(/\b(divergen|avaria|ocorrenc)/.test(t)&&/\d{5,}/.test(t)){ const r=evaNotaOcorr(t); if(r) return r; }
+  if(/(virou|viraram|voltaram|voltou).*(reentrega)|(divergen|avaria).*(reentrega)/.test(t)){ const L=dvS().filter(d=>d.reent); return L.length?`<b>${L.length}</b> ocorrência(s) que voltaram como reentrega:<br>`+L.slice(-30).reverse().map(d=>`${avEh(d)?'🟣 '+avNum(d):'🟠 '+dvNum(d)} · NF ${esc(d.nf||'—')} · ${fmtData(d.reent.d)} · ${esc(d.reent.motivo||'')}`).join('<br>'):'Nenhuma divergência ou avaria voltou como reentrega até agora.'; }
+  return _ee(txt); }; }
+
+/* ---- Manual ---- */
+(function(){ const i=MAN.findIndex(s=>s.id==='divergencias');
+  const dv=MAN[i]; if(dv){ dv.intro='Registre faltas e sobras e seja avisado quando a nota voltar. Avarias têm aba própria (Dados → Avarias).';
+    dv.passos.unshift(['Pela Busca (mais rápido)','Pesquise a NF ou o pedido. Acima do resultado aparecem dois quadrados: “Divergência” e “Avaria”. Marque “Divergência”: abre a janela para dizer quantos volumes faltam, o tipo e a observação. Ao salvar, ela já entra em Dados → Divergências e o quadrado fica marcado com o número (ex.: #004 · 5 vol.).'],
+      ['Tipos e cores','🟠 Falta de volume, 🟤 Sobra de volume, cinza = Outro. 🟣 Avaria fica na aba Avarias. A mesma cor aparece na Busca, nas listas e no aviso de reentregas.'],
+      ['Reentrega colorida','Se a nota com divergência ou avaria voltar num romaneio de outro dia, no aviso “Reentregas detectadas” a linha inteira vem na cor da ocorrência, com o número, os volumes e a observação, e o motivo já vem preenchido. Ao confirmar, a divergência fica marcada como “voltou como reentrega”.']); }
+  MAN.splice(i+1,0,{id:'avarias',t:'Dados — Avarias',img:'divergencias',intro:'Caixa amassada, molhada, violada, produto quebrado ou gelo derretido: tudo fica registrado em Dados → Avarias, com foto se quiser.',
+    passos:[['Registrar pela Busca','Pesquise a NF ou o pedido e marque o quadrado roxo “Avaria”. Informe quantos volumes estão avariados, o tipo, a observação e, se quiser, tire uma foto.'],
+      ['Registrar bipando','Em Dados → Avarias, bipe a nota ou a etiqueta (leitor ou câmera). A janela da avaria abre na hora.'],
+      ['Resolver','Clique em Resolver e escolha o que foi feito: entregue com ressalva, devolvida ao remetente, reposta pelo remetente, descartada ou “volta como reentrega” (lança nas Reentregas de hoje com o motivo).'],
+      ['Aviso automático','Se a nota voltar num romaneio, a avaria passa a “Voltou no romaneio” e, no aviso de reentregas, a linha vem em roxo.'],
+      ['Perguntar à EVA','“Quais avarias estão abertas?”, “a NF 733976 tem divergência?”, “quais divergências viraram reentrega?”.']]}); })();
+
+/* ---- v9.1.0 · Desfazer 10 s, ações rápidas (Reentrega, Linha do tempo) e Ctrl+K ---- */
+function desfazerOferecer(txt,fn){ let el=document.getElementById('hs-desf'); if(!el){ el=document.createElement('div'); el.id='hs-desf'; el.setAttribute('role','status'); el.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99999;display:flex;align-items:center;gap:12px;background:#1B2430;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:94vw;font-size:.95rem'; document.body.appendChild(el); }
+  clearTimeout(el._t); clearInterval(el._i); let s=10; const pinta=()=>{ el.innerHTML=`<span>${esc(txt)}</span><button type="button" style="background:#fff;color:#1B2430;border:0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer">↶ Desfazer (${s}s)</button>`; el.querySelector('button').onclick=()=>{ clearTimeout(el._t); clearInterval(el._i); el.remove(); try{ fn(); toast('Desfeito.'); }catch(e){ console.error(e); toast('Não consegui desfazer.'); } }; };
+  pinta(); el._i=setInterval(()=>{ s--; if(s<=0){ clearInterval(el._i); el.remove(); } else pinta(); },1000); }
+function dvavFoto(){ return JSON.stringify(S.divergencias||[]); }
+function dvavVoltar(antes){ const A=JSON.parse(antes), ids=new Set(A.map(x=>x.id)); for(const x of dvS()) if(!ids.has(x.id)){ try{ (NUV.apagar=NUV.apagar||new Set()).add('dv:'+x.id); }catch(e){} }
+  S.divergencias=A; salvar(); try{ dvRender(); }catch(e){} try{ avRender(); }catch(e){} const res=window._dvavRes; const w=document.querySelector('#resultado .dvav-wrap'); if(w&&res) w.innerHTML=dvavBarra(res.hits); }
+{ const _d=dvRegistrar; dvRegistrar=async function(l){ const a=dvavFoto(); const d=await _d(l); if(d) desfazerOferecer(`Divergência ${dvNum(d)} salva.`,()=>dvavVoltar(a)); return d; }; }
+{ const _a=avRegistrar; avRegistrar=async function(l){ const a=dvavFoto(); const d=await _a(l); if(d) desfazerOferecer(`Avaria ${avNum(d)} salva.`,()=>dvavVoltar(a)); return d; }; }
+
+/* reentrega manual direto da Busca */
+function reRapida(l){ return new Promise(res=>{ const row=l.row||{}; const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:440px;border-top:6px solid ${typeof nexCor==='function'?nexCor('Reentrega'):'#E03131'}"><h2>Lançar como reentrega</h2>
+   <p style="margin:0 0 10px"><b>NF ${esc(l.nf||'—')}${l.ped?' · ped. '+esc(l.ped):''}</b><br>${esc(row.dest||'')}${row.cid?' · '+esc(row.cid):''}</p>
+   <datalist id="rr-mots">${(typeof NEX_MOTIVOS!=='undefined'?NEX_MOTIVOS:[]).map(m=>`<option value="${esc(m)}">`).join('')}</datalist>
+   <label class="av-l">Motivo<input id="rr-m" list="rr-mots" autocomplete="off" placeholder="Ex.: cliente fechado"></label>
+   <p class="sub" style="margin:8px 0 0">Entra em Dados → Reentregas de hoje.</p>
+   <div class="botoes"><button class="btn" data-r="0" type="button">Cancelar</button><button class="btn pri" data-r="1" type="button">Lançar</button></div></div>`;
+  document.body.appendChild(f); const m=f.querySelector('#rr-m'); const dv=dvAcha(l.ped,l.nf)||avAcha(l.ped,l.nf); if(dv) m.value=avEh(dv)?`AVARIA ${avNum(dv)} - ${dv.sub||''}`:`DIVERGÊNCIA ${dvNum(dv)} - ${dv.tipo}${dv.qtd?' ('+dv.qtd+' vol.)':''}`; setTimeout(()=>m.focus(),30);
+  const fim=ok=>{ const v=m.value.trim(); f.remove(); res(ok?v:null); };
+  f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(b) fim(b.dataset.r==='1'); }; f.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); fim(true); } if(e.key==='Escape') fim(false); }); }); }
+async function reRapidaLancar(l){ const mot=await reRapida(l); if(mot===null) return; if(!mot){ toast('Digite o motivo.'); return reRapidaLancar(l); }
+  const dia=reHoje(), row=l.row||{}; const antes=JSON.stringify(RE.ler().dias[dia]||[]);
+  const ok=nexParaReentrega({nf:l.nf,ped:l.ped,dest:row.dest,cid:row.cid,uf:row.uf,vol:row.vol,peso:row.peso,valor:row.valor,motivo:mot},dia,'busca');
+  if(!ok){ toast('Essa nota já está nas Reentregas de hoje.'); return; }
+  const d=dvAcha(l.ped,l.nf)||avAcha(l.ped,l.nf); if(d){ d.reent={d:hojeISO(),motivo:mot}; (d.hist=d.hist||[]).push({em:new Date().toISOString(),por:dvEu(),t:'Lançada como reentrega pela Busca'}); salvar(); }
+  try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){}
+  desfazerOferecer(`NF ${l.nf} lançada nas Reentregas de hoje.`,()=>{ const D=RE.ler(); D.dias[dia]=JSON.parse(antes); RE.gravar(); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} }); }
+
+/* linha do tempo da nota */
+function linhaTempo(l){ const nf=z(l.nf), ped=z(l.ped); const ev=[]; const bate=x=>(nf&&z(x.nf)===nf)||(ped&&x.ped&&z(x.ped)===ped);
+  try{ const B=rbLocalLer(); for(const d of Object.keys(B)) for(const reg of Object.values(B[d]||{})) if((reg.rows||[]).some(bate)) ev.push({d,t:`📄 Romaneio ${reg.numero||reg.nome||''}`}); }catch(e){}
+  for(const r of S.romaneios||[]) if((r.rows||[]).some(bate)){ const d=(typeof opDiaRom==='function'&&opDiaRom(r))||hojeISO(); if(!ev.some(x=>x.d===d&&x.t.includes(r.numero))) ev.push({d,t:`📄 Romaneio ${r.numero||''} (carregado)`}); }
+  try{ const D=RE.ler(); for(const [d,L] of Object.entries(D.dias||{})) for(const x of L||[]) if(bate(x)) ev.push({d,t:`🔁 Reentrega: ${x.obs||'sem motivo'}`,c:'#E03131'}); }catch(e){}
+  for(const x of dvS()) if(bate(x)){ const c=dvCor(x); for(const h of x.hist||[]) ev.push({d:String(h.em||x.d).slice(0,10),h:String(h.em||'').slice(11,16),t:`${avEh(x)?'🟣 Avaria '+avNum(x):'🟠 Divergência '+dvNum(x)}: ${h.t}${h.t==='Aberta'||/^Aberta/.test(h.t)?(x.qtd?' · '+x.qtd+' vol.':'')+(x.obs?' · '+x.obs:''):''}${h.por?' ('+h.por+')':''}`,c}); }
+  try{ for(const b of (OP&&OP.bipes)||[]) if(bate(b)) { const q=new Date(b.criado_em||Date.now()); const iso=new Date(q.getTime()-q.getTimezoneOffset()*6e4).toISOString(); ev.push({d:iso.slice(0,10),h:iso.slice(11,16),t:`📷 Bipada${b.usuario?' por '+b.usuario:''}${b.status&&OP_ST[b.status]?' · '+OP_ST[b.status].t:''}`}); }; }catch(e){}
+  ev.sort((a,b)=>(a.d+(a.h||'')).localeCompare(b.d+(b.h||'')));
+  const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal largo" role="dialog" aria-modal="true" style="max-width:620px"><h2>Linha do tempo · NF ${esc(nf||'—')}${ped?' · ped. '+esc(ped):''}</h2>
+   ${ev.length?`<ol style="list-style:none;padding:0;margin:0;max-height:60vh;overflow:auto">${ev.map(x=>`<li style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--linha);${x.c?`box-shadow:inset 4px 0 0 ${x.c};padding-left:10px`:''}"><b style="white-space:nowrap;min-width:92px">${esc(fmtData(x.d))}${x.h?' '+esc(x.h):''}</b><span>${esc(x.t)}</span></li>`).join('')}</ol>`:'<p>Nada registrado ainda para esta nota.</p>'}
+   <div class="botoes"><button class="btn pri" type="button">Fechar</button></div></div>`;
+  document.body.appendChild(f); f.onclick=e=>{ if(e.target===f||e.target.closest('button')) f.remove(); }; f.addEventListener('keydown',e=>{ if(e.key==='Escape') f.remove(); }); f.querySelector('button').focus(); }
+
+/* botões extras na barra da Busca */
+{ const _b=dvavBarra; dvavBarra=function(hits){ return _b(hits).replace(/<\/div>(?=<div class="dvav-bar"|$)/g,`<button class="btn mini" type="button" data-dvav-acao="re">🔁 Reentrega</button><button class="btn mini" type="button" data-dvav-acao="tempo">🕘 Linha do tempo</button></div>`); }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-dvav-acao]'); if(!b) return; const bar=b.closest('.dvav-bar'); const nf=bar.dataset.dvavNf, ped=bar.dataset.dvavPed;
+  const hit=todasLinhas().find(({row})=>(nf&&z(row.nf)===nf)||(ped&&z(row.ped)===ped)); const l={ped:ped||(hit&&z(hit.row.ped))||'',nf:nf||(hit&&z(hit.row.nf))||'',row:hit&&hit.row,rom:hit&&hit.rom};
+  if(b.dataset.dvavAcao==='re') reRapidaLancar(l); else linhaTempo(l); });
+
+/* Ctrl+K: busca de qualquer tela */
+document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&!e.altKey&&(e.key==='k'||e.key==='K')){ e.preventDefault(); if(document.querySelector('.fundo')) return; irPara('buscar'); setTimeout(()=>{ const q=$('#q'); if(q){ q.focus(); q.select(); } },30); } });
+(function(){ const q=document.getElementById('q'); if(q&&!/Ctrl\+K/.test(q.placeholder||'')) q.placeholder=(q.placeholder||'Buscar')+'  (Ctrl+K de qualquer tela)'; })();
+(function(){ const i=MAN.findIndex(s=>s.id==='avarias'); MAN.splice(i+1,0,{id:'atalhos',t:'Ações rápidas, Desfazer e Ctrl+K',img:'mural',intro:'Atalhos para trabalhar sem trocar de aba.',
+  passos:[['Ações na nota','Na Busca, cada nota encontrada mostra: Divergência, Avaria, 🔁 Reentrega (lança nas Reentregas de hoje com o motivo) e 🕘 Linha do tempo (romaneios em que a nota esteve, bipes, divergências, avarias e reentregas, em ordem de data).'],
+   ['Desfazer em 10 segundos','Depois de salvar uma divergência, uma avaria ou lançar uma reentrega pela Busca, aparece embaixo “↶ Desfazer” por 10 segundos. Clicou sem querer? Desfaça.'],
+   ['Ctrl+K','De qualquer tela, aperte Ctrl+K: o app abre a Busca com o cursor pronto para digitar NF, pedido, cidade ou cliente.']]}); })();
+{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/(linha do tempo|historico|historia).*\d{5,}/.test(t)){ const m=t.match(/\d{5,}/); setTimeout(()=>linhaTempo({nf:m[0],ped:m[0]}),200); return `Abrindo a linha do tempo da nota <b>${esc(z(m[0]))}</b>. 🐼`; } if(/\b(ctrl ?k|atalho)/.test(t)) return 'Aperte <b>Ctrl+K</b> em qualquer tela para buscar uma NF, pedido, cidade ou cliente. Na Busca, cada nota tem Divergência, Avaria, Reentrega e Linha do tempo, e tudo pode ser desfeito em 10 segundos. 🐼'; return _ee(txt); }; }
+
 </script>
 
 <!-- Leitor de fotos (OCR) embutido para funcionar sem internet:
