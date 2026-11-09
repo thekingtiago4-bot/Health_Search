@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='8.3.3', HS_DATA='04/11/2026';
+const HS_VERSAO='8.4.0', HS_DATA='08/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5025,7 +5025,7 @@ function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el
 
 /* v6.4.11: câmera — tenta configurações mais simples e explica o motivo real quando não abre */
 function opCamErro(e){ const n=e&&e.name||'', dentro=window.top!==window.self; let msg;
-  if(dentro) msg='A câmera não abre dentro desta prévia. Abra pelo link do site: thekingtiago4-bot.github.io/Nex-Route';
+  if(dentro) msg='A câmera não abre dentro desta prévia. Abra pelo link do site: thekingtiago4-bot.github.io/Health_Search';
   else if(!window.isSecureContext) msg='A câmera só funciona pelo link https do site (não pelo arquivo).';
   else if(n==='NotAllowedError'||n==='SecurityError') msg='O navegador bloqueou a câmera. Clique no 🔒 ao lado do endereço → Câmera → Permitir, e recarregue (F5). No Windows, confira também Configurações → Privacidade → Câmera → permitir apps da área de trabalho.';
   else if(n==='NotReadableError'||n==='TrackStartError') msg='A câmera está sendo usada por outro programa (Teams, WhatsApp, Zoom, outra aba). Feche-o e tente de novo.';
@@ -5963,7 +5963,7 @@ function reDiagRender(){ const el=$('#re-diag'); if(!el) return; try{ rbReavalia
 
 /* ================= v6.4.12 · botão "Liberar câmera": chama o pedido do próprio Chrome na hora do toque e mostra o resultado ================= */
 function camLiberar(){ const info=`seguro=${window.isSecureContext} · mediaDevices=${!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)} · endereço=${location.protocol}//${location.host}`;
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ alert('Este navegador não deixa o site usar a câmera.\n\nAbra pelo Chrome no endereço https://thekingtiago4-bot.github.io/Nex-Route/ (não pelo WhatsApp nem pelo arquivo).\n\n'+info); return; }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ alert('Este navegador não deixa o site usar a câmera.\n\nAbra pelo Chrome no endereço https://thekingtiago4-bot.github.io/Health_Search/ (não pelo WhatsApp nem pelo arquivo).\n\n'+info); return; }
   /* chamado direto no toque, sem esperar nada antes: é isso que faz o Chrome mostrar a pergunta */
   navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(st=>{ st.getTracks().forEach(t=>t.stop()); try{ localStorage.setItem(PERM_K,'ok'); }catch(e){} const b=$('#cam-liberar'); if(b) b.hidden=true; toast('📷 Câmera liberada! Toque em "Abrir câmera".'); })
     .catch(e=>{ alert('O Chrome não liberou a câmera.\n\nMotivo: '+(e&&e.name||'?')+(e&&e.message?' — '+e.message:'')+'\n\n'+info+'\n\nMande um print desta mensagem para o Claude.'); }); }
@@ -6365,6 +6365,8 @@ const MAN=[
   passos:[['Virada do dia (00h)','À meia-noite (ou na primeira vez que o app abre no dia seguinte), os romaneios carregados de dias anteriores são guardados no Banco de romaneios, no dia deles (pela data do nome do PDF), e saem de Carregados. Assim cada dia começa limpo e nada se perde: para consultar, abra o dia no Banco.'],
    ['Aparelho com dados diferentes','Todo aparelho abre as Reentregas no dia de hoje. Se um tablet/celular mostrar dados diferentes do computador, toque no ☁ (ao lado do nome do app) → “⬇ Puxar tudo da nuvem”: o aparelho fica igual à cópia online, a mesma dos outros.'],
    ['Backups da nuvem e aparelho desatualizado','Quando alguém entra num aparelho novo, ou num que ficou mais de 6 horas sem sincronizar, o app primeiro guarda na nuvem uma cópia do que está online (regiões, cadastros, reentregas, divergências) e só depois sincroniza. Um aparelho com mapa/configurações antigas não grava mais por cima da versão online: ele recebe a versão da nuvem. Para voltar: ☁ → 🗂 Backups da nuvem → ♻ Restaurar (administrador); antes de restaurar, o estado atual também é guardado. Ficam guardados os 30 backups mais recentes. Quando sua conta entra em outro aparelho, os aparelhos já abertos avisam: “Tablet … entrou com sua conta às 03:59”.'],
+   ['💾 Salvar na nuvem e versões permanentes','Tudo o que você muda sobe sozinho para o banco online (Supabase) em cerca de 1,5 s e chega ao vivo nos outros aparelhos: quem abrir o app recebe sempre a última versão salva. O botão 💾 Salvar, no canto inferior direito (ou Ctrl+S), força o envio na hora e grava uma VERSÃO COMPLETA permanente. O banco também guarda sozinho versões do mapa e das configurações, e uma cópia completa por dia. Essas versões ninguém apaga nem altera, nem o administrador. Para ver: botão direito no 💾 Salvar, ou ☁ → 🕘 Versões salvas; o administrador pode “♻ Voltar para esta” (antes o estado atual é salvo, então dá para desfazer).'],
+   ['Mapa com dois aparelhos ao mesmo tempo','Se duas pessoas (ou dois aparelhos) mexerem nas regiões ao mesmo tempo, o app junta as duas versões cidade a cidade: o que cada um marcou ou tirou é mantido. Se a mesma cidade foi colocada em regiões diferentes, vale a última marcação feita no aparelho que está sincronizando. Antes, a versão online podia substituir o mapa inteiro do aparelho.'],
    ['Atualizações seguras','Toda vez que o app atualiza, antes de sincronizar ele guarda um backup na nuvem (“antes da atualização x → y”) e uma foto do que o aparelho tinha. Depois de atualizar, confere e devolve sozinho qualquer divergência, reentrega, nota fora, agendamento ou cadastro que tenha sumido. Divergências só somem da nuvem quando o administrador apaga pelo botão Apagar.'],
    ['Layout e ajuda','Cada tela tem um botão (?) ao lado do título que abre a parte certa do Manual. Os grupos do menu (Operação, Regiões, Ferramentas, Administração) abrem e fecham clicando no nome; Rotas fica junto da Operação. Sem internet aparece só um selo pequeno ao lado do ☁. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam num cartão “Problemas” (toque nos números pequenos para ver só um tipo). No celular e no tablet as tabelas viram cartões, sem rolagem para os lados.']]},
 {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
@@ -7138,6 +7140,85 @@ async function nuvTelaBackups(){ let L=[]; try{ L=await nuvBackups(); }catch(e){
   document.body.appendChild(f); }
 (function(){ const el=$('#nuv-st'); if(!el) return; const _oc=el.onclick; el.onclick=()=>{ _oc&&_oc(); setTimeout(()=>{ const m=document.querySelector('.fundo:last-child [data-n="p"]'); if(m&&!m.parentNode.querySelector('[data-n="b"]')){ m.insertAdjacentHTML('afterend','<button class="btn" data-n="b">🗂 Backups da nuvem</button>'); m.parentNode.querySelector('[data-n="b"]').onclick=e=>{ e.stopPropagation(); m.closest('.fundo').remove(); nuvTelaBackups(); }; } },0); }; })();
 
+/* ================= v8.4.0 · Salvar na nuvem (manual + automático), versões permanentes e mapa mesclado cidade a cidade ================= */
+/* Nada é substituído no escuro:
+   1) toda mudança sobe sozinha para o Supabase (1,5 s depois) e chega ao vivo nos outros aparelhos;
+   2) o botão 💾 Salvar força o envio na hora e grava uma VERSÃO completa e permanente (tabela hs_versoes, ninguém apaga);
+   3) o banco também guarda sozinho versões do mapa e das configurações (gatilho no Supabase);
+   4) o mapa não é mais "um pacote só": se dois aparelhos mexeram, junta cidade a cidade (nenhuma marcação se perde). */
+const VSN={ok:null,chBase:'healthSearch.nuvBaseVal'};
+function vsnBaseLer(k){ try{ return (JSON.parse(localStorage.getItem(VSN.chBase)||'{}'))[k]||null; }catch(e){ return null; } }
+function vsnBaseGravar(k,v){ try{ const o=JSON.parse(localStorage.getItem(VSN.chBase)||'{}'); o[k]=v; localStorage.setItem(VSN.chBase,JSON.stringify(o)); }catch(e){} }
+/* junta o mapa em 3 vias: o que estava sincronizado (base), o deste aparelho e o da nuvem */
+function geoJuntar3(base,loc,rem){ base=base||{listas:[],aprend:{}}; loc=loc||{listas:[],aprend:{}}; rem=rem||{listas:[],aprend:{}};
+  const mp=a=>new Map((a.listas||[]).map(l=>[l.id,l])); const B=mp(base), L=mp(loc), R=mp(rem); const out=[]; const ganhouAqui=new Map();
+  const ids=[...new Set([...R.keys(),...L.keys()])];
+  for(const id of ids){ const b=B.get(id), l=L.get(id), r=R.get(id);
+    if(!l){ if(b) continue; out.push(JSON.parse(JSON.stringify(r))); continue; } /* apaguei aqui → some; nova lá → entra */
+    if(!r){ out.push(JSON.parse(JSON.stringify(l))); continue; } /* nova aqui, ou apagada lá: guardo (não perco marcação) */
+    const bc=new Set((b&&b.cidades)||[]), lc=new Set(l.cidades||[]), rc=new Set(r.cidades||[]);
+    const add=[...lc].filter(c=>!bc.has(c)), tir=b?[...bc].filter(c=>!lc.has(c)):[];
+    const cid=new Set(b?rc:new Set([...rc,...lc])); for(const c of add) cid.add(c); for(const c of tir) cid.delete(c);
+    const lMudou=b&&JSON.stringify({...l,cidades:0})!==JSON.stringify({...b,cidades:0});
+    const o=Object.assign({},lMudou?l:r,{cidades:[...cid]}); out.push(o); for(const c of add) ganhouAqui.set(c+'|'+o.tipo,id); }
+  /* cidade que EU coloquei numa região sai da outra região do mesmo tipo (uma cidade = uma região) */
+  for(const o of out) o.cidades=o.cidades.filter(c=>{ const g=ganhouAqui.get(c+'|'+o.tipo); return !g||g===o.id; });
+  const ap=Object.assign({},rem.aprend||{}); const ba=base.aprend||{}; for(const [k,v] of Object.entries(loc.aprend||{})) if(JSON.stringify(v)!==JSON.stringify(ba[k])) ap[k]=v;
+  return Object.assign({},rem,{listas:out,aprend:ap,em:new Date().toISOString()}); }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave==='s:geo'&&local&&remoto&&Array.isArray(local.listas)&&Array.isArray(remoto.listas)){
+      const j=geoJuntar3(vsnBaseLer('s:geo'),local,remoto); setTimeout(()=>toast('Mapa juntado com o dos colegas, cidade a cidade — nada foi perdido.'),300); return j; }
+    return _nj(chave,local,remoto); }; }
+/* depois de cada sincronização bem-sucedida, guarda o mapa "igual à nuvem" como base da próxima junção */
+{ const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); try{ if(!NUV.erro&&S.geo&&NUV.h['s:geo']===nuvHash(S.geo)) vsnBaseGravar('s:geo',S.geo); }catch(e){} return r; }; }
+
+/* ---- versões permanentes ---- */
+async function vsnItens(){ let data=[]; for(let pg=0;pg<40;pg++){ const {data:d1,error}=await NV.cli.from('hs_sync').select('chave,valor,apagado').or('chave.like.s:%,chave.like.re:%,chave.like.dv:%,chave.like.ls:%,chave.like.rom:%').range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; }
+  return data.filter(r=>!r.apagado&&r.valor!=null).map(r=>({chave:r.chave,valor:r.valor})); }
+async function vsnGravar(tipo,resumo){ const itens=await vsnItens(); if(!itens.length) return {ok:false,msg:'nada na nuvem ainda'};
+  const {error}=await NV.cli.from('hs_versoes').insert({chave:'snap',tipo,valor:{itens},resumo:resumo||(itens.length+' itens'),por:opEu(),aparelho:hsAparelho()});
+  if(error){ VSN.ok=false; const ok=await nuvBackupNuvem(tipo==='manual'?'salvo manualmente':'cópia automática'); return {ok,msg:ok?'guardado como backup (rode o SQL v8.4.0 para versões permanentes)':error.message,velho:true}; }
+  VSN.ok=true; return {ok:true,n:itens.length}; }
+async function hsSalvarAgora(){ if(!opOnline()){ toast('Sem internet: está guardado neste aparelho e sobe sozinho quando a conexão voltar.'); return; }
+  const b=$('#hs-salvar'); if(b){ b.disabled=true; b.textContent='⏳ Salvando…'; }
+  try{ NUV.desde=NUV.desde||''; await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro); const r=await vsnGravar('manual');
+    if(!r.ok) throw new Error(r.msg); try{ localStorage.setItem('healthSearch.ultSalvar',new Date().toISOString()); }catch(e){}
+    toast('✔ Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+(r.velho?' ('+r.msg+')':' — versão guardada para sempre ('+r.n+' itens). Quem abrir agora já recebe esta.'));
+  }catch(e){ toast('⚠ Não consegui salvar na nuvem: '+(e.message||e)+' — os dados continuam guardados neste aparelho.'); }
+  finally{ if(b){ b.disabled=false; b.textContent='💾 Salvar'; } } }
+/* cópia completa automática: 1x por dia por aparelho logado (além das versões que o próprio banco guarda a cada mudança) */
+async function vsnDiaria(){ try{ if(!opOnline()) return; const h=hojeISO(); if(localStorage.getItem('healthSearch.vsnDia')===h) return; const r=await vsnGravar('diario','cópia automática do dia'); if(r.ok) localStorage.setItem('healthSearch.vsnDia',h); }catch(e){} }
+setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(opOnline()&&NUV.ult){ clearInterval(t); vsnDiaria(); } else if(++n>300) clearInterval(t); },2000); },8000);
+
+/* lista de versões + restaurar (só admin) */
+async function vsnTela(){ if(!opOnline()){ toast('Sem internet.'); return; }
+  const {data,error}=await NV.cli.from('hs_versoes').select('id,chave,tipo,resumo,por,aparelho,em').in('chave',['snap','s:geo']).order('em',{ascending:false}).limit(80);
+  if(error){ toast(/hs_versoes|does not exist|schema cache/i.test(error.message)?'Falta rodar o arquivo supabase-v8.4.0-versoes.sql no Supabase.':error.message); return; }
+  const nome={manual:'💾 Salvo manualmente',diario:'🗓 Cópia do dia',auto:'🗺 Mapa (automático)',apagado:'🗑 Antes de apagar'};
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:600px;max-height:85vh;overflow:auto"><h2 style="margin-top:0">Versões salvas (permanentes)</h2><p class="sub">Estas versões ficam no Supabase para sempre: ninguém apaga nem altera, nem o administrador. "Mapa" guarda só as regiões; as outras guardam tudo.</p>
+   ${(data||[]).length?data.map(x=>`<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--linha)"><div style="flex:1"><b>${esc(new Date(x.em).toLocaleString('pt-BR'))}</b> · ${esc(x.chave==='s:geo'?nome.auto:(nome[x.tipo]||x.tipo))}<br><small class="sub">${esc([x.por,x.aparelho,x.resumo].filter(Boolean).join(' · '))}</small></div>${nvAdmin()?`<button class="btn mini" data-vs="${x.id}">♻ Voltar para esta</button>`:''}</div>`).join(''):'<p>Nenhuma versão ainda. Clique em 💾 Salvar para criar a primeira.</p>'}
+   <div style="display:flex;justify-content:space-between;margin-top:12px"><button class="btn" data-vs-n="1">💾 Salvar agora</button><button class="btn pri" data-vs-x="1">Fechar</button></div></div>`;
+  f.addEventListener('click',e=>{ if(e.target===f||e.target.closest('[data-vs-x]')){ f.remove(); return; } if(e.target.closest('[data-vs-n]')){ f.remove(); hsSalvarAgora(); return; } const r=e.target.closest('[data-vs]'); if(r){ f.remove(); vsnRestaurar(+r.dataset.vs); } });
+  document.body.appendChild(f); }
+async function vsnRestaurar(id){ if(!nvAdmin()){ toast('Só o administrador volta versões.'); return; }
+  const {data,error}=await NV.cli.from('hs_versoes').select('chave,tipo,valor,em').eq('id',id).maybeSingle(); if(error||!data){ toast('Não achei essa versão.'); return; }
+  const soMapa=data.chave==='s:geo'; if(!(await confirmar('Voltar versão',`${soMapa?'Voltar o MAPA (regiões)':'Voltar TUDO (regiões, reentregas, divergências, cadastros, romaneios)'} para como estava em ${new Date(data.em).toLocaleString('pt-BR')}? Antes eu salvo uma versão do estado atual, então dá para desfazer.`,'Voltar'))) return;
+  await vsnGravar('manual','antes de voltar para '+new Date(data.em).toLocaleString('pt-BR')); const agora=new Date().toISOString();
+  const itens=soMapa?[{chave:'s:geo',valor:data.valor}]:((data.valor&&data.valor.itens)||[]); let q=0;
+  for(const it of itens){ let v=it.valor; if(it.chave.startsWith('s:')&&v&&typeof v==='object'&&!Array.isArray(v)) v=Object.assign({},v,{em:agora}); nuvAplicar(it.chave,v,false); q++; }
+  try{ const bs=nuvBases(); for(const it of itens) if(it.chave.startsWith('s:')) bs[it.chave]=agora; localStorage.setItem('healthSearch.nuvBase',JSON.stringify(bs)); }catch(e){}
+  if(soMapa) vsnBaseGravar('s:geo',null); try{ GEO.idx={}; GEO.cls={}; }catch(e){}
+  salvar(); try{ RE.gravar(); }catch(e){} try{ renderTudo(); }catch(e){} await nuvSinc(); toast('✔ Versão restaurada ('+q+' itens) e enviada para todos.'); }
+
+/* botão fixo, sempre visível, no canto inferior direito (e Ctrl+S) */
+(function vsnBotao(){ if($('#hs-salvar')) return; const b=document.createElement('button'); b.id='hs-salvar'; b.type='button'; b.className='btn pri'; b.textContent='💾 Salvar';
+  b.title='Salvar na nuvem agora (Ctrl+S). Tudo também é salvo sozinho a cada mudança. Clique com o botão direito para ver as versões salvas.';
+  b.style.cssText='position:fixed;right:14px;bottom:14px;z-index:1500;box-shadow:0 4px 14px rgba(0,0,0,.35);border-radius:22px;padding:10px 16px;font-weight:700';
+  b.onclick=hsSalvarAgora; b.oncontextmenu=e=>{ e.preventDefault(); vsnTela(); }; document.body.appendChild(b);
+  const vis=()=>{ b.hidden=!(typeof Store!=='undefined'&&Store.modo==='nuvem'&&opOnline()); }; vis(); setInterval(vis,3000);
+  document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&(e.key==='s'||e.key==='S')){ e.preventDefault(); hsSalvarAgora(); } }); })();
+/* "Versões salvas" também no menu da nuvem (☁) */
+(function(){ const el=$('#nuv-st'); if(!el) return; const _oc=el.onclick; el.onclick=()=>{ _oc&&_oc(); setTimeout(()=>{ const m=document.querySelector('.fundo:last-child [data-n="p"]'); if(m&&!m.parentNode.querySelector('[data-n="v"]')){ m.insertAdjacentHTML('beforebegin','<button class="btn" data-n="v">🕘 Versões salvas (permanentes)</button>'); m.parentNode.querySelector('[data-n="v"]').onclick=e=>{ e.stopPropagation(); m.closest('.fundo').remove(); vsnTela(); }; } },0); }; })();
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
