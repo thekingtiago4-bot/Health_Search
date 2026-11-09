@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.5.6', HS_DATA='09/11/2026';
+const HS_VERSAO='9.5.7', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9071,6 +9071,17 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 /* quando a roupa muda em outro aparelho, aplica na hora */
 let _evaVisH=''; setInterval(()=>{ try{ const h=JSON.stringify(S.evaVisual||null); if(h!==_evaVisH){ _evaVisH=h; evaAplicarVisual(); } }catch(e){} },3000);
 (function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Roupa da EVA','Em 🎨 Personalizar EVA o administrador escolhe colete refletivo, capacete e a cor do laço. A escolha fica no banco e todos os usuários veem a EVA igual.']); })();
+
+/* ================= v9.5.7 · Aviso de nova versão: discreto no topo, salva na nuvem antes de atualizar ================= */
+(function(){ const st=document.createElement('style'); st.textContent=`#app-att{top:calc(12px + env(safe-area-inset-top,0px))!important;bottom:auto!important;z-index:1800!important;border-radius:999px!important;padding:6px 6px 6px 14px!important;background:linear-gradient(90deg,#0f4c4c,#12806f)!important;border:1px solid rgba(255,255,255,.2);font-size:.85rem!important;max-width:min(520px,calc(100vw - 24px))!important}
+#app-att span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#app-att .btn{border-radius:999px!important;background:#fff!important;color:#0f4c4c!important;border:0!important}
+@media (max-width:860px){#app-att{top:calc(64px + env(safe-area-inset-top,0px))!important}}
+body:has(#nv-tela:not([hidden])) #app-att{display:none!important}`; document.head.appendChild(st);
+  const a=$('#app-att'); if(!a) return; const ok=$('#app-att-ok'); ok.textContent='Atualizar';
+  new MutationObserver(()=>{ const s=a.querySelector('span'); const m=s&&s.textContent.match(/Nova versão\s*([\d.]+)/); if(m&&!s.dataset.v957){ s.dataset.v957=1; s.innerHTML=`✨ Nova versão <b>${esc(m[1])}</b>`; a.title='Seus dados ficam salvos: o app envia tudo para a nuvem antes de atualizar.'; } }).observe(a,{childList:true,subtree:true});
+  ok.addEventListener('click',async e=>{ if(ok.dataset.ok) return; e.stopImmediatePropagation(); ok.disabled=true; ok.textContent='Salvando…'; try{ if(typeof opOnline==='function'&&opOnline()) await nuvSinc(); }catch(x){} ok.dataset.ok=1; ok.disabled=false; ok.click(); },true);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(j=>{ const c=(x,y)=>{ x=String(x).split('.').map(Number); y=String(y).split('.').map(Number); for(let i=0;i<3;i++){ const d=(x[i]||0)-(y[i]||0); if(d) return d; } return 0; }; if(j.versao&&c(j.versao,HS_VERSAO)>0){ a.querySelector('span').innerHTML=`✨ Nova versão <b>${esc(j.versao)}</b>`; a.hidden=false; } }).catch(()=>{}); } });
+  const s=MAN.find(x=>x.id==='menu2026'); if(s) s.passos.push(['✨ Nova versão','Com o app aberto, ele confere a cada 5 minutos (e quando você volta para a aba) se saiu versão nova. Aparece no topo “✨ Nova versão — Atualizar”. Ao tocar, o app salva tudo na nuvem e atualiza.']); })();
 
 </script>
 
