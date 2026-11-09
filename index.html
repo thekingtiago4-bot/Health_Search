@@ -1140,8 +1140,8 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
       <div class="nv-novo">
         <label>Nome<input id="nv-u-nome" autocomplete="off" placeholder="Ex.: Márcia"></label>
         <label>Usuário<input id="nv-u-usuario" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="ex.: tiago.souza"></label>
-        <label>E-mail (recuperar senha)<input id="nv-u-email" type="email" autocomplete="off" placeholder="nome@empresa.com.br"></label>
-        <label>Senha inicial<input id="nv-u-senha" type="text" autocomplete="off" placeholder="mín. 8 caracteres"></label>
+        <label>E-mail (opcional, para recuperar senha)<input id="nv-u-email" type="email" autocomplete="off" placeholder="pode deixar em branco"></label>
+        <label>Senha inicial<input id="nv-u-senha" type="text" autocomplete="off" placeholder="qualquer senha (mín. 6) — a pessoa troca no 1º acesso"></label>
         <label>Perfil<select id="nv-u-papel"><option value="usuario">Usuário</option><option value="admin">Administrador</option></select></label>
         <button class="btn pri" id="nv-criar" type="button">Criar usuário</button>
       </div>
@@ -3800,10 +3800,10 @@ function nvConfigurar(){ return new Promise(res=>{ const f=nvTela(`<h2>Conectar 
   f.querySelector('#nv-off').onclick=()=>{ nvFechar(); res(null); };
   f.querySelector('#nv-ok').onclick=()=>{ const url=f.querySelector('#nv-url').value.trim().replace(/\/+$/,''), chave=f.querySelector('#nv-chave').value.trim(); if(!/^https:\/\/.+\.supabase\.co$/.test(url)||chave.length<40){ nvMsg(f,'Confira a URL e a chave.',1); return; } const c={url,chave}; localStorage.setItem('healthSearch.nuvem',JSON.stringify(c)); res(c); }; }); }
 
-function nvLogin(){ return new Promise(res=>{ const f=nvTela(`<h2>Entrar</h2><form id="nv-form"><label>Usuário ou e-mail<input id="nv-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex.: tiago.souza" required></label><label>Senha<input id="nv-senha" type="password" autocomplete="current-password" required></label>
+function nvLogin(){ return new Promise(res=>{ const f=nvTela(`<h2>Entrar</h2><form id="nv-form"><label>Usuário<input id="nv-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex.: tiago.souza" required></label><label>Senha<input id="nv-senha" type="password" autocomplete="current-password" required></label>
   <div class="nv-msg"></div><div class="nv-bts"><button class="btn mini" id="nv-esq" type="button">Esqueci a senha</button><button class="btn pri grande" type="submit">Entrar</button></div></form>`);
   f.querySelector('#nv-email').focus();
-  f.querySelector('#nv-esq').onclick=async()=>{ const em=f.querySelector('#nv-email').value.trim(); if(!em){ nvMsg(f,'Digite o e-mail primeiro.',1); return; } const em2=await nvEmailDoLogin(em); if(!nvEmailReal(em2)){ nvMsg(f,'Esse usuário não tem e-mail de recuperação. Peça ao administrador.',1); return; } const {error}=await NV.cli.auth.resetPasswordForEmail(em2,{redirectTo:location.href.split('#')[0]}); nvMsg(f,error?nvTraduz(error.message):'Se o e-mail existir, chega um link para trocar a senha.',!!error); };
+  f.querySelector('#nv-esq').onclick=async()=>{ const em=f.querySelector('#nv-email').value.trim(); if(!em){ nvMsg(f,'Digite o usuário primeiro.',1); return; } const em2=await nvEmailDoLogin(em); if(!nvEmailReal(em2)){ nvMsg(f,'Esse usuário não tem e-mail de recuperação. Peça ao administrador.',1); return; } const {error}=await NV.cli.auth.resetPasswordForEmail(em2,{redirectTo:location.href.split('#')[0]}); nvMsg(f,error?nvTraduz(error.message):'Se o e-mail existir, chega um link para trocar a senha.',!!error); };
   f.querySelector('#nv-form').onsubmit=async e=>{ e.preventDefault(); nvMsg(f,'Entrando…'); const {data,error}=await NV.cli.auth.signInWithPassword({email:await nvEmailDoLogin(f.querySelector('#nv-email').value),password:f.querySelector('#nv-senha').value}); if(error){ nvMsg(f,nvTraduz(error.message),1); return; } res(data.user); }; }); }
 
 async function nvPerfil(){ const {data,error}=await NV.cli.from('perfis').select('*').eq('id',NV.user.id).maybeSingle(); if(error) throw error; return data; }
@@ -3874,7 +3874,7 @@ async function renderUsuarios(){ const el=$('#nv-users'); if(!el) return; if(Sto
     return `<tr><td class="forte">${esc(u.nome||'')}${eu?' <small class="sec">(você)</small>':''}</td><td>${esc(u.usuario||'—')}</td><td>${nvEmailReal(u.email)?esc(u.email):'<span class="nv-falta">falta e-mail</span>'}</td>
     <td>${u.papel==='admin'?'Administrador':'Usuário'}</td><td>${u.ativo?'<span class="nx-ok">Ativo</span>':'<span class="sec">Bloqueado</span>'}</td>
     <td class="nx-acoes"><button class="btn mini pri" type="button" data-nv-editar="${u.id}">Editar</button>${eu?'':`<button class="btn mini" type="button" data-nv-ativo="${u.id}" data-v="${u.ativo?0:1}">${u.ativo?'Bloquear':'Liberar'}</button>`}<button class="btn mini" type="button" data-nv-senha="${u.id}" data-nome="${esc(u.nome||'')}">Redefinir senha</button></td></tr>`; }).join('')}</tbody></table></div>`; }
-function nvValidar(nome,usuario,email){ if(!nome) return 'Preencha o nome.'; if(!/^[a-z0-9._-]{3,40}$/.test(usuario)) return 'Usuário: 3 a 40 caracteres, só letras, números, ponto, hífen ou _ (ex.: tiago.souza).'; if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return 'Informe um e-mail válido: é por ele que a pessoa recupera a senha.'; return ''; }
+function nvValidar(nome,usuario,email){ if(!nome) return 'Preencha o nome.'; if(!/^[a-z0-9._-]{3,40}$/.test(usuario)) return 'Usuário: 3 a 40 caracteres, só letras, números, ponto, hífen ou _ (ex.: tiago.souza).'; if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return 'E-mail inválido (ou deixe em branco).'; return ''; }
 function nvEditar(u){ const eu=u.id===NV.user.id; const f=document.createElement('div'); f.className='fundo';
   f.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>Editar ${esc(u.nome||'usuário')}</h2><p>Usuário e e-mail servem para entrar. O e-mail também recebe o link de troca de senha.</p>
    <div class="nv-ed"><label>Nome<input id="nv-e-nome" value="${esc(u.nome||'')}"></label><label>Usuário<input id="nv-e-usuario" value="${esc(u.usuario||'')}" autocapitalize="none" spellcheck="false" placeholder="ex.: tiago.souza"></label>
@@ -3885,19 +3885,19 @@ function nvEditar(u){ const eu=u.id===NV.user.id; const f=document.createElement
   f.addEventListener('click',async e=>{ const a=e.target.closest('[data-a]'); if(!a) return; if(a.dataset.a!=='ok'){ f.remove(); return; }
     const nome=$('#nv-e-nome').value.trim(), usuario=$('#nv-e-usuario').value.trim().toLowerCase(), email=$('#nv-e-email').value.trim().toLowerCase(), papel=$('#nv-e-papel').value;
     const m=nvValidar(nome,usuario,email); if(m){ $('#nv-e-msg').textContent=m; $('#nv-e-msg').classList.add('erro'); return; }
-    a.disabled=true; const {error}=await NV.cli.rpc('hs_editar_usuario',{alvo:u.id,p_nome:nome,p_usuario:usuario,p_email:email,p_papel:eu?u.papel:papel}); a.disabled=false;
+    a.disabled=true; const {error}=await NV.cli.rpc('hs_editar_usuario',{alvo:u.id,p_nome:nome,p_usuario:usuario,p_email:email||(usuario+'@'+NV_DOM),p_papel:eu?u.papel:papel}); a.disabled=false;
     if(error){ $('#nv-e-msg').textContent=nvTraduz(/duplicate|unique|já/i.test(error.message)?'Esse usuário ou e-mail já está em uso.':error.message); $('#nv-e-msg').classList.add('erro'); return; }
     f.remove(); if(eu){ NV.perfil.nome=nome; const b=document.querySelector('#nv-eu b'); if(b) b.textContent=nome; } toast('Usuário '+nome+' atualizado.'); renderUsuarios(); }); }
 document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t.closest('#t-usuarios')) return; let b;
   if(t.id==='nv-criar'){ const nome=$('#nv-u-nome').value.trim(), usuario=$('#nv-u-usuario').value.trim().toLowerCase(), email=$('#nv-u-email').value.trim().toLowerCase(), senha=$('#nv-u-senha').value, papel=$('#nv-u-papel').value;
-    const m=nvValidar(nome,usuario,email); if(m){ toast(m); return; } { const fr=senhaFraca(senha,usuario); if(fr){ toast(fr); return; } }
+    const m=nvValidar(nome,usuario,email); if(m){ toast(m); return; } if(String(senha).length<6){ toast('A senha inicial precisa ter pelo menos 6 caracteres.'); return; }
     if((NV.lista||[]).some(u=>(u.usuario||'').toLowerCase()===usuario)){ toast('Esse usuário já existe.'); return; }
-    t.disabled=true; try{ const {error}=await NV.cli.rpc('hs_criar_usuario',{p_nome:nome,p_usuario:usuario,p_email:email,p_senha:senha,p_papel:papel}); if(error) throw error;
-      ['#nv-u-nome','#nv-u-usuario','#nv-u-email','#nv-u-senha'].forEach(s=>$(s).value=''); toast(`Usuário ${nome} criado. Entra com ${usuario} (ou ${email}) e a senha que você definiu.`); renderUsuarios(); }
+    t.disabled=true; try{ const {error}=await NV.cli.rpc('hs_criar_usuario',{p_nome:nome,p_usuario:usuario,p_email:email||(usuario+'@'+NV_DOM),p_senha:senha,p_papel:papel}); if(error) throw error;
+      ['#nv-u-nome','#nv-u-usuario','#nv-u-email','#nv-u-senha'].forEach(s=>$(s).value=''); toast(`Usuário ${nome} criado. Entra com ${usuario} e a senha que você definiu; no 1º acesso troca a senha.`); renderUsuarios(); }
     catch(x){ toast('Não criei: '+nvTraduz(x.message)); } t.disabled=false; return; }
   if((b=t.closest('[data-nv-editar]'))){ const u=(NV.lista||[]).find(x=>x.id===b.dataset.nvEditar); if(u) nvEditar(u); return; }
   if((b=t.closest('[data-nv-ativo]'))){ await NV.cli.from('perfis').update({ativo:b.dataset.v==='1'}).eq('id',b.dataset.nvAtivo); renderUsuarios(); return; }
-  if((b=t.closest('[data-nv-senha]'))){ const nova=prompt('Nova senha para '+b.dataset.nome+' (mín. 10 caracteres, com maiúscula, minúscula, número e símbolo):'); if(nova==null) return; { const fr=senhaFraca(nova); if(fr){ toast(fr); return; } }
+  if((b=t.closest('[data-nv-senha]'))){ const nova=prompt('Senha provisória para '+b.dataset.nome+' (mín. 6 caracteres). A pessoa troca no próximo acesso:'); if(nova==null) return; if(nova.length<6){ toast('Mínimo 6 caracteres.'); return; }
     const {error}=await NV.cli.rpc('hs_definir_senha',{alvo:b.dataset.nvSenha,nova}); toast(error?'Não redefini: '+nvTraduz(error.message):'Senha de '+b.dataset.nome+' redefinida.'); return; }
   if((b=t.closest('[data-nv-reset]'))){ const {error}=await NV.cli.auth.resetPasswordForEmail(b.dataset.nvReset,{redirectTo:location.href.split('#')[0]}); toast(error?nvTraduz(error.message):'Link de troca de senha enviado para '+b.dataset.nvReset+'.'); return; }
 });
@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.3.2', HS_DATA='09/11/2026';
+const HS_VERSAO='9.4.0', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8670,6 +8670,30 @@ function zapConfig(){ if(!nvAdmin()){ toast('Só o administrador.'); return; } c
     if(r==='limpar'){ S.zapGrupo={nome:'',link:'',em:new Date().toISOString()}; salvar(); toast('Grupo tirado.'); } f.remove(); }; }
 setInterval(()=>{ try{ const t=$('#t-cadastros'); if(!t||!nvAdmin()||$('#zg-bt')) return; const h=t.querySelector('.sub')||t.querySelector('h1'); h.insertAdjacentHTML('afterend','<div class="barra" style="margin:6px 0 10px"><button class="btn mini" type="button" id="zg-bt">📲 Grupo da operação (WhatsApp)</button></div>'); $('#zg-bt').onclick=zapConfig; }catch(e){} },2000);
 (function(){ const s=MAN.find(x=>x.id==='menu2026'); if(s) s.passos.push(['📲 Grupo da operação','O administrador cadastra o link do grupo em Cadastros → 📲 Grupo da operação. Ao enviar qualquer texto pelo WhatsApp (fechamento do turno, Registro, Via Minas…), aparece o botão do grupo: o texto vai copiado e o grupo abre; é só colar e enviar. O WhatsApp não deixa o app escrever direto num grupo, por isso o colar.']); })();
+
+
+/* ================= v9.4.0 · Login só com usuário e senha · troca de senha no 1º acesso · tela de login limpa · aviso de resposta de chamado ================= */
+(function(){ const st=document.createElement('style'); st.textContent=`body:has(#nv-tela:not([hidden])) :is(#eva-bt,#eva-painel,#hs-salvar,#robo-sql,#robo-aviso,#hs-desf,#ch-aviso,#uso-aviso,.toast,#toast,#nuv-st,#geo-pub-bar){display:none!important}`; document.head.appendChild(st); })();
+let _trocaMostrada=false;
+async function nvTrocaPrimeiroAcesso(){ if(_trocaMostrada) return; _trocaMostrada=true;
+  await new Promise(res=>{ const f=nvTela(`<h2>Crie a sua senha</h2><p>Este é o seu primeiro acesso (ou o administrador redefiniu a sua senha). Crie uma senha só sua para continuar.</p>
+    <label>Nova senha<input id="nv-p1" type="password" autocomplete="new-password"></label><label>Repita a nova senha<input id="nv-p2" type="password" autocomplete="new-password"></label>
+    <p class="sec" style="font-size:.85rem;margin:4px 0 0">Mínimo 10 caracteres, com maiúscula, minúscula, número e símbolo.</p><div class="nv-msg"></div><div class="nv-bts"><button class="btn mini" type="button" id="nv-p-sair">Sair</button><button class="btn pri grande" type="button" id="nv-p-ok">Salvar e entrar</button></div>`);
+    f.querySelector('#nv-p1').focus(); f.querySelector('#nv-p-sair').onclick=async()=>{ await NV.cli.auth.signOut(); location.reload(); };
+    const ok=async()=>{ const a=f.querySelector('#nv-p1').value, b=f.querySelector('#nv-p2').value; if(a!==b){ nvMsg(f,'As duas senhas não são iguais.',1); return; } const fr=senhaFraca(a,NV.perfil&&NV.perfil.usuario); if(fr){ nvMsg(f,fr,1); return; }
+      nvMsg(f,'Salvando…'); const {error}=await NV.cli.auth.updateUser({password:a}); if(error){ nvMsg(f,nvTraduz(error.message),1); return; }
+      const r=await NV.cli.rpc('hs_senha_trocada'); if(r.error){ nvMsg(f,nvTraduz(r.error.message),1); return; } NV.perfil.trocar_senha=false; nvFechar(); toast('✔ Senha criada. Bem-vindo(a)!'); res(); };
+    f.querySelector('#nv-p-ok').onclick=ok; f.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); ok(); } }); }); }
+setInterval(()=>{ try{ if(Store.modo==='nuvem'&&NV.perfil&&NV.perfil.trocar_senha&&!_trocaMostrada) nvTrocaPrimeiroAcesso(); }catch(e){} },800);
+/* aviso no app quando o ADM responde o chamado */
+let _chNL=null;
+{ const _cb=chBadge; chBadge=function(){ _cb(); try{ if(nvAdmin()) return; const n=chNaoLidos(); if(_chNL!==null&&n>_chNL){ const c=(CH.lista||[]).find(x=>!x.lido_usuario); chAvisar(c); } _chNL=n; }catch(e){} }; }
+function chAvisar(c){ let el=$('#ch-aviso'); if(!el){ el=document.createElement('div'); el.id='ch-aviso'; el.style.cssText='position:fixed;right:18px;bottom:84px;z-index:1600;max-width:340px;background:#0f4c4c;color:#fff;padding:12px 14px;border-radius:14px;box-shadow:0 10px 26px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:8px'; document.body.appendChild(el); }
+  el.innerHTML=`<b>💬 O administrador respondeu seu chamado</b><span style="opacity:.9">${c?'#'+esc(String(c.id))+' · '+esc(c.titulo||''):''}</span><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn mini" type="button" data-cha="x">Depois</button><button class="btn mini pri" type="button" data-cha="ver">Ver resposta</button></div>`;
+  el.onclick=e=>{ const b=e.target.closest('[data-cha]'); if(!b) return; el.remove(); if(b.dataset.cha==='ver'){ irPara('chamados'); if(c){ CH.aberto=c.id; setTimeout(()=>chRender(),200); } } }; try{ opSom('info'); }catch(e){} }
+(function(){ const s=MAN.find(x=>/Falar com o ADM|Chamados/i.test(x.t)); if(s&&s.passos) s.passos.push(['Aviso de resposta','Quando o administrador responde, aparece no app o aviso “O administrador respondeu seu chamado”, com o botão Ver resposta.']);
+  const u=MAN.find(x=>/Usu[aá]rios/i.test(x.t)); const p=['Primeiro acesso','O administrador cria o usuário com qualquer senha provisória (mínimo 6). No primeiro acesso, a pessoa entra com usuário e essa senha e o app pede para criar uma senha própria. O mesmo acontece quando o administrador redefine a senha. O e-mail é opcional.'];
+  if(u&&u.passos) u.passos.push(p); else { const m=MAN.find(x=>x.id==='menu2026'); if(m) m.passos.push(p); } })();
 
 </script>
 
