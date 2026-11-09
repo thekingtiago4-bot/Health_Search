@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.5.3', HS_DATA='09/11/2026';
+const HS_VERSAO='9.5.4', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8705,6 +8705,7 @@ function chAvisar(c){ let el=$('#ch-aviso'); if(!el){ el=document.createElement(
 /* ================= v9.5.0 · Configurações (Ajustes, EVA, Ajuda), rodapé com usuário/Deslogar, salvo online discreto ================= */
 (function(){ const st=document.createElement('style'); st.textContent=`
 .resumo dl,.resumo .salvo,#bt-legenda,#bt-tema,.resumo .autoria-pre{display:none!important}
+.rail-user{display:none!important}
 .rail-user{display:flex;align-items:center;gap:10px;padding:10px 10px 8px;margin:6px 0 4px;border-top:1px solid rgba(255,255,255,.12)}
 .rail-user .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12);color:#fff;font-weight:700}
 .rail-user b{display:block;color:#fff;font-size:.95rem;line-height:1.1}.rail-user small{color:rgba(195,226,224,.7);font-size:.78rem}
