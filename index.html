@@ -4128,7 +4128,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.10.0', HS_DATA='10/11/2026';
+const HS_VERSAO='9.11.0', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7801,10 +7801,14 @@ function evaListar(f,dia){ EVA.ultF=f; EVA.ultDia=dia; const rs=evaRomDoDia(dia)
    .ct-ferr{margin-top:16px;border:1px dashed var(--linha);border-radius:12px;padding:8px 12px}.ct-ferr summary{cursor:pointer}
    @media(max-width:560px){.ct-big{grid-template-columns:1fr;justify-items:center;text-align:center}}`; document.head.appendChild(st);
 })();
-function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return; const mv=$('#ct-mover'), fe=$('#ct-ferr-c');
-  for(const id of ['op-romchips','op-cards','op-porrom']){ const el=document.getElementById(id); if(el&&el.parentNode!==mv) mv.appendChild(el); }
-  for(const id of ['op-xml','op-diag']){ const el=document.getElementById(id); if(el&&el.parentNode!==fe) fe.appendChild(el); }
-  { const tu=document.getElementById('op-turno'), res=document.getElementById('op-res'); if(tu&&res&&res.nextElementSibling!==tu&&tu.parentNode!==res.parentNode||tu&&tu.closest('#t-conftotal')) res.insertAdjacentElement('afterend',tu); }
+function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
+  /* BUG#1-FIX v9.11.0: só mover elementos DOM quando a tela estiver visível.
+     Mover #op-cards para dentro da seção hidden causava renderização vazia no NexBip. */
+  if(!sec.hidden){ const mv=$('#ct-mover'), fe=$('#ct-ferr-c');
+    for(const id of ['op-romchips','op-cards','op-porrom']){ const el=document.getElementById(id); if(el&&el.parentNode!==mv) mv.appendChild(el); }
+    for(const id of ['op-xml','op-diag']){ const el=document.getElementById(id); if(el&&el.parentNode!==fe) fe.appendChild(el); }
+    { const tu=document.getElementById('op-turno'), res=document.getElementById('op-res'); if(tu&&res&&res.nextElementSibling!==tu&&tu.parentNode!==res.parentNode||tu&&tu.closest('#t-conftotal')) res.insertAdjacentElement('afterend',tu); }
+  }
   let L=[]; try{ L=opPorRom(); }catch(e){} const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0), ok=tn-fn, pct=tn?Math.round(100*ok/tn):0;
   const porB=new Map(); for(const x of L){ const a=porB.get(x.base)||{tn:0,fn:0}; a.tn+=x.tn; a.fn+=x.fn; porB.set(x.base,a); }
   const g=$('#ct-geral'); if(g) g.innerHTML=tn?`<div class="ct-big"><div class="ct-anel" style="--p:${pct}"><b>${pct}%</b></div><div><h2 style="margin:0 0 4px">${fmtN(ok)} de ${fmtN(tn)} nota(s) conferida(s)</h2><p class="sub" style="margin:0 0 10px">${fmtN(fn)} faltando · ${fmtN(L.length)} romaneio(s) de hoje</p>
