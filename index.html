@@ -2928,7 +2928,7 @@ $('#arq').addEventListener('change',e=>importar(e.target.files));
 sol.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('#arq').click(); } });
 ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(!$('#t-romaneios').hidden) sol.classList.add('sobre'); const xs=$('#xl-soltar'); if(xs && !$('#t-excel').hidden) xs.classList.add('sobre'); }));
 ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='dragleave' && e.relatedTarget) return; sol.classList.remove('sobre'); const xs=$('#xl-soltar'); if(xs) xs.classList.remove('sobre'); }));
-document.addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs&&fs.length&&$('#t-rotas').hidden&&$('#t-geo').hidden){ if(window.RomExcel && !$('#t-excel').hidden){ RomExcel.converter(fs); return; } irPara('romaneios'); importar(fs); } });
+document.addEventListener('drop',e=>{ const fs=e.dataTransfer&&e.dataTransfer.files; if(fs&&fs.length&&(!$('#t-rotas')||$('#t-rotas').hidden)&&$('#t-geo').hidden){ /* v9.6.6: a tela antiga de rotas não existe mais */ if(window.RomExcel && !$('#t-excel').hidden){ RomExcel.converter(fs); return; } irPara('romaneios'); importar(fs); } });
 
 /* ---------- tela de introdução ---------- */
 function abrirIntro(){ const el=$('#intro'); $('#intro-nao').checked=!!S.introOff; el.hidden=false; setTimeout(()=>$('#bt-intro').focus(),30); }
@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.6.5', HS_DATA='09/11/2026';
+const HS_VERSAO='9.6.6', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
