@@ -3589,7 +3589,9 @@ function nexVarrer(){ const n=nexS(); let novas=0, mud=false;
   for(const r of S.romaneios){ const d=nexDataRom(r);
     for(const row of r.rows){ const k=nexK(row); if(!k) continue; const h=n.hist[k]=n.hist[k]||[];
       if(!h.some(e=>e.d===d&&e.rom===r.id)){
-        const ant=h.filter(e=>e.d<d).sort((a,b)=>b.d.localeCompare(a.d))[0];
+        /* BUG#2-FIX v9.11.0: só considera "anterior" entradas de OUTRO romaneio (rom diferente).
+           Mesmo arquivo reprocessado no dia seguinte tem mesmo r.id → não é reentrega. */
+        const ant=h.filter(e=>e.d<d&&e.rom!==r.id).sort((a,b)=>b.d.localeCompare(a.d))[0];
         h.push({d,rom:r.id,num:r.numero||''}); mud=true;
         if(ant && !(n.reent[k]&&n.reent[k].d===d)){ n.reent[k]={d,rom:r.id,num:r.numero||'',anterior:ant.d,romAnt:ant.num||'',status:'suspeita',motivo:'',em:new Date().toISOString()}; novas++; } } } }
   // regras da memória
@@ -4895,7 +4897,8 @@ function reVarrerPed(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
     for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped); if(!k&&!p) continue;
       let ant=null, via='';
       if(p){ const h=n.histPed[p]=n.histPed[p]||[];
-        if(!h.some(e=>e.d===d&&e.rom===r.id)){ ant=h.filter(e=>e.d<d).sort((a,b)=>b.d.localeCompare(a.d))[0]||null; if(ant) via='pedido'; h.push({d,rom:r.id,num:r.numero||'',nf:k}); if(h.length>20) h.splice(0,h.length-20); } }
+        /* BUG#2-FIX v9.11.0: excluir mesmo romaneio do antecedente de pedido */
+        if(!h.some(e=>e.d===d&&e.rom===r.id)){ ant=h.filter(e=>e.d<d&&e.rom!==r.id).sort((a,b)=>b.d.localeCompare(a.d))[0]||null; if(ant) via='pedido'; h.push({d,rom:r.id,num:r.numero||'',nf:k}); if(h.length>20) h.splice(0,h.length-20); } }
       if(!ant){ const dl=(k&&lanc.nf.get(k))||(p&&lanc.ped.get(p)); if(dl&&dl<d){ ant={d:dl,num:'Reentregas'}; via='lancada'; } }
       const kk=k||('P'+p);
       if(ant&&!(n.reent[kk]&&n.reent[kk].d===d)){ n.reent[kk]={d,rom:r.id,num:r.numero||'',anterior:ant.d,romAnt:ant.num||'',status:'suspeita',motivo:'',via,ped:p,nfAnt:ant.nf||'',em:new Date().toISOString()}; novas++; } } }
@@ -5390,7 +5393,8 @@ function rbRegistrarHist(r,dia){ const n=nexS(); n.histPed=n.histPed||{}; const 
 function rbReavaliar(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
   for(const r of S.romaneios||[]){ const d=nexDataRom(r);
     for(const row of r.rows||[]){ const k=nexK(row), p=z(row.ped), kk=k||('P'+p); if(!kk) continue; if(n.reent[kk]&&n.reent[kk].d===d) continue;
-      const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(e=>e.d<d).sort((a,b)=>b.d.localeCompare(a.d))[0];
+      /* BUG#2-FIX v9.11.0: só conta como antecedente entradas de outro romaneio */
+      const ant=[...((k&&n.hist[k])||[]),...((p&&n.histPed[p])||[])].filter(e=>e.d<d&&e.rom!==r.id).sort((a,b)=>b.d.localeCompare(a.d))[0];
       if(ant){ n.reent[kk]={d,rom:r.id,num:r.numero||'',anterior:ant.d,romAnt:ant.num||'',status:'suspeita',motivo:'',via:'banco',ped:p,nfAnt:ant.nf||'',em:new Date().toISOString()}; novas++; } } }
   try{ reRegraMesa(); }catch(e){} return novas; }
 /* arquiva sozinho os romaneios carregados, no dia de cada um */
