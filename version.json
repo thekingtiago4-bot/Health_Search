@@ -1,1 +1,5 @@
-{"versao":"9.9.1","data":"2026-11-10","novidades":"Com a câmera aberta para bipar, a EVA (o personagem) sai da frente: o botão dela e o balão ficam escondidos até você fechar a câmera. Os avisos dela não se perdem — aparecem numa tarja discreta dentro da própria câmera e continuam no histórico do chat."}
+{
+  "versao": "9.10.0",
+  "data": "2026-11-10",
+  "novidades": "Chat EVA estilo WhatsApp; botão resetar EVA (admin); mapa sincroniza com adm; relatório diário de conferência; EVA observa operação diariamente"
+}

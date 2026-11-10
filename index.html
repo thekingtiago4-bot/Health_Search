@@ -2155,6 +2155,7 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 
 </script>
 <script>
+
 'use strict';
 const MOLDE=document.documentElement.cloneNode(true); // cópia limpa do próprio programa, usada para gerar o arquivo do WhatsApp
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -4128,7 +4129,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.9.1', HS_DATA='10/11/2026';
+const HS_VERSAO='9.10.0', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6926,7 +6927,13 @@ function geoJuntar3(base,loc,rem){ base=base||{listas:[],aprend:{}}; loc=loc||{l
   const ap=Object.assign({},rem.aprend||{}); const ba=base.aprend||{}; for(const [k,v] of Object.entries(loc.aprend||{})) if(JSON.stringify(v)!==JSON.stringify(ba[k])) ap[k]=v;
   return Object.assign({},rem,{listas:out,aprend:ap,em:new Date().toISOString()}); }
 { const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave==='s:geo'&&local&&remoto&&Array.isArray(local.listas)&&Array.isArray(remoto.listas)){
-      const j=geoJuntar3(vsnBaseLer('s:geo'),local,remoto); setTimeout(()=>toast('Mapa juntado com o dos colegas, cidade a cidade — nada foi perdido.'),300); return j; }
+      const anc=vsnBaseLer('s:geo');
+      /* v9.10.0 — Task #13: sem ancestral e não-adm → mapa publicado pelo adm é autoritativo */
+      if(!anc&&!nvAdmin()&&remoto.listas&&remoto.listas.length){
+        const r2=JSON.parse(JSON.stringify(remoto)); r2.em=new Date().toISOString();
+        try{ vsnBaseGravar('s:geo',r2); }catch(e){}
+        setTimeout(()=>{ toast('Mapa atualizado pelo administrador ✓ — regiões sincronizadas.'); try{ geoDesenhar(); }catch(e){} },300); return r2; }
+      const j=geoJuntar3(anc,local,remoto); setTimeout(()=>toast('Mapa juntado com o dos colegas, cidade a cidade — nada foi perdido.'),300); return j; }
     return _nj(chave,local,remoto); }; }
 /* depois de cada sincronização bem-sucedida, guarda o mapa "igual à nuvem" como base da próxima junção */
 { const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); try{ if(!NUV.erro&&S.geo&&NUV.h['s:geo']===nuvHash(S.geo)) vsnBaseGravar('s:geo',S.geo); }catch(e){} return r; }; }
@@ -7044,6 +7051,51 @@ setTimeout(offChecar,2000); setInterval(offChecar,30000); window.addEventListene
 
 /* ---- 3) 🧠 Cérebro: aprende com cada bipe que deu certo, e todos os aparelhos aprendem juntos (vai para a nuvem em S.cerebro) ---- */
 if(!NUV_CAMPOS.includes('cerebro')) NUV_CAMPOS.push('cerebro');
+/* v9.10.0 — Task #16: registro diário conferência */
+if(!NUV_CAMPOS.includes('confDias')) NUV_CAMPOS.push('confDias');
+function confDiasReg(){ try{
+  const L=opPorRom(); const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0);
+  if(!tn) return;
+  const pct=Math.floor(100*(tn-fn)/tn);
+  if(!S.confDias) S.confDias={};
+  const h=hojeISO(); const a=S.confDias[h]||{};
+  S.confDias[h]={pct,tn,fn,em:new Date().toISOString(),max:Math.max(typeof a.max==='number'?a.max:0,pct)};
+  salvar();
+}catch(e){} }
+setInterval(confDiasReg, 5*60*1000);
+/* v9.10.0 — Task #17: EVA observa a operação e gera sugestões */
+function evaObservar(){ try{
+  const h=hojeISO(); const obs='evaObs:'+h;
+  try{ if(localStorage.getItem(obs)) return; }catch(e){}
+  const insights=[];
+  /* conferência */
+  const L=opPorRom(); const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0);
+  if(tn){ const pct=Math.floor(100*(tn-fn)/tn);
+    if(pct<70) insights.push('⚠️ Conferência em <b>'+pct+'%</b> hoje — faltam <b>'+fn+'</b> notas. Hora de acelerar a bipagem!');
+    else if(pct>=100) insights.push('🏆 Meta de conferência <b>100%</b> atingida hoje! Excelente trabalho da equipe.');
+    else insights.push('📊 Conferência em <b>'+pct+'%</b> hoje — faltam <b>'+fn+'</b> de <b>'+tn+'</b> notas.'); }
+  /* reentregas */
+  try{ const re=S.nex&&S.nex.reent; if(re){
+    const pend=(re.list||[]).filter(r=>!r.ok&&!r.can);
+    if(pend.length>5) insights.push('🔄 <b>'+pend.length+'</b> reentregas pendentes hoje. Vale checar prioridades.');
+    /* remetentes mais frequentes */
+    const freq={}; (re.list||[]).forEach(r=>{ if(r.rem) freq[r.rem]=(freq[r.rem]||0)+1; });
+    const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,2);
+    if(top.length) insights.push('📦 Remetentes com mais ocorrências: <b>'+top.map(t=>t[0]+' ('+t[1]+')').join('</b>, <b>')+'</b>.');
+  }}catch(e){}
+  /* padrões no cérebro */
+  try{ const C=cer(); const qrKeys=Object.keys(C.qr||{});
+    if(qrKeys.length>0) insights.push('🧠 Aprendi <b>'+qrKeys.length+'</b> QR code(s). Continuo aprendendo a cada bipagem.');
+    const vinc=Object.keys(C.vinc||{});
+    if(vinc.length) insights.push('🔗 <b>'+vinc.length+'</b> cliente(s) com cidades vinculadas mapeadas.');
+  }catch(e){}
+  if(!insights.length) return;
+  setTimeout(()=>{ evaFala('<b>🔍 Observação do dia ('+h.split('-').reverse().join('/')+')</b><br>'+insights.join('<br>'),'eva'); },3000);
+  try{ localStorage.setItem(obs,'1'); }catch(e){}
+}catch(e){ console.error('[evaObservar]',e); } }
+/* roda ao carregar (com delay) e a cada hora */
+setTimeout(evaObservar, 10000);
+setInterval(evaObservar, 60*60*1000);
 function cer(){ const c=S.cerebro=S.cerebro&&typeof S.cerebro==='object'?S.cerebro:{}; c.qr=c.qr||{}; c.mod=c.mod||{}; c.ali=c.ali||{}; c.troca=c.troca||{}; c.st=c.st||{lidos:0,ajudas:0,aprendeu:0}; return c; }
 function cerMudou(){ cer().em=new Date().toISOString(); salvar(); }
 const cerNz=s=>rpNz(s).replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
@@ -7299,18 +7351,18 @@ function evaDuvHtml(){ const P=evaPendentes(); if(!P.length) return 'Não tenho 
   return P.slice(0,5).map(d=>`<div class="eva-duv">${d.texto}<div class="eva-ops">${d.opcoes.map(o=>`<button type="button" class="btn mini" data-eva-r="${d.id}" data-v="${esc(o.v)}">${esc(o.t)}</button>`).join('')}</div></div>`).join(''); }
 /* ---- interface ---- */
 function evaBadge(){ const n=nvAdmin()?evaPendentes().length:0; const b=$('#eva-qt'); if(b){ b.textContent=n; b.hidden=!n; } }
-function evaFala(html,quem){ EVA.msgs.push({html,quem}); if(EVA.msgs.length>60) EVA.msgs.shift(); evaDesenhar(); }
-function evaDesenhar(){ const c=$('#eva-msgs'); if(!c) return; c.innerHTML=EVA.msgs.map(m=>`<div class="eva-m ${m.quem==='eu'?'eu':''}">${m.html}</div>`).join(''); c.scrollTop=c.scrollHeight; }
+function evaFala(html,quem){ EVA.msgs.push({html,quem,ts:Date.now()}); if(EVA.msgs.length>60) EVA.msgs.shift(); evaDesenhar(); }
+function evaDesenhar(){ const c=$('#eva-msgs'); if(!c) return; const ft=ts=>{ const d=new Date(ts); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }; c.innerHTML=EVA.msgs.map(m=>`<div class="eva-m ${m.quem==='eu'?'eu':''}">${m.html}<span class="eva-ts">${m.ts?ft(m.ts):''}</span></div>`).join(''); c.scrollTop=c.scrollHeight; }
 function evaAbrir(v){ EVA.aberta=v; const p=$('#eva-painel'); if(!p) return; p.hidden=!v; if(v){ if(!EVA.msgs.length){ evaFala(`Oi! Eu sou a <b>EVA</b>, a assistente do Health Search. Me pergunte uma nota, um pedido, um cliente ou uma cidade.${nvAdmin()&&evaPendentes().length?'<br>Tenho <b>'+evaPendentes().length+'</b> dúvida(s) para você — toque em "Dúvidas".':''}`); } setTimeout(()=>$('#eva-in').focus(),50); } }
 (function(){ const st=document.createElement('style'); st.textContent=`#eva-bt{position:fixed;right:20px;bottom:64px;z-index:1500;width:54px;height:68px;border-radius:0;border:0;padding:0;background:transparent;cursor:pointer;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));transition:transform .15s}#eva-bt:hover{transform:scale(1.07)}
  #eva-qt{position:absolute;top:0;right:-4px;background:#E8590C;color:#fff;border-radius:10px;min-width:20px;height:20px;font:700 12px/20px system-ui;text-align:center;padding:0 5px}
  #eva-painel{position:fixed;right:14px;bottom:140px;z-index:1550;width:min(380px,calc(100vw - 28px));height:min(520px,calc(100vh - 120px));background:var(--fundo,#0F2027);color:var(--tinta,#fff);border:1px solid var(--linha);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
  #eva-painel[hidden]{display:none}.eva-cab{display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(90deg,#DB2777,#9D174D);color:#fff}.eva-cab .av{width:34px;height:42px}.eva-cab b{font-size:1.05em}.eva-cab small{opacity:.8;display:block}
- #eva-msgs{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}.eva-m{background:var(--sup);border-radius:12px 12px 12px 4px;padding:8px 10px;max-width:90%;font-size:var(--fs-sm);line-height:1.4}.eva-m.eu{align-self:flex-end;background:#0E7490;color:#fff;border-radius:12px 12px 4px 12px}
+ #eva-msgs{flex:1;overflow:auto;padding:8px 10px;display:flex;flex-direction:column;gap:4px;background:rgba(0,0,0,.12)}.eva-m{background:#1e2d3a;border-radius:0 10px 10px 10px;padding:7px 10px 4px;max-width:85%;font-size:var(--fs-sm);line-height:1.45;position:relative;margin-left:8px}.eva-m::before{content:'';position:absolute;left:-7px;top:0;border:7px solid transparent;border-right-color:#1e2d3a;border-top:0;border-left:0;width:0;height:0}.eva-m.eu{align-self:flex-end;background:#005c4b;color:#e9edef;border-radius:10px 0 10px 10px;margin-left:0;margin-right:8px}.eva-m.eu::before{display:none}.eva-m.eu::after{content:'';position:absolute;right:-7px;top:0;border:7px solid transparent;border-left-color:#005c4b;border-top:0;border-right:0;width:0;height:0}.eva-ts{display:block;text-align:right;font-size:10px;opacity:.6;margin-top:2px}
  .eva-m code{word-break:break-all;font-size:.85em}.eva-duv{border-top:1px solid var(--linha);padding-top:6px;margin-top:6px}.eva-duv:first-child{border:0;margin:0;padding:0}.eva-ops{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
  .eva-chips{display:flex;gap:6px;overflow-x:auto;padding:6px 10px;border-top:1px solid var(--linha)}.eva-chips button{white-space:nowrap}
  .eva-f{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--linha)}.eva-f input{flex:1;min-width:0}`; document.head.appendChild(st);
-  const b=document.createElement('button'); b.id='eva-bt'; b.type='button'; b.title='EVA — assistente'; b.setAttribute('aria-label','Abrir a EVA'); b.innerHTML=EVA_SVG+'<span id="eva-qt" hidden>0</span>'; b.onclick=()=>evaAbrir(!EVA.aberta); document.body.appendChild(b);
+  const b=document.createElement('button'); b.id='eva-bt'; b.type='button'; b.title='EVA — assistente'; b.setAttribute('aria-label','Abrir a EVA'); b.innerHTML=EVA_SVG+'<span id="eva-qt" hidden>0</span>'; b.onclick=()=>irPara('eva'); document.body.appendChild(b);
   const p=document.createElement('div'); p.id='eva-painel'; p.hidden=true; p.setAttribute('role','dialog'); p.setAttribute('aria-label','EVA');
   p.innerHTML=`<div class="eva-cab"><span class="av">${EVA_SVG}</span><div style="flex:1"><b>EVA</b><small>assistente do Health Search</small></div><button type="button" id="eva-x" aria-label="Fechar" style="background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px">✕</button></div><div id="eva-msgs" aria-live="polite"></div>
    <div class="eva-chips"><button class="btn mini" data-eva-c="dúvidas">❓ Dúvidas</button><button class="btn mini" data-eva-c="reentregas de hoje">Reentregas</button><button class="btn mini" data-eva-c="bipados hoje">Bipados hoje</button><button class="btn mini" data-eva-c="divergências">Divergências</button><button class="btn mini" data-eva-c="o que você aprendeu">🧠 Aprendizado</button><button class="btn mini" data-eva-c="ajuda">Ajuda</button><button class="btn mini" data-eva-c="regras">🔒 Regras</button><button class="btn mini" data-eva-c="etiquetas">🏷 Etiquetas</button></div>
@@ -7439,6 +7491,14 @@ function evaPersonalizar(){ const v=evaVis(); const f=document.createElement('di
     try{ localStorage.setItem('healthSearch.evaVisual',JSON.stringify(ler())); }catch(er){} evaAplicarVisual(); f.remove(); toast('EVA personalizada!'); });
   document.body.appendChild(f); prev(); }
 (function(){ const cab=document.querySelector('#eva-painel .eva-cab'); const x=$('#eva-x'); if(cab&&x) x.insertAdjacentHTML('beforebegin','<button type="button" id="eva-cfg" title="Personalizar EVA" aria-label="Personalizar EVA" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:4px 6px">🎨</button>'); const c=$('#eva-cfg'); if(c) c.onclick=evaPersonalizar; evaAplicarVisual(); })();
+/* v9.10.0 — Task #14: resetar EVA (admin) */
+function evaResetar(){ if(!nvAdmin()){ toast('Só o administrador pode resetar a EVA.'); return; }
+  confirmar('Resetar a EVA?','Ela vai esquecer tudo que aprendeu — QR, etiquetas, clientes, vínculos, dúvidas e ensino. Isso afeta toda a equipe.','Resetar').then(ok=>{ if(!ok) return;
+    try{ const bkp='bkp:cer:'+new Date().toISOString().slice(0,16); nuvEscrever(bkp,{cerebro:JSON.parse(JSON.stringify(S.cerebro||{})),evaEnsino:JSON.parse(JSON.stringify(S.evaEnsino||{}))}); }catch(e){}
+    S.cerebro={}; S.evaEnsino={regras:[],fatos:[]}; cerMudou(); salvar(); nuvSinc();
+    evaFala('Memória resetada. Vou começar a aprender do zero. 🧠','eva');
+    toast('EVA resetada. Backup salvo na nuvem.'); }); }
+(function(){ if(!nvAdmin()) return; const cab=document.querySelector('#eva-painel .eva-cab'); const cfg=$('#eva-cfg'); if(cab&&cfg) cfg.insertAdjacentHTML('beforebegin','<button type="button" id="eva-rst" title="Resetar EVA (admin)" aria-label="Resetar EVA" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:4px 6px">🗑️</button>'); const r=$('#eva-rst'); if(r) r.onclick=evaResetar; })();
 { const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/personaliz|colete|capacete|roupa|vestir|lacinho|laco/.test(t)){ setTimeout(evaPersonalizar,200); return 'Abri o <b>Personalizar EVA</b> 🎨 — escolha colete refletivo, capacete e a cor do laço.'; } return _ee(txt); }; }
 /* ================= v9.7.0 · Registro: 1 foto por evento (Recebimento = Horário Chegada · Expedição = Horário Saída) → WhatsApp ================= */
 if(!NUV_CAMPOS.includes('registros')) NUV_CAMPOS.push('registros');
@@ -8844,9 +8904,40 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[d
 (function(){ const sec=document.createElement('section'); sec.className='tela'; sec.id='t-relatorios'; sec.hidden=true;
   sec.innerHTML=`<h1>Relatórios</h1><p class="sub">Todos os relatórios num lugar só. Cada botão gera o mesmo relatório de antes.</p><div id="rel-lista" class="op-cards" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"></div>`;
   const r=document.getElementById('t-romaneios'); r.parentNode.insertBefore(sec,r); })();
-const REL=[['📄 Reentregas · relatório do período','#re-painel button','Relatório PDF','reentregas'],['📄 Reentregas · semanal','#re-painel button','Semanal','reentregas'],['📄 Fora do romaneio · semanal','#t-fora button','Relatório semanal','fora'],['📊 Painel mensal da gerência','#t-gestor button','PDF','gestor'],['📄 Relatório Direto (Via Minas)','#t-reldireto button','Gerar planilha','reldireto']];
+const REL=[['📊 Conferência · relatório diário','#t-conferencia','__conf__','__conf__'],['📄 Reentregas · relatório do período','#re-painel button','Relatório PDF','reentregas'],['📄 Reentregas · semanal','#re-painel button','Semanal','reentregas'],['📄 Fora do romaneio · semanal','#t-fora button','Relatório semanal','fora'],['📊 Painel mensal da gerência','#t-gestor button','PDF','gestor'],['📄 Relatório Direto (Via Minas)','#t-reldireto button','Gerar planilha','reldireto']];
 function relTela(){ const el=$('#rel-lista'); el.innerHTML=REL.map((r,i)=>`<button class="op-card" type="button" data-rel="${i}" style="text-align:left"><b style="font-size:1.05rem">${r[0]}</b><span>abre a tela e gera</span></button>`).join(''); }
-document.addEventListener('click',e=>{ const c=e.target.closest&&e.target.closest('[data-rel]'); if(!c) return; const r=REL[+c.dataset.rel]; irPara(r[3]); setTimeout(()=>{ const b=[...document.querySelectorAll(r[1])].find(x=>x.textContent.includes(r[2])); if(b) b.click(); else toast('Abri a tela: use o botão '+r[2]+'.'); },350); });
+document.addEventListener('click',e=>{ const c=e.target.closest&&e.target.closest('[data-rel]'); if(!c) return; const r=REL[+c.dataset.rel];
+  if(r[3]==='__conf__'){ confRelTela(); return; }
+  irPara(r[3]); setTimeout(()=>{ const b=[...document.querySelectorAll(r[1])].find(x=>x.textContent.includes(r[2])); if(b) b.click(); else toast('Abri a tela: use o botão '+r[2]+'.'); },350); });
+/* v9.10.0 — Task #16: gera relatório de conferência diária */
+function confRelTela(){ const dias=Object.entries(S.confDias||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,30);
+  if(!dias.length){ confirmar('Sem dados','Nenhum dia de conferência registrado ainda. Os dados são coletados automaticamente durante a operação.','OK'); return; }
+  const cor=p=>p>=100?'#22c55e':p>=90?'#84cc16':p>=70?'#f59e0b':'#ef4444';
+  const rows=dias.map(([d,v])=>{
+    const pct=v.max||v.pct||0;
+    const data=d.split('-').reverse().join('/');
+    return `<tr><td>${data}</td><td style="color:${cor(pct)};font-weight:700">${pct}%</td><td>${v.tn||'–'}</td><td>${(v.tn||0)-(v.fn||0)}</td><td>${v.fn||0}</td></tr>`;
+  }).join('');
+  const total=dias.length, ok=dias.filter(([,v])=>(v.max||v.pct||0)>=100).length;
+  const med=Math.round(dias.reduce((s,[,v])=>s+(v.max||v.pct||0),0)/total);
+  const html=`<div style="max-width:600px;margin:0 auto;padding:16px"><h2 style="margin:0 0 4px">📊 Conferência Diária</h2>
+<p style="color:var(--sub);margin:0 0 12px">${total} dias · Média ${med}% · ${ok} dia(s) em 100%</p>
+<table style="width:100%;border-collapse:collapse;font-size:.9rem">
+<thead><tr style="border-bottom:2px solid var(--linha)"><th style="text-align:left;padding:4px 8px">Data</th><th>% máx</th><th>Total NF</th><th>Bipadas</th><th>Faltam</th></tr></thead>
+<tbody>${rows}</tbody></table>
+<button class="btn" type="button" id="conf-wpp" style="margin-top:16px">📤 Exportar WhatsApp</button></div>`;
+  const overlay=document.createElement('div'); overlay.style='position:fixed;inset:0;z-index:9000;background:var(--fundo);overflow:auto;padding:8px';
+  overlay.innerHTML=html+'<button class="btn" type="button" style="position:fixed;top:12px;right:12px" onclick="this.parentElement.remove()">✕ Fechar</button>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#conf-wpp').onclick=()=>{
+    const linhas=['📊 *Conferência Diária*',''];
+    dias.slice(0,14).forEach(([d,v])=>{ const p=v.max||v.pct||0; const em=p>=100?'✅':p>=90?'🟡':p>=70?'🟠':'🔴'; linhas.push(`${em} ${d.split('-').reverse().join('/')} · ${p}% (${(v.tn||0)-(v.fn||0)}/${v.tn||0})`); });
+    linhas.push('','_Health Search_');
+    const txt=linhas.join('\n');
+    try{ navigator.clipboard.writeText(txt); }catch(e){}
+    window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+  };
+}
 
 /* ---- Bipar só no NexBip: depois do bipe, quadrados Divergência e Avaria ---- */
 { const _om=opMostrar; opMostrar=function(r){ _om(r); try{ if(!(r&&(r._ped||r._nf))) return; const row={ped:r._ped,nf:r._nf,dest:r._dest,cid:r._cid};
@@ -9521,6 +9612,7 @@ evbReage=function(){ const s=document.querySelector('#t-eva .evb'); if(!s||s.dat
 /* divergência/avaria resolvida → coração com curativo */
 { let _res=null; setInterval(()=>{ try{ const n=dvS().filter(d=>d.st==='resolvida').length; if(_res!==null&&n>_res&&!$('#t-eva').hidden){ evbEstado('curativo',3200); evbDiz('Oba, uma ocorrência foi resolvida! 🩹💖'); } _res=n; }catch(e){} },3000); }
 (function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Expressões','A EVA tem várias reações: piscadinha 😉, comemoração 🎉, olhos de estrela 🤩, abraço no coração 💖, surpresa 😮, emburrada 😤 (muitas reentregas ou caixas fora do romaneio), coração partido 💔 (dia muito ruim) e coração com curativo 🩹 (quando uma ocorrência é resolvida). No computador, os botões abaixo dela mostram cada uma.']); })();
+
 
 </script>
 
