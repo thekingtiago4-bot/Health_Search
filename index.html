@@ -7817,7 +7817,9 @@ function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   const q=$('#qt-ct'); if(q){ q.textContent=pct+'%'; q.hidden=!tn; } }
 /* mantém tudo no lugar a cada atualização da conferência */
 { const _r=opRender; opRender=function(){ const r=_r.apply(this,arguments); try{ ctMontar(); }catch(e){} return r; }; }
-setTimeout(()=>{ try{ ctMontar(); }catch(e){} },1500);
+/* BUG#1-FIX v9.11.0: substituído setTimeout(1500ms) frágil por monkey-patch em renderTudo.
+   ctMontar() agora roda sincronizado com o ciclo de dados, não com um timer fixo. */
+{ const _rt=renderTudo; renderTudo=function(){ const r=_rt.apply(this,arguments); try{ ctMontar(); }catch(e){} return r; }; }
 /* Dados: contador também em "Fora do romaneio" (de hoje) */
 setInterval(()=>{ try{ const b=document.querySelector('.nav [data-tela="fora"]'); if(!b) return; let q=b.querySelector('.qt'); if(!q){ b.insertAdjacentHTML('beforeend','<span class="qt" hidden>0</span>'); q=b.querySelector('.qt'); } const n=foraS().filter(x=>x.dia===hojeISO()).length; q.textContent=n; q.hidden=!n; }catch(e){} },5000);
 /* Registro: excluir (quem registrou ou o administrador). Fica marcado como apagado para não voltar pela sincronização. */
