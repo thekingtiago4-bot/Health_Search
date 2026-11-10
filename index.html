@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.7.0', HS_DATA='10/11/2026';
+const HS_VERSAO='9.7.1', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7104,7 +7104,10 @@ const RD_SP=['SAO JOAO DA BOA VISTA','SAO JOSE DO RIO PARDO','VARGEM','ESPIRITO 
 async function rdTexto(f){ const buf=await f.arrayBuffer(); try{ return new TextDecoder('utf-8',{fatal:true}).decode(buf); }catch(e){ return new TextDecoder('iso-8859-1').decode(buf); } }
 const rdN=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 const RD_SPN=new Set(RD_SP.map(rdN).concat(['SANTA ROSA DO VITERBO']));
-function rdEntra(n){ const uf=String(n.uf||'').toUpperCase(); if(uf==='MG') return true; if(uf==='SP'){ const c=rdN(n.mun); return RD_SPN.has(c)||(c==='ANDRADAS'); } return false; }
+/* v9.7.1: só entra nota de arquivo cujo nome comeca com "ROMANEIO - LKR X AQA" (evita puxar XML de outro romaneio so por bater a cidade) */
+const RD_NOME_RE=/^ROMANEIO\s*LKR\s*X\s*AQA/;
+function rdDoRomaneio(arq){ return RD_NOME_RE.test(rdN(arq||'')); }
+function rdEntra(n){ if(!rdDoRomaneio(n.arq)) return false; const uf=String(n.uf||'').toUpperCase(); if(uf==='MG') return true; if(uf==='SP'){ const c=rdN(n.mun); return RD_SPN.has(c)||(c==='ANDRADAS'); } return false; }
 if(!NUV_CAMPOS.includes('rdXml')) NUV_CAMPOS.push('rdXml'); if(!NUV_CAMPOS.includes('rdHist')) NUV_CAMPOS.push('rdHist');
 /* lê TODAS as notas de um arquivo XML (um arquivo pode ter várias NF-e) */
 /* v8.7.2: relatório do Softlog em planilha XML (NÚMERO NF, DESTINATÁRIO, CEP, ENDEREÇO, NÚMERO, BAIRRO, CIDADE DESTINO, UF, PESO, VALOR PRODUTOS…) */
@@ -7139,8 +7142,8 @@ function rdNotas(dia){ const L=(S.rdXml||{})[dia]||{}; return Object.values(L).f
 const rdMoeda=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}), rdKg=v=>(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' kg';
 const RD={dia:hojeISO(),ger:null};
 function rdGerar(){ const dia=RD.dia; const todas=Object.values((S.rdXml||{})[dia]||{}).filter(x=>x&&x.nf);
-  if(!todas.length){ confirmar('Faltam os XMLs',`Ainda não há XMLs do LKR × AQA de <b>${fmtData(dia)}</b>.<br><br>Toque em <b>📥 Inserir XMLs</b> e escolha os arquivos do dia (com o mesmo nome do romaneio).`,'Entendi'); return; }
-  const ns=rdNotas(dia); if(!ns.length){ confirmar('Nenhuma nota da rota',`Os ${fmtN(todas.length)} XMLs de ${fmtData(dia)} não têm destino em MG nem nas cidades de SP da rota.`,'Entendi'); return; }
+  if(!todas.length){ confirmar('Faltam os XMLs',`Ainda não há XMLs de <b>${fmtData(dia)}</b>.<br><br>Toque em <b>📥 Inserir XMLs</b> e escolha o(s) arquivo(s) do dia, com o mesmo nome do romaneio (começando com <b>ROMANEIO - LKR X AQA</b>).`,'Entendi'); return; }
+  const ns=rdNotas(dia); if(!ns.length){ confirmar('Nenhuma nota da rota',`Dos ${fmtN(todas.length)} XML(s) de ${fmtData(dia)}, nenhum é do romaneio <b>ROMANEIO - LKR X AQA</b> com destino em MG ou nas cidades de SP da rota. Confira o nome do arquivo inserido.`,'Entendi'); return; }
   RD.ger={dia,ns,em:new Date().toISOString()};
   /* histórico diário (gerar de novo no mesmo dia substitui o dia, não soma em dobro) */
   S.rdHist=S.rdHist||{}; const cid={}; for(const x of ns){ const k=x.mun+'/'+x.uf; const c=cid[k]=cid[k]||{n:0,peso:0,v:0}; c.n++; c.peso+=x.peso||0; c.v+=x.vprod||0; }
@@ -7165,7 +7168,7 @@ function rdRender(){ const el=$('#rd-corpo'); if(!el) return; const di=RD.dia; c
   el.innerHTML=`<div class="rd-barra"><label>Dia<input type="date" id="rd-dia" value="${di}"></label><span class="sub">XMLs do dia: <b>${fmtN(qx)}</b> · da rota (MG + SP): <b>${fmtN(qr)}</b></span>
      <span style="flex:1"></span><button class="btn" id="rd-ins" type="button">📥 Inserir XMLs</button><button class="btn pri" id="rd-ger" type="button">📄 Gerar planilha</button><input type="file" id="rd-arq" accept=".xml,text/xml" multiple hidden></div>
    ${g?`<div class="card" style="padding:12px;margin:10px 0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><b>Relatório Direto · ${fmtData(g.dia)}</b><span class="sub">${fmtN(g.ns.length)} nota(s)</span><span style="flex:1"></span><button class="btn mini pri" id="rd-pdf" type="button">🖨 Imprimir / PDF</button><button class="btn mini" id="rd-csv" type="button">⬇ Planilha (Excel)</button></div><div style="overflow:auto">${rdTabela(g.ns)}</div></div>`
-     :`<p class="sub" style="margin:12px 0">Insira os XMLs do romaneio LKR × AQA do dia e toque em <b>📄 Gerar planilha</b>. Entram só destinos em MG e as cidades de SP da rota.</p>`}
+     :`<p class="sub" style="margin:12px 0">Insira o(s) XML(s) do dia e toque em <b>📄 Gerar planilha</b>. Só entram notas do romaneio <b>ROMANEIO - LKR X AQA</b> (pelo nome do arquivo) com destino em MG ou nas cidades de SP da rota.</p>`}
    <h2 style="margin:18px 0 6px">Relatórios · Cidades de MG que mais atendemos</h2>
    <div class="rd-barra"><label>Período<select id="rd-per"><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="365">Último ano</option><option value="*">Tudo</option></select></label><span class="sub">${fmtN(R.dias)} dia(s) com relatório</span></div>
    ${R.lista.length?`<div class="rd-rank">${R.lista.slice(0,40).map((c,i)=>`<div class="rd-lin"><span class="rd-pos">${i+1}º</span><span class="rd-nm">${esc(c.k)}</span><span class="rd-bar"><i style="width:${Math.max(4,Math.round(100*c.n/mx))}%"></i></span><span class="rd-n"><b>${fmtN(c.n)}</b> nota(s) · ${fmtN(c.dias)} dia(s) · ${rdMoeda(c.v)}</span></div>`).join('')}</div>`:'<p class="sub">Ainda sem histórico. Ele começa no primeiro relatório gerado.</p>'}`;
@@ -7181,7 +7184,7 @@ function rdRender(){ const el=$('#rd-corpo'); if(!el) return; const di=RD.dia; c
   const ref=document.querySelector('.nav [data-tela="viaminas"]'); if(!ref) return;
   ref.insertAdjacentHTML('afterend',`<button data-tela="reldireto"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7M9 8h3"/></svg><span class="lbl">Relatório Direto</span></button>`);
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-reldireto'; sec.hidden=true;
-  sec.innerHTML=`<h1>Relatório Direto</h1><p class="sub">Via Minas · romaneio <b>LKR × AQA</b>: destinos em MG e as cidades de SP da rota, tirados dos XMLs (com o mesmo nome do romaneio). Gere, imprima ou salve em PDF; cada dia gerado entra no histórico das cidades mais atendidas.</p><div id="rd-corpo"></div>`;
+  sec.innerHTML=`<h1>Relatório Direto</h1><p class="sub">Via Minas · apenas o romaneio <b>ROMANEIO - LKR X AQA</b>: destinos em MG e as cidades de SP da rota, tirados dos XMLs (com o mesmo nome do romaneio, pelo nome do arquivo). Gere, imprima ou salve em PDF; cada dia gerado entra no histórico das cidades mais atendidas.</p><div id="rd-corpo"></div>`;
   const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=document.querySelector('.nav [data-tela="reldireto"]'); if(t==='reldireto'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-reldireto'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); rdRender(); } else if(bt) bt.removeAttribute('aria-current'); };
   document.querySelector('.nav [data-tela="reldireto"]').addEventListener('click',()=>irPara('reldireto'));

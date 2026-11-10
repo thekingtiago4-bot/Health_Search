@@ -1,1 +1,1 @@
-{"versao":"9.7.0","data":"2026-11-10","novidades":"Registro simplificado (1 foto por evento: Recebimento = chegada, Expedição = saída, Romaneio(s) puxado pelo motorista do dia) + nova aba Planejamento → Checklist Agregados (validade de 30 dias, avisos amarelo/laranja/vermelho e envio pronto pro WhatsApp)"}
+{"versao":"9.7.1","data":"2026-11-10","novidades":"Relatório Direto (Via Minas) agora puxa só o romaneio ROMANEIO - LKR X AQA, pelo nome do arquivo XML — não entra mais nota de outro romaneio só porque o destino bate com MG/SP da rota"}
