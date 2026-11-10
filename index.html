@@ -4128,7 +4128,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.8.0', HS_DATA='10/11/2026';
+const HS_VERSAO='9.9.0', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4613,7 +4613,7 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
   $('#op-bt-cam').onclick=opCamAbrir;
   $('#op-campo').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=e.target.value.trim(); e.target.value=''; if(v) opLer([v],'leitor'); } });
   $('#op-cards').onclick=e=>{ const b=e.target.closest('[data-f]'); if(!b) return; OP.filtro=OP.filtro===b.dataset.f?'todos':b.dataset.f; opRender(); };
-  $('#op-lista').onclick=async e=>{ const b=e.target.closest('[data-del]'); if(!b||!opAdmin()) return; if(!await confirmar('Apagar bipe','Esse registro sai do histórico da operação.','Apagar')) return; opApagar(b.dataset.del); };
+  $('#op-lista').onclick=null; /* v9.9.0: handler movido para delegação no document (oresApagar), que também cobre #ct-lista */
   $('#op-alto').onchange=e=>{ const v=Math.max(0,+e.target.value||0); S.opAlto=v; salvar(); opRender(); toast('Alto valor: a partir de '+opMoeda(v)+'.'); };
   $('#op-xml-arq').onchange=e=>{ opXmlImportar([...e.target.files]); e.target.value=''; };
   const sz=$('#op-xml-soltar'); ['dragover','dragenter'].forEach(ev=>sz.addEventListener(ev,e=>{ e.preventDefault(); sz.classList.add('sobre'); })); ['dragleave','drop'].forEach(ev=>sz.addEventListener(ev,()=>sz.classList.remove('sobre')));
@@ -4816,9 +4816,22 @@ function opAoVivo(){ if(OP.canal||!opOnline()) return;
     if(i>=0){ OP.bipes[i]=opDoBanco(b); } else { OP.bipes.unshift(opDoBanco(b)); if(opAdmin()&&(b.status==='fora'||b.status==='dup')) toast(`⚠ ${b.usuario}: ${OP_ST[b.status].t} · pedido ${b.ped||b.codigo}`); }
     opLocalGravar(); if(!$('#t-operacao').hidden) opRender(); else opBadge(); }).subscribe(); }
 
-async function opApagar(id){ const b=OP.bipes.find(x=>(x.id||x.local_id)===id); if(!b) return;
-  if(b.id&&opOnline()){ const {error}=await NV.cli.from('hs_bipagens').delete().eq('id',b.id); if(error){ toast('Não apagou: '+nvTraduz(error.message)); return; } }
-  opFilaGravar(opFilaLer().filter(x=>x.local_id!==b.local_id)); OP.bipes=OP.bipes.filter(x=>x!==b); opLocalGravar(); opRender(); }
+async function opApagar(id){ const b=OP.bipes.find(x=>(x.id||x.local_id)===id); if(!b) return true;
+  if(b.id&&opOnline()){ const {error}=await NV.cli.from('hs_bipagens').delete().eq('id',b.id); if(error){ toast('Não apagou: '+nvTraduz(error.message)); return false; } }
+  opFilaGravar(opFilaLer().filter(x=>x.local_id!==b.local_id)); OP.bipes=OP.bipes.filter(x=>x!==b); opLocalGravar(); opRender(); return true; }
+
+/* ================= v9.9.0 · apagar funciona em Conferência total e agrupado por pedido ================= */
+function oresGrupo(b){ if(!b||!['fora','pit','semnota'].includes(b.status)) return [b];
+  const k=b.ped||('NF'+(b.nf||'')); if(!k||k==='NF') return [b];
+  return OP.bipes.filter(x=>['fora','pit','semnota'].includes(x.status)&&(x.ped||('NF'+(x.nf||'')))===k); }
+async function oresApagar(lid){ if(!opAdmin()) return; const b=OP.bipes.find(x=>String(x.id||x.local_id)===String(lid)); if(!b) return;
+  const grupo=oresGrupo(b), n=grupo.length, ped=b.ped||b.nf||'(sem pedido/NF)';
+  const msg=n>1?`Apagar o pedido <b>${esc(ped)}</b>? Serão removidas <b>${n} caixas</b> do histórico da operação, para toda a equipe.`:`Apagar esse registro (pedido <b>${esc(ped)}</b>)? Essa caixa some do histórico da operação para toda a equipe.`;
+  if(!await confirmar('Apagar bipe',msg,'Apagar')) return;
+  let ok=0; const erros=[]; for(const x of grupo){ if(await opApagar(x.id||x.local_id)) ok++; else erros.push(x); }
+  if(erros.length) toast(`Apagou ${ok} de ${n}. ${erros.length} não sa${erros.length>1?'íram':'iu'} do banco — veja o aviso acima.`);
+  else toast(n>1?`${n} caixas do pedido ${ped} apagadas.`:'Registro apagado.'); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-del]'); if(!b) return; if(!b.closest('#op-lista')&&!b.closest('#ct-lista')) return; oresApagar(b.dataset.del); });
 
 /* ---------- painel ---------- */
 function opEntrar(){ opXmlInfo(); $('#op-modo').checked=opPorVol(); if(OP.dia!==($('#op-dia').value||hojeISO())||!OP.bipes.length) opAbrirDia($('#op-dia').value||hojeISO()); else opRender(); opFila(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
@@ -6744,10 +6757,11 @@ OP.abertos=OP.abertos||new Set();
     for(const [k,g] of grupos){ const lids=g.map(t=>t.dataset.lid); const bs=lids.map(l=>porLid.get(l)); const tr=g[0]; const tds=tr.children;
       const tot=Math.max(0,...bs.map(b=>+b.tot||0)); const vols=new Set(bs.map(b=>b.vol).filter(Boolean)); const n=vols.size||g.length;
       if(g.length>1){ tds[4].innerHTML=`<b>${n}${tot?'/'+tot:''}</b> caixas <button type="button" class="btn mini" data-op-grp="${esc(k)}" style="padding:1px 6px;font-size:11px">${OP.abertos.has(k)?'ocultar':'ver '+g.length}</button>`; g.slice(1).forEach(t=>{ t.hidden=!OP.abertos.has(k); t.style.opacity='.75'; }); }
-      const cc=tds[8]; if(cc){ const txt=cc.textContent.trim(); cc.innerHTML=`<span data-op-ed="${esc(lids.join(','))}" title="Clique para digitar" style="cursor:pointer;border-bottom:1px dashed var(--mudo)">${txt?esc(txt):'<i style="color:var(--ag)">✎ informar</i>'}</span> <button type="button" class="btn mini" data-op-reler="${esc(lids.join(','))}" title="Abrir a câmera e ler o texto da etiqueta" style="padding:1px 6px;font-size:11px">📷 ler etiqueta</button>`; } } }catch(e){ console.error(e); } return r; }; }
+      const cc=tds[8]; if(cc){ const txt=cc.textContent.trim(); cc.innerHTML=`<span data-op-ed="${esc(lids.join(','))}" title="Clique para digitar" style="cursor:pointer;border-bottom:1px dashed var(--mudo)">${txt?esc(txt):'<i style="color:var(--ag)">✎ informar</i>'}</span> <button type="button" class="btn mini" data-op-reler="${esc(lids.join(','))}" title="Abrir a câmera e ler o texto da etiqueta" style="padding:1px 6px;font-size:11px">📷 ler etiqueta</button> <button type="button" class="btn mini" data-ores-abrir="${esc(lids[0])}" title="A EVA sugere a nota certa" style="padding:1px 6px;font-size:11px">🐼 Resolver</button>`; } } }catch(e){ console.error(e); } return r; }; }
 document.addEventListener('click',e=>{ const g=e.target.closest&&e.target.closest('[data-op-grp]'); if(g){ const k=g.dataset.opGrp; OP.abertos.has(k)?OP.abertos.delete(k):OP.abertos.add(k); opRenderLista(); return; }
   const ed=e.target.closest&&e.target.closest('[data-op-ed]'); if(ed){ opForaEditar(ed.dataset.opEd.split(',')); return; }
-  const rl=e.target.closest&&e.target.closest('[data-op-reler]'); if(rl){ opForaReler(rl.dataset.opReler.split(',')); } });
+  const rl=e.target.closest&&e.target.closest('[data-op-reler]'); if(rl){ opForaReler(rl.dataset.opReler.split(',')); return; }
+  const ra=e.target.closest&&e.target.closest('[data-ores-abrir]'); if(ra){ oresAbrir(ra.dataset.oresAbrir); } });
 
 /* ================= v7.8.4 · Virada do dia (00h): guarda os romaneios do dia anterior no banco e limpa os carregados ================= */
 async function rbVirada(silencio){ const hoje=hojeISO(); const velhos=(S.romaneios||[]).filter(r=>{ const d=opDiaRom(r); return d&&d<hoje; }); if(!velhos.length) return 0;
@@ -7299,7 +7313,7 @@ function evaAbrir(v){ EVA.aberta=v; const p=$('#eva-painel'); if(!p) return; p.h
   const b=document.createElement('button'); b.id='eva-bt'; b.type='button'; b.title='EVA — assistente'; b.setAttribute('aria-label','Abrir a EVA'); b.innerHTML=EVA_SVG+'<span id="eva-qt" hidden>0</span>'; b.onclick=()=>evaAbrir(!EVA.aberta); document.body.appendChild(b);
   const p=document.createElement('div'); p.id='eva-painel'; p.hidden=true; p.setAttribute('role','dialog'); p.setAttribute('aria-label','EVA');
   p.innerHTML=`<div class="eva-cab"><span class="av">${EVA_SVG}</span><div style="flex:1"><b>EVA</b><small>assistente do Health Search</small></div><button type="button" id="eva-x" aria-label="Fechar" style="background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px">✕</button></div><div id="eva-msgs" aria-live="polite"></div>
-   <div class="eva-chips"><button class="btn mini" data-eva-c="dúvidas">❓ Dúvidas</button><button class="btn mini" data-eva-c="reentregas de hoje">Reentregas</button><button class="btn mini" data-eva-c="bipados hoje">Bipados hoje</button><button class="btn mini" data-eva-c="divergências">Divergências</button><button class="btn mini" data-eva-c="o que você aprendeu">🧠 Aprendizado</button><button class="btn mini" data-eva-c="ajuda">Ajuda</button><button class="btn mini" data-eva-c="regras">🔒 Regras</button></div>
+   <div class="eva-chips"><button class="btn mini" data-eva-c="dúvidas">❓ Dúvidas</button><button class="btn mini" data-eva-c="reentregas de hoje">Reentregas</button><button class="btn mini" data-eva-c="bipados hoje">Bipados hoje</button><button class="btn mini" data-eva-c="divergências">Divergências</button><button class="btn mini" data-eva-c="o que você aprendeu">🧠 Aprendizado</button><button class="btn mini" data-eva-c="ajuda">Ajuda</button><button class="btn mini" data-eva-c="regras">🔒 Regras</button><button class="btn mini" data-eva-c="etiquetas">🏷 Etiquetas</button></div>
    <form class="eva-f" id="eva-f"><input id="eva-in" type="text" placeholder="Ex.: procura 442872 · quem atende Itanhandu MG" autocomplete="off"><button class="btn pri">Enviar</button></form>`;
   document.body.appendChild(p);
   const falar=txt=>{ if(!txt.trim()) return; evaFala(esc(txt),'eu'); let r; try{ r=evaEntender(txt); }catch(e){ r='Tive um problema para entender isso.'; console.error(e); } setTimeout(()=>evaFala(r),180); };
@@ -8105,6 +8119,112 @@ setTimeout(()=>{ if(Store.modo!=='nuvem'){ if(ATU.snap){ const q=atuDevolver(); 
 /* ================= v8.0.0 · ROTAS: folha de rota do dia (placa, motorista, sequência de cidades) ================= */
 NUV_CAMPOS.push('rotas','roteirizadores');
 function rotEhRoteirizador(){ try{ if(nvAdmin()) return true; const id=NV&&NV.user&&NV.user.id; return !!(id&&(S.roteirizadores||[]).includes(id)); }catch(e){ return false; } }
+/* ================= v9.9.0 · Roteirizador por usuário, com gravação confirmada no banco (corrige sincronização entre aparelhos) =================
+   Antes: S.roteirizadores era um array simples e o merge entre aparelhos faz UNIÃO (nunca remove quem foi desligado em outro aparelho).
+   Agora: cada pessoa tem seu próprio registro com data (S.rotMarcas), a marca mais recente vale, grava no banco na hora e só confirma "ligado"/"desligado" depois de ler de volta. */
+function rotM(uid){ try{ if(!uid) return false; const u=NV.lista&&NV.lista.find(x=>x.id===uid); if(u&&u.papel==='admin') return true;
+    const m=(S.rotMarcas||{})[uid]; if(m) return !!m.on; return (S.roteirizadores||[]).includes(uid); /* aparelho ainda não atualizado só tem o campo antigo */
+  }catch(e){ return false; } }
+function rotLigados(){ try{ return (NV.lista||[]).filter(u=>rotM(u.id)).map(u=>u.id); }catch(e){ return []; } }
+async function rotGravar(uid,on){ if(!nvAdmin()) return false;
+  S.rotMarcas=S.rotMarcas||{}; S.rotMarcas[uid]={on:!!on,em:new Date().toISOString(),por:opEu()};
+  const L=new Set(S.roteirizadores||[]); on?L.add(uid):L.delete(uid); S.roteirizadores=[...L]; /* mantém o campo antigo, para quem ainda não atualizou o app */
+  salvar();
+  if(!opOnline()) return true;
+  try{
+    const {error}=await NV.cli.from('hs_sync').upsert({chave:'s:rotMarcas',tipo:'s',valor:S.rotMarcas,apagado:false,atualizado_por:opEu()});
+    if(error){ toast('Não salvou no banco: '+nvTraduz(error.message)); return false; }
+    const {data,error:e2}=await NV.cli.from('hs_sync').select('valor').eq('chave','s:rotMarcas').maybeSingle();
+    const confirmado=!e2&&data&&data.valor&&data.valor[uid]&&data.valor[uid].on===!!on;
+    if(!confirmado){ toast('Não confirmou no banco — tente de novo.'); return false; }
+    try{ NUV.h['s:rotMarcas']=nuvHash(S.rotMarcas); }catch(e){}
+    return true;
+  }catch(e){ toast('Não salvou no banco: '+(e&&e.message||e)); return false; }
+}
+try{ NUV_CAMPOS.push('rotMarcas'); NUV_ADMIN.add('s:rotMarcas'); }catch(e){}
+{ const _reh2=rotEhRoteirizador; rotEhRoteirizador=function(){ try{ if(nvAdmin()) return true; const id=NV&&NV.user&&NV.user.id; return id?rotM(id):_reh2(); }catch(e){ return _reh2(); } }; }
+
+/* ================= v9.9.0 · 🐼 Resolver: a EVA sugere a nota certa para quem ficou fora do romaneio/sem nota ================= */
+{ const _cer2=cer; cer=function(){ const c=_cer2(); c.vinc=c.vinc||{}; return c; }; }
+function oresUmDigito(a,b){ a=String(a||''); b=String(b||''); if(!a||!b||a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d===1; }
+function evaEtqSug(b){ if(!b) return [];
+  const pedN=opK(b.ped||''), nfN=opK(b.nf||''), cliN=cerNz(b.dest||''), cidN=cerNz(b.cid||''), tot=+b.tot||0;
+  const jaLido=(ped2,nf2)=>OP.bipes.some(x=>x!==b&&x.status!=='fora'&&((ped2&&x.ped===ped2)||(nf2&&x.nf===nf2)));
+  const vistos=new Set(), out=[];
+  for(const {row} of todasLinhas()){
+    const ped2=opK(row.ped||''), nf2=opK(row.nf||''); if(!ped2&&!nf2) continue;
+    const k=ped2+'|'+nf2; if(vistos.has(k)) continue; vistos.add(k);
+    if(jaLido(ped2,nf2)) continue;
+    let score=0; const motivos=[];
+    if(nfN&&nf2===nfN){ score+=100; motivos.push('mesmo número de NF'); }
+    else if(pedN&&ped2===pedN){ score+=90; motivos.push('mesmo pedido'); }
+    else if(nfN&&nf2&&oresUmDigito(nf2,nfN)){ score+=55; motivos.push('NF com 1 dígito diferente'); }
+    else if(pedN&&ped2&&oresUmDigito(ped2,pedN)){ score+=50; motivos.push('pedido com 1 dígito diferente'); }
+    const cli2=cerNz(row.cli||row.dest||''); if(cliN&&cli2&&cli2===cliN){ score+=20; motivos.push('mesmo cliente'); }
+    const cid2=cerNz(row.cid||row.cidade||''); if(cidN&&cid2&&cid2===cidN){ score+=10; motivos.push('mesma cidade'); }
+    const volRow=volNum(row.vol); if(tot&&volRow&&volRow===tot){ score+=10; motivos.push('mesma quantidade de volumes'); }
+    if(score) out.push({row,score,motivos,ped:ped2,nf:nf2});
+  }
+  return out.sort((x,y)=>y.score-x.score).slice(0,8);
+}
+function oresAbrir(lid){ const b=OP.bipes.find(x=>String(x.id||x.local_id)===String(lid)); if(!b) return;
+  const cands=evaEtqSug(b); let escolhido=null;
+  const f=document.createElement('div'); f.className='fundo';
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:580px;text-align:left">
+    <h2>🐼 Resolver · pedido ${esc(b.ped||b.nf||'(sem pedido)')}</h2>
+    <p class="sec">A EVA procurou notas que podem ser esta caixa. Escolha uma, busque manualmente ou confirme se já bipou.</p>
+    <div id="ores-cands">${cands.length?cands.map((c,i)=>`<div class="card" data-ores-pick="${i}" style="padding:8px 10px;margin-bottom:6px;cursor:pointer;border:1.5px solid var(--linha)"><b>${esc(c.ped||c.nf||'?')}</b> ${esc(c.row.cli||c.row.dest||'')} ${c.row.cid||c.row.cidade?'· '+esc(c.row.cid||c.row.cidade):''}<br><small class="sec">${esc(c.motivos.join(', '))}</small></div>`).join(''):'<p class="sec">Nenhuma sugestão por enquanto — busque manualmente abaixo.</p>'}</div>
+    <input id="ores-busca" class="filtro" placeholder="Buscar por NF, pedido, cliente ou cidade" autocomplete="off" style="width:100%;margin-top:6px">
+    <div id="ores-busca-res" style="max-height:180px;overflow:auto;margin-top:6px"></div>
+    <div class="botoes" style="margin-top:12px"><button class="btn" type="button" data-ores-fechar>Fechar</button><button class="btn pri" type="button" id="ores-ok">✔ Já achei a nota e bipei</button></div>
+  </div>`;
+  document.body.appendChild(f);
+  const marcar=(el,obj)=>{ f.querySelectorAll('[data-ores-pick],[data-ores-pick2]').forEach(x=>x.style.borderColor='var(--linha)'); el.style.borderColor='var(--pri,#0E7490)'; escolhido=obj; };
+  f.querySelectorAll('[data-ores-pick]').forEach(el=>el.onclick=()=>marcar(el,cands[+el.dataset.oresPick]));
+  const busca=f.querySelector('#ores-busca'), resEl=f.querySelector('#ores-busca-res');
+  busca.oninput=()=>{ const q=cerNz(busca.value); if(!q||q.length<2){ resEl.innerHTML=''; return; }
+    const achados=todasLinhas().filter(({row})=>[row.ped,row.nf,row.cli,row.dest,row.cid,row.cidade].some(v=>v&&cerNz(String(v)).includes(q))).slice(0,20);
+    resEl.innerHTML=achados.map((a,i)=>`<div class="card" data-ores-pick2="${i}" style="padding:6px 8px;margin-bottom:4px;cursor:pointer;border:1.5px solid var(--linha)">${esc(a.row.ped||a.row.nf||'?')} · ${esc(a.row.cli||a.row.dest||'')} ${a.row.cid||a.row.cidade?'· '+esc(a.row.cid||a.row.cidade):''}</div>`).join('');
+    resEl.querySelectorAll('[data-ores-pick2]').forEach(el=>el.onclick=()=>marcar(el,{row:achados[+el.dataset.oresPick2].row})); };
+  f.querySelector('[data-ores-fechar]').onclick=()=>f.remove();
+  f.addEventListener('keydown',e=>{ if(e.key==='Escape') f.remove(); });
+  f.querySelector('#ores-ok').onclick=()=>{ if(!escolhido){ toast('Escolha uma nota (clique em uma sugestão ou na busca) antes de confirmar.'); return; } f.remove(); oresResolver(lid,escolhido); };
+}
+function oresVincular(lid,escolhido){ const b=OP.bipes.find(x=>String(x.id||x.local_id)===String(lid)); if(!b||!escolhido||!escolhido.row) return null;
+  const antes={status:b.status,nf:b.nf,ped:b.ped,dest:b.dest,cid:b.cid};
+  const row=escolhido.row; const nf2=opK(row.nf||''), ped2=opK(row.ped||'');
+  if(nf2) b.nf=nf2; if(ped2) b.ped=ped2;
+  if(row.cli||row.dest) b.dest=String(row.cli||row.dest); if(row.cid||row.cidade) b.cid=String(row.cid||row.cidade);
+  b.status='ok';
+  try{ opLocalGravar(); }catch(e){}
+  S.opResolvidos=S.opResolvidos||{};
+  S.opResolvidos[String(b.local_id||b.id)]={antes,ped:b.ped,nf:b.nf,dest:b.dest,cid:b.cid,quando:new Date().toISOString(),por:opEu()};
+  try{ const C=cer(); const k=ped2||nf2; if(k) C.vinc[k]={nf:b.nf,ped:b.ped,dest:b.dest,cid:b.cid,em:new Date().toISOString()};
+    if(b.dest){ const kc=cerNz(b.dest); if(kc) C.ali[kc]=b.dest; } cerMudou(); }catch(e){}
+  salvar(); try{ opRender(); }catch(e){} try{ nuvSinc(); }catch(e){}
+  return antes; }
+function oresResolver(lid,escolhido){ const b0=OP.bipes.find(x=>String(x.id||x.local_id)===String(lid)); const pedAntes=b0&&(b0.ped||b0.nf)||''; const antes=oresVincular(lid,escolhido); if(!antes) return;
+  desfazerOferecer(`✔ Resolvido: pedido ${esc(pedAntes||'(sem pedido)')}.`,()=>oresDesfazer(lid)); }
+function oresDesfazer(lid){ const b=OP.bipes.find(x=>String(x.id||x.local_id)===String(lid)); const k=String(lid); const reg=(S.opResolvidos||{})[k]; if(!b||!reg) return;
+  Object.assign(b,reg.antes); delete S.opResolvidos[k]; try{ opLocalGravar(); }catch(e){} salvar(); try{ opRender(); }catch(e){} try{ nuvSinc(); }catch(e){} }
+try{ NUV_CAMPOS.push('opResolvidos'); }catch(e){}
+/* card "✅ Resolvidos" dentro de Problemas — nada é apagado, só sai da lista de faltando */
+function oresResolvidosRender(){ const cards=$('#op-cards'); if(!cards) return; let el=$('#ores-resolvidos');
+  const L=Object.entries(S.opResolvidos||{}).sort((a,b)=>String(b[1].quando||'').localeCompare(String(a[1].quando||''))).slice(0,40);
+  if(!L.length){ if(el) el.innerHTML=''; return; }
+  if(!el){ const ancora=$('#ct-lista')||cards; ancora.insertAdjacentElement('afterend',Object.assign(document.createElement('div'),{id:'ores-resolvidos'})); el=$('#ores-resolvidos'); }
+  el.innerHTML=`<details class="op-xml"><summary><b>✅ Resolvidos</b> <span class="tag">${L.length}</span></summary><div class="rolagem" style="max-height:40vh;overflow:auto">${L.map(([lid,r])=>`<div class="card" style="padding:6px 10px;margin:4px 0;display:flex;align-items:center;gap:8px"><div style="flex:1"><b>${esc(r.ped||r.nf||'?')}</b> ${esc(r.dest||'')} ${r.cid?'· '+esc(r.cid):''}<br><small class="sec">por ${esc(r.por||'')} · ${hora(r.quando)}</small></div><button type="button" class="btn mini" data-ores-desf="${esc(lid)}">↩ Desfazer</button></div>`).join('')}</div></details>`; }
+document.addEventListener('click',e=>{ const d=e.target.closest&&e.target.closest('[data-ores-desf]'); if(d){ oresDesfazer(d.dataset.oresDesf); } });
+{ const _r2=opRender; opRender=function(){ const r=_r2.apply(this,arguments); try{ oresResolvidosRender(); }catch(e){ console.error(e); } return r; }; }
+
+/* ================= v9.9.0 · EVA ligada às etiquetas: chip no chat, contador e aviso na hora do bipe ================= */
+function evaEtqPendentes(){ try{ return OP.bipes.filter(b=>['fora','pit','semnota'].includes(b.status)&&evaEtqSug(b).some(c=>c.score>=50)); }catch(e){ return []; } }
+function evaEtqHtml(){ const P=evaEtqPendentes(); if(!P.length) return 'Não tenho nenhuma etiqueta pendente agora. 🙂';
+  return P.slice(0,8).map(b=>{ const c=evaEtqSug(b)[0]; if(!c) return ''; return `<div class="eva-duv">Pedido <b>${esc(b.ped||b.nf||'?')}</b>: acho que é <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''}<br><small class="sec">${esc(c.motivos.join(', '))}</small><div class="eva-ops"><button type="button" class="btn mini" data-eva-etq-sim="${esc(String(b.id||b.local_id))}">É esta</button></div></div>`; }).join(''); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-eva-etq-sim]'); if(!b) return; const lid=b.dataset.evaEtqSim; const bip=OP.bipes.find(x=>String(x.id||x.local_id)===lid); if(!bip) return; const c=evaEtqSug(bip)[0]; if(!c){ toast('Essa sugestão não existe mais.'); return; } oresResolver(lid,c); try{ evaFala(evaEtqHtml()); }catch(e){} });
+{ const _ee2=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/etiqueta/.test(t)) return evaEtqHtml(); return _ee2(txt); }; }
+{ const _eb2=evaBadge; evaBadge=function(){ _eb2(); try{ const n=evaEtqPendentes().length; const b=$('#eva-qt'); if(b&&n){ b.textContent=(+b.textContent||0)+n; b.hidden=false; } }catch(e){} }; }
+{ const _enb=evaNoNexBip; evaNoNexBip=function(b){ const r=_enb(b); try{ if(b&&['fora','pit','semnota'].includes(b.status)){ const c=evaEtqSug(b)[0]; if(c&&c.score>=60) evaBalao(`🏷 Acho que essa caixa é o pedido <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''} — ${esc(c.motivos.join(', '))}. Toque em 🐼 Resolver para confirmar.`,9000,'etqpalpite'); } }catch(e){} return r; }; }
 function rotaS(){ return S.rotas=S.rotas||{atual:null,hist:[]}; }
 async function rotaLerPdf(f){ const buf=await f.arrayBuffer(); const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf),verbosity:0,isOffscreenCanvasSupported:false}).promise; const its=[];
   for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const tc=await pg.getTextContent(); for(const i of tc.items){ const t=(i.str||'').trim(); if(t) its.push({t,x:i.transform[4]+(i.width||0)/2,y:i.transform[5]-n*2000,x0:i.transform[4]}); } }
@@ -8185,6 +8305,18 @@ function rotaRender(){ const el=$('#rot-corpo'); if(!el) return; const R=rotaS()
     if(NV.rotNovo){ const u=NV.lista.find(x=>(x.usuario||'').toLowerCase()===NV.rotNovo); if(u){ S.roteirizadores=[...new Set([...(S.roteirizadores||[]),u.id])]; salvar(); nuvSinc(); } NV.rotNovo=null; }
     tab.querySelectorAll('tbody tr').forEach((tr,i)=>{ const u=NV.lista[i]; const adm=u.papel==='admin'; const on=adm||(S.roteirizadores||[]).includes(u.id); tr.children[3].insertAdjacentHTML('afterend',`<td><label style="display:inline-flex;gap:6px;align-items:center;${adm?'opacity:.7':''}"><input type="checkbox" data-nv-rot="${u.id}" ${on?'checked':''} ${adm||!nvAdmin()?'disabled':''}> ${on?'Ligado':'Desligado'}</label></td>`); }); }catch(e){ console.error(e); } }; }
 document.addEventListener('change',e=>{ const c=e.target; if(!c.dataset||c.dataset.nvRot==null) return; if(!nvAdmin()){ c.checked=!c.checked; return; } const id=c.dataset.nvRot; const L=new Set(S.roteirizadores||[]); c.checked?L.add(id):L.delete(id); S.roteirizadores=[...L]; salvar(); nuvSinc(); c.parentNode.lastChild.textContent=c.checked?' Ligado':' Desligado'; toast(c.checked?'Roteirizador ligado.':'Roteirizador desligado.'); });
+/* v9.9.0: intercepta em fase de captura e substitui pela gravação confirmada (rotGravar), sem precisar reescrever o handler de cima */
+document.addEventListener('change',async e=>{ const c=e.target; if(!c.dataset||c.dataset.nvRot==null) return; e.stopImmediatePropagation();
+  if(!nvAdmin()){ c.checked=!c.checked; return; }
+  const uid=c.dataset.nvRot, on=c.checked, lbl=c.parentNode.lastChild; c.disabled=true; if(lbl&&lbl.nodeType===3) lbl.textContent=' Salvando…';
+  const ok=await rotGravar(uid,on); const fin=ok?on:!on;
+  c.checked=fin; c.disabled=false; if(lbl&&lbl.nodeType===3) lbl.textContent=fin?' Ligado':' Desligado';
+  toast(ok?(on?'Roteirizador ligado.':'Roteirizador desligado.'):'Não confirmou no banco — tente de novo.');
+},true);
+{ const _ru4=renderUsuarios; renderUsuarios=async function(){ await _ru4.apply(this,arguments); try{
+  $$('#nv-users [data-nv-rot]').forEach(inp=>{ const uid=inp.dataset.nvRot; const u=NV.lista&&NV.lista.find(x=>x.id===uid); const adm=u&&u.papel==='admin'; const on=rotM(uid); inp.checked=on; inp.disabled=adm||!nvAdmin();
+    const lbl=inp.parentNode.lastChild; if(lbl&&lbl.nodeType===3) lbl.textContent=on?' Ligado':' Desligado'; });
+}catch(e){ console.error(e); } }; }
 (function(){ const b=$('#nv-criar'); const p=$('#nv-u-papel'); if(!b||!p) return; p.closest('label').insertAdjacentHTML('afterend','<label style="display:flex;gap:6px;align-items:center">Roteirizador<input type="checkbox" id="nv-u-rot"></label>'); b.addEventListener('click',()=>{ const c=$('#nv-u-rot'); NV.rotNovo=c&&c.checked?String($('#nv-u-usuario').value||'').trim().toLowerCase():null; },true); })();
 setTimeout(()=>{ try{ rotaNotificar(rotaS()); }catch(e){} },6000);
 
