@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.6.1', HS_DATA='09/11/2026';
+const HS_VERSAO='9.6.2', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9198,7 +9198,13 @@ const HS_LOGO_ANIM=`<svg class="hsl" viewBox="0 0 120 120" aria-hidden="true">
 .hc-flash{opacity:0;animation:hcFlash 1.1s 3.5s ease-out}
 .hc-rota{stroke-dasharray:100;stroke-dashoffset:100;animation:hcRota 2.2s 2.3s ease-in-out forwards}
 .hc-pin{opacity:0;transform-box:fill-box;transform-origin:center bottom;animation:hcPin .5s cubic-bezier(.2,1.6,.4,1) forwards}
-.hc-orb{animation:hcGira 4s linear infinite}
+.hc-orb{animation:hcGira 3.2s linear infinite}.hc-orbr{animation:hcGira 4.6s linear infinite reverse}.hc-orbl{animation:hcGira 7s linear infinite}
+.hc-o2{animation-delay:-1.6s}.hc-orbr.hc-o2{animation-delay:-2.3s}.hc-o3{animation-direction:reverse;animation-duration:9s}
+.hc-orb,.hc-orbr,.hc-orbl{opacity:0;animation-name:hcGira,hcFade;animation-duration:3.2s,.8s;animation-delay:0s,1.6s;animation-iteration-count:infinite,1;animation-fill-mode:none,forwards;animation-timing-function:linear,ease-out}
+.hc-orbr{animation-duration:4.6s,.8s;animation-direction:reverse,normal}.hc-orbl{animation-duration:7s,.8s;animation-delay:0s,.6s}.hc-o3{animation-duration:9s,.8s;animation-direction:reverse,normal}
+#nv-tela::before{background:radial-gradient(circle at 50% 0,#d9fffa 0 3px,rgba(154,245,234,.5) 4px,transparent 9px),radial-gradient(circle at 50% 100%,#d9fffa 0 2px,transparent 7px)}
+#nv-tela::after{background:radial-gradient(circle at 0 50%,#d9fffa 0 3px,rgba(154,245,234,.5) 4px,transparent 9px),radial-gradient(circle at 100% 50%,#fff 0 2px,transparent 7px)}
+.hsl-brilho{filter:drop-shadow(0 0 3px #fff)}
 @keyframes hcPop{from{transform:scale(0) rotate(-40deg);opacity:0}to{transform:none;opacity:1}}
 @keyframes hcTraco{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
 @keyframes hcTicks{from{opacity:0;transform:rotate(-90deg) scale(.8)}to{opacity:.7;transform:none}}
@@ -9234,7 +9240,7 @@ function hsCineHtml(){ let ticks=''; for(let i=0;i<60;i++){ const g=i%5===0; tic
   <circle class="hc-flash vb" cx="200" cy="200" r="90" fill="#d9fffa"/>
   <g class="hc-agulha vb" filter="url(#hcGlow)"><path d="M200 108 L226 200 L200 292 L174 200 Z" fill="url(#hcA)"/><path d="M200 108 L226 200 L200 200 Z" fill="#fff"/><path d="M200 292 L174 200 L200 200 Z" fill="#2c9c92"/>
    <path d="M132 200 L200 182 L268 200 L200 218 Z" fill="#6fe3d6" opacity=".85"/><circle cx="200" cy="200" r="13" fill="#062427" stroke="#d9fffa" stroke-width="4"/></g>
-  <g class="hc-orb vb"><circle cx="200" cy="88" r="6" fill="#fff" filter="url(#hcGlow)"/></g>
+  <g class="hc-orb vb"><circle cx="200" cy="200" r="112" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" pathLength="100" stroke-dasharray="9 91" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="88" r="5.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orb hc-o2 vb"><circle cx="200" cy="200" r="112" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" pathLength="100" stroke-dasharray="6 94" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="88" r="4.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbr vb"><circle cx="200" cy="200" r="92" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" pathLength="100" stroke-dasharray="7 93" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="108" r="3.7" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbr hc-o2 vb"><circle cx="200" cy="200" r="92" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="5 95" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="108" r="3.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbl vb"><circle cx="200" cy="200" r="168" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="4 96" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="32" r="3.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbl hc-o3 vb"><circle cx="200" cy="200" r="186" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" pathLength="100" stroke-dasharray="3 97" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="14" r="3.1" fill="#fff" filter="url(#hcGlow)"/></g>
  </svg><div class="hc-nome">${nome}</div><div class="hc-sub">Relatórios Precisos</div><div class="hc-barra"><b></b></div><div class="hc-pular">toque para pular</div>`; }
 { let _cine=true; const _nt=nvTela; nvTela=function(html){ const f=_nt(html); try{ if(!_cine) return f; _cine=false; if(matchMedia('(prefers-reduced-motion:reduce)').matches) return f;
     const el=document.getElementById('nv-tela'); el.classList.add('nv-cine');
