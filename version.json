@@ -1,1 +1,1 @@
-{"versao":"9.7.1","data":"2026-11-10","novidades":"Relatório Direto (Via Minas) agora puxa só o romaneio ROMANEIO - LKR X AQA, pelo nome do arquivo XML — não entra mais nota de outro romaneio só porque o destino bate com MG/SP da rota"}
+{"versao":"9.7.3","data":"2026-11-10","novidades":"Cadastro de motoristas ganhou campo de CPF (preenche sozinho no Registro, com o último registro do motorista como reserva) + mensagem do Registro sem a linha final de tipo/data"}
