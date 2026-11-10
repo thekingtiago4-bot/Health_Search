@@ -5768,7 +5768,41 @@ OP.extra=null; OP.silencio=false;
     if(ex){ for(const k of Object.keys(ex)) if(ex[k]!=null&&ex[k]!==''&&!(k!=='status'&&b[k])) b[k]=ex[k]; }
     if(b.status==='fora'||b.status==='pit'||b.status==='semnota'){ const i=opInfoFora(b.ped,b.nf); if(i){ b.dest=b.dest||String(i.dest||''); b.cid=b.cid||String(i.cid||''); b.tot=b.tot||i.tot||null; if(!b.valor&&i.valor) b.valor=i.valor; } OP.ultFora=i; }
     try{ opLocalGravar(); }catch(e){} return _env(b); }; }
-{ const _ms=opMostrar; opMostrar=function(r){ if(OP.silencio) return; if(r&&r.status==='fora'){ const b=OP.bipes[0]; if(b&&(b.dest||b.cid||b.tot)) r.linha=(r.linha||'')+' · '+[b.dest,b.cid,b.tot?b.tot+' vol.':''].filter(Boolean).join(' · '); } _ms(r); }; }
+/* BUG#FORA-FIX v9.11.0: linha "fora de romaneio" com dados completos.
+   Mostra dest/cid/NF/volumes/valor no título e na linha.
+   Se o código é uma chave DANFE (44 dígitos) e ainda não há dados locais,
+   consulta a MeuDanfe API de forma assíncrona e atualiza o display. */
+{ const _ms=opMostrar;
+  function opForaAtualizar(el,titulo,linha){ if(!el) return; const cor=(OP_ST['fora']||{c:'var(--no)'}).c; el.style.background=cor; el.style.color='#fff'; el.innerHTML=`<b>${esc(titulo)}</b><small>${esc(linha)}</small>`; const m=document.querySelector('#op-cam .msg'); if(m){ m.style.background=cor; m.innerHTML=`<b>${esc(titulo)}</b>${esc(linha)}`; } }
+  opMostrar=function(r){
+    if(OP.silencio) return;
+    if(r&&r.status==='fora'){
+      const b=OP.bipes[0];
+      /* dados já disponíveis localmente (opInfoFora já preencheu b no opEnviar) */
+      const dest=b&&b.dest||r._dest||''; const cid=b&&b.cid||r._cid||''; const nfMostra=b&&b.nf||r._nf||''; const tot=b&&b.tot||''; const val=b&&b.valor||0;
+      const partes=[dest,cid,nfMostra?'NF '+nfMostra:'',tot?tot+' vol.':'',val?opMoeda(val):''].filter(Boolean);
+      if(partes.length) r.linha='Separe a caixa · '+partes.join(' · ');
+      /* título também recebe cliente/cidade se disponível */
+      if(dest||cid){ const pedT=b&&b.ped||r._ped||''; r.titulo='Fora do romaneio'+(pedT?' · Ped.'+pedT:'')+(dest?' · '+dest:'')+(cid?' — '+cid:''); }
+      _ms(r);
+      /* se ainda falta dados e temos chave DANFE de 44 dígitos → busca assíncrona */
+      const chave=b&&b.codigo&&String(b.codigo).replace(/\D/g,''); const temDados=dest||cid||nfMostra;
+      if(!temDados&&chave&&chave.length===44&&typeof reBuscarChave==='function'&&(RE.ler()||{}).apiKey){
+        const el=$('#op-res');
+        reBuscarChave(chave).then(info=>{
+          /* preenche o bipe com os dados obtidos */
+          if(b){ b.dest=b.dest||info.cli||''; b.cid=b.cid||info.cid||''; b.nf=b.nf||info.nf||''; b.tot=b.tot||info.qtd||null; b.valor=b.valor||info.val||null; try{ opLocalGravar(); }catch(e){} }
+          const partes2=[info.cli,info.cid,info.nf?'NF '+info.nf:'',info.qtd?info.qtd+' vol.':'',info.val?opMoeda(info.val):''].filter(Boolean);
+          const titulo2='Fora do romaneio'+(info.cli?' · '+info.cli:'')+(info.cid?' — '+info.cid:'');
+          const linha2='Separe a caixa · '+partes2.join(' · ');
+          opForaAtualizar(el,titulo2,linha2);
+        }).catch(()=>{}); /* silencioso: se falhar mantém o que já apareceu */
+      }
+      return;
+    }
+    _ms(r);
+  };
+}
 
 /* ---- leitura do texto da etiqueta ---- */
 const OCRK={ocupado:false,ult:0,ultCod:0};
