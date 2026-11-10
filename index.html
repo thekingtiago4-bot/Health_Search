@@ -4130,7 +4130,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.11.0', HS_DATA='10/11/2026';
+const HS_VERSAO='9.12.0', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5789,6 +5789,11 @@ OP.extra=null; OP.silencio=false;
       const chave=b&&b.codigo&&String(b.codigo).replace(/\D/g,''); const temDados=dest||cid||nfMostra;
       if(!temDados&&chave&&chave.length===44&&typeof reBuscarChave==='function'&&(RE.ler()||{}).apiKey){
         const el=$('#op-res');
+        /* MELHORIA v9.12.0: indicador visual enquanto a consulta assíncrona está em andamento */
+        try{ const cor=(OP_ST['fora']||{c:'var(--no)'}).c;
+          if(el){ el.style.background=cor; el.style.color='#fff'; el.innerHTML=`<b>Fora do romaneio</b><small>⏳ Buscando dados da nota…</small>`; }
+          const mc=document.querySelector('#op-cam .msg'); if(mc){ mc.style.background=cor; mc.innerHTML=`<b>Fora do romaneio</b>⏳ Buscando dados da nota…`; }
+        }catch(e){}
         reBuscarChave(chave).then(info=>{
           /* preenche o bipe com os dados obtidos */
           if(b){ b.dest=b.dest||info.cli||''; b.cid=b.cid||info.cid||''; b.nf=b.nf||info.nf||''; b.tot=b.tot||info.qtd||null; b.valor=b.valor||info.val||null; try{ opLocalGravar(); }catch(e){} }
@@ -8272,7 +8277,11 @@ function rotEhRoteirizador(){ try{ if(nvAdmin()) return true; const id=NV&&NV.us
    Antes: S.roteirizadores era um array simples e o merge entre aparelhos faz UNIÃO (nunca remove quem foi desligado em outro aparelho).
    Agora: cada pessoa tem seu próprio registro com data (S.rotMarcas), a marca mais recente vale, grava no banco na hora e só confirma "ligado"/"desligado" depois de ler de volta. */
 function rotM(uid){ try{ if(!uid) return false; const u=NV.lista&&NV.lista.find(x=>x.id===uid); if(u&&u.papel==='admin') return true;
-    const m=(S.rotMarcas||{})[uid]; if(m) return !!m.on; return (S.roteirizadores||[]).includes(uid); /* aparelho ainda não atualizado só tem o campo antigo */
+    /* BUG#3-FIX v9.12.0: se rotMarcas[uid] existir usa ela; MAS se {on:false}, ainda checa
+       o array legado roteirizadores[] como segundo critério — evita falso-negativo quando a
+       marca nova está desatualizada no aparelho do roteirizador (campo baixado só pelo admin). */
+    const m=(S.rotMarcas||{})[uid]; if(m&&m.on) return true; if(m&&!m.on){ /* marca explícita desligada: respeita — não usa fallback */ return false; }
+    return (S.roteirizadores||[]).includes(uid); /* sem marca registrada: usa campo legado */
   }catch(e){ return false; } }
 function rotLigados(){ try{ return (NV.lista||[]).filter(u=>rotM(u.id)).map(u=>u.id); }catch(e){ return []; } }
 async function rotGravar(uid,on){ if(!nvAdmin()) return false;
@@ -8290,7 +8299,10 @@ async function rotGravar(uid,on){ if(!nvAdmin()) return false;
     return true;
   }catch(e){ toast('Não salvou no banco: '+(e&&e.message||e)); return false; }
 }
-try{ NUV_CAMPOS.push('rotMarcas'); NUV_ADMIN.add('s:rotMarcas'); }catch(e){}
+/* BUG#3-FIX v9.12.0: rotMarcas removido do NUV_ADMIN para que TODOS os usuários
+   (incluindo roteirizadores) recebam o campo via canal normal de sincronização.
+   Anteriormente só o admin recebia, fazendo rotM() retornar false para roteirizadores. */
+try{ NUV_CAMPOS.push('rotMarcas'); /* NUV_ADMIN: intencionalmente omitido — campo deve descer para todos */ }catch(e){}
 { const _reh2=rotEhRoteirizador; rotEhRoteirizador=function(){ try{ if(nvAdmin()) return true; const id=NV&&NV.user&&NV.user.id; return id?rotM(id):_reh2(); }catch(e){ return _reh2(); } }; }
 
 /* v9.9.1: com a câmera aberta, o personagem da EVA sai da frente (o botão flutuante e o balão ficavam em cima da tela da câmera).
