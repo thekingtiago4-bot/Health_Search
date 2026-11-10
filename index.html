@@ -2600,9 +2600,19 @@ function confirmar(titulo,texto,btn){ return new Promise(res=>{ const f=document
 function aplicarTema(){ const esc2 = S.tema==='escuro' || (!S.tema && matchMedia('(prefers-color-scheme: dark)').matches); document.documentElement.dataset.tema=esc2?'escuro':'claro'; $('#tema-lbl').textContent=esc2?'Tema claro':'Tema escuro'; }
 function baixar(blob,nome){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1500); }
 function lerPacote(){ const el=document.getElementById('pacote-dados'); if(!el) return null; try{ return JSON.parse(el.textContent); }catch(e){ return null; } }
+function hsMesclarRom(local,remoto){
+  var L=Array.isArray(local)?local:[], Rm=Array.isArray(remoto)?remoto:[];
+  var hj=hojeISO(), vis={};
+  for(var i=0;i<Rm.length;i++) if(Rm[i]&&Rm[i].id) vis[Rm[i].id]=1;
+  var manter=L.filter(function(r){
+    if(!r||vis[r.id]) return false;
+    try{ return typeof opDiaRom==='function' ? opDiaRom(r)===hj : true; }catch(e){ return true; }
+  });
+  return Rm.concat(manter);
+}
 function aplicarPacote(pac){
   if(!pac || !pac.id || S.pacoteId===pac.id) return false;
-  S.romaneios=pac.romaneios||[];
+  S.romaneios=hsMesclarRom(S.romaneios,pac.romaneios);
   S.agendamentos=(S.agendamentos||[]).filter(a=>!a.pac).concat((pac.agendamentos||[]).filter(a=>!(S.agendamentos||[]).some(b=>b.id===a.id)).map(a=>Object.assign({},a,{pac:true})));
   if(pac.aprendidos && pac.aprendidos.t){ const atual=(S.aprendidos&&S.aprendidos.t)||[]; const vis=new Set(atual.map(t=>t.w+'x'+t.h+'@'+t.y+t.b)); S.aprendidos={t:atual.concat(pac.aprendidos.t.filter(t=>!vis.has(t.w+'x'+t.h+'@'+t.y+t.b)))}; }
   if(pac.cidAtend){ S.cidAtend=S.cidAtend||{}; for(const k in pac.cidAtend){ const a=S.cidAtend[k], b=pac.cidAtend[k]; if(!a){ S.cidAtend[k]=b; continue; } if(!a.c&&b.c){ a.c=b.c; a.nome=b.nome; a.cand=[]; } if(b.p<a.p) a.p=b.p; if(b.d>a.d) a.d=b.d; a.dias=Math.max(a.dias||1,b.dias||1); for(const x of b.bases||[]) if(!a.bases.includes(x)) a.bases.push(x); } }
@@ -2913,7 +2923,7 @@ document.addEventListener('click',async e=>{
   const da=e.target.closest('[data-del-ag]'); if(da){ S.agendamentos=S.agendamentos.filter(a=>a.id!==da.dataset.delAg); salvar(); renderTudo(); toast('Agendamento excluído.'); return; }
 });
 document.addEventListener('input',e=>{ const f=e.target.closest('[data-filtro]'); if(!f) return; const t=N(f.value); const tb=f.parentElement.querySelector('tbody'); for(const tr of tb.rows) tr.hidden = t && !t.split(' ').every(p=>tr.dataset.busca.includes(p)); });
-$('#bt-reset').onclick=async()=>{ if(!S.romaneios.length){ toast('Não há romaneios carregados.'); return; } if(await confirmar('Remover todos os romaneios?',`Vou tirar os ${S.romaneios.length} romaneios e as ${todasLinhas().length} notas da busca, para começar o próximo dia limpo. Os agendamentos continuam salvos.`,'Remover todos')){ S.romaneios=[]; S.pacoteInfo=null; abertos.clear(); salvar(); renderTudo(); toast('Romaneios removidos. Pronto para o próximo dia.'); } };
+$('#bt-reset').onclick=async()=>{ if(!S.romaneios.length){ toast('Não há romaneios carregados.'); return; } if(await confirmar('Remover todos os romaneios?',`Vou tirar os ${S.romaneios.length} romaneios e as ${todasLinhas().length} notas da busca, para começar o próximo dia limpo. Os agendamentos continuam salvos.`,'Remover todos')){ S.romaneios=[]; S.pacoteInfo=null; S.romLimpoEm=new Date().toISOString(); abertos.clear(); salvar(); renderTudo(); toast('Romaneios removidos. Pronto para o próximo dia.'); } };
 $('#bt-csv').onclick=exportarCSV;
 $('#bt-zap').onclick=gerarPacote;
 $('#hist-filtro').addEventListener('input',renderHistorico);
@@ -3835,7 +3845,7 @@ Store.init=async function(){
     if(!data.session&&!navigator.onLine) return nvOffline();
     try{ NV.perfil=await nvPerfil(); if(NV.perfil) try{ localStorage.setItem('healthSearch.perfilCache',JSON.stringify(NV.perfil)); }catch(e){} }catch(e){ NV.perfil=null; if(data.session&&nvSemRede(e)) return nvOffline(); }
     if(NV.perfil&&NV.perfil.ativo) break;
-    await NV.cli.auth.signOut(); const f=nvTela(`<h2>Sem acesso</h2><p>Este usuário não está liberado. Peça ao administrador.</p><div class="nv-bts"><button class="btn pri" type="button">Voltar</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
+    await NV.cli.auth.signOut({scope:'local'}); const f=nvTela(`<h2>Sem acesso</h2><p>Este usuário não está liberado. Peça ao administrador.</p><div class="nv-bts"><button class="btn pri" type="button">Voltar</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
   if(NV.perfil&&NV.perfil.papel==='admin'&&navigator.onLine) await nvMfa();
   nvFechar(); this.modo='nuvem'; document.documentElement.dataset.nuvem='1'; nvUI();
   let row=null; try{ row=await nvCarregar(); }catch(e){ if(nvSemRede(e)){ this.modo='local'; return nvOffline(true); } toast('Não consegui ler os dados online: '+nvTraduz(e.message)); }
@@ -3849,6 +3859,11 @@ Store.salvar=async function(obj){ if(this.modo!=='nuvem') return _stSalvar(obj);
   const syncOk=typeof NUV!=='undefined'&&NUV.ult&&!NUV.erro; const espera=syncOk?Math.max(700,300000-(Date.now()-(NV.ultEstado||0))):700;
   clearTimeout(NV.tSalvar); nvSelo(syncOk?'Salvo online':'Salvando…');
   NV.tSalvar=setTimeout(async()=>{ NV.ultEstado=Date.now(); NV.salvando=true;
+    if((S.romaneios||[]).length) S.romLimpoEm='';
+    else if(String(S.romLimpoEm||'').slice(0,10)!==hojeISO()){
+      try{ var _r=await nvCarregar(); var _c=_r&&_r.dados&&_r.dados.s&&_r.dados.s.romaneios;
+           if(_c&&_c.length) S.romaneios=hsMesclarRom(S.romaneios,_c); }catch(e){}
+    }
     const {data,error}=await NV.cli.from('hs_estado').upsert({id:'principal',dados:{s:S,re:RE.ler()},atualizado_em:new Date().toISOString(),atualizado_por:NV.perfil.nome||NV.user.email,origem:NV.origem}).select('atualizado_em').single();
     NV.salvando=false; if(error){ nvSelo('Erro ao salvar',1); toast('Não salvou online: '+nvTraduz(error.message)); return; } NV.versao=data.atualizado_em; nvSelo('Salvo online'); },700); };
 { const _g=RE.gravar.bind(RE); RE.gravar=function(){ _g(); if(Store.modo==='nuvem') Store.salvar(S); }; }
@@ -3856,11 +3871,11 @@ Store.salvar=async function(obj){ if(this.modo!=='nuvem') return _stSalvar(obj);
 /* outro usuário salvou: recarrega na hora */
 function nvTempoReal(){ if(NV.canal) return; NV.canal=NV.cli.channel('hs-estado').on('postgres_changes',{event:'*',schema:'public',table:'hs_estado'},async p=>{
   if(!p.new||p.new.origem===NV.origem||NV.salvando) return; if(typeof NUV!=='undefined') return; /* v7.5.4: hs_sync cuida de tudo */ try{ const row=await nvCarregar(); if(!row||!row.dados) return; NV.versao=row.atualizado_em;
-    S=Object.assign(S,row.dados.s||{}); nvAplicarRE(row.dados.re); montarDicionario(); renderTudo(); if(!$('#t-reentregas').hidden) reTela(); toast('Atualizado por '+(row.atualizado_por||'outro usuário')+'.'); }catch(e){} }).subscribe(); }
+    { var _rl=S.romaneios; S=Object.assign(S,row.dados.s||{}); S.romaneios=hsMesclarRom(_rl,S.romaneios); } nvAplicarRE(row.dados.re); montarDicionario(); renderTudo(); if(!$('#t-reentregas').hidden) reTela(); toast('Atualizado por '+(row.atualizado_por||'outro usuário')+'.'); }catch(e){} }).subscribe(); }
 
 function nvSelo(t,erro){ const e=$('#r-salvo'); if(e){ e.textContent=t; e.parentElement.classList.toggle('nv-erro',!!erro); } }
 function nvUI(){ const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||NV.user.email)}</b><small>${NV.perfil.papel==='admin'?'Administrador':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
-  $('#nv-sair').onclick=async()=>{ await NV.cli.auth.signOut(); location.reload(); };
+  $('#nv-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
   const nb=document.querySelector('.nav [data-tela="usuarios"]'); if(nb) nb.hidden=NV.perfil.papel!=='admin'; const ng=document.getElementById('nav-grupo-adm'); if(ng) ng.hidden=NV.perfil.papel!=='admin';
   const _r=renderResumo; renderResumo=function(){ _r(); nvSelo('Salvo online'); }; }
 
@@ -4288,7 +4303,7 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t
 
 /* sai sozinho depois de 4 horas sem uso (computador compartilhado) */
 (function(){ const LIM=Infinity; /* v6.3.4: com o app aberto fica logado; fechado, sai após 1 hora */ let ult=Date.now(); ['click','keydown','pointermove','touchstart'].forEach(ev=>addEventListener(ev,()=>{ ult=Date.now(); },{passive:true}));
-  setInterval(async()=>{ if(Store.modo==='nuvem'&&NV.cli&&Date.now()-ult>LIM){ await NV.cli.auth.signOut(); location.reload(); } },60000); })();
+  setInterval(async()=>{ if(Store.modo==='nuvem'&&NV.cli&&Date.now()-ult>LIM){ await NV.cli.auth.signOut({scope:'local'}); location.reload(); } },60000); })();
 
 /* não deixa outro site abrir o Health Search escondido dentro dele */
 if(/github\.io$/.test(location.hostname)&&window.top!==window.self){ try{ window.top.location=location.href; }catch(e){ document.body.innerHTML=''; } }
@@ -4854,10 +4869,10 @@ async function nvEntrarPacote(){
   for(;;){ const {data}=await NV.cli.auth.getSession(); NV.user=data.session?data.session.user:await nvLogin();
     try{ NV.perfil=await nvPerfil(); }catch(e){ NV.perfil=null; }
     if(NV.perfil&&NV.perfil.ativo) break;
-    await NV.cli.auth.signOut(); const f=nvTela(`<h2>Aguardando liberação</h2><p>Seu usuário ainda não foi liberado. Peça ao administrador para liberar o acesso.</p><div class="nv-bts"><button class="btn pri" type="button">Voltar</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
+    await NV.cli.auth.signOut({scope:'local'}); const f=nvTela(`<h2>Aguardando liberação</h2><p>Seu usuário ainda não foi liberado. Peça ao administrador para liberar o acesso.</p><div class="nv-bts"><button class="btn pri" type="button">Voltar</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
   nvFechar(); NV.pacote=true;
   const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||nvExibe(NV.user.email))}</b><small>${NV.perfil.papel==='admin'?'Administrador':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
-  const s=$('#nv-sair'); if(s) s.onclick=async()=>{ await NV.cli.auth.signOut(); location.reload(); }; }
+  const s=$('#nv-sair'); if(s) s.onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); }; }
 
 /* ================= v6.3.1 · histórico por PEDIDO e por reentrega lançada → alerta de reentrega (romaneio, bipe e mural) ================= */
 function reVarrerPed(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;
@@ -6236,7 +6251,7 @@ async function nvMfa(){ const M=NV.cli.auth.mfa; if(!M) return;
       const {data:en,error:ee}=await M.enroll({factorType:'totp',friendlyName:'Health Search '+new Date().toISOString().slice(0,16)}); if(ee) throw ee; fid=en.id; qr=en.totp.qr_code; seg=en.totp.secret; }
     await new Promise(res=>{ const f=nvTela(`<h2>🔐 Verificação em 2 etapas</h2>${qr?`<p>Administrador precisa de uma segunda proteção. Instale o <b>Google Authenticator</b> ou <b>Microsoft Authenticator</b> no celular, toque em “+” e leia este QR Code:</p><div style="text-align:center;margin:10px 0"><img src="${qr}" alt="QR Code" style="width:200px;height:200px;background:#fff;padding:8px;border-radius:10px"></div><p style="font-size:13px">Sem câmera? Digite a chave: <code style="user-select:all;word-break:break-all">${esc(seg)}</code></p>`:'<p>Abra o app autenticador no celular e digite o código de 6 dígitos do Health Search.</p>'}
       <form id="nv-mfa"><label>Código de 6 dígitos<input id="nv-mfa-c" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></label><div class="nv-msg"></div><div class="nv-bts"><button class="btn mini" type="button" id="nv-mfa-sair">Sair</button><button class="btn pri grande" type="submit">Confirmar</button></div></form>`);
-      f.querySelector('#nv-mfa-c').focus(); f.querySelector('#nv-mfa-sair').onclick=async()=>{ await NV.cli.auth.signOut(); location.reload(); };
+      f.querySelector('#nv-mfa-c').focus(); f.querySelector('#nv-mfa-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
       f.querySelector('#nv-mfa').onsubmit=async e=>{ e.preventDefault(); nvMsg(f,'Conferindo…'); const code=f.querySelector('#nv-mfa-c').value.trim();
         const {data:ch,error:ec}=await M.challenge({factorId:fid}); if(ec){ nvMsg(f,nvTraduz(ec.message),1); return; }
         const {error:ev}=await M.verify({factorId:fid,challengeId:ch.id,code}); if(ev){ nvMsg(f,'Código errado ou vencido. Use o código que está aparecendo agora no app.',1); return; } res(); }; });
@@ -8746,7 +8761,7 @@ async function nvTrocaPrimeiroAcesso(){ if(_trocaMostrada) return; _trocaMostrad
   await new Promise(res=>{ const f=nvTela(`<h2>Crie a sua senha</h2><p>Este é o seu primeiro acesso (ou o administrador redefiniu a sua senha). Crie uma senha só sua para continuar.</p>
     <label>Nova senha<input id="nv-p1" type="password" autocomplete="new-password"></label><label>Repita a nova senha<input id="nv-p2" type="password" autocomplete="new-password"></label>
     <p class="sec" style="font-size:.85rem;margin:4px 0 0">Mínimo 10 caracteres, com maiúscula, minúscula, número e símbolo.</p><div class="nv-msg"></div><div class="nv-bts"><button class="btn mini" type="button" id="nv-p-sair">Sair</button><button class="btn pri grande" type="button" id="nv-p-ok">Salvar e entrar</button></div>`);
-    f.querySelector('#nv-p1').focus(); f.querySelector('#nv-p-sair').onclick=async()=>{ await NV.cli.auth.signOut(); location.reload(); };
+    f.querySelector('#nv-p1').focus(); f.querySelector('#nv-p-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
     const ok=async()=>{ const a=f.querySelector('#nv-p1').value, b=f.querySelector('#nv-p2').value; if(a!==b){ nvMsg(f,'As duas senhas não são iguais.',1); return; } const fr=senhaFraca(a,NV.perfil&&NV.perfil.usuario); if(fr){ nvMsg(f,fr,1); return; }
       nvMsg(f,'Salvando…'); const {error}=await NV.cli.auth.updateUser({password:a}); if(error){ nvMsg(f,nvTraduz(error.message),1); return; }
       const r=await NV.cli.rpc('hs_senha_trocada'); if(r.error){ nvMsg(f,nvTraduz(r.error.message),1); return; } NV.perfil.trocar_senha=false; nvFechar(); toast('✔ Senha criada. Bem-vindo(a)!'); res(); };
@@ -8779,7 +8794,7 @@ function chAvisar(c){ let el=$('#ch-aviso'); if(!el){ el=document.createElement(
   const resumo=document.querySelector('.resumo'); if(!resumo) return;
   const u=document.createElement('div'); u.className='rail-user'; u.innerHTML='<span class="av" id="ru-av">?</span><div><b id="ru-nome">—</b><small id="ru-papel"></small></div><button type="button" id="ru-sair">Deslogar</button>';
   const aut=resumo.querySelector('.autoria'); resumo.insertBefore(u,aut);
-  $('#ru-sair').onclick=async()=>{ if(!await confirmar('Deslogar','Sair do Health Search neste aparelho?','Deslogar')) return; try{ if(typeof hsSalvarAgora==='function'&&opOnline()) await nuvSinc(); }catch(e){} try{ await NV.cli.auth.signOut(); }catch(e){} location.reload(); };
+  $('#ru-sair').onclick=async()=>{ if(!await confirmar('Deslogar','Sair do Health Search neste aparelho?','Deslogar')) return; try{ if(typeof hsSalvarAgora==='function'&&opOnline()) await nuvSinc(); }catch(e){} try{ await NV.cli.auth.signOut({scope:'local'}); }catch(e){} location.reload(); };
   const pinta=()=>{ const p=NV&&NV.perfil; const nome=p&&p.nome||'Este aparelho'; $('#ru-nome').textContent=nome; $('#ru-papel').textContent=p?(p.papel==='admin'?'Administrador':(p.conferente?'Conferente':'Usuário')):'sem login'; $('#ru-av').textContent=nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase(); $('#ru-sair').hidden=!(p&&Store.modo==='nuvem'); };
   pinta(); setInterval(pinta,3000);
 })();

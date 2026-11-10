@@ -1,1 +1,1 @@
-{"versao":"9.7.3","data":"2026-11-10","novidades":"Cadastro de motoristas ganhou campo de CPF (preenche sozinho no Registro, com o último registro do motorista como reserva) + mensagem do Registro sem a linha final de tipo/data"}
+{"versao":"9.8.0","data":"2026-11-10","novidades":"Sair do app agora desloga só o aparelho em que você está: deslogar no celular não derruba mais o PC. E os romaneios carregados não somem mais quando alguém entra em outro aparelho ou quando a conexão cai — eles ficam até virar o dia."}
