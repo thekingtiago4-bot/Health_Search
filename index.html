@@ -4128,7 +4128,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.9.0', HS_DATA='10/11/2026';
+const HS_VERSAO='9.9.1', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8143,6 +8143,16 @@ async function rotGravar(uid,on){ if(!nvAdmin()) return false;
 }
 try{ NUV_CAMPOS.push('rotMarcas'); NUV_ADMIN.add('s:rotMarcas'); }catch(e){}
 { const _reh2=rotEhRoteirizador; rotEhRoteirizador=function(){ try{ if(nvAdmin()) return true; const id=NV&&NV.user&&NV.user.id; return id?rotM(id):_reh2(); }catch(e){ return _reh2(); } }; }
+
+/* v9.9.1: com a câmera aberta, o personagem da EVA sai da frente (o botão flutuante e o balão ficavam em cima da tela da câmera).
+   As falas dela não se perdem: viram uma tarja discreta dentro da própria câmera e continuam no histórico do chat. */
+{ const _ca9=opCamAbrir; opCamAbrir=async function(){ const r=await _ca9.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=true; const bl=$('#eva-balao'); if(bl) bl.hidden=true; if(typeof EVA!=='undefined'&&EVA.aberta) evaAbrir(false); }catch(e){} return r; }; }
+{ const _cf9=opCamFechar; opCamFechar=function(){ const r=_cf9.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=false; }catch(e){} return r; }; }
+{ const _bal9=evaBalao; evaBalao=function(html,ms,tipo){ const cam=document.querySelector('#op-cam'); if(!cam) return _bal9.apply(this,arguments);
+    if(tipo){ const t=Date.now(); if(EVAH.ult[tipo]&&t-EVAH.ult[tipo]<45000) return; EVAH.ult[tipo]=t; }
+    try{ EVA.msgs.push({html}); }catch(e){}
+    let d=cam.querySelector('.eva-dica'); if(!d){ d=document.createElement('div'); d.className='eva-dica'; d.style.cssText='position:absolute;left:12px;right:12px;top:92px;z-index:4;color:#fff;background:rgba(0,0,0,.62);border-radius:12px;padding:8px 12px;font-size:.86rem;line-height:1.35'; cam.appendChild(d); }
+    d.innerHTML=html; d.hidden=false; clearTimeout(d._t); d._t=setTimeout(()=>{ d.hidden=true; },ms||9000); }; }
 
 /* ================= v9.9.0 · 🐼 Resolver: a EVA sugere a nota certa para quem ficou fora do romaneio/sem nota ================= */
 { const _cer2=cer; cer=function(){ const c=_cer2(); c.vinc=c.vinc||{}; return c; }; }
