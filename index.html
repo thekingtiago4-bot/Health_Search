@@ -4113,7 +4113,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.6.4', HS_DATA='09/11/2026';
+const HS_VERSAO='9.6.5', HS_DATA='09/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9243,16 +9243,11 @@ function hsCineHtml(){ let ticks=''; for(let i=0;i<60;i++){ const g=i%5===0; tic
    <path d="M132 200 L200 182 L268 200 L200 218 Z" fill="#6fe3d6" opacity=".85"/><circle cx="200" cy="200" r="13" fill="#062427" stroke="#d9fffa" stroke-width="4"/></g>
   <g class="hc-orb vb"><circle cx="200" cy="200" r="112" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" pathLength="100" stroke-dasharray="9 91" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="88" r="5.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orb hc-o2 vb"><circle cx="200" cy="200" r="112" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" pathLength="100" stroke-dasharray="6 94" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="88" r="4.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbr vb"><circle cx="200" cy="200" r="92" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" pathLength="100" stroke-dasharray="7 93" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="108" r="3.7" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbr hc-o2 vb"><circle cx="200" cy="200" r="92" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="5 95" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="108" r="3.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbl vb"><circle cx="200" cy="200" r="168" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="4 96" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="32" r="3.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbl hc-o3 vb"><circle cx="200" cy="200" r="186" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" pathLength="100" stroke-dasharray="3 97" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="14" r="3.1" fill="#fff" filter="url(#hcGlow)"/></g>
  </svg><div class="hc-nome">${nome}</div><div class="hc-sub">Relatórios Precisos</div><div class="hc-barra"><b></b></div><div class="hc-pular">toque para pular</div>`; }
-{ let _cine=true; const _nt=nvTela; nvTela=function(html){ const f=_nt(html); try{ if(!_cine) return f; _cine=false; if(matchMedia('(prefers-reduced-motion:reduce)').matches) return f;
-    const el=document.getElementById('nv-tela'); el.classList.add('nv-cine');
-    const splashFora=()=>{ const s=document.getElementById('hs-splash'); if(!s) return true; const cs=getComputedStyle(s); return s.hidden||cs.display==='none'||cs.visibility==='hidden'||+cs.opacity<.05; };
-    let n=0; const esp=setInterval(()=>{ if(!splashFora()&&++n<150) return; clearInterval(esp);
-      if(el.hidden){ el.classList.remove('nv-cine'); return; }
-      const c=document.createElement('div'); c.id='hs-cine'; c.style.zIndex='1900'; c.innerHTML=hsCineHtml(); document.body.appendChild(c);
-      const act=document.activeElement; if(act&&act.blur) act.blur();
-      let fim=false; const sair=()=>{ if(fim) return; fim=true; c.classList.add('fim'); el.classList.remove('nv-cine'); el.classList.add('nv-intro'); setTimeout(()=>{ c.remove(); const i=el.querySelector('input'); if(i&&!TOQUE) i.focus(); },700); setTimeout(()=>el.classList.remove('nv-intro'),3400); };
-      c.addEventListener('click',sair); document.addEventListener('keydown',function k(){ document.removeEventListener('keydown',k); sair(); }); setTimeout(sair,5600); },100);
-  }catch(e){ console.error(e); } return f; }; }
+/* v9.6.5: a abertura toca sempre que o app abre (logado ou não), por cima da tela de carregamento */
+(function(){ try{ if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const c=document.createElement('div'); c.id='hs-cine'; c.style.zIndex='2100'; c.innerHTML=hsCineHtml(); document.body.appendChild(c);
+  let fim=false; const sair=()=>{ if(fim) return; fim=true; c.classList.add('fim'); setTimeout(()=>c.remove(),700); };
+  c.addEventListener('click',sair); document.addEventListener('keydown',function k(){ document.removeEventListener('keydown',k); sair(); }); setTimeout(sair,5600); }catch(e){ console.error(e); } })();
 /* ================= v9.6.3 · EVA com mais expressões (piscadinha, comemora, emburrada, estrelas, amor, coração partido, curativo, surpresa) ================= */
 (function(){ const estrela=(cx,cy,r)=>{ let d=''; for(let i=0;i<10;i++){ const a=Math.PI/5*i-Math.PI/2, q=i%2?r*.45:r; d+=(i?'L':'M')+(cx+q*Math.cos(a)).toFixed(1)+' '+(cy+q*Math.sin(a)).toFixed(1); } return d+'Z'; };
   const brilho=(x,y,s,d)=>`<path class="x-tw" style="animation-delay:${d}s" d="M${x} ${y-s} Q${x} ${y} ${x+s} ${y} Q${x} ${y} ${x} ${y+s} Q${x} ${y} ${x-s} ${y} Q${x} ${y} ${x} ${y-s}Z" fill="#FDE047" stroke="#CA8A04" stroke-width="1"/>`;
