@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.3', HS_DATA='11/11/2026';
+const HS_VERSAO='9.19.4', HS_DATA='11/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7294,14 +7294,16 @@ function cerPorCliente(p,idx){ const dn=cerNz(p.dest||''), cn=cerNz(p.cid||''); 
         if(c){ C.st.ajudas++; OP.extra={tot:p.tot||null}; opLer([c],'texto+cérebro'); cerAprenderOcr(p); return true; } } }
     const r=_le.call(this,p); if(r) cerAprenderOcr(p); return r; }; }
 /* depois de um bipe por texto que achou a nota, aprende: linha do número, texto antes dele, trocas de letra por número e o nome do cliente */
-function cerAprenderOcr(p){ try{ const b=OP.bipes[0]; if(!b||b.status==='fora'||b.status==='dup'||!/texto/.test(b.tipo||'')) return; const C=cer(); const L=CERx.linhas; const alvo=b.nf||b.ped; if(!alvo||!L.length) return;
+function cerAprenderOcr(p){ try{ const b=OP.bipes[0]; if(!b||b.status==='fora'||b.status==='dup'||!/texto/.test(b.tipo||'')) return; cerAprender(p,CERx.linhas,b.nf||b.ped,b.dest); }catch(e){ console.error('cerebro',e); } }
+/* v9.19.4: núcleo do aprendizado por texto — usado pelo bipe e pelas fotos enviadas ao BIT. Devolve quantas coisas novas aprendeu (-1 = o número não aparece no texto lido) */
+function cerAprender(p,L,alvo,destCerto){ try{ const C=cer(); alvo=opK(alvo||''); L=L||[]; if(!alvo||!L.length) return -1; const ap0=C.st.aprendeu; let achou=false;
     let mudou=false; const k=cerModKey(p);
-    for(let i=0;i<L.length;i++){ const tok=L[i].match(/[0-9OQDILSBZG]{4,12}/g)||[]; for(const t of tok){ if(opK(cerDig(t))!==alvo) continue;
+    for(let i=0;i<L.length;i++){ const tok=L[i].match(/[0-9OQDILSBZG]{4,12}/g)||[]; for(const t of tok){ if(opK(cerDig(t))!==alvo) continue; achou=true;
         if(k){ const m=C.mod[k]=C.mod[k]||{pos:[],ok:0}; m.ok++; const antes=cerNz(L[i].slice(0,L[i].indexOf(t))).replace(/[0-9]/g,'').trim().split(' ').slice(-2).join(' ');
           const y=L.length>1?+(i/(L.length-1)).toFixed(2):0; let ps=m.pos.find(o=>(antes&&o.pre===antes)||(!antes&&Math.abs(o.y-y)<.08)); if(ps) ps.ok++; else { m.pos.push({pre:antes,y,ok:1}); m.pos=m.pos.sort((a,b)=>b.ok-a.ok).slice(0,4); C.st.aprendeu++; } mudou=true; }
         if(/\D/.test(t)) { for(const ch of new Set(t.replace(/\d/g,''))) { C.troca['_'+ch]=(C.troca['_'+ch]||0)+1; } mudou=true; } } }
-    const dn=cerNz(p.dest||''), xd=cerNz(b.dest||''); if(dn.length>=4&&xd&&dn!==xd&&!C.ali[dn]){ C.ali[dn]=xd; C.st.aprendeu++; mudou=true; if(Object.keys(C.ali).length>800){ const ks=Object.keys(C.ali); for(const kk of ks.slice(0,ks.length-800)) delete C.ali[kk]; } }
-    if(mudou) cerMudou(); }catch(e){ console.error('cerebro',e); } }
+    const dn=cerNz(p.dest||''), xd=cerNz(destCerto||''); if(dn.length>=4&&xd&&dn!==xd&&!C.ali[dn]){ C.ali[dn]=xd; C.st.aprendeu++; mudou=true; if(Object.keys(C.ali).length>800){ const ks=Object.keys(C.ali); for(const kk of ks.slice(0,ks.length-800)) delete C.ali[kk]; } }
+    if(mudou) cerMudou(); return achou?C.st.aprendeu-ap0:-1; }catch(e){ console.error('cerebro',e); return -1; } }
 /* painel do Cérebro (Correção, administrador) */
 function cerTela(){ const C=cer(); const nq=Object.keys(C.qr).length, nm=Object.keys(C.mod).length, na=Object.keys(C.ali).length;
   const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
@@ -9345,7 +9347,7 @@ function evaEnsinoRender(){ const c=$('#eva-centro'); if(!c) return; let el=$('#
    <h3 style="font-size:.95rem;margin:10px 0 6px">Regras que ele segue</h3><div style="display:flex;gap:8px"><input id="ee-regra" placeholder="Ex.: Nota da MESA que volta outro dia é reentrega" style="flex:1"><button class="btn pri mini" type="button" id="ee-regra-ok">Ensinar</button></div>
    <ol style="margin:8px 0 0;padding-left:20px">${E.regras.map((r,i)=>`<li>${esc(r.txt)} <button class="op-x" type="button" data-ee-dr="${i}">✕</button></li>`).join('')}</ol>
    <h3 style="font-size:.95rem;margin:16px 0 6px">Perguntas e respostas</h3><div style="display:grid;gap:8px"><input id="ee-p" placeholder="Quando perguntarem… (ex.: onde fica o gelo)"><textarea id="ee-r" rows="2" placeholder="Responda… (ex.: As caixas de gelo ficam na câmara fria, prateleira 2)"></textarea><div style="display:flex;gap:8px;align-items:center"><label class="btn mini" style="cursor:pointer">📷 Foto (opcional)<input type="file" accept="image/*" id="ee-f" hidden></label><span id="ee-fpv" class="sec"></span><button class="btn pri mini" type="button" id="ee-ok" style="margin-left:auto">Ensinar</button></div></div>
-   <div style="margin-top:10px">${E.fatos.map((f,i)=>`<div class="ee-f"><b>${esc(f.p)}</b><span>${esc(f.r)}</span>${f.foto?'<em>📷</em>':''}<button class="op-x" type="button" data-ee-df="${i}">✕</button></div>`).join('')||'<p class="sec">Nenhuma ainda.</p>'}</div></div>`; }
+   <div style="margin-top:10px">${E.fatos.map((f,i)=>`<div class="ee-f"><b>${esc(f.p)}</b><span>${esc(f.r)}</span>${f.foto?'<em>📷</em>':''}<button class="op-x" type="button" data-ee-df="${i}">✕</button></div>`).join('')||'<p class="sec">Nenhuma ainda.</p>'}</div></div>`; try{ fotRender(); }catch(e){ console.error(e); } }
 let _eeFoto='';
 document.addEventListener('change',async e=>{ if(e.target.id==='ee-f'){ _eeFoto=await avFoto(e.target.files[0]); $('#ee-fpv').textContent=_eeFoto?'foto pronta ✓':''; } });
 document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.closest('#eva-ens')) return; const E=evaE(); let b;
@@ -9854,6 +9856,55 @@ document.addEventListener('input',e=>{ if(e.target.id!=='sim-cid-q') return; SIM
  .sim-cid-b.on{background:var(--noBg);border-color:var(--no);color:var(--no)}.sim-cid-b.on small{color:inherit}
 `; document.head.appendChild(st); })();
 (function(){ try{ const s=MAN.find(x=>x.id==='romaneios'); if(s&&s.passos) s.passos.push(['Tirar cidades da simulação (v9.18.3)','Com “Simular sem algumas notas” ligado, a lista “Cidades de hoje” mostra cada cidade dos romaneios com notas e volumes. Em “Tirar cidades avulsas”, pesquise e clique numa cidade para tirá-la da conta (fica vermelha); clique de novo para voltar. Use o filtro para achar rápido e “Voltar todas” para desfazer. ']); }catch(e){} })();
+
+/* ================= v9.19.4 · Alimentar o BIT com fotos de etiquetas (administrador) ================= */
+const FOT={itens:[],rodando:false};
+function fotCard(it,i){ const est={fila:'Na fila…',lendo:'Lendo a etiqueta… '+(it.pr||0)+'%',
+    ok:`✓ Aprendi com a NF <b>${esc(it.alvo)}</b>${it.modelo?' · modelo '+esc(it.modelo):''}${it.qrOk?' · QR Code':''}`,
+    ja:`✓ Já sabia ler esta etiqueta (NF <b>${esc(it.alvo)}</b>). Ficou mais seguro.`,
+    nao:`⚠ A NF <b>${esc(it.alvo||'')}</b> não aparece no texto que consegui ler. Tente uma foto mais de perto, reta e com luz.`,
+    pulou:'Pulada.', erro:'⚠ Não consegui ler: '+esc(it.msg||'')}[it.st]||'';
+  const pede=it.st==='pede'?`<div class="fot-q"><span>Qual é a NF desta etiqueta?</span>${(it.cand||[]).length?`<div class="fot-cs">${it.cand.map(c=>`<button type="button" class="btn mini" data-fot-c="${i}" data-n="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:''}
+     <div style="display:flex;gap:6px"><input id="fot-n-${i}" inputmode="numeric" placeholder="Digite a NF" style="flex:1"><button type="button" class="btn pri mini" data-fot-ok="${i}">Ensinar</button><button type="button" class="btn mini" data-fot-pula="${i}">Pular</button></div></div>`:'';
+  return `<div class="fot-it fot-${it.st}">${it.mini?`<img src="${it.mini}" alt="">`:'<div class="fot-sem">📷</div>'}<div><small class="sec">${esc(it.nome||'foto')}</small><div id="fot-st-${i}">${est}</div>${pede}</div></div>`; }
+function fotRender(){ const c=$('#eva-ens'); if(!c||!nvAdmin()) return; let el=$('#eva-fotos'); if(!el){ el=document.createElement('div'); el.id='eva-fotos'; c.appendChild(el); } const C=cer();
+  const feitos=FOT.itens.filter(x=>x.st==='ok'||x.st==='ja').length, fila=FOT.itens.filter(x=>x.st==='fila'||x.st==='lendo').length, pede=FOT.itens.filter(x=>x.st==='pede').length;
+  el.innerHTML=`<div class="aj-card" style="margin-top:14px"><h2>📸 Alimentar o BIT com fotos de etiquetas</h2>
+   <p class="sec" style="margin:0 0 10px">Envie várias fotos de etiquetas de uma vez. O BIT lê cada uma, acha a NF e aprende onde o número fica naquele modelo de etiqueta e o formato do QR Code. Assim o NexBip acerta mais na hora de bipar. Quando ele não tiver certeza da NF, pergunta. Nenhum bipe é registrado e as fotos não ficam guardadas: só o que ele aprendeu, que vale para todos os aparelhos.</p>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label class="btn pri mini" style="cursor:pointer">📷 Escolher fotos<input type="file" accept="image/*" multiple id="fot-in" hidden></label><button class="btn mini" type="button" id="fot-ver">🧠 O que ele já aprendeu</button>${FOT.itens.length&&!fila?'<button class="btn mini" type="button" id="fot-limpa">Limpar lista</button>':''}</div>
+   <p class="sec" style="margin:8px 0 0">${fmtN(C.st.fotos||0)} foto(s) já enviadas · ${fmtN(Object.keys(C.mod).length)} modelo(s) de etiqueta · ${fmtN(Object.keys(C.qr).length)} formato(s) de QR Code${FOT.itens.length?` · nesta leva: <b>${fmtN(feitos)}</b> aprendida(s)${fila?`, ${fmtN(fila)} na fila`:''}${pede?`, <b>${fmtN(pede)}</b> esperando você dizer a NF`:''}`:''}</p>
+   <div class="fot-l">${FOT.itens.map(fotCard).join('')}</div></div>`; }
+async function fotLer(it){ const bmp=await createImageBitmap(it.file); const w=Math.min(1600,bmp.width), h=Math.round(bmp.height*w/bmp.width);
+  const mc=document.createElement('canvas'); mc.width=110; mc.height=Math.round(bmp.height*110/bmp.width); mc.getContext('2d').drawImage(bmp,0,0,mc.width,mc.height); it.mini=mc.toDataURL('image/jpeg',.6);
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d',{willReadFrequently:true}); cx.filter='grayscale(1) contrast(1.4)'; cx.drawImage(bmp,0,0,w,h);
+  it.qr=[]; if('BarcodeDetector' in window){ try{ const sup=await BarcodeDetector.getSupportedFormats(); const bd=new BarcodeDetector({formats:['qr_code','code_128','itf','code_39','ean_13','data_matrix'].filter(x=>sup.includes(x))}); it.qr=(await bd.detect(bmp)).map(c=>String(c.rawValue||'')).filter(Boolean); }catch(e){} }
+  const OCR=window.HS_OCR; it.L=[]; it.p={nfs:[],nums:[]};
+  if(OCR&&OCR.tem()&&OCR.suportado()){ const ws=await OCR.ler(cv,pr=>{ it.pr=Math.round(pr*100); const s=$('#fot-st-'+FOT.itens.indexOf(it)); if(s) s.textContent='Lendo a etiqueta… '+it.pr+'%'; }); it.p=etqInterpretar(etqLinhas(ws.filter(x=>x.conf>30)))||it.p; it.L=CERx.linhas.slice(); }
+  else if(!it.qr.length) throw new Error('este navegador não lê texto de foto. Use o Chrome ou o Edge atualizados.');
+  it.file=null; try{ bmp.close(); }catch(e){}
+  const idx=opIndice(); const qn=it.qr.flatMap(t=>t.match(/\d{4,9}/g)||[]);
+  let cand=[...(it.p.nfs||[]),...cerCandidatos(it.p),...qn,...(it.p.nums||[])].map(opK).filter(n=>n&&n.length>=4&&n.length<=9); cand=[...new Set(cand)];
+  const hits=cand.filter(n=>idx.nf.has(n)||idx.ped.has(n));
+  const linhas=new Set(hits.map(n=>{ const o=(idx.nf.get(n)||idx.ped.get(n)||[])[0]; return o&&o.x; })); /* NF e pedido da mesma nota contam como um só */
+  if(hits.length&&linhas.size===1){ const x=[...linhas][0]; fotEnsinar(it,hits.includes(opK(x&&x.nf||''))?opK(x.nf):hits[0]); return; }
+  it.cand=(hits.length?hits:cand).slice(0,8); it.st='pede'; }
+function fotEnsinar(it,alvo){ const C=cer(); alvo=opK(alvo); if(!alvo) return; const idx=opIndice(); const its=idx.nf.get(alvo)||idx.ped.get(alvo); const x=its&&its[0]&&its[0].x; const tipo=idx.ped.has(alvo)&&!idx.nf.has(alvo)?'ped':'nf';
+  let n=it.L&&it.L.length?cerAprender(it.p,it.L,alvo,x&&x.dest):-1; it.qrOk=false;
+  for(const t of it.qr||[]){ if(t.includes('@')||/^\d+$/.test(t.trim())) continue; const nums=(t.match(/\d+/g)||[]).map(opK); const i=nums.findIndex(v=>v===alvo); if(i<0) continue; it.qrOk=true; const sg=cerSig(t), o=C.qr[sg];
+    if(!o||o.i!==i){ C.qr[sg]={i,tipo,ok:1}; C.st.aprendeu++; n=Math.max(n,0)+1; } else { o.ok++; n=Math.max(n,0); } }
+  C.st.fotos=(C.st.fotos||0)+1; cerMudou(); it.alvo=alvo; it.modelo=String(cerModKey(it.p)||'').replace(/^L:/,'');
+  it.st=n<0?'nao':n>0?'ok':'ja'; }
+async function fotProcessar(){ if(FOT.rodando) return; FOT.rodando=true; try{ for(const it of FOT.itens){ if(it.st!=='fila') continue; it.st='lendo'; fotRender(); try{ await fotLer(it); }catch(e){ it.st='erro'; it.msg=e&&e.message||'falha'; it.file=null; } fotRender(); } }finally{ FOT.rodando=false; fotRender(); } }
+document.addEventListener('change',e=>{ if(e.target.id!=='fot-in') return; const fs=[...(e.target.files||[])].filter(f=>/^image\//.test(f.type)); if(!fs.length) return; for(const f of fs) FOT.itens.push({file:f,nome:f.name,st:'fila'}); fotRender(); fotProcessar(); });
+document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.closest('#eva-fotos')) return; let b;
+  if(t.id==='fot-ver'){ cerTela(); return; }
+  if(t.id==='fot-limpa'){ FOT.itens=[]; fotRender(); return; }
+  if((b=t.closest('[data-fot-c]'))){ const inp=$('#fot-n-'+b.dataset.fotC); if(inp){ inp.value=b.dataset.n; inp.focus(); } return; }
+  if((b=t.closest('[data-fot-ok]'))){ const i=+b.dataset.fotOk, it=FOT.itens[i], v=opK(($('#fot-n-'+i)||{}).value||''); if(!it) return; if(v.length<4){ toast('Digite a NF da etiqueta.'); return; } fotEnsinar(it,v); fotRender(); return; }
+  if((b=t.closest('[data-fot-pula]'))){ const it=FOT.itens[+b.dataset.fotPula]; if(it){ it.st='pulou'; fotRender(); } } });
+document.addEventListener('keydown',e=>{ const t=e.target; if(e.key!=='Enter'||!t.id||!/^fot-n-\d+$/.test(t.id)) return; e.preventDefault(); const bt=document.querySelector(`[data-fot-ok="${t.id.slice(6)}"]`); if(bt) bt.click(); });
+(function(){ const st=document.createElement('style'); st.textContent=`.fot-l{display:grid;gap:8px;margin-top:10px}.fot-it{display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:start;padding:8px;border:1px solid var(--linha);border-radius:12px;background:var(--sup)}.fot-it img{width:90px;border-radius:8px;display:block}.fot-sem{width:90px;height:70px;display:grid;place-items:center;border-radius:8px;background:var(--sup2)}.fot-ok,.fot-ja{border-color:var(--ok)}.fot-pede{border-color:var(--acento)}.fot-nao,.fot-erro{border-color:var(--no)}.fot-q{display:grid;gap:6px;margin-top:6px}.fot-cs{display:flex;flex-wrap:wrap;gap:6px}.fot-cs .btn{width:auto}`; document.head.appendChild(st);
+  try{ const s=MAN.find(x=>x.id==='eva-ensino'); if(s&&s.passos) s.passos.push(['Alimentar com fotos de etiquetas (v9.19.4)','Em BIT › 📸 Alimentar o BIT com fotos de etiquetas, o administrador escolhe várias fotos de uma vez. O BIT lê cada etiqueta, acha a NF (pelos romaneios do dia) e aprende onde o número fica naquele modelo e o formato do QR Code. Quando não tem certeza, mostra os números que leu e pergunta qual é a NF. Não registra bipe e não guarda as fotos: guarda só o que aprendeu, que vale para todos os aparelhos e melhora a leitura no NexBip. O “Ensinar” com foto anexada continua igual.']); }catch(e){} })();
 
 /* ================= v9.19.0 · simulação ligada vale para a conferência de toda a equipe ================= */
 if(!NUV_CAMPOS.includes('simAtivo')) NUV_CAMPOS.push('simAtivo');
