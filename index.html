@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.14.0', HS_DATA='10/11/2026';
+const HS_VERSAO='9.14.1', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6028,7 +6028,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
 function nuvAgendar(){ if(NUV.aplicando) return; clearTimeout(NUV.timer); NUV.timer=setTimeout(nuvSinc,6000); } /* v9.1.1: junta várias mudanças numa gravação só */
 { const _g=RE.gravar.bind(RE); RE.gravar=function(){ _g(); nuvAgendar(); }; }
 { const _s=Store.salvar.bind(Store); Store.salvar=function(...a){ const r=_s(...a); nuvAgendar(); return r; }; }
-setInterval(()=>{ if(document.hidden) return; const lim=NUV.aoVivo?5*60e3:90e3; if(Date.now()-(NUV.ult||0)>lim) nuvSinc(); },30000); /* v9.1.1: ao vivo = 5 min; sem ao vivo = 90 s; aba escondida não consulta */
+setInterval(()=>{ if(document.hidden) return; const lim=NUV.aoVivo?15*60e3:5*60e3; if(Date.now()-(NUV.ult||0)>lim) nuvSinc(); },60000); /* v9.14.1: ao vivo = 15 min; sem ao vivo = 5 min; aba escondida não consulta */
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&NUV.pendente){ NUV.pendente=false; nuvSinc(); } });
 window.addEventListener('focus',()=>nuvSinc()); window.addEventListener('online',()=>nuvSinc());
 (function nuvIniciar(){ const b=document.querySelector('.marca'); if(b&&!$('#nuv-st')) b.insertAdjacentHTML('afterend','<span id="nuv-st" style="font-size:var(--fs-sm);margin-left:10px;white-space:nowrap;cursor:pointer" title="">☁</span>');

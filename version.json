@@ -1,5 +1,5 @@
 {
-  "versao": "9.14.0",
+  "versao": "9.14.1",
   "data": "2026-11-10",
-  "novidades": "Perfil Gestor (acesso igual ADM sem Administração); EVA renomeada para Pluma; novo mascote coruja"
+  "novidades": "Reduz sincronização: ao vivo 15 min, offline 5 min (antes: 5 min / 90 s) — alivia Egress Supabase"
 }
