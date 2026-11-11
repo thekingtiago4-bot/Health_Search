@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.18.3', HS_DATA='10/11/2026';
+const HS_VERSAO='9.18.4', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4458,17 +4458,17 @@ document.addEventListener('change',e=>{ if(e.target.id==='v61-tipo') $('#v61-dab
 const SIM={on:false,ag:false,cf:false,cidSel:new Set(),cidQ:'',re:false,ret:false,bases:new Set(),nfs:'',cids:''};
 function simCidSel(){ if(!(SIM.cidSel instanceof Set)) SIM.cidSel=new Set(SIM.cidSel||[]); return SIM.cidSel; }
 function simCadastrado(row){ try{ return !!(agDaLinha(row)||cliAcha(row.dest,row.cid)); }catch(e){ return false; } }
-function simCalc(){ const nfs=new Set(SIM.nfs.split(/[^0-9]+/).map(z).filter(Boolean)), cids=SIM.cids.split(/[\n,;]+/).map(s=>N(s)).filter(Boolean);
+function simCalc(){ const nfs=new Set(), cids=[]; /* v9.18.4: campos de NFs e cidades digitadas removidos; cidades só pela lista */
   const reNf=new Set(); if(SIM.re) for(const l of Object.values(RE.ler().dias||{}).flat()) reNf.add(z(l.nf)); const fora=(S.nex&&S.nex.fora)||{};
   const tudo=todasLinhas(), fica=SIM._fica=tudo.filter(({row,rom})=>!( ((SIM.cf||SIM.ag)&&simCadastrado(row)) || (SIM.re&&reNf.has(z(row.nf))) || (SIM.ret&&fora[nexK(row)]) || SIM.bases.has(rom.base||'?') || nfs.has(z(row.nf)) || cids.some(c=>N(row.cid||'').includes(c)) || simCidSel().has(N(row.cid||'')) ));
   const res=l=>{ const c=contar(l.map(x=>x.row)); return {rom:new Set(l.filter(x=>volNum(x.row.vol)!==0).map(x=>x.rom.id)).size,notas:c.notas,vol:c.vol}; }; return {a:res(tudo),d:res(fica)}; }
 function simRender(){ const p=$('#sim-pn'); if(!p) return; try{ renderTotais(); }catch(e){} p.hidden=!SIM.on; if(!SIM.on) return; const bases=[...new Set(S.romaneios.map(r=>r.base||'?'))].sort(); const {a,d}=simCalc(), lin=(t,k)=>`<tr><td>${t}</td><td class="num">${fmtN(a[k])}</td><td class="num"><b>${fmtN(d[k])}</b></td><td class="num">${a[k]-d[k]?'−'+fmtN(a[k]-d[k]):'0'}</td></tr>`;
   p.innerHTML=`<p class="sub">Só para estudo: nada é apagado. Marque o que quer tirar da conta.</p><div class="sim-op"><label title="Tira todas as notas de clientes cadastrados em Agendamentos (clientes fixos e agendamentos) que estão nos romaneios de hoje"><input type="checkbox" data-sim="cf"${(SIM.cf||SIM.ag)?' checked':''}> Agendamentos</label><label><input type="checkbox" data-sim="re"${SIM.re?' checked':''}> já lançadas em reentregas</label><label><input type="checkbox" data-sim="ret"${SIM.ret?' checked':''}> retiradas da rota</label>${bases.map(b=>`<label><input type="checkbox" data-sim-b="${esc(b)}"${SIM.bases.has(b)?' checked':''}> romaneios ${esc(b)}</label>`).join('')}</div>
-    <div class="sim-tx"><label>NFs para tirar<textarea id="sim-nfs" rows="2" placeholder="cole os números">${esc(SIM.nfs)}</textarea></label><label>Cidades para tirar (digitando)<textarea id="sim-cids" rows="2" placeholder="uma por linha">${esc(SIM.cids)}</textarea></label></div>${simCidLista()}
+    ${simCidLista()}
     <table class="sim-tab"><thead><tr><th></th><th>Hoje</th><th>Sem essas notas</th><th>Diferença</th></tr></thead><tbody>${lin('Romaneios','rom')}${lin('Notas','notas')}${lin('Volumes','vol')}</tbody></table>${simCadResumo()}`; }
 function simCidLista(){ const m=new Map(); for(const {row} of todasLinhas()){ if(volNum(row.vol)===0) continue; const k=N(row.cid||''); if(!k) continue; const o=m.get(k)||{nome:String(row.cid||'').toUpperCase(),uf:String(row.uf||'').toUpperCase(),n:0,v:0}; o.n++; o.v+=volNum(row.vol)||0; m.set(k,o); }
   const sel=simCidSel(), q=N(SIM.cidQ||''); const L=[...m.entries()].sort((a,b)=>b[1].v-a[1].v); const vis=L.filter(([k,o])=>sel.has(k)||!q||k.includes(q));
-  return `<div class="sim-cid"><div class="sim-cid-top"><b>Cidades de hoje</b> <small>clique para tirar da conta${sel.size?` · <b>${fmtN(sel.size)}</b> tirada(s)`:''}</small><input type="search" id="sim-cid-q" placeholder="Filtrar cidade" value="${esc(SIM.cidQ||'')}" autocomplete="off">${sel.size?'<button type="button" class="btn mini" id="sim-cid-limpa">Voltar todas</button>':''}</div>
+  return `<div class="sim-cid"><div class="sim-cid-top"><h3>Tirar cidades avulsas</h3><input type="search" id="sim-cid-q" placeholder="Pesquisar cidade" value="${esc(SIM.cidQ||'')}" autocomplete="off"><small>Clique numa cidade para tirar da conta; clique de novo para voltar.${sel.size?` <b>${fmtN(sel.size)}</b> tirada(s) · <button type="button" class="btn mini" id="sim-cid-limpa">Voltar todas</button>`:''}</small></div>
     <div class="sim-cid-l">${vis.length?vis.map(([k,o])=>`<button type="button" class="sim-cid-b${sel.has(k)?' on':''}" data-sim-cid="${esc(k)}" aria-pressed="${sel.has(k)}">${sel.has(k)?'✕ ':''}${esc(o.nome)}${o.uf?'/'+esc(o.uf):''} <small>${fmtN(o.n)} NF · ${fmtN(o.v)} vol.</small></button>`).join(''):'<small class="sub">Nenhuma cidade com esse nome nos romaneios de hoje.</small>'}</div></div>`; }
 function simCadResumo(){ if(!(SIM.cf||SIM.ag)) return ''; const m=new Map(); for(const {row} of todasLinhas()){ if(!simCadastrado(row)) continue; const c=cliAcha(row.dest,row.cid); const k=c?c.nome:String(row.dest||'?').toUpperCase()+' (agendada)'; const o=m.get(k)||{n:0,v:0}; o.n++; o.v+=volNum(row.vol)||0; m.set(k,o); }
   if(!m.size) return '<p class="sub" style="margin-top:8px">Nenhum cliente cadastrado em Agendamentos nos romaneios de hoje.</p>';
@@ -9828,14 +9828,15 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 document.addEventListener('input',e=>{ if(e.target.id!=='sim-cid-q') return; SIM.cidQ=e.target.value; clearTimeout(SIM.tq); SIM.tq=setTimeout(()=>{ const pos=e.target.selectionStart; simRender(); const n=$('#sim-cid-q'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(x){} } },250); });
 (function(){ const st=document.createElement('style'); st.textContent=`
  .sim-cid{border:1px solid var(--linha);border-radius:10px;padding:10px 12px;margin:8px 0 10px;background:var(--sup2)}
- .sim-cid-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:8px}.sim-cid-top small{color:var(--mudo)}
- .sim-cid-top input{margin-left:auto;min-width:180px;border:1.5px solid var(--linha);border-radius:var(--r);padding:5px 9px;background:var(--sup);color:inherit;font:inherit}
+ .sim-cid-top{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:10px;text-align:center}.sim-cid-top h3{margin:0;font-size:1rem}.sim-cid-top small{color:var(--mudo)}
+ .sim-cid-top input{width:min(420px,100%);border:1.5px solid var(--linha);border-radius:var(--r);padding:8px 12px;background:var(--sup);color:inherit;font:inherit;text-align:center}
+ .sim-cid-l{justify-content:center}
  .sim-cid-l{display:flex;flex-wrap:wrap;gap:6px;max-height:190px;overflow:auto}
  .sim-cid-b{border:1.5px solid var(--linha);background:var(--sup);color:inherit;border-radius:999px;padding:4px 10px;font:inherit;font-size:var(--fs-sm);font-weight:600;cursor:pointer}
  .sim-cid-b small{font-weight:400;color:var(--mudo)}
  .sim-cid-b.on{background:var(--noBg);border-color:var(--no);color:var(--no)}.sim-cid-b.on small{color:inherit}
 `; document.head.appendChild(st); })();
-(function(){ try{ const s=MAN.find(x=>x.id==='romaneios'); if(s&&s.passos) s.passos.push(['Tirar cidades da simulação (v9.18.3)','Com “Simular sem algumas notas” ligado, a lista “Cidades de hoje” mostra cada cidade dos romaneios com notas e volumes. Clique numa cidade para tirá-la da conta (fica vermelha); clique de novo para voltar. Use o filtro para achar rápido e “Voltar todas” para desfazer. Ainda dá para digitar cidades no campo de texto.']); }catch(e){} })();
+(function(){ try{ const s=MAN.find(x=>x.id==='romaneios'); if(s&&s.passos) s.passos.push(['Tirar cidades da simulação (v9.18.3)','Com “Simular sem algumas notas” ligado, a lista “Cidades de hoje” mostra cada cidade dos romaneios com notas e volumes. Em “Tirar cidades avulsas”, pesquise e clique numa cidade para tirá-la da conta (fica vermelha); clique de novo para voltar. Use o filtro para achar rápido e “Voltar todas” para desfazer. ']); }catch(e){} })();
 </script>
 
 <!-- Leitor de fotos (OCR) embutido para funcionar sem internet:
