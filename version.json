@@ -1,1 +1,1 @@
-{"versao":"9.19.2","data":"2026-11-11","novidades":"Menos dados: 💾 Salvar faz a cópia dentro do banco e não duplica sem mudança; cópia antiga só do admin a cada 6 h; medidor do banco ajustado ao plano Pro (8 GB)"}
+{"versao":"9.19.3","data":"2026-11-11","novidades":"Proteção contra perda de dados com o app aberto em mais de uma aba: clientes fixos, agendamentos, mapa e simulação não são mais sobrescritos por uma aba desatualizada"}

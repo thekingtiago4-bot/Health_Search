@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.2', HS_DATA='10/11/2026';
+const HS_VERSAO='9.19.3', HS_DATA='11/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6022,7 +6022,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#rx')){ e.stopP
 /* v6.6.1: aceitar a sugestão com um clique (antes, escolher a mesma opção já marcada não disparava nada) */
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-cor-aceita]'); if(!b) return; const sel=b.parentElement.querySelector('select[data-cor-ens]'); if(!sel) return; sel.value=b.dataset.corAceita; sel.dispatchEvent(new Event('change',{bubbles:true})); });
 /* ================= v6.7.0 · Banco online: reentregas e divergências sincronizadas (hs_sync) ================= */
-const NUV={sessao:new Set(),chH:'healthSearch.nuvHash',chD:'healthSearch.nuvDesde',h:{},desde:'',ok:null,timer:null,rodando:false,aplicando:false,ult:null,erro:''};
+const NUV={tab:Math.random().toString(36).slice(2,8),sessao:new Set(),chH:'healthSearch.nuvHash',chD:'healthSearch.nuvDesde',h:{},desde:'',ok:null,timer:null,rodando:false,aplicando:false,ult:null,erro:''};
 try{ NUV.h=JSON.parse(localStorage.getItem(NUV.chH)||'{}'); NUV.desde=localStorage.getItem(NUV.chD)||''; }catch(e){}
 function nuvHash(v){ const s=JSON.stringify(v)||''; let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36)+'.'+s.length; }
 function nuvGuardar(){ try{ localStorage.setItem(NUV.chH,JSON.stringify(NUV.h)); localStorage.setItem(NUV.chD,NUV.desde||''); }catch(e){} }
@@ -6039,13 +6039,14 @@ function nuvJuntar(chave,local,remoto){ if(chave.startsWith('re:')){ const vis=n
   /* v7.9.6: mapa/configurações — se a nuvem mudou depois da última versão que ESTE aparelho recebeu, vale a nuvem (aparelho com cópia velha não grava por cima) */
   if(chave.startsWith('s:')){ const base=nuvBase(chave); if(!base||t(remoto)>base){ if(chave==='s:geo') setTimeout(()=>toast('O mapa deste aparelho estava desatualizado: usei a versão online.'),300); return remoto; } }
   return t(local)>t(remoto)?local:remoto; }
+function nuvApTab(){ return apId()+'.'+NUV.tab; }
 function nuvPing(){ try{ if(NUV.canal&&NUV.aoVivo) NUV.canal.send({type:'broadcast',event:'mudou',payload:{t:Date.now()}}); }catch(e){} }
 function nuvStatus(){ const el=$('#nuv-st'); if(!el) return; el.hidden=Store.modo!=='nuvem'; const on=opOnline(); el.textContent=!on?'☁ offline':NUV.erro?'☁ erro':NUV.rodando?'☁ sincronizando…':NUV.ult?'☁ salvo online '+NUV.ult.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'☁ online'; el.title=NUV.erro||'Tudo fica no banco online: romaneios, reentregas, divergências, agendamentos, regiões e XMLs.'; el.style.color=NUV.erro?'var(--no)':on?'var(--ok)':'var(--mudo)'; }
 async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } NUV.rodando=true; nuvStatus(); let mudou=false;
   try{
     /* 1) baixa o que mudou no banco */
     if(NUV.temAp==null){ try{ const {error:ea}=await NV.cli.from('hs_sync').select('ap').limit(1); NUV.temAp=!ea; }catch(e){ NUV.temAp=false; } }
-    const mk=()=>{ let q=NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').not('chave','like','bkp:%').not('chave','like','ap:%').order('atualizado_em'); if(NUV.desde){ q=q.gt('atualizado_em',new Date(new Date(NUV.desde).getTime()-5000).toISOString()); if(NUV.temAp) q=q.or('ap.is.null,ap.neq.'+apId()); } return q; }; /* v9.19.1: não baixa de volta o que este aparelho gravou */
+    const mk=()=>{ let q=NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').not('chave','like','bkp:%').not('chave','like','ap:%').order('atualizado_em'); if(NUV.desde){ q=q.gt('atualizado_em',new Date(new Date(NUV.desde).getTime()-5000).toISOString()); if(NUV.temAp) q=q.or('ap.is.null,ap.neq.'+nuvApTab()); } return q; }; /* v9.19.1: não baixa de volta o que esta aba gravou · v9.19.3: por aba aberta, não por aparelho (outra aba ou recarregar a página baixa de novo) */
     let data=[]; for(let pg=0;pg<50;pg++){ const {data:d1,error}=await mk().range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; } const loc=nuvLocal();
     for(const r of data||[]){ if(!r||!r.chave) continue; const l=loc.get(r.chave), hr=r.apagado?'x':nuvHash(r.valor);
       if(!l&&!r.apagado&&!NUV.sessao.has(r.chave)){ nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=hr; mudou=true; if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; continue; }
@@ -6062,7 +6063,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>(k==='s:geo'&&!NUV.publicarGeo)||(!admOk&&NUV_ADMIN.has(k)); /* v9.2.0: mapa só sobe pelo 📤 Publicar mapa */
     if(nvAdmin()&&!admOk&&[...agora.keys()].some(k=>NUV_ADMIN.has(k)&&NUV.h[k]!==nuvHash(agora.get(k).valor))) NUV.avisoAal='Suas alterações em regiões/Correção estão guardadas neste aparelho, mas só vão para o banco depois que você entrar com a verificação em 2 etapas (saia e entre de novo).'; for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
     for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)&&(!k.startsWith('dv:')||(NUV.apagar&&NUV.apagar.has(k)))) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
-    if(NUV.temAp) for(const r of sobe) r.ap=apId();
+    if(NUV.temAp) for(const r of sobe) r.ap=nuvApTab();
     let recusados=[]; for(let i=0;i<sobe.length;i+=50){ const lote=sobe.slice(i,i+50); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r));
       if(!e2){ for(const r of lote) NUV.h[r.chave]=r._h; continue; }
       for(const r of lote){ const {_h,...x}=r; const {error:e3}=await NV.cli.from('hs_sync').upsert(x); if(e3) recusados.push([r.chave,e3]); else NUV.h[r.chave]=_h; } }
@@ -6078,6 +6079,14 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
 function nuvAgendar(){ if(NUV.aplicando) return; clearTimeout(NUV.timer); NUV.timer=setTimeout(nuvSinc,6000); } /* v9.1.1: junta várias mudanças numa gravação só */
 { const _g=RE.gravar.bind(RE); RE.gravar=function(){ _g(); nuvAgendar(); }; }
 { const _s=Store.salvar.bind(Store); Store.salvar=function(...a){ const r=_s(...a); nuvAgendar(); return r; }; }
+/* v9.19.3: app aberto em mais de uma aba/janela no mesmo aparelho — a aba velha não grava por cima da nova: quando outra aba salva, esta recarrega os dados na hora */
+window.addEventListener('storage',e=>{ try{
+  if(e.key===Store.chave&&e.newValue){ const n=JSON.parse(e.newValue); if(!n||typeof n!=='object') return; NUV.aplicando=true; try{ for(const k of Object.keys(S)) if(!(k in n)) delete S[k]; Object.assign(S,n); }finally{ NUV.aplicando=false; }
+    try{ NUV.h=JSON.parse(localStorage.getItem(NUV.chH)||'{}')||{}; NUV.desde=localStorage.getItem(NUV.chD)||NUV.desde; }catch(x){}
+    try{ montarDicionario(); }catch(x){} try{ renderTudo(); }catch(x){} try{ if(typeof simAplicaRemoto==='function') simAplicaRemoto(); }catch(x){} try{ opRender(); }catch(x){} try{ if(!$('#t-conftotal').hidden) ctMontar(); }catch(x){} }
+  else if(e.key===RE.chave){ RE.d=null; try{ if(!$('#t-reentregas').hidden) reTela(); }catch(x){} }
+  else if(e.key===NUV.chH&&e.newValue){ NUV.h=JSON.parse(e.newValue)||{}; }
+}catch(x){ console.warn('outra aba',x); } });
 setInterval(()=>{ if(document.hidden) return; const lim=NUV.aoVivo?15*60e3:5*60e3; if(Date.now()-(NUV.ult||0)>lim) nuvSinc(); },60000); /* v9.14.1: ao vivo = 15 min; sem ao vivo = 5 min; aba escondida não consulta */
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&NUV.pendente){ NUV.pendente=false; nuvSinc(); } });
 window.addEventListener('focus',()=>nuvSinc()); window.addEventListener('online',()=>nuvSinc());
@@ -8641,7 +8650,7 @@ const GIDB={db:null, abrir(){ if(this.db) return Promise.resolve(this.db); retur
   async gravar(k,v){ try{ const db=await this.abrir(); return await new Promise(ok=>{ const tx=db.transaction('k','readwrite'); tx.objectStore('k').put(v,k); tx.oncomplete=()=>ok(true); tx.onerror=()=>ok(false); }); }catch(e){ return false; } } };
 const geoContaV=x=>{ try{ return (x&&x.listas||[]).reduce((t,l)=>t+((l.cidades||l.itens||[]).length||0),0); }catch(e){ return 0; } };
 /* toda gravação guarda o mapa também à parte — se o armazenamento principal encher, o mapa não se perde */
-{ const _sv=Store.salvar.bind(Store); let ult=''; Store.salvar=function(obj){ try{ const g=obj&&obj.geo; if(g&&Array.isArray(g.listas)){ const sg=(g.em||'')+'|'+geoContaV(g)+'|'+g.listas.length; if(sg!==ult&&geoContaV(g)>0){ ult=sg; GIDB.gravar('geo',JSON.parse(JSON.stringify(g))); } } }catch(e){} return _sv(obj); }; }
+{ const _sv=Store.salvar.bind(Store); let ult=''; Store.salvar=function(obj){ try{ const g=obj&&obj.geo; if(g&&Array.isArray(g.listas)){ const sg=(g.em||'')+'|'+geoContaV(g)+'|'+g.listas.length; if(sg!==ult&&geoContaV(g)>0){ ult=sg; const cp=JSON.parse(JSON.stringify(g)); GIDB.ler('geo').then(o=>{ /* v9.19.3: nunca troca a cópia à parte por um mapa mais velho (outra aba desatualizada) */ if(!o||!Array.isArray(o.listas)||String(cp.em||'')>String(o.em||'')||(String(cp.em||'')===String(o.em||'')&&geoContaV(cp)>=geoContaV(o))) GIDB.gravar('geo',cp); }).catch(()=>GIDB.gravar('geo',cp)); } } }catch(e){} return _sv(obj); }; }
 /* ao abrir: se a cópia à parte é mais nova que a do armazenamento principal, vale ela */
 { const _in=Store.init.bind(Store); Store.init=async function(){ const d=await _in(); try{ const g=await GIDB.ler('geo'); if(g&&Array.isArray(g.listas)&&geoContaV(g)>0){ const dg=d&&d.geo; const velho=!dg||!Array.isArray(dg.listas)||geoContaV(dg)===0||String(g.em||'')>String(dg.em||''); if(velho){ console.warn('mapa recuperado da cópia à parte',geoContaV(g),dg?geoContaV(dg):0); if(d){ d.geo=g; return d; } return {geo:g}; } } }catch(e){} return d; }; }
 /* zoom, posição, tipo (região/base), camadas ocultas e "mostrar automáticas" ficam guardados neste aparelho */
@@ -9869,6 +9878,7 @@ setInterval(()=>{ try{ simAvisos(); }catch(e){} },5000);
 
 (function(){ try{ const s=MAN.find(x=>x.id==='sistema'); if(s&&s.passos) s.passos.push(['Economia de dados do banco (v9.19.1)','Para não estourar a cota de transferência do Supabase (Egress): o aviso ao vivo entre aparelhos agora é só um sinal leve, e os dados vêm depois pela sincronização; cada aparelho não baixa de volta o que ele mesmo enviou; a cópia completa de segurança ao entrar ou ao atualizar o app roda só no aparelho do administrador, no máximo 1 vez por dia. O robô do GitHub e as versões automáticas do banco continuam guardando tudo.']); }catch(e){} })();
 
+(function(){ try{ const s=MAN.find(x=>x.id==='sistema'); if(s&&s.passos) s.passos.push(['App aberto em mais de uma aba (v9.19.3)','Se o app estiver aberto em duas abas ou janelas no mesmo aparelho (ou no app instalado e no navegador ao mesmo tempo), quando uma salva a outra recarrega os dados na hora. Assim uma aba desatualizada não grava por cima de clientes fixos, agendamentos, mapa ou simulação cadastrados na outra. A simulação ligada numa aba aparece também na outra. O mapa guardado à parte no aparelho nunca é trocado por um mais velho.']); }catch(e){} })();
 (function(){ try{ const s=MAN.find(x=>x.id==='sistema'); if(s&&s.passos) s.passos.push(['Salvar sem pesar o banco (v9.19.2)','O 💾 Salvar envia o que mudou e faz a cópia completa dentro do próprio banco, sem baixar nada para o aparelho. Se nada mudou desde a última cópia, ou se já existe uma de menos de 15 minutos, ele não duplica e avisa que tudo já estava guardado. A cópia antiga de segurança (tabela hs_estado) agora é feita só pelo aparelho do administrador, no máximo a cada 6 horas.']); }catch(e){} })();
 </script>
 
