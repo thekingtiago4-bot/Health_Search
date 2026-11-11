@@ -3171,7 +3171,7 @@ function geoCoords(){ if(GEO.coords) return GEO.coords; const m=new Map(); const
   for(const it of el.textContent.trim().split('|')){ const i=it.indexOf(':'), j=it.indexOf(',',i); m.set(+it.slice(0,i),{lat:+it.slice(i+1,j),lon:+it.slice(j+1)}); } return GEO.coords=m; }
 function geoOriginais(){ try{ return JSON.parse(document.getElementById('geo-ref').textContent); }catch(e){ return []; } }
 const GEO_MATRIZ=[{id:'matriz',nome:'MATRIZ',tipo:'regiao',alias:[],cidades:[],cor:'#455A64',fonte:'opção fixa'},{id:'matriz-base',nome:'MATRIZ',tipo:'base',alias:[],cidades:[],cor:'#455A64',fonte:'opção fixa'}];
-function geoInit(){ if(!S.geo||!Array.isArray(S.geo.listas)) S.geo={listas:geoOriginais(),aprend:{},em:new Date().toISOString()}; S.geo.aprend=S.geo.aprend||{};
+function geoInit(){ if(!S.geo||!Array.isArray(S.geo.listas)) S.geo={listas:geoOriginais(),aprend:{},em:'1970-01-01T00:00:00.000Z'}; /* v9.15.0: mapa de fábrica nasce "velho" para nunca passar à frente do publicado */ S.geo.aprend=S.geo.aprend||{};
   for(const m of GEO_MATRIZ) if(!S.geo.listas.some(l=>l.id===m.id)) S.geo.listas.push(JSON.parse(JSON.stringify(m))); }
 function geoMudou(){ GEO.idx={}; GEO.cls={}; S.geo.em=new Date().toISOString(); salvar(); }
 const kmDist=(a,b)=>{ const la=(a.lat+b.lat)/2*Math.PI/180; const dx=(a.lon-b.lon)*111.32*Math.cos(la), dy=(a.lat-b.lat)*110.57; return Math.sqrt(dx*dx+dy*dy); };
@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.14.3', HS_DATA='10/11/2026';
+const HS_VERSAO='9.15.0', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8639,6 +8639,26 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
 /* v8.3.1: PC — as telas usam a largura toda (texto explicativo continua em largura confortável) */
 (function(){ const st=document.createElement('style'); st.textContent='@media (min-width:1200px){ .tela{max-width:1900px!important} .tela > p.sub{max-width:900px} #t-romaneios .rom-lista, .tela .rolagem{max-width:none} }'; document.head.appendChild(st); })();
 
+
+/* ================= v9.15.0 · Mapa à prova de perda: cópia própria (IndexedDB) + lembra zoom/posição/camadas ================= */
+const GIDB={db:null, abrir(){ if(this.db) return Promise.resolve(this.db); return new Promise((ok,er)=>{ try{ const r=indexedDB.open('hs-geo',1); r.onupgradeneeded=()=>r.result.createObjectStore('k'); r.onsuccess=()=>{ this.db=r.result; ok(r.result); }; r.onerror=()=>er(r.error); }catch(e){ er(e); } }); },
+  async ler(k){ try{ const db=await this.abrir(); return await new Promise(ok=>{ const q=db.transaction('k').objectStore('k').get(k); q.onsuccess=()=>ok(q.result||null); q.onerror=()=>ok(null); }); }catch(e){ return null; } },
+  async gravar(k,v){ try{ const db=await this.abrir(); return await new Promise(ok=>{ const tx=db.transaction('k','readwrite'); tx.objectStore('k').put(v,k); tx.oncomplete=()=>ok(true); tx.onerror=()=>ok(false); }); }catch(e){ return false; } } };
+const geoContaV=x=>{ try{ return (x&&x.listas||[]).reduce((t,l)=>t+((l.cidades||l.itens||[]).length||0),0); }catch(e){ return 0; } };
+/* toda gravação guarda o mapa também à parte — se o armazenamento principal encher, o mapa não se perde */
+{ const _sv=Store.salvar.bind(Store); let ult=''; Store.salvar=function(obj){ try{ const g=obj&&obj.geo; if(g&&Array.isArray(g.listas)){ const sg=(g.em||'')+'|'+geoContaV(g)+'|'+g.listas.length; if(sg!==ult&&geoContaV(g)>0){ ult=sg; GIDB.gravar('geo',JSON.parse(JSON.stringify(g))); } } }catch(e){} return _sv(obj); }; }
+/* ao abrir: se a cópia à parte é mais nova que a do armazenamento principal, vale ela */
+{ const _in=Store.init.bind(Store); Store.init=async function(){ const d=await _in(); try{ const g=await GIDB.ler('geo'); if(g&&Array.isArray(g.listas)&&geoContaV(g)>0){ const dg=d&&d.geo; const velho=!dg||!Array.isArray(dg.listas)||geoContaV(dg)===0||String(g.em||'')>String(dg.em||''); if(velho){ console.warn('mapa recuperado da cópia à parte',geoContaV(g),dg?geoContaV(dg):0); if(d){ d.geo=g; return d; } return {geo:g}; } } }catch(e){} return d; }; }
+/* zoom, posição, tipo (região/base), camadas ocultas e "mostrar automáticas" ficam guardados neste aparelho */
+const GEOV={ch:'healthSearch.geoVista', v:null, ult:''};
+try{ GEOV.v=JSON.parse(localStorage.getItem(GEOV.ch)||'null'); }catch(e){}
+if(GEOV.v){ try{ if(GEOV.v.tipo) GEO.tipo=GEOV.v.tipo; if(Array.isArray(GEOV.v.oc)) GEO.ocultos=new Set(GEOV.v.oc); }catch(e){} }
+{ const _ga=geoAjustar; geoAjustar=function(){ const ok=_ga(); if(ok&&GEO.view&&!GEO._vr){ GEO._vr=1; const v=GEOV.v;
+      try{ $$('[data-geo-tipo]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.geoTipo===GEO.tipo))); const ga=$('#geo-auto'); if(ga&&v&&typeof v.auto==='boolean') ga.checked=v.auto; }catch(e){}
+      if(v&&isFinite(v.lat)&&isFinite(v.lon)&&v.zr>0){ GEO.view.lat=v.lat; GEO.view.lon=v.lon; GEO.view.z=GEO.view.z0*v.zr; GEO._nx=1; } }
+    return ok; }; }
+setInterval(()=>{ try{ if(!GEO._vr||!GEO.view) return; const ga=$('#geo-auto'); const o={lat:+GEO.view.lat.toFixed(4),lon:+GEO.view.lon.toFixed(4),zr:+(GEO.view.z/GEO.view.z0).toFixed(3),tipo:GEO.tipo,oc:[...GEO.ocultos],auto:ga?!!ga.checked:undefined}; const t=JSON.stringify(o); if(t!==GEOV.ult){ GEOV.ult=t; GEOV.v=o; localStorage.setItem(GEOV.ch,t); } }catch(e){} },2000);
+
 /* ---------- início ---------- */
 (async function(){
   const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo); try{ atuFoto(); }catch(e){}
@@ -9759,6 +9779,14 @@ evbReage=function(){ const s=document.querySelector('#t-eva .evb'); if(!s||s.dat
 (function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Expressões','A Pluma tem várias reações: piscadinha 😉, comemoração 🎉, olhos de estrela 🤩, abraço no coração 💖, surpresa 😮, emburrada 😤 (muitas reentregas ou caixas fora do romaneio), coração partido 💔 (dia muito ruim) e coração com curativo 🩹 (quando uma ocorrência é resolvida). No computador, os botões abaixo dela mostram cada uma.']); })();
 /* v9.13.1 · Manual e Pluma acompanham a 9.13.0 (pausa entre bipes, Relatório Minas, checklist) */
 (function(){ try{ const o=MAN.find(x=>x.id==='operacao'); if(o&&o.passos) o.passos.push(['⏱ Pausa entre bipes','Depois de um bipe que deu certo a câmera espera 2 segundos antes de aceitar o próximo — dá tempo de tirar a caixa e evita ler a mesma etiqueta duas vezes. Se a leitura deu erro (fora do romaneio ou duplicado), a espera é de só 0,5 segundo para você tentar de novo. O contador aparece na própria câmera.']); }catch(e){} })();
+
+/* ================= v9.15.0 · Publicar nunca troca a sua edição pela nuvem; admin recusa mapa menor que o publicado ================= */
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave==='s:geo'&&NUV.publicarGeo) return local; return _nj(chave,local,remoto); }; }
+{ const _ap=nuvAplicar; nuvAplicar=function(chave,valor,apagado){
+    if(chave==='s:geo'&&!apagado&&!NUV.publicarGeo&&typeof nvAdmin==='function'&&nvAdmin()){ const pub=((typeof geoPubLer==='function'&&geoPubLer())||{}).cid||0, loc=geoContaV(S.geo), rem=geoContaV(valor);
+      if(pub&&loc>=pub*0.9&&rem<pub*0.9){ console.warn('mapa menor recusado no admin',{pub,loc,rem}); NUV.h['s:geo']=nuvHash(valor); setTimeout(()=>toast(`⚠ Chegou da nuvem um mapa com ${rem} cidades, mas o seu publicado tem ${pub}. Mantive o seu. Abra Geolocalização → 📤 Publicar mapa para corrigir a nuvem.`),1500); return; } }
+    return _ap(chave,valor,apagado); }; }
+(function(){ try{ const s=MAN.find(x=>x.id==='mapa-pub'); if(s&&s.passos) s.passos.push(['Mapa à prova de perda (v9.15.0)','O mapa fica guardado também numa área própria do navegador. Se o armazenamento principal encher, ou o app recarregar numa atualização, o mapa volta como estava. O zoom, a posição, o tipo (região/base) e as camadas escondidas também ficam lembrados neste aparelho. No aparelho do administrador, se chegar da nuvem um mapa com menos cidades do que o último publicado, ele é recusado e aparece o aviso para publicar de novo.']); }catch(e){} })();
 </script>
 
 <!-- Leitor de fotos (OCR) embutido para funcionar sem internet:
