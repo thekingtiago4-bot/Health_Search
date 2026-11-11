@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.5', HS_DATA='11/11/2026';
+const HS_VERSAO='9.19.6', HS_DATA='11/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9861,37 +9861,81 @@ document.addEventListener('input',e=>{ if(e.target.id!=='sim-cid-q') return; SIM
 `; document.head.appendChild(st); })();
 (function(){ try{ const s=MAN.find(x=>x.id==='romaneios'); if(s&&s.passos) s.passos.push(['Tirar cidades da simulação (v9.18.3)','Com “Simular sem algumas notas” ligado, a lista “Cidades de hoje” mostra cada cidade dos romaneios com notas e volumes. Em “Tirar cidades avulsas”, pesquise e clique numa cidade para tirá-la da conta (fica vermelha); clique de novo para voltar. Use o filtro para achar rápido e “Voltar todas” para desfazer. ']); }catch(e){} })();
 
+/* ================= v9.19.6 · Fotos no BIT: lê todos os dados da etiqueta e lança fora do romaneio ================= */
+const ETQ_UFS='AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO';
+/* número lido em fonte difícil (caixa preta do pedido): letras parecidas viram dígitos */
+const etqDigPed=s=>String(s||'').toUpperCase().replace(/[OQDU]/g,'0').replace(/[IL|!]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2').replace(/G/g,'6').replace(/\//g,'7').replace(/\D/g,'');
+function etqDados(linhas){ const L=(linhas||[]).map(l=>String(l).toUpperCase().replace(/[“”"]/g,'').replace(/\s+/g,' ').trim()).filter(Boolean); const T=L.join('\n'); const d={pedCands:[]}; const conta=new Map(); const voto=(k,v)=>{ if(!v) return; const m=conta.get(k)||new Map(); m.set(v,(m.get(v)||0)+1); conta.set(k,m); };
+  for(let i=0;i<L.length;i++){ const l=L[i];
+    let m=l.match(/(\d{6,12})\s*[-–—]*\s*([A-ZÀ-Ü][A-ZÀ-Ü .&']{3,60})/); if(m&&!/PALLET|CARGA|DATA/.test(l)){ voto('codCli',m[1]); voto('dest',m[2].replace(/\s*[\[\]=|].*$/,'').replace(/\s+[A-Z]{1,2}$/,'').trim()); }
+    m=l.match(/\b(\d{5})\s*-?\s*(\d{2,3})\b/); if(m&&!/DATA|HORA|PALLET/.test(l)&&+m[1]>=1000) voto('cep',m[1]+'-'+m[2]);
+    if(/^(AV(ENIDA)?|RUA|R\.|AL(AMEDA)?|ESTR(ADA)?|ROD(OVIA)?|TRAV(ESSA)?|PRA[CÇ]A|PCA|LGO|LARGO)\b/.test(l)){ voto('end',l.replace(/\s*\b\d{5}\s*-?\s*\d{2,3}\b.*$/,'').replace(/[\s=—–-]+$/,'').trim()); for(let j=i+1;j<=i+3&&j<L.length;j++){ const b=L[j].replace(/[^A-ZÀ-Ü' ]/g,' ').replace(/\s+/g,' ').trim(); if(new RegExp('\\b('+ETQ_UFS+')\\b').test(L[j])) break; if(b.replace(/[^A-Z]/g,'').length>=4){ voto('bairro',b.replace(/\s+[A-Z]{1,2}$/,'')); break; } } }
+    m=l.match(new RegExp('^([A-ZÀ-Ü][A-ZÀ-Ü\' ]{2,40}?)\\s*[-–—~=]*\\s*\\b('+ETQ_UFS+')\\b')); if(m&&!/DESTIN|TRANSP|SITE|ROTA|DELIVERY/.test(l)){ voto('cid',m[1].trim()); voto('uf',m[2]); }
+    m=l.match(/CAR[GC]A\s*:?\s*([0-9A-Z]{6,12})/)||l.match(/\b(\d{6}[A-Z]{3})\b/); if(m) voto('carga',m[1]);
+    m=l.match(/\b(T\s?\d{3,5})\s*[-–—]*\s*([A-Z]{3})\s*[-–—]*\s*([A-Z]{2})\b/); if(m) voto('transp',m[1].replace(/\s/g,'')+' - '+m[2]+' - '+m[3]);
+    m=l.match(/ROTA\s*:?\s*([A-Z]{2,})/); if(m) voto('rota',m[1]);
+    m=l.match(/(?:^|\s)(\d{1,3})\s*\/\s*(\d{1,3})(?:\s|$)/); if(m&&!/\d{2}\/\d{2}\/\d{2}/.test(l)&&+m[1]<=+m[2]){ voto('vol',m[1]); voto('tot',m[2]); }
+    m=l.match(/PEDIDO\s*:?\s*([0-9OQDILSBZG\/]{5,8})/); if(m) d.pedCands.push(etqDigPed(m[1]));
+    const so=l.replace(/\s/g,''); if(/^[0-9OQDILSBZG\/]{6,7}$/.test(so)&&/\d{3}/.test(so)){ const n=etqDigPed(so); if(n.length===6) d.pedCands.push(n); }
+    m=l.match(/\b(?:NF|NOTA\s*FISCAL|N\.?\s*F\.?)\s*[:\-.º°]?\s*(\d{4,9})/); if(m) voto('nf',m[1]); }
+  for(const [k,m] of conta) d[k]=[...m.entries()].sort((a,b)=>b[1]-a[1]||b[0].length-a[0].length)[0][0];
+  const cont=new Map(); for(const n of d.pedCands) cont.set(n,(cont.get(n)||0)+1); d.pedCands=[...cont.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]); d.ped=d.pedCands[0]||''; return d; }
+/* passadas extras na foto (etiqueta amarela, invertida e a caixa do pedido) */
+async function fotPassadas(cv,it){ const OCR=window.HS_OCR; const W=cv.width,H=cv.height; const a=etqRecAmarelo(cv,W,H); const regs=[];
+  const C=cer(), k=cerModKey(it.p), m=k&&C.mod[k];
+  if(a){ const caixa={x:a.x+a.w*.55,y:a.y,w:a.w*.45,h:a.h*.22}; if(m&&m.caixaPed) regs.push(['caixa do pedido',caixa,!!m.caixaPed.inv]); regs.push(['amarela',a,false],['amarela invertida',a,true],['caixa do pedido',caixa,false],['caixa do pedido invertida',caixa,true]); }
+  else regs.push(['inteira invertida',null,true]);
+  const extra=[]; it.caixa=[]; let n=0; for(const [nome,R,inv] of regs){ n++; const s=$('#fot-st-'+FOT.itens.indexOf(it)); if(s) s.textContent=`Lendo os dados da etiqueta (${n} de ${regs.length})…`;
+    try{ const ws=await OCR.ler(etqQuadro(cv,R,inv)); const L=etqLinhas(ws.filter(x=>x.conf>20)); extra.push(...L); if(/caixa/.test(nome)) for(const l of L){ const so=l.replace(/\s/g,''); if(/^[0-9OQDILSBZG\/]{6,7}$/.test(so)) it.caixa.push({n:etqDigPed(so),inv}); } }catch(e){} }
+  return extra; }
+/* lança a caixa como fora do romaneio (igual ao bipe), já com os dados lidos */
+function fotLancarFora(it){ const d=it.d||{}; const ped=opK(d.ped||''), nf=opK(d.nf||''); if(!ped&&!nf){ toast('Informe o pedido ou a NF.'); return false; }
+  const hoje=hojeISO(); if(OP.dia!==hoje){ OP.dia=hoje; try{ $('#op-dia').value=hoje; }catch(e){} OP.bipes=opLocalLer(hoje); }
+  if(OP.bipes.some(b=>b.status==='fora'&&((ped&&b.ped===ped)||(nf&&b.nf===nf)))){ it.st='lancada'; it.ja=true; return true; }
+  const tot=+d.tot||null, vol=+d.vol||null; const b={local_id:Date.now().toString(36)+Math.random().toString(36).slice(2,8),dia:hoje,codigo:'',tipo:'foto:BIT',ped,nf,vol,tot,pallet:'',conteudo:'',valor:null,romaneio:'',dest:String(d.dest||''),cid:String(d.cid||''),status:'fora',usuario:opEu(),criado_em:new Date().toISOString(),chave:'C'+(ped||nf)+'#'+(tot||'')};
+  OP.bipes.unshift(b); opLocalGravar(); opEnviar(b);
+  S.opForaInfo=S.opForaInfo||{}; S.opForaInfo[b.local_id]=Object.assign(S.opForaInfo[b.local_id]||{},{dest:b.dest,cid:b.cid,tot:b.tot,uf:d.uf||'',end:d.end||'',bairro:d.bairro||'',cep:d.cep||'',codCli:d.codCli||'',carga:d.carga||'',transp:d.transp||'',rota:d.rota||'',origemFoto:true,dia:hoje});
+  /* aprende onde o pedido fica neste modelo: a caixa preta à direita */
+  try{ const C=cer(), k=cerModKey(it.p); if(k&&ped&&(it.caixa||[]).some(c=>opK(c.n)===ped)){ const m=C.mod[k]=C.mod[k]||{pos:[],ok:0}; const c=it.caixa.find(c=>opK(c.n)===ped); m.caixaPed={inv:!!c.inv,ok:((m.caixaPed&&m.caixaPed.ok)||0)+1}; C.st.aprendeu++; } if(it.L&&it.L.length) cerAprender(it.p,it.L,ped||nf,d.dest); C.st.fotos=(C.st.fotos||0)+1; cerMudou(); }catch(e){}
+  salvar(); try{ opRender(); }catch(e){} it.st='lancada'; return true; }
 /* ================= v9.19.4 · Alimentar o BIT com fotos de etiquetas (administrador) ================= */
 const FOT={itens:[],rodando:false};
 function fotCard(it,i){ const est={fila:'Na fila…',lendo:'Lendo a etiqueta… '+(it.pr||0)+'%',
     ok:`✓ Aprendi com a NF <b>${esc(it.alvo)}</b>${it.modelo?' · modelo '+esc(it.modelo):''}${it.qrOk?' · QR Code':''}`,
     ja:`✓ Já sabia ler esta etiqueta (NF <b>${esc(it.alvo)}</b>). Ficou mais seguro.`,
     nao:`⚠ A NF <b>${esc(it.alvo||'')}</b> não aparece no texto que consegui ler. Tente uma foto mais de perto, reta e com luz.`,
-    pulou:'Pulada.', erro:'⚠ Não consegui ler: '+esc(it.msg||'')}[it.st]||'';
+    pulou:'Pulada.', erro:'⚠ Não consegui ler: '+esc(it.msg||''), fora:'🟠 <b>Fora do romaneio de hoje.</b> Confira os dados que eu li e lance:', lancada:`✓ ${it.ja?'Já estava lançada':'Lançada'} como <b>fora do romaneio</b>${it.d&&it.d.ped?' · Pedido '+esc(it.d.ped):''}${it.d&&it.d.dest?' · '+esc(it.d.dest):''}${it.d&&it.d.cid?' · '+esc(it.d.cid)+(it.d.uf?'/'+esc(it.d.uf):''):''}. Já aparece em Problemas.`}[it.st]||'';
+  const fd=it.st==='fora'?fotForaForm(it,i):'';
   const pede=it.st==='pede'?`<div class="fot-q"><span>Qual é a NF desta etiqueta?</span>${(it.cand||[]).length?`<div class="fot-cs">${it.cand.map(c=>`<button type="button" class="btn mini" data-fot-c="${i}" data-n="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:''}
      <div style="display:flex;gap:6px"><input id="fot-n-${i}" inputmode="numeric" placeholder="Digite a NF" style="flex:1"><button type="button" class="btn pri mini" data-fot-ok="${i}">Ensinar</button><button type="button" class="btn mini" data-fot-pula="${i}">Pular</button></div></div>`:'';
-  return `<div class="fot-it fot-${it.st}">${it.mini?`<img src="${it.mini}" alt="">`:'<div class="fot-sem">📷</div>'}<div><small class="sec">${esc(it.nome||'foto')}</small><div id="fot-st-${i}">${est}</div>${pede}</div></div>`; }
+  return `<div class="fot-it fot-${it.st}">${it.mini?`<img src="${it.mini}" alt="">`:'<div class="fot-sem">📷</div>'}<div><small class="sec">${esc(it.nome||'foto')}</small><div id="fot-st-${i}">${est}</div>${pede}${fd}</div></div>`; }
+function fotForaForm(it,i){ const d=it.d||{}; const c=(k,t,w)=>`<label class="fot-c" style="grid-column:span ${w||1}"><small>${t}</small><input data-fot-d="${i}" data-k="${k}" value="${esc(d[k]||'')}"></label>`;
+  return `<div class="fot-q"><div class="fot-g">${c('ped','Pedido')}${c('nf','NF')}${c('vol','Volume')}${c('tot','de (total)')}${c('dest','Cliente',2)}${c('codCli','Cód. cliente')}${c('carga','Carga')}${c('cid','Cidade',2)}${c('uf','UF')}${c('cep','CEP')}${c('end','Endereço',3)}${c('bairro','Bairro')}${c('transp','Transportadora',2)}${c('rota','Rota')}</div>${(it.cand||[]).length?`<div class="fot-cs"><small class="sec">Números que li:</small>${it.cand.map(n=>`<button type="button" class="btn mini" data-fot-ped="${i}" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:''}<div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn pri mini" data-fot-fora="${i}">🟠 Lançar fora do romaneio</button><button type="button" class="btn mini" data-fot-pula="${i}">Pular</button></div></div>`; }
 function fotRender(){ const c=$('#eva-ens'); if(!c||!nvAdmin()) return; let el=$('#eva-fotos'); if(!el){ el=document.createElement('div'); el.id='eva-fotos'; c.appendChild(el); } const C=cer();
-  const feitos=FOT.itens.filter(x=>x.st==='ok'||x.st==='ja').length, fila=FOT.itens.filter(x=>x.st==='fila'||x.st==='lendo').length, pede=FOT.itens.filter(x=>x.st==='pede').length;
+  const feitos=FOT.itens.filter(x=>x.st==='ok'||x.st==='ja').length, fila=FOT.itens.filter(x=>x.st==='fila'||x.st==='lendo').length, pede=FOT.itens.filter(x=>x.st==='pede').length, fora=FOT.itens.filter(x=>x.st==='fora').length, lanc=FOT.itens.filter(x=>x.st==='lancada').length;
   el.innerHTML=`<div class="aj-card" style="margin-top:14px"><h2>📸 Alimentar o BIT com fotos de etiquetas</h2>
    <p class="sec" style="margin:0 0 10px">Envie várias fotos de etiquetas de uma vez. O BIT lê cada uma, acha a NF e aprende onde o número fica naquele modelo de etiqueta e o formato do QR Code. Assim o NexBip acerta mais na hora de bipar. Quando ele não tiver certeza da NF, pergunta. Nenhum bipe é registrado e as fotos não ficam guardadas: só o que ele aprendeu, que vale para todos os aparelhos.</p>
-   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label class="btn pri mini" style="cursor:pointer">📷 Escolher fotos<input type="file" accept="image/*" multiple id="fot-in" hidden></label><button class="btn mini" type="button" id="fot-ver">🧠 O que ele já aprendeu</button>${FOT.itens.length&&!fila?'<button class="btn mini" type="button" id="fot-limpa">Limpar lista</button>':''}</div>
-   <p class="sec" style="margin:8px 0 0">${fmtN(C.st.fotos||0)} foto(s) já enviadas · ${fmtN(Object.keys(C.mod).length)} modelo(s) de etiqueta · ${fmtN(Object.keys(C.qr).length)} formato(s) de QR Code${FOT.itens.length?` · nesta leva: <b>${fmtN(feitos)}</b> aprendida(s)${fila?`, ${fmtN(fila)} na fila`:''}${pede?`, <b>${fmtN(pede)}</b> esperando você dizer a NF`:''}`:''}</p>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label class="btn pri mini" style="cursor:pointer">📷 Escolher fotos<input type="file" accept="image/*" multiple id="fot-in" hidden></label><button class="btn mini" type="button" id="fot-ver">🧠 O que ele já aprendeu</button>${FOT.itens.length&&!fila?'<button class="btn mini" type="button" id="fot-limpa">Limpar lista</button>':''}${FOT.itens.filter(x=>x.st==='fora').length>1?`<button class="btn pri mini" type="button" id="fot-fora-todas">🟠 Lançar todas fora do romaneio (${FOT.itens.filter(x=>x.st==='fora').length})</button>`:''}</div>
+   <p class="sec" style="margin:8px 0 0">${fmtN(C.st.fotos||0)} foto(s) já enviadas · ${fmtN(Object.keys(C.mod).length)} modelo(s) de etiqueta · ${fmtN(Object.keys(C.qr).length)} formato(s) de QR Code${FOT.itens.length?` · nesta leva: <b>${fmtN(feitos)}</b> aprendida(s)${fila?`, ${fmtN(fila)} na fila`:''}${pede?`, <b>${fmtN(pede)}</b> esperando você dizer a NF`:''}${fora?`, <b>${fmtN(fora)}</b> fora do romaneio para lançar`:''}${lanc?`, ${fmtN(lanc)} lançada(s) fora do romaneio`:''}`:''}</p>
    <div class="fot-l">${FOT.itens.map(fotCard).join('')}</div></div>`; }
 async function fotLer(it){ const bmp=await createImageBitmap(it.file); const w=Math.min(1600,bmp.width), h=Math.round(bmp.height*w/bmp.width);
   const mc=document.createElement('canvas'); mc.width=110; mc.height=Math.round(bmp.height*110/bmp.width); mc.getContext('2d').drawImage(bmp,0,0,mc.width,mc.height); it.mini=mc.toDataURL('image/jpeg',.6);
   const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d',{willReadFrequently:true}); cx.filter='grayscale(1) contrast(1.4)'; cx.drawImage(bmp,0,0,w,h);
+  const cvc=document.createElement('canvas'); cvc.width=w; cvc.height=h; cvc.getContext('2d').drawImage(bmp,0,0,w,h); /* colorida: acha a etiqueta amarela */
   it.qr=[]; if('BarcodeDetector' in window){ try{ const sup=await BarcodeDetector.getSupportedFormats(); const bd=new BarcodeDetector({formats:['qr_code','code_128','itf','code_39','ean_13','data_matrix'].filter(x=>sup.includes(x))}); it.qr=(await bd.detect(bmp)).map(c=>String(c.rawValue||'')).filter(Boolean); }catch(e){} }
   const OCR=window.HS_OCR; it.L=[]; it.p={nfs:[],nums:[]};
   if(OCR&&OCR.tem()&&OCR.suportado()){ const ws=await OCR.ler(cv,pr=>{ it.pr=Math.round(pr*100); const s=$('#fot-st-'+FOT.itens.indexOf(it)); if(s) s.textContent='Lendo a etiqueta… '+it.pr+'%'; }); it.p=etqInterpretar(etqLinhas(ws.filter(x=>x.conf>30)))||it.p; it.L=CERx.linhas.slice(); }
   else if(!it.qr.length) throw new Error('este navegador não lê texto de foto. Use o Chrome ou o Edge atualizados.');
   it.file=null; try{ bmp.close(); }catch(e){}
-  const idx=opIndice(); const qn=it.qr.flatMap(t=>t.match(/\d{4,9}/g)||[]);
+  const idx=opIndice(); const achou0=[...(it.p.nfs||[]),...(it.p.nums||[]),...cerCandidatos(it.p)].map(opK).some(n=>idx.nf.has(n)||idx.ped.has(n));
+  if(!achou0&&OCR&&OCR.tem()){ const ex=await fotPassadas(cvc,it); it.Lx=ex; const pp=etqInterpretar(it.L.concat(ex)); it.p=Object.assign({},pp,{chaveMod:it.p.chaveMod||pp.chaveMod,nfs:[...new Set([...(it.p.nfs||[]),...(pp.nfs||[])])],nums:[...new Set([...(it.p.nums||[]),...(pp.nums||[])])]}); }
+  it.d=etqDados(it.L.concat(it.Lx||[])); if(it.caixa&&it.caixa.length){ const cs=it.caixa.map(c=>c.n).filter(n=>n.length===6); if(cs.length){ it.d.pedCands=[...new Set([...cs,...it.d.pedCands])]; it.d.ped=cs[0]; } } const qn=it.qr.flatMap(t=>t.match(/\d{4,9}/g)||[]);
   let cand=[...(it.p.nfs||[]),...cerCandidatos(it.p),...qn,...(it.p.nums||[])].map(opK).filter(n=>n&&n.length>=4&&n.length<=9); cand=[...new Set(cand)];
   const hits=cand.filter(n=>idx.nf.has(n)||idx.ped.has(n));
   const linhas=new Set(hits.map(n=>{ const o=(idx.nf.get(n)||idx.ped.get(n)||[])[0]; return o&&o.x; })); /* NF e pedido da mesma nota contam como um só */
   if(hits.length&&linhas.size===1){ const x=[...linhas][0]; fotEnsinar(it,hits.includes(opK(x&&x.nf||''))?opK(x.nf):hits[0]); return; }
-  it.cand=(hits.length?hits:cand).slice(0,8); it.st='pede'; }
+  if(!hits.length){ it.cand=[...new Set([...(it.d.pedCands||[]),...cand])].slice(0,8); it.st='fora'; return; } /* v9.19.6: não está no romaneio de hoje = fora do romaneio, com os dados lidos */
+  it.cand=hits.slice(0,8); it.st='pede'; }
 function fotEnsinar(it,alvo){ const C=cer(); alvo=opK(alvo); if(!alvo) return; const idx=opIndice(); const its=idx.nf.get(alvo)||idx.ped.get(alvo); const x=its&&its[0]&&its[0].x; const tipo=idx.ped.has(alvo)&&!idx.nf.has(alvo)?'ped':'nf';
   let n=it.L&&it.L.length?cerAprender(it.p,it.L,alvo,x&&x.dest):-1; it.qrOk=false;
   for(const t of it.qr||[]){ if(t.includes('@')||/^\d+$/.test(t.trim())) continue; const nums=(t.match(/\d+/g)||[]).map(opK); const i=nums.findIndex(v=>v===alvo); if(i<0) continue; it.qrOk=true; const sg=cerSig(t), o=C.qr[sg];
@@ -9903,12 +9947,16 @@ document.addEventListener('change',e=>{ if(e.target.id!=='fot-in') return; const
 document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.closest('#eva-fotos')) return; let b;
   if(t.id==='fot-ver'){ cerTela(); return; }
   if(t.id==='fot-limpa'){ FOT.itens=[]; fotRender(); return; }
+  if(t.id==='fot-fora-todas'){ let n=0; for(const it of FOT.itens) if(it.st==='fora'&&fotLancarFora(it)) n++; fotRender(); toast(n+' caixa(s) lançada(s) fora do romaneio.'); return; }
+  if((b=t.closest('[data-fot-ped]'))){ const it=FOT.itens[+b.dataset.fotPed]; if(it){ it.d.ped=b.dataset.n; const inp=document.querySelector(`[data-fot-d="${b.dataset.fotPed}"][data-k="ped"]`); if(inp) inp.value=b.dataset.n; } return; }
+  if((b=t.closest('[data-fot-fora]'))){ const it=FOT.itens[+b.dataset.fotFora]; if(it&&fotLancarFora(it)){ fotRender(); toast('Lançada fora do romaneio, com os dados da etiqueta.'); } return; }
   if((b=t.closest('[data-fot-c]'))){ const inp=$('#fot-n-'+b.dataset.fotC); if(inp){ inp.value=b.dataset.n; inp.focus(); } return; }
   if((b=t.closest('[data-fot-ok]'))){ const i=+b.dataset.fotOk, it=FOT.itens[i], v=opK(($('#fot-n-'+i)||{}).value||''); if(!it) return; if(v.length<4){ toast('Digite a NF da etiqueta.'); return; } fotEnsinar(it,v); fotRender(); return; }
   if((b=t.closest('[data-fot-pula]'))){ const it=FOT.itens[+b.dataset.fotPula]; if(it){ it.st='pulou'; fotRender(); } } });
+document.addEventListener('input',e=>{ const t=e.target; if(!t.dataset||t.dataset.fotD==null) return; const it=FOT.itens[+t.dataset.fotD]; if(it){ it.d=it.d||{}; it.d[t.dataset.k]=t.value.toUpperCase().trim(); } });
 document.addEventListener('keydown',e=>{ const t=e.target; if(e.key!=='Enter'||!t.id||!/^fot-n-\d+$/.test(t.id)) return; e.preventDefault(); const bt=document.querySelector(`[data-fot-ok="${t.id.slice(6)}"]`); if(bt) bt.click(); });
-(function(){ const st=document.createElement('style'); st.textContent=`.fot-l{display:grid;gap:8px;margin-top:10px}.fot-it{display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:start;padding:8px;border:1px solid var(--linha);border-radius:12px;background:var(--sup)}.fot-it img{width:90px;border-radius:8px;display:block}.fot-sem{width:90px;height:70px;display:grid;place-items:center;border-radius:8px;background:var(--sup2)}.fot-ok,.fot-ja{border-color:var(--ok)}.fot-pede{border-color:var(--acento)}.fot-nao,.fot-erro{border-color:var(--no)}.fot-q{display:grid;gap:6px;margin-top:6px}.fot-cs{display:flex;flex-wrap:wrap;gap:6px}.fot-cs .btn{width:auto}`; document.head.appendChild(st);
-  try{ const s=MAN.find(x=>x.id==='eva-ensino'); if(s&&s.passos) s.passos.push(['Alimentar com fotos de etiquetas (v9.19.4)','Em BIT › 📸 Alimentar o BIT com fotos de etiquetas, o administrador escolhe várias fotos de uma vez. O BIT lê cada etiqueta, acha a NF (pelos romaneios do dia) e aprende onde o número fica naquele modelo e o formato do QR Code. Quando não tem certeza, mostra os números que leu e pergunta qual é a NF. Não registra bipe e não guarda as fotos: guarda só o que aprendeu, que vale para todos os aparelhos e melhora a leitura no NexBip. O “Ensinar” com foto anexada continua igual.']); }catch(e){} })();
+(function(){ const st=document.createElement('style'); st.textContent=`.fot-l{display:grid;gap:8px;margin-top:10px}.fot-it{display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:start;padding:8px;border:1px solid var(--linha);border-radius:12px;background:var(--sup)}.fot-it img{width:90px;border-radius:8px;display:block}.fot-sem{width:90px;height:70px;display:grid;place-items:center;border-radius:8px;background:var(--sup2)}.fot-ok,.fot-ja{border-color:var(--ok)}.fot-pede{border-color:var(--acento)}.fot-nao,.fot-erro{border-color:var(--no)}.fot-q{display:grid;gap:6px;margin-top:6px}.fot-cs{display:flex;flex-wrap:wrap;gap:6px}.fot-cs .btn{width:auto}.fot-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.fot-c{display:grid;gap:2px}.fot-c small{color:var(--mudo);font-size:.75rem}.fot-c input{padding:6px 8px;font-size:.9rem;width:100%;min-width:0;box-sizing:border-box}.fot-it>div{min-width:0}.fot-fora{border-color:#F59F00}.fot-lancada{border-color:#F59F00}@media(max-width:640px){.fot-g{grid-template-columns:repeat(2,minmax(0,1fr))}.fot-c{grid-column:span 2!important}}`; document.head.appendChild(st);
+  try{ const s=MAN.find(x=>x.id==='eva-ensino'); if(s&&s.passos) s.passos.push(['Alimentar com fotos de etiquetas (v9.19.4)','Em BIT › 📸 Alimentar o BIT com fotos de etiquetas, o administrador escolhe várias fotos de uma vez. O BIT lê cada etiqueta, acha a NF (pelos romaneios do dia) e aprende onde o número fica naquele modelo e o formato do QR Code. Quando não tem certeza, mostra os números que leu e pergunta qual é a NF. Não registra bipe e não guarda as fotos: guarda só o que aprendeu, que vale para todos os aparelhos e melhora a leitura no NexBip. O “Ensinar” com foto anexada continua igual.']); if(s&&s.passos) s.passos.push(['Foto de caixa fora do romaneio (v9.19.6)','Se a etiqueta da foto não está em nenhum romaneio de hoje, o BIT marca como fora do romaneio e mostra tudo o que leu: pedido, NF, volume, cliente e código, endereço, bairro, CEP, cidade/UF, carga, transportadora e rota. Confira (dá para corrigir qualquer campo ou tocar num dos números lidos) e toque em “🟠 Lançar fora do romaneio” (ou “Lançar todas”). A caixa entra em Problemas como fora do romaneio, já com cliente, cidade e volumes, igual a um bipe. Na etiqueta amarela, quando você confirma o pedido, o BIT aprende que ele fica na caixa preta da direita e lê ali primeiro nas próximas.']); }catch(e){} })();
 
 /* ================= v9.19.0 · simulação ligada vale para a conferência de toda a equipe ================= */
 if(!NUV_CAMPOS.includes('simAtivo')) NUV_CAMPOS.push('simAtivo');
