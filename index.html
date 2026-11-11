@@ -267,7 +267,7 @@ tr.alvo td{background:var(--tealBg)!important}
 .glifo .ctx{font-size:var(--fs-sm);color:var(--tinta2);overflow-wrap:anywhere}
 .glifo .ctx mark{background:var(--agBg);color:var(--ag);font-weight:700;padding:0 2px;border-radius:2px}
 .glifo input{border:1.5px solid var(--linha);border-radius:var(--r);padding:8px;text-align:center;font-size:1.25rem;font-weight:700;text-transform:uppercase;background:var(--sup)}
-#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--tinta);color:var(--sup);padding:10px 18px;border-radius:var(--r);font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.2);z-index:60;max-width:90vw}
+#toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--tinta);color:var(--sup);padding:10px 18px;border-radius:var(--r);font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.2);z-index:60;max-width:90vw}
 #toast[hidden]{display:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 /* romaneio -> excel */
@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.7', HS_DATA='11/11/2026';
+const HS_VERSAO='9.19.8', HS_DATA='11/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5576,7 +5576,7 @@ async function rbMover(ids,para){ const n=nexS(); n.histPed=n.histPed||{}; let o
 function rbProcurar(q){ const el=$('#rb-achou'); const k=z(q); if(!k){ el.innerHTML=''; return; } const n=nexS(); const hs=[...((n.hist||{})[k]||[]).map(e=>({...e,por:'NF'})),...(((n.histPed||{})[k])||[]).map(e=>({...e,por:'Pedido'}))].sort((a,b)=>b.d.localeCompare(a.d));
   el.innerHTML=hs.length?`<div class="rb-rom" style="border-color:#AE3EC9"><b>${esc(k)}</b> apareceu ${hs.length} vez(es):<ul style="margin:4px 0 0">${hs.map(e=>`<li>${fmtData(e.d)} · romaneio ${esc(e.num||'?')}${e.m?' <span class="base">MESA</span>':''} · por ${e.por}${e.v!=null?' · '+e.v+' vol.':''}</li>`).join('')}</ul></div>`:`<div class="rb-sem">${esc(k)} não aparece no banco.</div>`; }
 /* bipe fora do romaneio: diz se já veio antes */
-{ const _ml3=opMostrar; opMostrar=function(r){ if(r&&r.status==='fora'&&r._ped!==undefined){ const n=nexS(); const ks=[...new Set([z(r._nf),z(r._ped)].filter(Boolean))]; const hs=ks.flatMap(k=>[...((n.hist||{})[k]||[]),...(((n.histPed||{})[k])||[])]).sort((a,b)=>b.d.localeCompare(a.d)); if(hs.length) r.linha=`Já veio em ${fmtData(hs[0].d)} (romaneio ${hs[0].num||'?'}) — pode ser reentrega não informada. `+(r.linha||''); } _ml3(r); }; }
+{ const _ml3=opMostrar; opMostrar=function(r){ if(r&&r.status==='fora'&&r._ped!==undefined){ const n=nexS(); const hs=[...((z(r._nf)&&(n.hist||{})[z(r._nf)])||[]),...((z(r._ped)&&(n.histPed||{})[z(r._ped)])||[])].sort((a,b)=>b.d.localeCompare(a.d)); if(hs.length) r.linha=`Já veio em ${fmtData(hs[0].d)} (romaneio ${hs[0].num||'?'}) — pode ser reentrega não informada. `+(r.linha||''); } _ml3(r); }; }
 
 
 /* ================= v6.3.12 · Correção: cada bloco fica recolhido até clicar em Expandir ================= */
@@ -5605,8 +5605,9 @@ document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.
 
 
 /* ================= v6.3.18 · bipe consulta o HISTÓRICO direto (não depende só da lista de suspeitas) ================= */
-function reHistNota(ped,nf){ const n=nexS(); const ks=[...new Set([z(nf),z(ped)].filter(Boolean))]; const vis=new Set(), out=[];
-  for(const k of ks) for(const e of [...((n.hist||{})[k]||[]),...(((n.histPed||{})[k])||[])]){ const key=e.d+'|'+e.rom; if(vis.has(key)) continue; vis.add(key); out.push(e); }
+function reHistNota(ped,nf){ const n=nexS(); nf=z(nf); ped=z(ped); const vis=new Set(), out=[];
+  /* v9.19.8: histórico de NF só pela NF e de pedido só pelo pedido — pedido de hoje (ex.: 737476) batia com NF antiga de mesmo número e virava reentrega falsa */
+  for(const e of [...((nf&&(n.hist||{})[nf])||[]),...((ped&&(n.histPed||{})[ped])||[])]){ const key=e.d+'|'+e.rom; if(vis.has(key)) continue; vis.add(key); out.push(e); }
   return out.sort((a,b)=>b.d.localeCompare(a.d)); }
 function reDiag(ped,nf){ ped=z(ped); nf=z(nf); let rom=null, row=null; for(const r of S.romaneios||[]){ const x=(r.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(ped&&z(x.ped)===ped)); if(x){ rom=r; row=x; break; } }
   const dHoje=rom?nexDataRom(rom):hojeISO(); const idsHoje=new Set((S.romaneios||[]).map(r=>r.id)), numHoje=new Set((S.romaneios||[]).map(r=>String(r.numero))); const hs=reHistNota(ped,nf).filter(e=>e.d<dHoje&&!idsHoje.has(e.rom)&&!numHoje.has(String(e.num)));
@@ -9233,7 +9234,7 @@ function ajudaTela(){ $('#ajd-corpo').innerHTML=`<div class="aj-card"><h2>🚀 C
 body:has(#nv-tela:not([hidden])) :is(.perm-sheet,#perm-sheet,#nx-sino,#eva-bt,#hs-salvar){display:none!important}
 #robo-sql,#robo-aviso,#ch-aviso,#hs-desf{max-width:min(560px,calc(100vw - 24px))!important}
 @media (min-width:861px){
-  .toast{bottom:calc(20px + var(--sab))!important;left:50%!important;transform:translateX(-50%)!important;right:auto!important}
+  .toast{bottom:auto!important;top:calc(14px + env(safe-area-inset-top,0px))!important;left:50%!important;transform:translateX(-50%)!important;right:auto!important}
   #hs-salvar{right:20px!important;bottom:calc(18px + var(--sab))!important}
   #eva-bt{right:24px!important;bottom:calc(76px + var(--sab))!important}
   #ch-aviso{right:96px!important;bottom:calc(18px + var(--sab))!important}
@@ -9251,7 +9252,7 @@ body:has(#nv-tela:not([hidden])) :is(.perm-sheet,#perm-sheet,#nx-sino,#eva-bt,#h
   #hs-salvar{right:12px!important;bottom:calc(12px + var(--sab))!important;width:48px!important;height:48px!important;padding:0!important;border-radius:50%!important;overflow:hidden;font-size:0!important;display:grid!important;place-items:center}
   #hs-salvar::before{content:"💾";font-size:20px}
   #eva-bt{right:10px!important;bottom:calc(68px + var(--sab))!important;transform:scale(.8);transform-origin:bottom right}
-  .toast,#toast{left:12px!important;right:72px!important;bottom:calc(14px + var(--sab))!important;transform:none!important;max-width:none!important;font-size:.9rem}
+  .toast,#toast{left:12px!important;right:12px!important;bottom:auto!important;top:calc(10px + env(safe-area-inset-top,0px))!important;transform:none!important;max-width:none!important;font-size:.9rem}
   #robo-sql,#robo-aviso,#hs-desf{top:auto!important;bottom:calc(72px + var(--sab))!important;left:12px!important;right:72px!important;transform:none!important;max-width:none!important;font-size:.82rem!important;flex-wrap:wrap}
   #ch-aviso{right:72px!important;left:12px!important;bottom:calc(72px + var(--sab))!important;max-width:none!important}
   .perm-sheet,#perm-sheet{bottom:0!important;padding-bottom:calc(16px + var(--sab))!important}
@@ -9958,7 +9959,7 @@ document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.close
 document.addEventListener('input',e=>{ const t=e.target; if(!t.dataset||t.dataset.fotD==null) return; const it=FOT.itens[+t.dataset.fotD]; if(it){ it.d=it.d||{}; it.d[t.dataset.k]=t.value.toUpperCase().trim(); } });
 document.addEventListener('keydown',e=>{ const t=e.target; if(e.key!=='Enter'||!t.id||!/^fot-n-\d+$/.test(t.id)) return; e.preventDefault(); const bt=document.querySelector(`[data-fot-ok="${t.id.slice(6)}"]`); if(bt) bt.click(); });
 (function(){ const st=document.createElement('style'); st.textContent=`.fot-l{display:grid;gap:8px;margin-top:10px}.fot-it{display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:start;padding:8px;border:1px solid var(--linha);border-radius:12px;background:var(--sup)}.fot-it img{width:90px;border-radius:8px;display:block}.fot-sem{width:90px;height:70px;display:grid;place-items:center;border-radius:8px;background:var(--sup2)}.fot-ok,.fot-ja{border-color:var(--ok)}.fot-pede{border-color:var(--acento)}.fot-nao,.fot-erro{border-color:var(--no)}.fot-q{display:grid;gap:6px;margin-top:6px}.fot-cs{display:flex;flex-wrap:wrap;gap:6px}.fot-cs .btn{width:auto}.fot-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.fot-c{display:grid;gap:2px}.fot-c small{color:var(--mudo);font-size:.75rem}.fot-c input{padding:6px 8px;font-size:.9rem;width:100%;min-width:0;box-sizing:border-box}.fot-it>div{min-width:0}.fot-fora{border-color:#F59F00}.fot-lancada{border-color:#F59F00}@media(max-width:640px){.fot-g{grid-template-columns:repeat(2,minmax(0,1fr))}.fot-c{grid-column:span 2!important}}`; document.head.appendChild(st);
-  try{ const s=MAN.find(x=>x.id==='eva-ensino'); if(s&&s.passos) s.passos.push(['Alimentar com fotos de etiquetas (v9.19.4)','Em BIT › 📸 Alimentar o BIT com fotos de etiquetas, o administrador escolhe várias fotos de uma vez. O BIT lê cada etiqueta, acha a NF (pelos romaneios do dia) e aprende onde o número fica naquele modelo e o formato do QR Code. Quando não tem certeza, mostra os números que leu e pergunta qual é a NF. Não registra bipe e não guarda as fotos: guarda só o que aprendeu, que vale para todos os aparelhos e melhora a leitura no NexBip. O “Ensinar” com foto anexada continua igual.']); try{ const r=MAN.find(x=>x.id==='romaneios'); if(r&&r.passos) r.passos.push(['XML do romaneio criado no app (v9.19.7)','Romaneio criado no app (EXTRA, MESA) tem as notas incluídas bipando a DANFE, que já traz o XML. Por isso o selo 🧾 XML fica verde nele e nunca aparece “XML pendente”. Em romaneio carregado por PDF, nota bipada pela DANFE também conta como nota com XML.']); }catch(e){} if(s&&s.passos) s.passos.push(['Foto de caixa fora do romaneio (v9.19.6)','Se a etiqueta da foto não está em nenhum romaneio de hoje, o BIT marca como fora do romaneio e mostra tudo o que leu: pedido, NF, volume, cliente e código, endereço, bairro, CEP, cidade/UF, carga, transportadora e rota. Confira (dá para corrigir qualquer campo ou tocar num dos números lidos) e toque em “🟠 Lançar fora do romaneio” (ou “Lançar todas”). A caixa entra em Problemas como fora do romaneio, já com cliente, cidade e volumes, igual a um bipe. Na etiqueta amarela, quando você confirma o pedido, o BIT aprende que ele fica na caixa preta da direita e lê ali primeiro nas próximas.']); }catch(e){} })();
+  try{ const s=MAN.find(x=>x.id==='eva-ensino'); if(s&&s.passos) s.passos.push(['Alimentar com fotos de etiquetas (v9.19.4)','Em BIT › 📸 Alimentar o BIT com fotos de etiquetas, o administrador escolhe várias fotos de uma vez. O BIT lê cada etiqueta, acha a NF (pelos romaneios do dia) e aprende onde o número fica naquele modelo e o formato do QR Code. Quando não tem certeza, mostra os números que leu e pergunta qual é a NF. Não registra bipe e não guarda as fotos: guarda só o que aprendeu, que vale para todos os aparelhos e melhora a leitura no NexBip. O “Ensinar” com foto anexada continua igual.']); try{ const o=MAN.find(x=>/Operação/i.test(x.t||'')); if(o&&o.passos) o.passos.push(['Aviso de reentrega no bipe (v9.19.8)','O bipe só avisa ↻ REENTREGA quando a mesma NF (ou o mesmo pedido) já veio num romaneio de outro dia. Número de pedido não é mais comparado com número de NF antiga (eles têm a mesma faixa de números e geravam reentrega falsa). Os avisos do app aparecem no topo da tela.']); }catch(e){} try{ const r=MAN.find(x=>x.id==='romaneios'); if(r&&r.passos) r.passos.push(['XML do romaneio criado no app (v9.19.7)','Romaneio criado no app (EXTRA, MESA) tem as notas incluídas bipando a DANFE, que já traz o XML. Por isso o selo 🧾 XML fica verde nele e nunca aparece “XML pendente”. Em romaneio carregado por PDF, nota bipada pela DANFE também conta como nota com XML.']); }catch(e){} if(s&&s.passos) s.passos.push(['Foto de caixa fora do romaneio (v9.19.6)','Se a etiqueta da foto não está em nenhum romaneio de hoje, o BIT marca como fora do romaneio e mostra tudo o que leu: pedido, NF, volume, cliente e código, endereço, bairro, CEP, cidade/UF, carga, transportadora e rota. Confira (dá para corrigir qualquer campo ou tocar num dos números lidos) e toque em “🟠 Lançar fora do romaneio” (ou “Lançar todas”). A caixa entra em Problemas como fora do romaneio, já com cliente, cidade e volumes, igual a um bipe. Na etiqueta amarela, quando você confirma o pedido, o BIT aprende que ele fica na caixa preta da direita e lê ali primeiro nas próximas.']); }catch(e){} })();
 
 /* ================= v9.19.0 · simulação ligada vale para a conferência de toda a equipe ================= */
 if(!NUV_CAMPOS.includes('simAtivo')) NUV_CAMPOS.push('simAtivo');
