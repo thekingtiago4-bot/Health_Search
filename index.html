@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.16.1', HS_DATA='10/11/2026';
+const HS_VERSAO='9.16.2', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9857,46 +9857,63 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 /* ================= v9.16.1 · Pluma é CORUJA em todo lugar (personagem grande, canto, chat) ================= */
 function corujar(s){ if(!s||s.indexOf('class="evb')<0||s.indexOf('data-coruja')>=0) return s;
   const R=(a,b)=>{ s=s.split(a).join(b); };
-  s=s.replace('<svg class="evb','<svg data-coruja="1" class="evb');
-  /* cores das penas: o que era branco vira marrom claro, o que era preto vira marrom escuro */
-  s=s.replace(/(<radialGradient id="evbG\w*"[^>]*>)[\s\S]*?(<\/radialGradient>)/,'$1<stop offset="0" stop-color="#C8955E"/><stop offset=".7" stop-color="#A06C3C"/><stop offset="1" stop-color="#7E5229"/>$2');
-  s=s.replace(/(<radialGradient id="evbP\w*"[^>]*>)[\s\S]*?(<\/radialGradient>)/,'$1<stop offset="0" stop-color="#7A4E27"/><stop offset="1" stop-color="#4E3016"/>$2');
-  R('stroke="#2B2B33"','stroke="#3B2410"');
-  /* barriga creme com penas em V */
-  R('<ellipse cx="100" cy="192" rx="27" ry="27" fill="#F7F8FA"/>','<ellipse cx="100" cy="192" rx="30" ry="32" fill="#F3E3C3"/><g stroke="#C99A5B" stroke-width="2" fill="none" stroke-linecap="round"><path d="M86 178 l5 5 5-5 M104 178 l5 5 5-5 M80 192 l5 5 5-5 M95 192 l5 5 5-5 M110 192 l5 5 5-5 M86 206 l5 5 5-5 M104 206 l5 5 5-5"/></g>');
-  /* patas: garras laranja */
-  s=s.replace(/<ellipse cx="(72|128)" cy="228" rx="23" ry="16" fill="url\(#evbP\w*\)"\/>/g,'<ellipse cx="$1" cy="230" rx="18" ry="9" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>');
+  s=s.replace('<svg class="evb','<svg data-coruja="3" class="evb');
+  /* estilo liso (sem contorno): penas ferrugem, asas mais escuras */
+  s=s.replace(/(<radialGradient id="evbG\w*"[^>]*>)[\s\S]*?(<\/radialGradient>)/,'$1<stop offset="0" stop-color="#C0703A"/><stop offset="1" stop-color="#B0602C"/>$2');
+  s=s.replace(/(<radialGradient id="evbP\w*"[^>]*>)[\s\S]*?(<\/radialGradient>)/,'$1<stop offset="0" stop-color="#8E4A20"/><stop offset="1" stop-color="#7C3F1A"/>$2');
+  s=s.replace(/(<ellipse cx="100" cy="1[89]\d" rx="4\d" ry="4\d" fill="url\(#evbG\w*\)") stroke="#2B2B33" stroke-width="3"/,'$1');
+  s=s.replace(/(<ellipse cx="100" cy="80" rx="6\d" ry="5\d" fill="url\(#evbG\w*\)") stroke="#2B2B33" stroke-width="3"/,'$1');
+  R('stroke="#2B2B33"','stroke="#4A2410"');
+  /* corpo mais cheio, emendado na cabeça */
+  s=s.replace(/<ellipse cx="100" cy="184" rx="49" ry="47"/,'<ellipse cx="100" cy="176" rx="58" ry="56"');
+  /* barriga creme com penas em U */
+  R('<ellipse cx="100" cy="192" rx="27" ry="27" fill="#F7F8FA"/>','<ellipse cx="100" cy="188" rx="40" ry="40" fill="#F6DDB0"/><g stroke="#C9874A" stroke-width="3" fill="none" stroke-linecap="round"><path d="M80 176 q5 6 10 0 M95 176 q5 6 10 0 M110 176 q5 6 10 0 M87 192 q5 6 10 0 M103 192 q5 6 10 0 M80 208 q5 6 10 0 M95 208 q5 6 10 0 M110 208 q5 6 10 0"/></g>');
+  /* patas laranja de 3 dedos */
+  s=s.replace(/<ellipse cx="(72|128)" cy="228" rx="23" ry="16" fill="url\(#evbP\w*\)"\/>/g,(m,x)=>`<path d="M${x-14} 236 q2 -12 14 -12 q12 0 14 12 q-4 -3 -7 0 q-3 -4 -7 0 q-4 -4 -7 0 q-3 -3 -7 0z" fill="#F5A623"/>`);
   s=s.replace(/<ellipse cx="(72|128)" cy="231" rx="10" ry="7" fill="#F4A6B8"\/>/g,'');
-  s=s.replace(/<circle cx="(62|82|118|138)" cy="224" r="3" fill="#F4A6B8"\/>/g,'<path d="M$1 232 l0 8" stroke="#B45309" stroke-width="4" stroke-linecap="round"/>');
-  /* asas (braços): sem almofadinha rosa, com penas */
-  s=s.replace(/<ellipse cx="44" cy="200" rx="7" ry="5" fill="#F4A6B8" opacity="\.9"\/>/,'<path d="M42 176 q6 6 4 16 M50 172 q6 8 3 18" stroke="#4E3016" stroke-width="2" fill="none" stroke-linecap="round"/>');
-  s=s.replace(/<ellipse cx="165" cy="114" rx="6" ry="5" fill="#F4A6B8" opacity="\.9"\/>/,'<path d="M160 128 q-6 6 -6 14 M167 122 q-4 8 -6 16" stroke="#4E3016" stroke-width="2" fill="none" stroke-linecap="round"/>');
-  /* braços cruzados (emburrada) e patinhas */
-  R('stroke="#26262e" stroke-width="17"','stroke="#7A4E27" stroke-width="17"'); R('stroke="#33333d" stroke-width="17"','stroke="#6A4220" stroke-width="17"');
+  s=s.replace(/<circle cx="(62|82|118|138)" cy="224" r="3" fill="#F4A6B8"\/>/g,'');
+  /* asas: sem almofadinha rosa */
+  s=s.replace(/<ellipse cx="44" cy="200" rx="7" ry="5" fill="#F4A6B8" opacity="\.9"\/>/,'');
+  s=s.replace(/<ellipse cx="165" cy="114" rx="6" ry="5" fill="#F4A6B8" opacity="\.9"\/>/,'');
+  R('stroke="#26262e" stroke-width="17"','stroke="#8E4A20" stroke-width="17"'); R('stroke="#33333d" stroke-width="17"','stroke="#7C3F1A" stroke-width="17"');
   s=s.replace(/<ellipse cx="(62|138)" cy="190" rx="6" ry="5" fill="#F4A6B8"\/>/g,'');
-  s=s.replace(/<ellipse cx="(70|130)" cy="202" rx="11" ry="9" fill="#26262e"\/>/g,'<ellipse cx="$1" cy="204" rx="11" ry="7" fill="#F59E0B" stroke="#B45309" stroke-width="2"/>');
-  /* orelhas redondas -> tufos de penas */
-  s=s.replace(/<circle cx="44" cy="30" r="2[23]" fill="[^"]*"\/>/,'<path d="M40 52 L30 -2 Q46 8 66 30 Z" fill="#6A4220" stroke="#3B2410" stroke-width="3" stroke-linejoin="round"/>');
-  s=s.replace(/<circle cx="156" cy="30" r="2[23]" fill="[^"]*"\/>/,'<path d="M160 52 L170 -2 Q154 8 134 30 Z" fill="#6A4220" stroke="#3B2410" stroke-width="3" stroke-linejoin="round"/>');
+  s=s.replace(/<ellipse cx="(70|130)" cy="202" rx="11" ry="9" fill="#26262e"\/>/g,'<ellipse cx="$1" cy="204" rx="11" ry="7" fill="#F5A623"/>');
+  /* orelhas redondas -> tufinhos */
+  s=s.replace(/<circle cx="44" cy="30" r="2[23]" fill="[^"]*"\/>/,'<path d="M46 48 L40 14 L74 34 Z" fill="#B0602C"/>');
+  s=s.replace(/<circle cx="156" cy="30" r="2[23]" fill="[^"]*"\/>/,'<path d="M154 48 L160 14 L126 34 Z" fill="#B0602C"/>');
   s=s.replace(/<circle cx="(44|156)" cy="30" r="1[01]" fill="#F4A6B8"\/>/g,'');
-  /* manchas pretas dos olhos -> disco facial creme */
-  s=s.replace(/<ellipse cx="74" cy="78" rx="18\.?5?" ry="2[23]" transform="rotate\(-18 74 78\)" fill="[^"]*"\/>/,'<path d="M100 58 Q84 50 72 56 Q54 64 56 84 Q60 102 80 102 Q94 100 100 90 Q106 100 120 102 Q140 102 144 84 Q146 64 128 56 Q116 50 100 58 Z" fill="#F6E7C8" stroke="#C99A5B" stroke-width="2.5"/>');
-  s=s.replace(/<ellipse cx="126" cy="78" rx="18\.?5?" ry="2[23]" transform="rotate\(18 126 78\)" fill="[^"]*"\/>/,'<path d="M100 60 L100 86" stroke="#C99A5B" stroke-width="2" opacity=".6"/>');
-  /* olhos âmbar grandes */
-  s=s.replace(/<circle cx="(77|123)" cy="78" r="9\.?5?" fill="#fff"\/>/g,'<circle cx="$1" cy="78" r="12.5" fill="#FBBF24" stroke="#3B2410" stroke-width="2.5"/>');
-  /* expressões desenhadas em branco ficariam invisíveis no disco claro */
-  R('stroke="#fff" stroke-width="4.5"','stroke="#3B2410" stroke-width="4.5"'); R('stroke="#fff" stroke-width="4"','stroke="#3B2410" stroke-width="4"');
-  /* nariz de panda -> bico */
-  s=s.replace(/<path d="M93 98 Q100 94 107 98 Q107 104 100 106 Q93 104 93 98 Z" fill="#2B2B33"\/>/,'<path d="M92 93 Q100 89 108 93 L100 107 Z" fill="#F59E0B" stroke="#B45309" stroke-width="2" stroke-linejoin="round"/>');
-  s=s.replace(/<ellipse cx="100" cy="100" rx="7\.5" ry="5\.4" fill="#2B2B33"\/>/,'<path d="M92 93 Q100 89 108 93 L100 107 Z" fill="#F59E0B" stroke="#B45309" stroke-width="2" stroke-linejoin="round"/>');
+  /* máscara bege em volta dos olhos */
+  s=s.replace(/<ellipse cx="74" cy="78" rx="18\.?5?" ry="2[23]" transform="rotate\(-18 74 78\)" fill="[^"]*"\/>/,'<path d="M100 60 Q86 46 70 50 Q50 56 50 80 Q52 104 76 104 Q92 104 100 92 Q108 104 124 104 Q148 104 150 80 Q150 56 130 50 Q114 46 100 60 Z" fill="#E7A86A"/>');
+  s=s.replace(/<ellipse cx="126" cy="78" rx="18\.?5?" ry="2[23]" transform="rotate\(18 126 78\)" fill="[^"]*"\/>/,'');
+  /* olhos grandes brancos, pupila marrom */
+  s=s.replace(/<circle cx="(77|123)" cy="78" r="9\.?5?" fill="#fff"\/>/g,'<circle cx="$1" cy="78" r="17" fill="#FFFFFF"/>');
+  s=s.replace(/<circle class="pupila" cx="(\d+)" cy="76" r="[\d.]+" fill="#2B2B33"\/>/g,'<circle class="pupila" cx="$1" cy="78" r="8.5" fill="#4A2410"/>');
+  s=s.replace(/<circle cx="(81\.5|127\.5|81|127)" cy="7[34]\.?5?" r="1\.[69]" fill="#fff"\/>/g,(m,x)=>`<circle cx="${+x+1}" cy="74" r="3" fill="#fff"/>`);
+  R('stroke="#fff" stroke-width="4.5"','stroke="#4A2410" stroke-width="4.5"'); R('stroke="#fff" stroke-width="4"','stroke="#4A2410" stroke-width="4"');
+  /* sobrancelhas viram cílios discretos */
+  R('stroke="#4A2410" stroke-width="3.5" fill="none" stroke-linecap="round"/><path class="s2"','stroke="#8E4A20" stroke-width="3" fill="none" stroke-linecap="round"/><path class="s2"');
+  /* bico laranja pequeno */
+  const BICO='<path d="M93 96 L107 96 L100 108 Z" fill="#F5A623"/>';
+  s=s.replace(/<path d="M93 98 Q100 94 107 98 Q107 104 100 106 Q93 104 93 98 Z" fill="#2B2B33"\/>/,BICO);
+  s=s.replace(/<ellipse cx="100" cy="100" rx="7\.5" ry="5\.4" fill="#2B2B33"\/>/,BICO);
   s=s.replace(/<ellipse cx="98" cy="98" rx="2" ry="1\.2" fill="#fff" opacity="\.5"\/>/,'');
-  /* bochechas rosadas mais discretas */
-  R('fill="#F7B5C4" opacity=".75"','fill="#F7B5C4" opacity=".35"'); R('fill="#F7B5C4" opacity=".8"','fill="#F7B5C4" opacity=".35"');
+  /* boca escondida quando calma (coruja não tem boca), aparece só nas expressões */
+  s=s.replace(/<path class="boca b-sorriso" d="[^"]*"/,'<path class="boca b-sorriso" d="M96 112 q4 3 8 0"');
+  /* sem bochechas de panda; no lugar, blush delicado */
+  s=s.replace(/<ellipse cx="(55|145|56|144)" cy="104" rx="1[01]" ry="6\.?5?" fill="#F7B5C4" opacity="\.[78]5?"\/>/g,'');
+  /* sem colar: só o laço */
+  s=s.replace(/<path d="M7\d 140 Q100 1\d\d 12\d 140 L[^"]*Z" fill="[^"]*"\/>(<circle cx="100" cy="158" r="5\.5"[^>]*\/>)?/g,'');
+  /* com capacete o laço sumia: põe o laço na lateral do capacete */
+  if(s.indexOf('class="capacete"')>=0&&s.indexOf('class="laco"')<0){ const i=s.indexOf('class="capacete"'), j=s.indexOf('</g>',i); if(j>0) s=s.slice(0,j+4)+'<g class="laco" transform="translate(150 22) rotate(18) scale(.85)"><path d="M0 0 L-28 -18 Q-36 0 -28 18 Z" fill="#EC4899"/><path d="M0 0 L28 -18 Q36 0 28 18 Z" fill="#EC4899"/><path d="M-6 -2 L-24 -12 M6 -2 L24 -12" stroke="#fff" stroke-width="2" opacity=".35" stroke-linecap="round"/><circle r="9" fill="#DB2777"/></g>'+s.slice(j+4); }
+  /* cílios e blush: cara de menina */
+  const cil=(x,d)=>`<path d="M${x-15*d} 70 l${-7*d} -3 M${x-12*d} 64 l${-6*d} -6 M${x-6*d} 61 l${-3*d} -8" stroke="#4A2410" stroke-width="3" stroke-linecap="round"/>`;
+  let n=0; s=s.replace(/(<circle class="pupila" cx="\d+" cy="78" r="8\.5" fill="#4A2410"\/>)/g,(m)=>{ n++; return m+(n===1?cil(77,1):cil(123,-1)); });
+  s=s.replace('<g class="olhos">','<ellipse cx="62" cy="104" rx="9" ry="5" fill="#F48FB1" opacity=".55"/><ellipse cx="138" cy="104" rx="9" ry="5" fill="#F48FB1" opacity=".55"/><g class="olhos">');
   return s; }
 { const _cb=evbSvg; evbSvg=function(v,c){ return corujar(_cb(v,c)); }; }
 evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
-setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} try{ document.querySelectorAll('svg.evb:not([data-coruja])').forEach(n=>{ n.outerHTML=corujar(n.outerHTML); }); }catch(e){} },300);
-setInterval(()=>{ try{ document.querySelectorAll('svg.evb:not([data-coruja])').forEach(n=>{ const st=n.dataset.st; const t=document.createElement('div'); t.innerHTML=corujar(n.outerHTML); const nn=t.firstElementChild; if(st) nn.dataset.st=st; n.replaceWith(nn); }); }catch(e){} },2000);
+setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} try{ document.querySelectorAll('svg.evb:not([data-coruja="3"])').forEach(n=>{ n.outerHTML=corujar(n.outerHTML); }); }catch(e){} },300);
+setInterval(()=>{ try{ document.querySelectorAll('svg.evb:not([data-coruja="3"])').forEach(n=>{ const st=n.dataset.st; const t=document.createElement('div'); t.innerHTML=corujar(n.outerHTML); const nn=t.firstElementChild; if(st) nn.dataset.st=st; n.replaceWith(nn); }); }catch(e){} },2000);
 
 /* ================= v9.16.1 · Espaço dos aparelhos da equipe: acima de 85% o administrador é avisado ================= */
 const ESPE={pre:'ap:~esp:', ch:'healthSearch.espAlto', alto:85, lista:[], avisados:{}};
