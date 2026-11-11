@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.14.2', HS_DATA='10/11/2026';
+const HS_VERSAO='9.14.3', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7424,7 +7424,7 @@ const EVA_SVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width
 </svg>`
 function evaDuv(){ const c=cer(); c.duv=Array.isArray(c.duv)?c.duv:[]; return c.duv; }
 function evaPendentes(){ return evaDuv().filter(d=>!d.resp); }
-/* ---- dúvidas: a EVA pergunta quando o Cérebro não tem certeza ---- */
+/* ---- dúvidas: a Pluma pergunta quando o Cérebro não tem certeza ---- */
 function evaNovaDuvida(d){ const L=evaDuv(); if(L.some(x=>!x.resp&&x.chave===d.chave)) return; L.unshift(Object.assign({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),em:new Date().toISOString(),por:(typeof opEu==='function'?opEu():'')},d)); if(L.length>200) L.length=200; cerMudou(); evaBadge(); }
 /* QR de formato novo que não achou nada: qual dos números é o pedido/NF? */
 { const _ol=opLer; opLer=function(textos,origem){ const r=_ol.apply(this,arguments); try{ const b=OP.bipes[0]; if(b&&b.status==='fora'){ for(const t of (textos||[]).map(String)){ if(t.includes('@')||/^\d+$/.test(t.trim())) continue; const nums=(t.match(/\d+/g)||[]).filter(n=>n.length>=4); if(nums.length<2) continue; const s=cerSig(t); if(cer().qr[s]) continue;
@@ -7541,7 +7541,7 @@ async function roboChecar(){ try{ if(!nvAdmin()||!opOnline()) return; const {dat
     el.innerHTML=`<span>⚠ <b>Robô de backup</b>: ${v.ok===false?'o backup da noite <b>falhou</b>'+(v.erro?' ('+esc(String(v.erro).slice(0,80))+')':''):'sem backup há '+Math.round(h)+' h'}. Confira a aba Actions do repositório Health_Search_Backups ou faça o backup físico.</span><button class="btn mini" type="button" onclick="this.parentNode.remove()">✕</button>`;
   }catch(e){} }
 (function(){ let n=0; const t=setInterval(()=>{ if(!(typeof NV!=='undefined'&&NV.perfil)){ if(++n>180) clearInterval(t); return; } clearInterval(t); roboChecar(); setInterval(()=>{ if(!document.hidden) roboChecar(); },3*3600e3); },1000); })();
-/* ================= v8.8.3 · EVA sabe o Manual inteiro e as regiões/bases do mapa ================= */
+/* ================= v8.8.3 · Pluma sabe o Manual inteiro e as regiões/bases do mapa ================= */
 const EVA_PARE=new Set('a o as os um uma de da do das dos e em no na nos nas para pra por com como que qual quais onde quando eu me meu minha voce tem ter faz fazer fica ficar e eh ser esta isso essa esse app aplicativo health search eva ajuda funciona usar uso sobre ao aos'.split(' '));
 function evaPalavras(t){ return evaN(t).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!EVA_PARE.has(w)).map(w=>w.replace(/(oes|aes|ais|eis|s)$/,'')); }
 function evaManual(txt){ const ws=evaPalavras(txt); if(!ws.length) return null; const res=[];
@@ -7572,7 +7572,7 @@ function evaListaHtml(l){ const cs=evaCidadesDa(l); const tp=l.tipo==='base'?'Ba
     const r=_ee(txt);
     if(/^Procurei <b>/.test(r)&&!/\d{4,}/.test(txt)){ const rs=evaManual(txt); if(rs&&rs[0].sc>=2.5) return evaManualHtml(rs)+'<br><small>(Também procurei na Busca.)</small>'; }
     return r; }; }
-/* ================= v8.8.5 · EVA: perguntas de cidade vão sempre para a Geolocalização + aprende instruções ("sempre…") ================= */
+/* ================= v8.8.5 · Pluma: perguntas de cidade vão sempre para a Geolocalização + aprende instruções ("sempre…") ================= */
 function evaAcharCidade(txt){ const I=ibge(); let s=String(txt||'').toUpperCase().replace(/[?!.]+$/,'').trim(); let uf=''; const mu=s.match(/^(.*?)[\s\-\/,]+([A-Z]{2})$/); if(mu&&I.uf[mu[2]]){ s=mu[1]; uf=mu[2]; }
   const k=normCid(s); if(!k||k.length<3) return null; const ordem=uf?[uf]:['SP','MG',...Object.keys(I.uf).filter(u=>u!=='SP'&&u!=='MG')];
   for(const u of ordem){ const o=I.uf[u]&&(I.uf[u].get(k)||(I.comp[u]&&I.comp[u].get(k.replace(/ /g,'')))); if(o) return o; } return null; }
@@ -7590,7 +7590,7 @@ function evaCidadeResp(o){ const cod=o.c; const nm=r=>(r&&r.ids||[]).map(i=>(geo
     for(const re of pads){ const m=t.match(re); if(m){ const o=evaAcharCidade(m[1]); if(o) return evaCidadeResp(o); } }
     if(t.split(' ').length<=5&&!/\d/.test(t)){ const o=evaAcharCidade(txt); if(o) return evaCidadeResp(o); }
     return _ee(txt); }; }
-/* ================= v8.8.6 · Personalizar EVA (colete refletivo, capacete, laço) — cada usuário escolhe o seu ================= */
+/* ================= v8.8.6 · Personalizar Pluma (colete refletivo, capacete, laço) — cada usuário escolhe o seu ================= */
 function evaVis(){ try{ return Object.assign({colete:false,capacete:false,laco:true,cor:'#EC4899'},JSON.parse(localStorage.getItem('healthSearch.evaVisual')||'{}')); }catch(e){ return {colete:false,capacete:false,laco:true,cor:'#EC4899'}; } }
 function evaSvgVestida(v){ v=v||evaVis(); let s=EVA_SVG;
   const laco=s.match(/<g transform="translate\(44 7\) rotate\(18\)">[\s\S]*?<\/g>/); if(laco){ s=s.replace(laco[0],(v.laco&&!v.capacete)?laco[0].replace(/#EC4899/g,v.cor).replace(/#DB2777/g,v.cor):''); }
@@ -7618,16 +7618,16 @@ function evaPersonalizar(){ const v=evaVis(); const f=document.createElement('di
     if(b.dataset.ep==='pad'){ $('#ep-colete').checked=false; $('#ep-capacete').checked=false; $('#ep-laco').checked=true; $('#ep-cor').value='#EC4899'; prev(); return; }
     try{ localStorage.setItem('healthSearch.evaVisual',JSON.stringify(ler())); }catch(er){} evaAplicarVisual(); f.remove(); toast('Pluma personalizada!'); });
   document.body.appendChild(f); prev(); }
-(function(){ const cab=document.querySelector('#eva-painel .eva-cab'); const x=$('#eva-x'); if(cab&&x) x.insertAdjacentHTML('beforebegin','<button type="button" id="eva-cfg" title="Personalizar EVA" aria-label="Personalizar EVA" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:4px 6px">🎨</button>'); const c=$('#eva-cfg'); if(c) c.onclick=evaPersonalizar; evaAplicarVisual(); })();
-/* v9.10.0 — Task #14: resetar EVA (admin) */
+(function(){ const cab=document.querySelector('#eva-painel .eva-cab'); const x=$('#eva-x'); if(cab&&x) x.insertAdjacentHTML('beforebegin','<button type="button" id="eva-cfg" title="Personalizar Pluma" aria-label="Personalizar Pluma" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:4px 6px">🎨</button>'); const c=$('#eva-cfg'); if(c) c.onclick=evaPersonalizar; evaAplicarVisual(); })();
+/* v9.10.0 — Task #14: resetar Pluma (admin) */
 function evaResetar(){ if(!nvAdmin()){ toast('Só o administrador pode resetar a Pluma.'); return; }
   confirmar('Resetar a Pluma?','Ela vai esquecer tudo que aprendeu — QR, etiquetas, clientes, vínculos, dúvidas e ensino. Isso afeta toda a equipe.','Resetar').then(ok=>{ if(!ok) return;
     try{ const bkp='bkp:cer:'+new Date().toISOString().slice(0,16); nuvEscrever(bkp,{cerebro:JSON.parse(JSON.stringify(S.cerebro||{})),evaEnsino:JSON.parse(JSON.stringify(S.evaEnsino||{}))}); }catch(e){}
     S.cerebro={}; S.evaEnsino={regras:[],fatos:[]}; cerMudou(); salvar(); nuvSinc();
     evaFala('Memória resetada. Vou começar a aprender do zero. 🧠','eva');
-    toast('EVA resetada. Backup salvo na nuvem.'); }); }
+    toast('Pluma resetada. Backup salvo na nuvem.'); }); }
 (function(){ if(!nvAdmin()) return; const cab=document.querySelector('#eva-painel .eva-cab'); const cfg=$('#eva-cfg'); if(cab&&cfg) cfg.insertAdjacentHTML('beforebegin','<button type="button" id="eva-rst" title="Resetar Pluma (admin)" aria-label="Resetar Pluma" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:4px 6px">🗑️</button>'); const r=$('#eva-rst'); if(r) r.onclick=evaResetar; })();
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/personaliz|colete|capacete|roupa|vestir|lacinho|laco/.test(t)){ setTimeout(evaPersonalizar,200); return 'Abri o <b>Personalizar EVA</b> 🎨 — escolha colete refletivo, capacete e a cor do laço.'; } return _ee(txt); }; }
+{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/personaliz|colete|capacete|roupa|vestir|lacinho|laco/.test(t)){ setTimeout(evaPersonalizar,200); return 'Abri o <b>Personalizar Pluma</b> 🎨 — escolha colete refletivo, capacete e a cor do laço.'; } return _ee(txt); }; }
 /* ================= v9.7.0 · Registro: 1 foto por evento (Recebimento = Horário Chegada · Expedição = Horário Saída) → WhatsApp ================= */
 if(!NUV_CAMPOS.includes('registros')) NUV_CAMPOS.push('registros');
 const RG={foto:null,fotoEm:null,tipo:null};
@@ -7763,7 +7763,7 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
     const wa=e.target.closest('#ck-wa'); if(wa) ckEnviar(); });
   document.body.addEventListener('change',e=>{ const inp=e.target.closest('[data-ck-f]'); if(!inp) return; const tr=inp.closest('[data-ck-row]'); if(!tr) return; const r=ckS().find(x=>x.id===tr.dataset.ckRow); if(!r) return;
     const campo=inp.dataset.ckF; r[campo]=campo==='ativo'?inp.checked:(campo==='placa'?inp.value.toUpperCase():inp.value); salvar(); ckRender(); }); })();
-/* ================= v8.9.1 · EVA mais inteligente: filtra as notas dos romaneios (cidade, região, origem, cliente) e entende frases ================= */
+/* ================= v8.9.1 · Pluma mais inteligente: filtra as notas dos romaneios (cidade, região, origem, cliente) e entende frases ================= */
 const EVA_ORIG=[[/\b(caj|cajamar|matriz)\b/,'CAJ'],[/\b(mesa|integracao|agendad[ao]s?)\b/,'MESA'],[/\b(df|brasilia|distrito federal)\b/,'DF'],[/\bvia ?minas\b|\bgiovan/,'VIA MINAS'],[/\b(aqa|araraquara)\b/,'AQA'],[/\blkr\b/,'LKR'],[/\bcremer\b/,'CREMER']];
 const EVA_NAO_CIDADE=new Set(['notas','nota','todas','todos','puxe','puxa','mostra','mostre','lista','liste','quais','quantas','quantos','me','de','da','do','das','dos','origem','cliente','romaneio','romaneios','hoje','pedidos','pedido','nfs','nf','volumes','entregas','que','vieram','veio','para','pra','em','na','no','e','com','sem','regiao','base','cidade','as','os','a','o','ver','buscar','busca','abrir','abre']);
 function evaOrigemRom(r){ try{ aplicarRegraBase(r); }catch(e){} const b=String(r.base||'').toUpperCase(); const a=evaN(r.arquivo||r.numero||''); if(/lkr/.test(a)) return 'LKR'; if(/cremer/.test(a)) return 'CREMER'; return b||'?'; }
@@ -7800,7 +7800,7 @@ function evaNum(v){ const n=parseFloat(String(v??'').replace(/\./g,'').replace('
     if(/^Procurei <b>/.test(r)&&!/\d{4,}/.test(txt)&&t.split(' ').length>=4&&!/^(procura|busca|acha|encontra|cliente)/.test(t)){ try{ document.querySelector('#q').value=''; }catch(e){} return 'Não entendi bem. Tente assim:<br>• "notas de Ribeirão Preto origem Cajamar"<br>• "notas da região Minas Gerais"<br>• "notas do cliente Unimed"<br>• "onde fica Franca?"<br>• "como faço o backup físico?"'; }
     return r; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-eva-busca]'); if(b&&EVA.ultNfs){ evaBuscar(EVA.ultNfs.join(' ')); } });
-/* ================= v8.9.2 · EVA completa: datas (banco de romaneios), continuação de conversa, nota por número, feriados, reentregas, divergências, rotas, registro e resumo do dia ================= */
+/* ================= v8.9.2 · Pluma completa: datas (banco de romaneios), continuação de conversa, nota por número, feriados, reentregas, divergências, rotas, registro e resumo do dia ================= */
 function evaDia(t){ const h=hojeISO(), d=n=>new Date(Date.now()+n*864e5).toISOString().slice(0,10);
   if(/\banteontem\b/.test(t)) return d(-2); if(/\bontem\b/.test(t)) return d(-1); if(/\bamanha\b/.test(t)) return d(1); if(/\bhoje\b/.test(t)) return h;
   const m=t.match(/\b(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?\b/)||t.match(/\bdia (\d{1,2})\b/); if(m){ const a=m[3]?(m[3].length===2?'20'+m[3]:m[3]):h.slice(0,4); const mm=m[2]?String(m[2]).padStart(2,'0'):h.slice(5,7); const iso=`${a}-${mm}-${String(m[1]).padStart(2,'0')}`; if(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(iso)) return iso; }
@@ -7839,8 +7839,8 @@ function evaRegistro(){ const hj=hojeISO(); const A=(typeof rgS==='function'?rgS
   return `<b>${fmtN(A.length)}</b> registro(s) hoje:<br>`+A.slice().sort((a,b)=>b.ent.em.localeCompare(a.ent.em)).map(r=>`🚛 <b>${esc([r.cav,r.bau].filter(Boolean).join(' / ')||'sem placa')}</b> · ${esc(r.mot||'')} · ${esc(r.rota||'')} · ${r.tipo==='exp'?'saiu':'chegou'} ${rgHora(r.ent.em)}`).join('<br>'); }
 { const _ee=evaEntender; evaEntender=function(txt){ let t=evaN(txt).replace(/[?!.]+$/,'').trim();
     if(/regras|privacidade|seguranca|vaza|sigilo|whats|e-?mail|telegram/.test(t)) return _ee(txt);
-    if(/^(obrigad[oa]|valeu|vlw|brigad[oa]|show|top|perfeito|otimo|massa)\b/.test(t)) return 'Por nada! Estou aqui sempre que precisar. 🐼';
-    if(/^(tchau|ate mais|ate logo|falou|boa noite e)\b/.test(t)) return 'Até mais! Bom trabalho. 🐼';
+    if(/^(obrigad[oa]|valeu|vlw|brigad[oa]|show|top|perfeito|otimo|massa)\b/.test(t)) return 'Por nada! Estou aqui sempre que precisar. 🦉';
+    if(/^(tchau|ate mais|ate logo|falou|boa noite e)\b/.test(t)) return 'Até mais! Bom trabalho. 🦉';
     if(/(quem e voce|quem voce e|o que voce e|seu nome|como voce chama)/.test(t)) return 'Sou a <b>Pluma</b>, a assistente interna do Health Search. Ajudo a achar notas, cidades, rotas, reentregas, divergências e a usar o app. '+EVA_REGRAS;
     if(/(resumo|como esta|como estamos|status) (do dia|de hoje|hoje|a operacao|da operacao)|^resumo$/.test(t)) return evaResumoDia();
     if(/\bferiad/.test(t)) return evaFeriados(t,txt);
@@ -7930,7 +7930,7 @@ function opDiaAviso(){ const topo=document.querySelector('#t-operacao .op-topo')
 { const _cm=ctMontar; ctMontar=function(){ _cm.apply(this,arguments); const g=$('#ct-geral'); if(!g) return; if(OP.dia&&OP.dia!==hojeISO()){
       g.innerHTML=`<div style="background:#FEF3C7;color:#78350F;border:1px solid #F59E0B;border-radius:14px;padding:14px;margin:10px 0"><b>⚠ A conferência total é sempre do dia de hoje (${esc(fmtData(hojeISO()))}).</b><br>No NexBip está aberto o dia ${esc(fmtData(OP.dia))}, por isso a porcentagem não pode ser calculada agora. <button class="btn mini pri" type="button" onclick="opVoltarHoje()" style="margin-left:6px">Voltar para hoje</button></div>`;
       const q=$('#qt-ct'); if(q) q.hidden=true; } }; }
-/* ================= v8.9.5 · EVA mais humana: cumprimenta, fala por balão, acompanha o NexBip, comemora e avisa ================= */
+/* ================= v8.9.5 · Pluma mais humana: cumprimenta, fala por balão, acompanha o NexBip, comemora e avisa ================= */
 const EVAH={ult:{},marcos:new Set(),seq:[],ini:null};
 const evaSorteia=a=>a[Math.floor(Math.random()*a.length)];
 function evaNome(){ try{ const n=String((NV.perfil&&NV.perfil.nome)||'').trim().split(/\s+/)[0]; return n?n[0].toUpperCase()+n.slice(1).toLowerCase():''; }catch(e){ return ''; } }
@@ -7945,7 +7945,7 @@ function evaBalao(html,ms,tipo){ if(EVA.aberta){ evaFala(html); return; } if(tip
 /* resumo curto do dia para cumprimentar */
 function evaStatusCurto(){ let L=[]; try{ L=opPorRom(); }catch(e){} const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0); const dv=dvS().filter(d=>d.st!=='resolvida').length; const cam=(typeof rgS==='function'?rgS().filter(r=>!r.sai).length:0);
   const p=[]; if(tn) p.push(fn?`faltam <b>${fmtN(fn)}</b> de ${fmtN(tn)} nota(s) para conferir`:`a conferência de hoje está <b>completa</b> 🎉`); else p.push('ainda não há romaneios de hoje carregados'); if(dv) p.push(`${fmtN(dv)} divergência(s) em aberto`); if(cam) p.push(`${fmtN(cam)} caminhão(ões) na base`); return p.join(', '); }
-function evaCumprimento(){ const n=evaNome(), per=evaPeriodo(); return `${per[0].toUpperCase()+per.slice(1)}${n?', '+esc(n):''}! 🐼 ${evaSorteia(['Hoje','Por aqui','No momento'])} ${evaStatusCurto()}.`; }
+function evaCumprimento(){ const n=evaNome(), per=evaPeriodo(); return `${per[0].toUpperCase()+per.slice(1)}${n?', '+esc(n):''}! 🦉 ${evaSorteia(['Hoje','Por aqui','No momento'])} ${evaStatusCurto()}.`; }
 /* cumprimenta ao abrir o app (1x por período do dia) */
 setTimeout(()=>{ try{ const k=hojeISO()+'|'+evaPeriodo(); if(localStorage.getItem('healthSearch.evaOi')===k) return; localStorage.setItem('healthSearch.evaOi',k); evaBalao(evaCumprimento()+' Toque em mim se precisar.',11000); }catch(e){} },6000);
 /* conversa mais humana */
@@ -7953,7 +7953,7 @@ setTimeout(()=>{ try{ const k=hojeISO()+'|'+evaPeriodo(); if(localStorage.getIte
     const cum=t.match(/^(bom dia|boa tarde|boa noite|oi+|ola|e ai|eai|opa|salve|fala eva|oi eva|ola eva)\b/);
     if(cum&&t.split(' ').length<=4){ const per=evaPeriodo(); const disse=cum[1]; const brinca=(/^(bom dia|boa tarde|boa noite)$/.test(disse)&&disse!==per)?` (por aqui já é ${per} 😄)`:'';
       return `${disse.startsWith('b')?disse[0].toUpperCase()+disse.slice(1):per[0].toUpperCase()+per.slice(1)}${n?', '+esc(n):''}!${brinca} ${evaSorteia(['Que bom te ver.','Tudo certo por aí?','Pronta para ajudar.','Bora trabalhar!'])}<br>${evaStatusCurto()}.<br><small>Quer que eu mostre o que falta conferir? Escreva "o que falta".</small>`; }
-    if(/^(tudo bem|tudo bom|como vai|como voce esta|td bem|blz|beleza)\b/.test(t)) return evaSorteia(['Tudo ótimo por aqui, obrigada por perguntar! 🐼 E com você?','Tudo certo! Com você também, espero.','Estou bem! Pronta para ajudar na operação.'])+' Precisa de alguma coisa?';
+    if(/^(tudo bem|tudo bom|como vai|como voce esta|td bem|blz|beleza)\b/.test(t)) return evaSorteia(['Tudo ótimo por aqui, obrigada por perguntar! 🦉 E com você?','Tudo certo! Com você também, espero.','Estou bem! Pronta para ajudar na operação.'])+' Precisa de alguma coisa?';
     if(/^(to|estou|tô) (cansad|com sono|morto|exaust)/.test(t)) return 'Puxado, né? Respira um pouco e bebe uma água. 💧 Se quiser, te digo exatamente o que falta para fechar o dia: escreva "o que falta".';
     if(/(o que falta|falta o que|quanto falta|quantas faltam|o que ainda falta|pendente)/.test(t)&&!/\breentrega/.test(t)){ let P=[]; try{ OP._semFiltro=true; P=opPendentes(); }catch(e){}finally{ OP._semFiltro=false; }
       if(OP.dia&&OP.dia!==hojeISO()) return 'O NexBip está aberto em outro dia. Toque em <b>Voltar para hoje</b> lá e me pergunte de novo.';
@@ -7971,7 +7971,7 @@ function evaNoNexBip(b){ if(!b) return; const t=Date.now(); EVAH.seq.push({t,s:b
   try{ if(b.status==='ok'&&b.valor&&b.valor>=(typeof opAlto==='function'?opAlto():5000)) evaBalao(`💰 Alto valor conferido (${opMoeda(b.valor)}). Ótimo!`,5000,'alto'); }catch(e){}
   /* marcos da conferência */ try{ const L=opPorRom(); const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0); if(tn){ const p=Math.floor(100*(tn-fn)/tn); for(const m of [100,90,75,50,25]) if(p>=m&&!EVAH.marcos.has(hojeISO()+m)){ for(const m2 of [25,50,75,90,100]) if(m2<=m) EVAH.marcos.add(hojeISO()+m2);
       const min=(t-EVAH.ini)/60000, feitas=EVAH.seq.filter(x=>x.s==='ok').length, ritmo=min>2?feitas/Math.min(min,2):0, prev=ritmo>0&&fn?Math.round(fn/ritmo):0;
-      evaBalao(m===100?'🎉 <b>100%!</b> Toda a conferência de hoje está feita. Mandou muito bem!':`🐼 <b>${m}%</b> conferido! Faltam ${fmtN(fn)} nota(s)${prev?` — nesse ritmo, uns <b>${prev} min</b>`:''}. ${evaSorteia(['Bora!','Tá voando!','Continua assim!'])}`,9000); break; } } }catch(e){} }
+      evaBalao(m===100?'🎉 <b>100%!</b> Toda a conferência de hoje está feita. Mandou muito bem!':`🦉 <b>${m}%</b> conferido! Faltam ${fmtN(fn)} nota(s)${prev?` — nesse ritmo, uns <b>${prev} min</b>`:''}. ${evaSorteia(['Bora!','Tá voando!','Continua assim!'])}`,9000); break; } } }catch(e){} }
 { const _ol=opLer; opLer=function(){ const n0=OP.bipes.length; const r=_ol.apply(this,arguments); try{ if(OP.bipes.length>n0) evaNoNexBip(OP.bipes[0]); }catch(e){} return r; }; }
 /* ao abrir o NexBip: dica do que fazer primeiro */
 { const _ir=irPara; irPara=function(t){ _ir(t); if(t==='operacao'){ try{ if(EVAH.ult.entrou&&Date.now()-EVAH.ult.entrou<30*60e3) return; EVAH.ult.entrou=Date.now(); let P=[]; OP._semFiltro=true; try{ P=opPendentes(); }finally{ OP._semFiltro=false; } if(!P.length) return;
@@ -7990,7 +7990,7 @@ function ctLista(){ const sec=$('#t-conftotal'); if(!sec||sec.hidden) return; co
 { const _r=opRender; opRender=function(){ const r=_r.apply(this,arguments); try{ ctLista(); }catch(e){ console.error(e); } return r; }; }
 /* voltando ao NexBip, a lista de bipes volta ao normal */
 { const _ir=irPara; irPara=function(t){ if(t==='operacao'&&OP.filtro&&OP.filtro!=='todos'&&OP.filtro!=='ok'){ OP.filtro='todos'; } _ir(t); }; }
-/* ================= v8.9.7 · EVA se esforça na leitura: várias passadas (recorte, centro, inteira, invertida), etiqueta amarela e isopor ================= */
+/* ================= v8.9.7 · Pluma se esforça na leitura: várias passadas (recorte, centro, inteira, invertida), etiqueta amarela e isopor ================= */
 /* recorte: aceita etiqueta amarela e recusa área sem texto (isopor branco) */
 { const _rec=etqRecorte; etqRecorte=function(src,W,H){ const R=_rec(src,W,H); if(!R) return null; try{ const c=document.createElement('canvas'); const w=160,h=Math.max(20,Math.round(R.h*160/R.w)); c.width=w; c.height=h; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,R.x,R.y,R.w,R.h,0,0,w,h);
       const d=x.getImageData(0,0,w,h).data; let esc_=0; for(let i=0;i<d.length;i+=4) if(d[i]+d[i+1]+d[i+2]<240) esc_++; if(esc_/(w*h)<0.03) return null; }catch(e){} return R; }; }
@@ -8005,7 +8005,7 @@ function etqAchouAlgo(p,idx){ if(!p) return false; const ns=[...(p.nfs||[]),...(
       const W=v.videoWidth||v.width, H=v.videoHeight||v.height; const amar=etqRecAmarelo(v,W,H); const centro={x:W*.1,y:H*.22,w:W*.8,h:H*.56};
       const passes=[amar&&['amarela',amar,false],['centro',centro,false],['inteira',null,false],amar&&['amarela invertida',amar,true],['centro invertido',centro,true]].filter(Boolean);
       const msg=document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; OCRK.ocupado=true; let linhas=[]; const t0=Date.now();
-      for(const [nome,R,inv] of passes){ if(Date.now()-t0>4500) break; if(msg) msg.innerHTML=`<b>🐼 A EVA está se esforçando…</b>lendo de novo (${nome}). Segure firme.`;
+      for(const [nome,R,inv] of passes){ if(Date.now()-t0>4500) break; if(msg) msg.innerHTML=`<b>🦉 A Pluma está se esforçando…</b>lendo de novo (${nome}). Segure firme.`;
         try{ const ws=await OCR.ler(etqQuadro(v,R,inv)); const L=etqLinhas(ws.filter(w=>w.conf>30)); linhas=linhas.concat(L); const pp=etqInterpretar(linhas); if(etqAchouAlgo(pp,idx)||(pp.dest&&pp.cid&&cerPorCliente(pp,idx))){ linhas=linhas; break; } }catch(e){} }
       OCRK.ocupado=false; OCRK.ult=Date.now(); if(msg&&ant) msg.innerHTML=ant; if(!linhas.length) return p;
       const q=etqInterpretar(linhas); const base=p||{nfs:[],nums:[]}; /* junta: números de todas as passadas (inclusive números soltos de 6+ dígitos) */
@@ -8025,7 +8025,7 @@ function opCorrigirDias(){ let mov=0; try{ const hoje=hojeISO(); for(let i=1;i<=
       for(const b of L){ const t=opBipeHora(b); const d=t?diaLocal(t):k; if(d!==k&&d<=hoje){ b.dia=d; (vai[d]=vai[d]||[]).push(b); } else fica.push(b); }
       if(!Object.keys(vai).length) continue; localStorage.setItem(OP_LOCAL+k,JSON.stringify(fica));
       for(const [d,bs] of Object.entries(vai)){ const T=opLocalLer(d); const ids=new Set(T.map(b=>b.local_id)); for(const b of bs) if(!ids.has(b.local_id)){ T.push(b); mov++; } T.sort((a,b)=>(opBipeHora(b)||0)-(opBipeHora(a)||0)); localStorage.setItem(OP_LOCAL+d,JSON.stringify(T.slice(0,5000))); } } }catch(e){ console.error(e); }
-  if(mov){ try{ if(OP.dia) opAbrirDia(OP.dia); }catch(e){} toast(`🐼 Achei ${mov} bipe(s) que tinham ficado no dia anterior (o app estava aberto desde antes da meia-noite) e devolvi para o dia certo.`); }
+  if(mov){ try{ if(OP.dia) opAbrirDia(OP.dia); }catch(e){} toast(`🦉 Achei ${mov} bipe(s) que tinham ficado no dia anterior (o app estava aberto desde antes da meia-noite) e devolvi para o dia certo.`); }
   return mov; }
 setTimeout(opCorrigirDias,3500);
 /* ================= v8.9.8 · Romaneios: indicador PDF + XML (verde = XML recebido, amarelo = falta o XML) ================= */
@@ -8040,7 +8040,7 @@ function rmXmlStatus(r){ const stem=rmStem(r.arquivo||''); let nome=false; for(c
  .rm-q.ok{background:rgba(34,197,94,.15);border-color:#22C55E;color:#16A34A}.rm-q.falta{background:rgba(234,179,8,.18);border-color:#EAB308;color:#A16207}`; document.head.appendChild(st); })();
 /* depois de ler o XML, redesenha os quadradinhos */
 { const _ri=relImportar; relImportar=async function(){ const r=await _ri.apply(this,arguments); try{ renderRomaneios(); }catch(e){} return r; }; }
-/* ================= v9.0.0 · Conversor universal de XML (EVA): qualquer codificação ou acento estragado vira texto perfeito ================= */
+/* ================= v9.0.0 · Conversor universal de XML (Pluma): qualquer codificação ou acento estragado vira texto perfeito ================= */
 const XC_DIC={'N?MERO':'NÚMERO','DESTINAT?RIO':'DESTINATÁRIO','ENDERE?O':'ENDEREÇO','REGI?O':'REGIÃO','RELAT?RIO':'RELATÓRIO','CONFER?NCIA':'CONFERÊNCIA','N?mero':'Número','EMISS?O':'EMISSÃO','DESCRI??O':'DESCRIÇÃO'};
 function xcConsertar(t){ t=String(t||'').replace(/^﻿/,'');
   if(/Ã[\u0080-¿]|Ã[‡‰“”•]/.test(t)){ try{ const b=new Uint8Array([...t].map(c=>c.charCodeAt(0)&255)); const u=new TextDecoder('utf-8',{fatal:true}).decode(b); t=u; }catch(e){} }
@@ -8161,10 +8161,10 @@ async function evaArquivos(files,op){ op=op||{}; const fs=[...files]; if(!fs.len
    <br><button type="button" class="btn mini" data-xc="csv" style="margin-top:6px">⬇ Baixar XML unificado</button> ${op.importado?'<br>✔ Já importei tudo no Relatório Minas e na Operação.':'<button type="button" class="btn mini pri" data-xc="imp" style="margin-top:6px">📥 Importar no app</button>'}`); }
 document.addEventListener('click',async e=>{ const b=e.target.closest('[data-xc]'); if(!b) return; if(b.dataset.xc==='csv'){ xcBaixar(XC.L); return; }
   if(b.dataset.xc==='imp'&&XC.files.length){ b.disabled=true; try{ await opXmlImportar(XC.files); }catch(_){} await rdImportar(XC.files,hojeISO()); evaFala('Pronto, importei no Relatório Minas e na Operação. 👍'); } });
-(function(){ const f=$('#eva-f'); if(!f) return; f.insertAdjacentHTML('afterbegin','<button type="button" class="btn" id="eva-clip" title="Enviar XML para a EVA converter" aria-label="Enviar arquivos">📎</button><input type="file" id="eva-arq" accept=".xml,text/xml" multiple hidden>');
+(function(){ const f=$('#eva-f'); if(!f) return; f.insertAdjacentHTML('afterbegin','<button type="button" class="btn" id="eva-clip" title="Enviar XML para a Pluma converter" aria-label="Enviar arquivos">📎</button><input type="file" id="eva-arq" accept=".xml,text/xml" multiple hidden>');
   $('#eva-clip').onclick=()=>$('#eva-arq').click(); $('#eva-arq').onchange=e=>{ evaArquivos(e.target.files); e.target.value=''; };
   const p=$('#eva-painel'); if(p){ p.addEventListener('dragover',e=>e.preventDefault()); p.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); evaArquivos(e.dataTransfer.files); }); } })();
-/* v9.0.1: EVA intervém sozinha quando XMLs entram pela aba Romaneios (conserta, resume, alerta repetidas, oferece o XML unificado) */
+/* v9.0.1: Pluma intervém sozinha quando XMLs entram pela aba Romaneios (conserta, resume, alerta repetidas, oferece o XML unificado) */
 { const _imp2=importar; importar=async function(files){ const xs=[...(files||[])].filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); const r=await _imp2.apply(this,arguments); if(xs.length){ try{ await evaArquivos(xs,{importado:true}); }catch(e){} } return r; }; }
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
@@ -8348,7 +8348,7 @@ async function rotGravar(uid,on){ if(!nvAdmin()) return false;
 try{ NUV_CAMPOS.push('rotMarcas'); /* NUV_ADMIN: intencionalmente omitido — campo deve descer para todos */ }catch(e){}
 { const _reh2=rotEhRoteirizador; rotEhRoteirizador=function(){ try{ if(nvAdmin()) return true; const id=NV&&NV.user&&NV.user.id; return id?rotM(id):_reh2(); }catch(e){ return _reh2(); } }; }
 
-/* v9.9.1: com a câmera aberta, o personagem da EVA sai da frente (o botão flutuante e o balão ficavam em cima da tela da câmera).
+/* v9.9.1: com a câmera aberta, o personagem da Pluma sai da frente (o botão flutuante e o balão ficavam em cima da tela da câmera).
    As falas dela não se perdem: viram uma tarja discreta dentro da própria câmera e continuam no histórico do chat. */
 { const _ca9=opCamAbrir; opCamAbrir=async function(){ const r=await _ca9.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=true; const bl=$('#eva-balao'); if(bl) bl.hidden=true; if(typeof EVA!=='undefined'&&EVA.aberta) evaAbrir(false); }catch(e){} return r; }; }
 { const _cf9=opCamFechar; opCamFechar=function(){ const r=_cf9.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=false; }catch(e){} return r; }; }
@@ -8358,7 +8358,7 @@ try{ NUV_CAMPOS.push('rotMarcas'); /* NUV_ADMIN: intencionalmente omitido — ca
     let d=cam.querySelector('.eva-dica'); if(!d){ d=document.createElement('div'); d.className='eva-dica'; d.style.cssText='position:absolute;left:12px;right:12px;top:92px;z-index:4;color:#fff;background:rgba(0,0,0,.62);border-radius:12px;padding:8px 12px;font-size:.86rem;line-height:1.35'; cam.appendChild(d); }
     d.innerHTML=html; d.hidden=false; clearTimeout(d._t); d._t=setTimeout(()=>{ d.hidden=true; },ms||9000); }; }
 
-/* ================= v9.9.0 · 🐼 Resolver: a EVA sugere a nota certa para quem ficou fora do romaneio/sem nota ================= */
+/* ================= v9.9.0 · 🦉 Resolver: a Pluma sugere a nota certa para quem ficou fora do romaneio/sem nota ================= */
 { const _cer2=cer; cer=function(){ const c=_cer2(); c.vinc=c.vinc||{}; return c; }; }
 function oresUmDigito(a,b){ a=String(a||''); b=String(b||''); if(!a||!b||a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d===1; }
 function evaEtqSug(b){ if(!b) return [];
@@ -8385,8 +8385,8 @@ function oresAbrir(lid){ const b=OP.bipes.find(x=>String(x.id||x.local_id)===Str
   const cands=evaEtqSug(b); let escolhido=null;
   const f=document.createElement('div'); f.className='fundo';
   f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:580px;text-align:left">
-    <h2>🐼 Resolver · pedido ${esc(b.ped||b.nf||'(sem pedido)')}</h2>
-    <p class="sec">A EVA procurou notas que podem ser esta caixa. Escolha uma, busque manualmente ou confirme se já bipou.</p>
+    <h2>🦉 Resolver · pedido ${esc(b.ped||b.nf||'(sem pedido)')}</h2>
+    <p class="sec">A Pluma procurou notas que podem ser esta caixa. Escolha uma, busque manualmente ou confirme se já bipou.</p>
     <div id="ores-cands">${cands.length?cands.map((c,i)=>`<div class="card" data-ores-pick="${i}" style="padding:8px 10px;margin-bottom:6px;cursor:pointer;border:1.5px solid var(--linha)"><b>${esc(c.ped||c.nf||'?')}</b> ${esc(c.row.cli||c.row.dest||'')} ${c.row.cid||c.row.cidade?'· '+esc(c.row.cid||c.row.cidade):''}<br><small class="sec">${esc(c.motivos.join(', '))}</small></div>`).join(''):'<p class="sec">Nenhuma sugestão por enquanto — busque manualmente abaixo.</p>'}</div>
     <input id="ores-busca" class="filtro" placeholder="Buscar por NF, pedido, cliente ou cidade" autocomplete="off" style="width:100%;margin-top:6px">
     <div id="ores-busca-res" style="max-height:180px;overflow:auto;margin-top:6px"></div>
@@ -8431,14 +8431,14 @@ function oresResolvidosRender(){ const cards=$('#op-cards'); if(!cards) return; 
 document.addEventListener('click',e=>{ const d=e.target.closest&&e.target.closest('[data-ores-desf]'); if(d){ oresDesfazer(d.dataset.oresDesf); } });
 { const _r2=opRender; opRender=function(){ const r=_r2.apply(this,arguments); try{ oresResolvidosRender(); }catch(e){ console.error(e); } return r; }; }
 
-/* ================= v9.9.0 · EVA ligada às etiquetas: chip no chat, contador e aviso na hora do bipe ================= */
+/* ================= v9.9.0 · Pluma ligada às etiquetas: chip no chat, contador e aviso na hora do bipe ================= */
 function evaEtqPendentes(){ try{ return OP.bipes.filter(b=>['fora','pit','semnota'].includes(b.status)&&evaEtqSug(b).some(c=>c.score>=50)); }catch(e){ return []; } }
 function evaEtqHtml(){ const P=evaEtqPendentes(); if(!P.length) return 'Não tenho nenhuma etiqueta pendente agora. 🙂';
   return P.slice(0,8).map(b=>{ const c=evaEtqSug(b)[0]; if(!c) return ''; return `<div class="eva-duv">Pedido <b>${esc(b.ped||b.nf||'?')}</b>: acho que é <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''}<br><small class="sec">${esc(c.motivos.join(', '))}</small><div class="eva-ops"><button type="button" class="btn mini" data-eva-etq-sim="${esc(String(b.id||b.local_id))}">É esta</button></div></div>`; }).join(''); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-eva-etq-sim]'); if(!b) return; const lid=b.dataset.evaEtqSim; const bip=OP.bipes.find(x=>String(x.id||x.local_id)===lid); if(!bip) return; const c=evaEtqSug(bip)[0]; if(!c){ toast('Essa sugestão não existe mais.'); return; } oresResolver(lid,c); try{ evaFala(evaEtqHtml()); }catch(e){} });
 { const _ee2=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/etiqueta/.test(t)) return evaEtqHtml(); return _ee2(txt); }; }
 { const _eb2=evaBadge; evaBadge=function(){ _eb2(); try{ const n=evaEtqPendentes().length; const b=$('#eva-qt'); if(b&&n){ b.textContent=(+b.textContent||0)+n; b.hidden=false; } }catch(e){} }; }
-{ const _enb=evaNoNexBip; evaNoNexBip=function(b){ const r=_enb(b); try{ if(b&&['fora','pit','semnota'].includes(b.status)){ const c=evaEtqSug(b)[0]; if(c&&c.score>=60) evaBalao(`🏷 Acho que essa caixa é o pedido <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''} — ${esc(c.motivos.join(', '))}. Toque em 🐼 Resolver para confirmar.`,9000,'etqpalpite'); } }catch(e){} return r; }; }
+{ const _enb=evaNoNexBip; evaNoNexBip=function(b){ const r=_enb(b); try{ if(b&&['fora','pit','semnota'].includes(b.status)){ const c=evaEtqSug(b)[0]; if(c&&c.score>=60) evaBalao(`🏷 Acho que essa caixa é o pedido <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''} — ${esc(c.motivos.join(', '))}. Toque em 🦉 Resolver para confirmar.`,9000,'etqpalpite'); } }catch(e){} return r; }; }
 function rotaS(){ return S.rotas=S.rotas||{atual:null,hist:[]}; }
 async function rotaLerPdf(f){ const buf=await f.arrayBuffer(); const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf),verbosity:0,isOffscreenCanvasSupported:false}).promise; const its=[];
   for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const tc=await pg.getTextContent(); for(const i of tc.items){ const t=(i.str||'').trim(); if(t) its.push({t,x:i.transform[4]+(i.width||0)/2,y:i.transform[5]-n*2000,x0:i.transform[4]}); } }
@@ -8802,7 +8802,7 @@ function dvavDaNota(k,re){ const ped=z(re&&re.ped||(String(k).startsWith('P')?St
       if(mud) salvar(); },{capture:true}); }catch(e){ console.error(e); }
   return r; }; }
 
-/* ---- EVA ---- */
+/* ---- Pluma ---- */
 evaDivergencias=(function(_f){ return function(t){ const L=S.divergencias; S.divergencias=dvSo(); try{ return _f(t); } finally{ S.divergencias=L; } }; })(evaDivergencias);
 function evaAvarias(){ const A=avS().filter(d=>d.st!=='resolvida').sort((a,b)=>String(a.d).localeCompare(String(b.d))); if(!A.length) return 'Nenhuma avaria em aberto. 🎉';
   return `<b>${fmtN(A.length)}</b> avaria(s) em aberto:<br>`+A.slice(0,30).map(d=>`🟣 <b>${avNum(d)}</b> · NF ${esc(d.nf||'—')} · ${esc(d.sub||'')} · ${d.qtd||'?'} vol. · ${esc(d.cli||'')} (${fmtData(d.d)})${d.st==='apareceu'?' · <b>voltou no romaneio</b>':''}`).join('<br>'); }
@@ -8881,7 +8881,7 @@ document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&!e.altKey&&(
   passos:[['Ações na nota','Na Busca, cada nota encontrada mostra: Divergência, Avaria, 🔁 Reentrega (lança nas Reentregas de hoje com o motivo) e 🕘 Linha do tempo (romaneios em que a nota esteve, bipes, divergências, avarias e reentregas, em ordem de data).'],
    ['Desfazer em 10 segundos','Depois de salvar uma divergência, uma avaria ou lançar uma reentrega pela Busca, aparece embaixo “↶ Desfazer” por 10 segundos. Clicou sem querer? Desfaça.'],
    ['Ctrl+K','De qualquer tela, aperte Ctrl+K: o app abre a Busca com o cursor pronto para digitar NF, pedido, cidade ou cliente.']]}); })();
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/(linha do tempo|historico|historia).*\d{5,}/.test(t)){ const m=t.match(/\d{5,}/); setTimeout(()=>linhaTempo({nf:m[0],ped:m[0]}),200); return `Abrindo a linha do tempo da nota <b>${esc(z(m[0]))}</b>. 🐼`; } if(/\b(ctrl ?k|atalho)/.test(t)) return 'Aperte <b>Ctrl+K</b> em qualquer tela para buscar uma NF, pedido, cidade ou cliente. Na Busca, cada nota tem Divergência, Avaria, Reentrega e Linha do tempo, e tudo pode ser desfeito em 10 segundos. 🐼'; return _ee(txt); }; }
+{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/(linha do tempo|historico|historia).*\d{5,}/.test(t)){ const m=t.match(/\d{5,}/); setTimeout(()=>linhaTempo({nf:m[0],ped:m[0]}),200); return `Abrindo a linha do tempo da nota <b>${esc(z(m[0]))}</b>. 🦉`; } if(/\b(ctrl ?k|atalho)/.test(t)) return 'Aperte <b>Ctrl+K</b> em qualquer tela para buscar uma NF, pedido, cidade ou cliente. Na Busca, cada nota tem Divergência, Avaria, Reentrega e Linha do tempo, e tudo pode ser desfeito em 10 segundos. 🦉'; return _ee(txt); }; }
 
 /* ================= v9.1.2 · backup só do administrador; os demais só salvam ================= */
 { const _vd=vsnDiaria; vsnDiaria=async function(){ if(!(typeof nvAdmin==='function'&&nvAdmin())) return; return _vd(); }; }
@@ -9104,12 +9104,12 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[d
   const pad=()=>{ document.querySelectorAll('button').forEach(b=>{ if(b.dataset.xlPad) return; const t=b.textContent.trim(); if(/^(Exportar Excel \(CSV\)|Exportar planilha|Baixar Excel)$/.test(t)){ b.dataset.xlPad=1; b.title=t; b.textContent='⬇ Excel'; } }); };
   pad(); setInterval(pad,4000); })();
 
-/* ---- Manual / EVA ---- */
+/* ---- Manual / Pluma ---- */
 (function(){ MAN.unshift({id:'menu2026',t:'Como o menu está organizado',img:'mural',intro:'O menu segue o dia de trabalho. Clique no nome do grupo para abrir ou fechar.',
   passos:[['Operação do dia','Buscar, Romaneios, NexBip, Conferência total, Rotas, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências, Avarias e Fora do romaneio. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],
    ['Planejamento','Agendamentos, Feriados e Geolocalização.'],['Relatórios e ajuda','Relatórios (todos os PDFs num lugar), Painel do gestor, Relatório Minas e este Manual.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups (todos os backups e restaurações num lugar só).'],
    ['Romaneios','Em cima só o carregar. Excel, planilha e “Remover todos” ficam em ⋯ Mais. O Banco de romaneios é a 3ª sub-aba. O arquivo de WhatsApp saiu: o app é online para todos.'],['Excel','Todo botão de planilha agora se chama ⬇ Excel.'],['Histórico','As últimas buscas ficam dentro da própria Busca.']]}); })();
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/onde (fica|esta|está)|cade|cadê/.test(t)){ const M={backup:'Administração → Backups',relatorio:'Relatórios e ajuda → Relatórios',divergen:'Ocorrências → Divergências (para registrar: bipe no NexBip e marque o quadrado)',avaria:'Ocorrências → Avarias',banco:'Romaneios → sub-aba Banco de romaneios',excel:'botão ⬇ Excel em cada tela',historico:'dentro da Busca (últimas buscas)'}; for(const [k,v] of Object.entries(M)) if(t.includes(k)) return `Fica em <b>${v}</b>. 🐼`; } return _ee(txt); }; }
+{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/onde (fica|esta|está)|cade|cadê/.test(t)){ const M={backup:'Administração → Backups',relatorio:'Relatórios e ajuda → Relatórios',divergen:'Ocorrências → Divergências (para registrar: bipe no NexBip e marque o quadrado)',avaria:'Ocorrências → Avarias',banco:'Romaneios → sub-aba Banco de romaneios',excel:'botão ⬇ Excel em cada tela',historico:'dentro da Busca (últimas buscas)'}; for(const [k,v] of Object.entries(M)) if(t.includes(k)) return `Fica em <b>${v}</b>. 🦉`; } return _ee(txt); }; }
 
 /* ================= v9.3.1 · 📲 Grupo da operação (WhatsApp) ================= */
 try{ NUV_CAMPOS.push('zapGrupo'); NUV_ADMIN.add('s:zapGrupo'); }catch(e){}
@@ -9154,7 +9154,7 @@ function chAvisar(c){ let el=$('#ch-aviso'); if(!el){ el=document.createElement(
   const u=MAN.find(x=>/Usu[aá]rios/i.test(x.t)); const p=['Primeiro acesso','O administrador cria o usuário com qualquer senha provisória (mínimo 6). No primeiro acesso, a pessoa entra com usuário e essa senha e o app pede para criar uma senha própria. O mesmo acontece quando o administrador redefine a senha. O e-mail é opcional.'];
   if(u&&u.passos) u.passos.push(p); else { const m=MAN.find(x=>x.id==='menu2026'); if(m) m.passos.push(p); } })();
 
-/* ================= v9.5.0 · Configurações (Ajustes, EVA, Ajuda), rodapé com usuário/Deslogar, salvo online discreto ================= */
+/* ================= v9.5.0 · Configurações (Ajustes, Pluma, Ajuda), rodapé com usuário/Deslogar, salvo online discreto ================= */
 (function(){ const st=document.createElement('style'); st.textContent=`
 .resumo dl,.resumo .salvo,#bt-legenda,#bt-tema,.resumo .autoria-pre{display:none!important}
 .rail-user{display:none!important}
@@ -9189,15 +9189,15 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t
   if(t.id==='aj-ord-ok'){ try{ localStorage.setItem('healthSearch.menuOrdem',JSON.stringify(window._ajOrd)); }catch(x){} toast('Ordem salva. Recarregando o menu…'); setTimeout(()=>location.reload(),700); return; }
   if(t.id==='aj-ord-pad'){ try{ localStorage.removeItem('healthSearch.menuOrdem'); }catch(x){} toast('Ordem padrão. Recarregando…'); setTimeout(()=>location.reload(),700); return; }
   if(t.id==='aj-s-ok'){ const a=$('#aj-s1').value, c=$('#aj-s2').value; if(a!==c){ toast('As duas senhas não são iguais.'); return; } const fr=senhaFraca(a,NV.perfil&&NV.perfil.usuario); if(fr){ toast(fr); return; } t.disabled=true; const {error}=await NV.cli.auth.updateUser({password:a}); t.disabled=false; toast(error?'Não troquei: '+nvTraduz(error.message):'✔ Senha trocada.'); if(!error){ $('#aj-s1').value=''; $('#aj-s2').value=''; } } });
-/* EVA no centro */
+/* Pluma no centro */
 function evaTela(){ const p=$('#eva-painel'), c=$('#eva-centro'); if(p&&c&&!c.contains(p)){ window._evaCasa=p.parentNode; c.appendChild(p); } if(p) p.hidden=false; const i=$('#eva-in'); if(i&&!TOQUE) setTimeout(()=>i.focus(),50); }
 { const _ir=irPara; irPara=function(t){ if(t!=='eva'){ const p=$('#eva-painel'); if(p&&$('#eva-centro')&&$('#eva-centro').contains(p)&&window._evaCasa){ window._evaCasa.appendChild(p); p.hidden=true; } } _ir(t); }; }
 /* Ajuda */
 function ajudaTela(){ $('#ajd-corpo').innerHTML=`<div class="aj-card"><h2>🚀 Começo rápido</h2><ol style="margin:0;padding-left:20px;line-height:1.8"><li><b>Planejamento → Romaneios</b>: carregue os PDFs do dia e depois os XMLs.</li><li><b>Operacional → NexBip</b>: bipe as caixas (câmera ou leitor).</li><li><b>Operacional → Conferência total</b>: acompanhe a % do dia.</li><li><b>Ocorrências</b>: reentregas, divergências e avarias.</li></ol></div>
   <div class="aj-card"><h2>⌨ Atalhos</h2><p style="margin:0;line-height:1.8"><b>Ctrl+K</b> buscar de qualquer tela · <b>Ctrl+S</b> salvar · <b>Esc</b> voltar · <b>?</b> em cada tela abre o Manual daquela tela.</p></div>
-  <div class="aj-card"><h2>🙋 Precisa de ajuda?</h2><div class="barra" style="gap:8px"><button class="btn" type="button" onclick="irPara('eva')">🐼 Perguntar à EVA</button><button class="btn" type="button" onclick="irPara('manual')">📘 Abrir o Manual</button><button class="btn pri" type="button" onclick="irPara('chamados')">💬 Falar com o administrador</button></div></div>
+  <div class="aj-card"><h2>🙋 Precisa de ajuda?</h2><div class="barra" style="gap:8px"><button class="btn" type="button" onclick="irPara('eva')">🦉 Perguntar à Pluma</button><button class="btn" type="button" onclick="irPara('manual')">📘 Abrir o Manual</button><button class="btn pri" type="button" onclick="irPara('chamados')">💬 Falar com o administrador</button></div></div>
   <div class="aj-card"><h2>☁ Símbolos do topo</h2><p style="margin:0;line-height:1.8"><b>☁⚡ salvo online</b>: tudo sincronizado e ao vivo · <b>☁ salvo online</b>: sincronizado (confere a cada pouco) · <b>☁ ↑</b>: enviando · <b>☁ offline</b>: sem internet, guardado no aparelho · <b>☁ erro</b>: o banco não respondeu (toque para ver o motivo).</p></div>`; }
-(function(){ const m=MAN.find(x=>x.id==='menu2026'); if(m){ m.t='Como o menu está organizado'; m.passos=[['Operacional','NexBip, Conferência total, Buscar, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências e Avarias. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],['Planejamento','Rotas, Agendamentos, Feriados, Romaneios e Geolocalização.'],['Relatórios','Relatórios (gera os PDFs), Painel do gestor (gráficos ao vivo) e Relatório Minas.'],['Configurações','Falar com o administrador, Ajustes (tema claro/escuro, trocar senha, ordem dos títulos do menu), EVA, Manual e Ajuda.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups.'],['Rodapé do menu','Seu nome e função, o botão Deslogar, a versão e os direitos.'],['Símbolos do topo','☁⚡ salvo online (ao vivo) · ☁ salvo online · ☁ ↑ enviando · ☁ offline (guardado no aparelho) · ☁ erro (toque para ver o motivo).'],...m.passos.filter(p=>/Grupo da operação|Romaneios|Excel|Histórico/.test(p[0]))]; } })();
+(function(){ const m=MAN.find(x=>x.id==='menu2026'); if(m){ m.t='Como o menu está organizado'; m.passos=[['Operacional','NexBip, Conferência total, Buscar, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências e Avarias. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],['Planejamento','Rotas, Agendamentos, Feriados, Romaneios e Geolocalização.'],['Relatórios','Relatórios (gera os PDFs), Painel do gestor (gráficos ao vivo) e Relatório Minas.'],['Configurações','Falar com o administrador, Ajustes (tema claro/escuro, trocar senha, ordem dos títulos do menu), Pluma, Manual e Ajuda.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups.'],['Rodapé do menu','Seu nome e função, o botão Deslogar, a versão e os direitos.'],['Símbolos do topo','☁⚡ salvo online (ao vivo) · ☁ salvo online · ☁ ↑ enviando · ☁ offline (guardado no aparelho) · ☁ erro (toque para ver o motivo).'],...m.passos.filter(p=>/Grupo da operação|Romaneios|Excel|Histórico/.test(p[0]))]; } })();
 
 /* ---- v9.5.0 · Layout por aparelho: cada coisa no seu lugar, nada sobrepõe ---- */
 (function(){ const st=document.createElement('style'); st.textContent=`
@@ -9285,7 +9285,7 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest) re
 /* ---- Romaneios: só Carregados e Banco de dados ---- */
 (function(){ const seg=document.querySelector('.rom-sub'); if(!seg) return; const x=seg.querySelector('[data-rom-sub="excel"]'); if(x) x.style.display='none'; const bd=seg.querySelector('[data-rom-sub="banco"]'); if(bd) bd.textContent='Banco de dados'; const bt=$('#t-excel'); if(bt) bt.hidden=true; })();
 
-/* ================= v9.5.2 · Painel do gestor ao vivo · Rotas com histórico por dia · EVA que aprende ================= */
+/* ================= v9.5.2 · Painel do gestor ao vivo · Rotas com histórico por dia · Pluma que aprende ================= */
 { const _g=gestorRender; gestorRender=function(){ _g.apply(this,arguments); try{ const g=$('#t-gestor .gs-grid'); if(!g) return;
     const hoje=hojeISO(); const bip=((OP&&OP.bipes)||[]).filter(b=>{ const d=new Date(b.criado_em||0); return diaLocal(d.toISOString())===hoje; });
     const hr=new Map(); for(const b of bip){ const h=String(new Date(b.criado_em).getHours()).padStart(2,'0')+'h'; hr.set(h,(hr.get(h)||0)+1); }
@@ -9306,17 +9306,17 @@ setInterval(()=>{ try{ const R=rotaS(); if(!R.atual||!rotEhRoteirizador()) retur
 { const _r=rotaRender; rotaRender=function(){ _r(); try{ const R=rotaS(); const ds=Object.keys(R.dias||{}).sort().reverse(); const sel=$('#rot-hist'); if(!ds.length) return; if(sel&&!sel.dataset.dias){ sel.dataset.dias=1; sel.insertAdjacentHTML('beforeend',`<optgroup label="Último upload de cada dia">${ds.map(d=>`<option value="dia:${d}" ${ROT.ver===R.dias[d].id?'selected':''}>${fmtData(d)} (último do dia)</option>`).join('')}</optgroup>`); } }catch(e){} }; }
 document.addEventListener('change',e=>{ const s=e.target; if(s.id!=='rot-hist'||!String(s.value).startsWith('dia:')) return; e.stopImmediatePropagation(); const R=rotaS(); const r=R.dias[s.value.slice(4)]; if(!r) return; if(!(R.hist||[]).some(h=>h.id===r.id)) R.hist=(R.hist||[]).concat([r]); ROT.ver=r.id; rotaRender(); },true);
 
-/* EVA que aprende: o admin ensina regras, perguntas e respostas (com foto); todos aproveitam */
+/* Pluma que aprende: o admin ensina regras, perguntas e respostas (com foto); todos aproveitam */
 try{ NUV_CAMPOS.push('evaEnsino'); NUV_ADMIN.add('s:evaEnsino'); }catch(e){}
 const evaE=()=>S.evaEnsino=S.evaEnsino||{regras:[],fatos:[]};
 function evaFatoAcha(txt){ const t=evaN(txt); const L=evaE().fatos; let melhor=null,mp=0; for(const f of L){ const ks=evaN(f.p).split(/\s+/).filter(w=>w.length>2); if(!ks.length) continue; const hit=ks.filter(w=>t.includes(w)).length/ks.length; if(hit>mp){ mp=hit; melhor=f; } } return mp>=0.75?melhor:null; }
 { const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt);
-  if(/\b(suas|quais) regras\b|o que (te|voce) ensin/.test(t)){ const R=evaE().regras; return R.length?'<b>Regras que o administrador me ensinou:</b><br>'+R.map((r,i)=>`${i+1}. ${esc(r.txt)}`).join('<br>'):'Ainda não tenho regras ensinadas. 🐼'; }
-  const f=evaFatoAcha(txt); if(f) return esc(f.r).replace(/\n/g,'<br>')+(f.foto?`<br><img src="${f.foto}" alt="" style="max-width:100%;border-radius:10px;margin-top:6px">`:'')+' 🐼';
+  if(/\b(suas|quais) regras\b|o que (te|voce) ensin/.test(t)){ const R=evaE().regras; return R.length?'<b>Regras que o administrador me ensinou:</b><br>'+R.map((r,i)=>`${i+1}. ${esc(r.txt)}`).join('<br>'):'Ainda não tenho regras ensinadas. 🦉'; }
+  const f=evaFatoAcha(txt); if(f) return esc(f.r).replace(/\n/g,'<br>')+(f.foto?`<br><img src="${f.foto}" alt="" style="max-width:100%;border-radius:10px;margin-top:6px">`:'')+' 🦉';
   return _ee(txt); }; }
 function evaEnsinoRender(){ const c=$('#eva-centro'); if(!c) return; let el=$('#eva-ens'); if(!nvAdmin()){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div'); el.id='eva-ens'; c.appendChild(el); }
-  const E=evaE(); el.innerHTML=`<div class="aj-card" style="margin-top:14px"><h2>🎓 Ensinar a EVA (só administrador)</h2>
+  const E=evaE(); el.innerHTML=`<div class="aj-card" style="margin-top:14px"><h2>🎓 Ensinar a Pluma (só administrador)</h2>
    <p class="sec" style="margin:0 0 10px">Ensine como se ensina uma criança: uma regra por vez, ou uma pergunta com a resposta certa (pode pôr foto). Tudo vale para todos os usuários.</p>
    <h3 style="font-size:.95rem;margin:10px 0 6px">Regras que ela segue</h3><div style="display:flex;gap:8px"><input id="ee-regra" placeholder="Ex.: Nota da MESA que volta outro dia é reentrega" style="flex:1"><button class="btn pri mini" type="button" id="ee-regra-ok">Ensinar</button></div>
    <ol style="margin:8px 0 0;padding-left:20px">${E.regras.map((r,i)=>`<li>${esc(r.txt)} <button class="op-x" type="button" data-ee-dr="${i}">✕</button></li>`).join('')}</ol>
@@ -9325,17 +9325,17 @@ function evaEnsinoRender(){ const c=$('#eva-centro'); if(!c) return; let el=$('#
 let _eeFoto='';
 document.addEventListener('change',async e=>{ if(e.target.id==='ee-f'){ _eeFoto=await avFoto(e.target.files[0]); $('#ee-fpv').textContent=_eeFoto?'foto pronta ✓':''; } });
 document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.closest('#eva-ens')) return; const E=evaE(); let b;
-  if(t.id==='ee-regra-ok'){ const v=$('#ee-regra').value.trim(); if(!v) return; E.regras.push({txt:v,em:new Date().toISOString()}); salvar(); evaEnsinoRender(); toast('🐼 A EVA aprendeu a regra.'); return; }
-  if(t.id==='ee-ok'){ const p=$('#ee-p').value.trim(), r=$('#ee-r').value.trim(); if(!p||!r){ toast('Escreva a pergunta e a resposta.'); return; } E.fatos.push({p,r,foto:_eeFoto,em:new Date().toISOString()}); _eeFoto=''; salvar(); evaEnsinoRender(); toast('🐼 A EVA aprendeu.'); return; }
+  if(t.id==='ee-regra-ok'){ const v=$('#ee-regra').value.trim(); if(!v) return; E.regras.push({txt:v,em:new Date().toISOString()}); salvar(); evaEnsinoRender(); toast('🦉 A Pluma aprendeu a regra.'); return; }
+  if(t.id==='ee-ok'){ const p=$('#ee-p').value.trim(), r=$('#ee-r').value.trim(); if(!p||!r){ toast('Escreva a pergunta e a resposta.'); return; } E.fatos.push({p,r,foto:_eeFoto,em:new Date().toISOString()}); _eeFoto=''; salvar(); evaEnsinoRender(); toast('🦉 A Pluma aprendeu.'); return; }
   if((b=t.closest('[data-ee-dr]'))){ E.regras.splice(+b.dataset.eeDr,1); salvar(); evaEnsinoRender(); return; }
   if((b=t.closest('[data-ee-df]'))){ E.fatos.splice(+b.dataset.eeDf,1); salvar(); evaEnsinoRender(); } });
 { const _et=evaTela; evaTela=function(){ _et(); evaEnsinoRender(); }; }
 (function(){ const st=document.createElement('style'); st.textContent='.ee-f{display:grid;grid-template-columns:1fr 2fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--linha)}@media(max-width:600px){.ee-f{grid-template-columns:1fr auto}}'; document.head.appendChild(st);
-  MAN.push({id:'eva-ensino',t:'EVA — conversar e ensinar',img:'mural',intro:'Configurações → EVA abre a EVA no centro da tela.',passos:[['Conversar','Todos podem tirar dúvidas, pedir para procurar notas, cidades, ocorrências e rotas.'],['Ensinar (admin)','O administrador escreve regras (“o que ela deve saber”) e perguntas com a resposta certa, com foto se quiser. A EVA passa a responder isso para todos.'],['Perguntar o que ela aprendeu','Pergunte “quais são suas regras?”.']]});
+  MAN.push({id:'eva-ensino',t:'Pluma — conversar e ensinar',img:'mural',intro:'Configurações → Pluma abre a Pluma no centro da tela.',passos:[['Conversar','Todos podem tirar dúvidas, pedir para procurar notas, cidades, ocorrências e rotas.'],['Ensinar (admin)','O administrador escreve regras (“o que ela deve saber”) e perguntas com a resposta certa, com foto se quiser. A Pluma passa a responder isso para todos.'],['Perguntar o que ela aprendeu','Pergunte “quais são suas regras?”.']]});
   const g=MAN.find(x=>/gestor/i.test(x.t)); if(g&&g.passos) g.passos.unshift(['Ao vivo','O Painel do gestor atualiza sozinho a cada 30 segundos: % conferido, bipes por hora e por pessoa (em “por pessoa” o bipe duplicado não conta, só o válido), ocorrências abertas, avarias por tipo, reentregas por motivo, motorista e dia.']);
   const r=MAN.find(x=>/^Rotas|ROTAS/i.test(x.t)); if(r&&r.passos) r.passos.push(['Histórico por dia','O último upload de cada dia fica guardado. À meia-noite a rota do dia vai para o histórico; escolha o dia na lista “Último upload de cada dia”.']); })();
 
-/* ================= v9.5.3 · EVA animada na aba EVA (expressões, gestos, interação) ================= */
+/* ================= v9.5.3 · Pluma animada na aba Pluma (expressões, gestos, interação) ================= */
 const EVA_BIG=`<svg class="evb" viewBox="0 0 200 260" aria-hidden="true">
  <defs><radialGradient id="evbG" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#EEF0F4"/></radialGradient></defs>
  <ellipse class="sombra" cx="100" cy="250" rx="54" ry="8" fill="#000" opacity=".18"/>
@@ -9414,10 +9414,10 @@ const EVB_FRASES=['Oi! Tô aqui pra ajudar 🦉','Pode me perguntar sobre qualqu
   }catch(e){} }; }
 /* de vez em quando ela olha em volta / acena sozinha */
 setInterval(()=>{ try{ if($('#t-eva').hidden||document.hidden) return; const s=document.querySelector('#t-eva .evb'); if(!s||s.dataset.st) return; const r=Math.random(); if(r<.25) evbEstado('acenando',1700); else if(r<.5) evbEstado('ouvindo',1200); }catch(e){} },9000);
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.unshift(['EVA ao vivo','Na aba EVA ela aparece grande ao lado do chat: acena quando você chega, inclina a cabeça enquanto você digita, pensa enquanto procura, fala a resposta no balão, fica feliz quando acha e triste quando não acha. Clique nela para brincar. Nessa aba o botão do cantinho some.']); })();
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.unshift(['Pluma ao vivo','Na aba Pluma ela aparece grande ao lado do chat: acena quando você chega, inclina a cabeça enquanto você digita, pensa enquanto procura, fala a resposta no balão, fica feliz quando acha e triste quando não acha. Clique nela para brincar. Nessa aba o botão do cantinho some.']); })();
 
 
-/* ---- EVA levanta a mão quando tem dúvida ---- */
+/* ---- Pluma levanta a mão quando tem dúvida ---- */
 (function(){ const st=document.createElement('style'); st.textContent=`.evb[data-st="duvida"] .braco-e{transform:rotate(150deg) translate(-6px,8px);transition:transform .35s}.evb[data-st="duvida"] .pupila{transform:translate(2px,-4px)}.evb[data-st="duvida"] .sobr .s1{transform:translateY(-5px)}.evb[data-st="duvida"] .corpo{animation:evbResp 1.2s ease-in-out infinite}
 #eva-bt.tem-duvida::after{content:"✋";position:absolute;top:-6px;left:-6px;font-size:20px;animation:evbPensa 1.2s infinite}`; document.head.appendChild(st); })();
 function evbDuvidas(){ try{ return evaPendentes().length; }catch(e){ return 0; } }
@@ -9426,17 +9426,17 @@ setInterval(()=>{ try{ const n=evbDuvidas(); const bt=$('#eva-bt'); if(bt) bt.cl
   if(n&&nvAdmin()&&(!s.dataset.st||s.dataset.st==='duvida')){ if(s.dataset.st!=='duvida'){ evbEstado('duvida'); evbDiz(`✋ Tenho ${n} dúvida${n>1?'s':''}! Me toca para eu perguntar.`); } }
   else if(s.dataset.st==='duvida'&&!n) evbEstado(''); }catch(e){} },2000);
 document.addEventListener('click',e=>{ const s=e.target.closest&&e.target.closest('#t-eva .evb'); if(!s||s.dataset.st!=='duvida') return; e.stopImmediatePropagation(); const b=[...document.querySelectorAll('#eva-painel button')].find(x=>/Dúvidas/.test(x.textContent)); if(b) b.click(); },true);
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Mão levantada','Quando a EVA tem uma dúvida (ex.: uma etiqueta ou cidade que ela não tem certeza), ela levanta a mão ✋ — na aba EVA e no botão do cantinho. O administrador toca nela e responde; ela aprende.']); })();
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Mão levantada','Quando a Pluma tem uma dúvida (ex.: uma etiqueta ou cidade que ela não tem certeza), ela levanta a mão ✋ — na aba Pluma e no botão do cantinho. O administrador toca nela e responde; ela aprende.']); })();
 
 
-/* ---- EVA com personalidade: humor pelo andamento do dia ---- */
+/* ---- Pluma com personalidade: humor pelo andamento do dia ---- */
 function evbHumor(){ const hoje=hojeISO(); const bip=((OP&&OP.bipes)||[]).filter(b=>diaLocal(new Date(b.criado_em||0).toISOString())===hoje);
   const fora=bip.filter(b=>b.status==='fora').length, notas=todasLinhas().length, conf=new Set(bip.filter(b=>b.status!=='fora').map(b=>opK(b.nf||'')).filter(Boolean)).size, pct=notas?Math.round(100*Math.min(conf,notas)/notas):0;
   let reH=0; try{ reH=(RE.ler().dias[hoje]||[]).length; }catch(e){}
   const av=dvS().filter(d=>d.st!=='resolvida').length; const pick=a=>a[Math.floor(Math.random()*a.length)];
   if(fora>=10) return {st:'triste',pulo:true,txt:pick([`Ai ai… <b>${fora}</b> caixas fora do romaneio hoje 😟 Bora puxar essas notas?`,`<b>${fora}</b> fora do romaneio?! Tô preocupada 😣`])};
   if(fora>=5) return {st:'triste',txt:pick([`Hmm, já são <b>${fora}</b> fora do romaneio hoje. Fica de olho! 👀`,`<b>${fora}</b> caixas fora do romaneio… não gosto disso 😕`])};
-  if(notas&&pct>=95) return {st:'feliz',pulo:true,txt:pick([`<b>${pct}%</b> conferido! Vocês são demais! 🎉🐼`,`Uhuul! <b>${pct}%</b> do dia conferido! 🥳`])};
+  if(notas&&pct>=95) return {st:'feliz',pulo:true,txt:pick([`<b>${pct}%</b> conferido! Vocês são demais! 🎉🦉`,`Uhuul! <b>${pct}%</b> do dia conferido! 🥳`])};
   if(notas&&pct>=60) return {st:'feliz',txt:pick([`Tá indo bem! <b>${pct}%</b> conferido 💪`,`Mais da metade! <b>${pct}%</b> já foi 😄`])};
   if(reH>=5) return {st:'triste',txt:`Hoje já temos <b>${reH}</b> reentregas… vamos caprichar 🙏`};
   if(av) return {st:'',txt:`Tem <b>${av}</b> ocorrência(s) aberta(s) esperando alguém 🧐`};
@@ -9448,9 +9448,9 @@ function evbReage(){ const s=document.querySelector('#t-eva .evb'); if(!s||(s.da
 setInterval(()=>{ try{ if(document.hidden||$('#t-eva').hidden) return; if(evbDuvidas()&&nvAdmin()) return; evbReage(); }catch(e){} },25000);
 /* pulo também quando triste (personalidade) */
 (function(){ const st=document.createElement('style'); st.textContent='.evb[data-st="triste"] .corpo{animation:evbPulo .6s ease-out}'; document.head.appendChild(st); })();
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Personalidade','A EVA reage ao dia: pula de alegria com a conferência alta, fica triste (e pula de nervoso) com muitas caixas fora do romaneio ou muitas reentregas, e avisa ocorrências abertas.']); })();
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Personalidade','A Pluma reage ao dia: pula de alegria com a conferência alta, fica triste (e pula de nervoso) com muitas caixas fora do romaneio ou muitas reentregas, e avisa ocorrências abertas.']); })();
 
-/* ================= v9.5.5 · EVA redesenhada (grande e miniatura iguais) com roupa: colete, capacete, laço ================= */
+/* ================= v9.5.5 · Pluma redesenhada (grande e miniatura iguais) com roupa: colete, capacete, laço ================= */
 function evbSvg(v,extraCls){ v=v||evaVis(); const cor=v.cor||'#EC4899', escuro=v.cor?v.cor:'#DB2777';
   const colete=v.colete?`
    <g class="colete">
@@ -9515,16 +9515,16 @@ evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
 { const _et=evaTela; evaTela=function(){ _et(); try{ const b=document.querySelector('#t-eva .evb:not(.evb-mini)'); if(b&&!b.dataset.v955){ const st=b.dataset.st||''; b.outerHTML=evbSvg(evaVis()); const n=document.querySelector('#t-eva .evb:not(.evb-mini)'); n.dataset.v955=1; n.dataset.st=st; n.addEventListener('click',()=>{ if(n.dataset.st==='duvida') return; evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); } }catch(e){} }; }
 setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} },1500);
 
-/* ================= v9.5.6 · Roupa da EVA no banco (o admin escolhe, todos veem igual) ================= */
+/* ================= v9.5.6 · Roupa da Pluma no banco (o admin escolhe, todos veem igual) ================= */
 try{ NUV_CAMPOS.push('evaVisual'); NUV_ADMIN.add('s:evaVisual'); }catch(e){}
 { const _v=evaVis; evaVis=function(){ if(S.evaVisual&&typeof S.evaVisual==='object') return Object.assign({colete:false,capacete:false,laco:true,cor:'#EC4899'},S.evaVisual); return _v(); }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-ep="ok"]'); if(!b) return;
-  if(!nvAdmin()){ e.stopImmediatePropagation(); toast('A roupa da EVA é escolhida pelo administrador e vale para todos.'); const f=b.closest('.fundo'); if(f) f.remove(); return; }
+  if(!nvAdmin()){ e.stopImmediatePropagation(); toast('A roupa da Pluma é escolhida pelo administrador e vale para todos.'); const f=b.closest('.fundo'); if(f) f.remove(); return; }
   const v={colete:$('#ep-colete').checked,capacete:$('#ep-capacete').checked,laco:$('#ep-laco').checked,cor:$('#ep-cor').value,em:new Date().toISOString()};
   S.evaVisual=v; salvar(); setTimeout(()=>{ try{ nuvSinc(); }catch(x){} toast('Pluma personalizada para todos os usuários!'); },200); },true);
 /* quando a roupa muda em outro aparelho, aplica na hora */
 let _evaVisH=''; setInterval(()=>{ try{ const h=JSON.stringify(S.evaVisual||null); if(h!==_evaVisH){ _evaVisH=h; evaAplicarVisual(); } }catch(e){} },3000);
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Roupa da EVA','Em 🎨 Personalizar EVA o administrador escolhe colete refletivo, capacete e a cor do laço. A escolha fica no banco e todos os usuários veem a EVA igual.']); })();
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Roupa da Pluma','Em 🎨 Personalizar Pluma o administrador escolhe colete refletivo, capacete e a cor do laço. A escolha fica no banco e todos os usuários veem a Pluma igual.']); })();
 
 /* ================= v9.5.7 · Aviso de nova versão: discreto no topo, salva na nuvem antes de atualizar ================= */
 (function(){ const st=document.createElement('style'); st.textContent=`#app-att{top:calc(12px + env(safe-area-inset-top,0px))!important;bottom:auto!important;z-index:1800!important;border-radius:999px!important;padding:6px 6px 6px 14px!important;background:linear-gradient(90deg,#0f4c4c,#12806f)!important;border:1px solid rgba(255,255,255,.2);font-size:.85rem!important;max-width:min(520px,calc(100vw - 24px))!important}
@@ -9701,7 +9701,7 @@ function hsCineHtml(){ let ticks=''; for(let i=0;i<60;i++){ const g=i%5===0; tic
   const c=document.createElement('div'); c.id='hs-cine'; c.style.zIndex='2100'; c.innerHTML=hsCineHtml(); document.body.appendChild(c);
   let fim=false; const sair=()=>{ if(fim) return; fim=true; c.classList.add('fim'); setTimeout(()=>c.remove(),700); };
   c.addEventListener('click',sair); document.addEventListener('keydown',function k(){ document.removeEventListener('keydown',k); sair(); }); setTimeout(sair,5600); }catch(e){ console.error(e); } })();
-/* ================= v9.6.3 · EVA com mais expressões (piscadinha, comemora, emburrada, estrelas, amor, coração partido, curativo, surpresa) ================= */
+/* ================= v9.6.3 · Pluma com mais expressões (piscadinha, comemora, emburrada, estrelas, amor, coração partido, curativo, surpresa) ================= */
 (function(){ const estrela=(cx,cy,r)=>{ let d=''; for(let i=0;i<10;i++){ const a=Math.PI/5*i-Math.PI/2, q=i%2?r*.45:r; d+=(i?'L':'M')+(cx+q*Math.cos(a)).toFixed(1)+' '+(cy+q*Math.sin(a)).toFixed(1); } return d+'Z'; };
   const brilho=(x,y,s,d)=>`<path class="x-tw" style="animation-delay:${d}s" d="M${x} ${y-s} Q${x} ${y} ${x+s} ${y} Q${x} ${y} ${x} ${y+s} Q${x} ${y} ${x-s} ${y} Q${x} ${y} ${x} ${y-s}Z" fill="#FDE047" stroke="#CA8A04" stroke-width="1"/>`;
   const cor='M100 226 C68 204 62 180 80 172 C91 167 100 176 100 183 C100 176 109 167 120 172 C138 180 132 204 100 226 Z';
@@ -9743,8 +9743,8 @@ ${S('surpresa','.x-o')+on}${S('surpresa','.b-sorriso')+off}${S('surpresa','.s1')
 @media (max-width:860px){.eva-expr{display:none}}`; document.head.appendChild(st);
 })();
 const EVB_EXPR=[['piscadinha','😉','Pode deixar comigo! 😉',1800],['comemora','🎉','Uhuuul! 🎉',2400],['estrelas','🤩','Uau, que incrível! ✨',2400],['amor','💖','Adoro trabalhar com vocês! 💖',2800],['surpresa','😮','Oh! 😮',1400],['emburrada','😤','Hunf! Não gostei disso. 😤',2600],['partido','💔','Ai… isso me deixa triste. 💔',2800],['curativo','🩹','Pronto, já passou! 🩹',2800]];
-/* botões de expressão abaixo da EVA + clique nela */
-{ const _et=evaTela; evaTela=function(){ _et(); try{ const bon=document.querySelector('#t-eva .eva-boneca'); if(bon&&!bon.querySelector('.eva-expr')) bon.insertAdjacentHTML('beforeend','<div class="eva-expr" aria-label="Expressões da EVA">'+EVB_EXPR.map((e,i)=>`<button type="button" data-evx="${i}" title="${e[0]}">${e[1]}</button>`).join('')+'</div>'); }catch(e){} }; }
+/* botões de expressão abaixo da Pluma + clique nela */
+{ const _et=evaTela; evaTela=function(){ _et(); try{ const bon=document.querySelector('#t-eva .eva-boneca'); if(bon&&!bon.querySelector('.eva-expr')) bon.insertAdjacentHTML('beforeend','<div class="eva-expr" aria-label="Expressões da Pluma">'+EVB_EXPR.map((e,i)=>`<button type="button" data-evx="${i}" title="${e[0]}">${e[1]}</button>`).join('')+'</div>'); }catch(e){} }; }
 document.addEventListener('click',e=>{ const t=e.target; if(!t.closest) return; const b=t.closest('[data-evx]'); if(b){ const x=EVB_EXPR[+b.dataset.evx]; evbEstado(x[0],x[3]); evbDiz(x[2]); return; }
   const s=t.closest('#t-eva .evb'); if(s&&s.dataset.st!=='duvida'){ e.stopImmediatePropagation(); const x=EVB_EXPR[Math.floor(Math.random()*5)]; evbEstado(x[0],x[3]); evbDiz(Math.random()<.5?x[2]:EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); } },true);
 /* reações ligadas à operação */
@@ -9756,8 +9756,8 @@ evbReage=function(){ const s=document.querySelector('#t-eva .evb'); if(!s||s.dat
     setTimeout(()=>{ if($('#t-eva').hidden) return; if(ruim) evbEstado(Math.random()<.5?'triste':'surpresa',1400); else evbEstado(['feliz','piscadinha','estrelas'][Math.floor(Math.random()*3)],1500); },ms+60); }catch(e){} }; }
 /* divergência/avaria resolvida → coração com curativo */
 { let _res=null; setInterval(()=>{ try{ const n=dvS().filter(d=>d.st==='resolvida').length; if(_res!==null&&n>_res&&!$('#t-eva').hidden){ evbEstado('curativo',3200); evbDiz('Oba, uma ocorrência foi resolvida! 🩹💖'); } _res=n; }catch(e){} },3000); }
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Expressões','A EVA tem várias reações: piscadinha 😉, comemoração 🎉, olhos de estrela 🤩, abraço no coração 💖, surpresa 😮, emburrada 😤 (muitas reentregas ou caixas fora do romaneio), coração partido 💔 (dia muito ruim) e coração com curativo 🩹 (quando uma ocorrência é resolvida). No computador, os botões abaixo dela mostram cada uma.']); })();
-/* v9.13.1 · Manual e EVA acompanham a 9.13.0 (pausa entre bipes, Relatório Minas, checklist) */
+(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Expressões','A Pluma tem várias reações: piscadinha 😉, comemoração 🎉, olhos de estrela 🤩, abraço no coração 💖, surpresa 😮, emburrada 😤 (muitas reentregas ou caixas fora do romaneio), coração partido 💔 (dia muito ruim) e coração com curativo 🩹 (quando uma ocorrência é resolvida). No computador, os botões abaixo dela mostram cada uma.']); })();
+/* v9.13.1 · Manual e Pluma acompanham a 9.13.0 (pausa entre bipes, Relatório Minas, checklist) */
 (function(){ try{ const o=MAN.find(x=>x.id==='operacao'); if(o&&o.passos) o.passos.push(['⏱ Pausa entre bipes','Depois de um bipe que deu certo a câmera espera 2 segundos antes de aceitar o próximo — dá tempo de tirar a caixa e evita ler a mesma etiqueta duas vezes. Se a leitura deu erro (fora do romaneio ou duplicado), a espera é de só 0,5 segundo para você tentar de novo. O contador aparece na própria câmera.']); }catch(e){} })();
 </script>
 
