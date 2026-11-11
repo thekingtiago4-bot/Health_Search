@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.15.0', HS_DATA='10/11/2026';
+const HS_VERSAO='9.15.1', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9787,6 +9787,22 @@ evbReage=function(){ const s=document.querySelector('#t-eva .evb'); if(!s||s.dat
       if(pub&&loc>=pub*0.9&&rem<pub*0.9){ console.warn('mapa menor recusado no admin',{pub,loc,rem}); NUV.h['s:geo']=nuvHash(valor); setTimeout(()=>toast(`⚠ Chegou da nuvem um mapa com ${rem} cidades, mas o seu publicado tem ${pub}. Mantive o seu. Abra Geolocalização → 📤 Publicar mapa para corrigir a nuvem.`),1500); return; } }
     return _ap(chave,valor,apagado); }; }
 (function(){ try{ const s=MAN.find(x=>x.id==='mapa-pub'); if(s&&s.passos) s.passos.push(['Mapa à prova de perda (v9.15.0)','O mapa fica guardado também numa área própria do navegador. Se o armazenamento principal encher, ou o app recarregar numa atualização, o mapa volta como estava. O zoom, a posição, o tipo (região/base) e as camadas escondidas também ficam lembrados neste aparelho. No aparelho do administrador, se chegar da nuvem um mapa com menos cidades do que o último publicado, ele é recusado e aparece o aviso para publicar de novo.']); }catch(e){} })();
+
+/* ================= v9.15.0 · NexBip ao vivo desde o login: % de conferência atualiza sem clicar ================= */
+(function(){ let ult=0, escondidoEm=0;
+  const pronto=()=>Store.modo==='nuvem'&&NV&&NV.cli&&NV.perfil&&typeof opAbrirDia==='function';
+  const recarregar=motivo=>{ if(!pronto()||OP.carregando||!opOnline()) return; ult=Date.now(); console.info('nexbip: atualizando ('+motivo+')'); try{ opAbrirDia(OP.dia||hojeISO()); }catch(e){ console.error(e); } };
+  /* 1) logo depois do login: carrega o dia e liga o ao vivo */
+  let n=0; const t=setInterval(()=>{ if(++n>300) return clearInterval(t); if(!pronto()) return; clearInterval(t); if(!OP.canal) recarregar('início'); },1000);
+  /* 2) canal caiu (internet, hibernação): religa e busca o que ficou para trás */
+  setInterval(()=>{ try{ if(!pronto()||!OP.canal) return; const st=OP.canal.state; if(st==='closed'||st==='errored'){ try{ NV.cli.removeChannel(OP.canal); }catch(e){} OP.canal=null; recarregar('canal '+st); } }catch(e){} },20000);
+  /* 3) voltou para o app depois de 2 min fora, ou a internet voltou: busca de novo */
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden){ escondidoEm=Date.now(); return; } if(escondidoEm&&Date.now()-escondidoEm>120000&&Date.now()-ult>60000) recarregar('voltou ao app'); escondidoEm=0; });
+  window.addEventListener('online',()=>setTimeout(()=>{ if(OP.canal){ try{ NV.cli.removeChannel(OP.canal); }catch(e){} OP.canal=null; } recarregar('internet voltou'); },2000));
+  /* 4) virou o dia (app aberto de madrugada): passa para hoje, a não ser que alguém escolheu outro dia */
+  setInterval(()=>{ try{ if(pronto()&&!OP.diaManual&&OP.dia&&OP.dia!==hojeISO()&&typeof opVoltarHoje==='function') opVoltarHoje(); }catch(e){} },60000);
+})();
+(function(){ try{ const s=MAN.find(x=>x.id==='operacao'); if(s&&s.passos) s.passos.push(['% de conferência ao vivo (v9.15.0)','A porcentagem de conferência e os bipes de outros aparelhos chegam sozinhos desde o login, sem precisar abrir o NexBip. Se a internet cair ou o aparelho hibernar, o app reconecta e busca os bipes que ficaram para trás.']); }catch(e){} })();
 </script>
 
 <!-- Leitor de fotos (OCR) embutido para funcionar sem internet:
