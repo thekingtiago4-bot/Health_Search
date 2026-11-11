@@ -1,5 +1,5 @@
 {
-  "versao": "9.14.1",
+  "versao": "9.14.2",
   "data": "2026-11-10",
-  "novidades": "Reduz sincronização: ao vivo 15 min, offline 5 min (antes: 5 min / 90 s) — alivia Egress Supabase"
+  "novidades": "Pluma vira coruja de verdade — SVG substituído (era PNG de panda); -147 KB no index.html"
 }
