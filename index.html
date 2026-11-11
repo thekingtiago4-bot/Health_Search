@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.16.2', HS_DATA='10/11/2026';
+const HS_VERSAO='9.16.3', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9857,7 +9857,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 /* ================= v9.16.1 · Pluma é CORUJA em todo lugar (personagem grande, canto, chat) ================= */
 function corujar(s){ if(!s||s.indexOf('class="evb')<0||s.indexOf('data-coruja')>=0) return s;
   const R=(a,b)=>{ s=s.split(a).join(b); };
-  s=s.replace('<svg class="evb','<svg data-coruja="3" class="evb');
+  s=s.replace('<svg class="evb','<svg data-coruja="4" class="evb');
   /* estilo liso (sem contorno): penas ferrugem, asas mais escuras */
   s=s.replace(/(<radialGradient id="evbG\w*"[^>]*>)[\s\S]*?(<\/radialGradient>)/,'$1<stop offset="0" stop-color="#C0703A"/><stop offset="1" stop-color="#B0602C"/>$2');
   s=s.replace(/(<radialGradient id="evbP\w*"[^>]*>)[\s\S]*?(<\/radialGradient>)/,'$1<stop offset="0" stop-color="#8E4A20"/><stop offset="1" stop-color="#7C3F1A"/>$2');
@@ -9905,6 +9905,11 @@ function corujar(s){ if(!s||s.indexOf('class="evb')<0||s.indexOf('data-coruja')>
   s=s.replace(/<path d="M7\d 140 Q100 1\d\d 12\d 140 L[^"]*Z" fill="[^"]*"\/>(<circle cx="100" cy="158" r="5\.5"[^>]*\/>)?/g,'');
   /* com capacete o laço sumia: põe o laço na lateral do capacete */
   if(s.indexOf('class="capacete"')>=0&&s.indexOf('class="laco"')<0){ const i=s.indexOf('class="capacete"'), j=s.indexOf('</g>',i); if(j>0) s=s.slice(0,j+4)+'<g class="laco" transform="translate(150 22) rotate(18) scale(.85)"><path d="M0 0 L-28 -18 Q-36 0 -28 18 Z" fill="#EC4899"/><path d="M0 0 L28 -18 Q36 0 28 18 Z" fill="#EC4899"/><path d="M-6 -2 L-24 -12 M6 -2 L24 -12" stroke="#fff" stroke-width="2" opacity=".35" stroke-linecap="round"/><circle r="9" fill="#DB2777"/></g>'+s.slice(j+4); }
+  /* colete encaixado no corpo redondo: alarga e recorta no formato do corpo */
+  if(s.indexOf('<g class="colete">')>=0){ const id='cjC'+Math.random().toString(36).slice(2,7);
+    s=s.replace('<g class="colete">',`<clipPath id="${id}"><ellipse cx="100" cy="177" rx="57" ry="55"/></clipPath><g clip-path="url(#${id})"><g transform="translate(100 168) scale(1.2 1.08) translate(-100 -166)"><g class="colete">`);
+    const i=s.indexOf('<g class="colete">'); let d=0, k=i; const re=/<g\b|<\/g>/g; re.lastIndex=i; let m; while((m=re.exec(s))){ if(m[0]==='<g') d++; else { d--; if(d===0){ k=m.index+4; break; } } }
+    s=s.slice(0,k)+'</g></g>'+s.slice(k); }
   /* cílios e blush: cara de menina */
   const cil=(x,d)=>`<path d="M${x-15*d} 70 l${-7*d} -3 M${x-12*d} 64 l${-6*d} -6 M${x-6*d} 61 l${-3*d} -8" stroke="#4A2410" stroke-width="3" stroke-linecap="round"/>`;
   let n=0; s=s.replace(/(<circle class="pupila" cx="\d+" cy="78" r="8\.5" fill="#4A2410"\/>)/g,(m)=>{ n++; return m+(n===1?cil(77,1):cil(123,-1)); });
@@ -9912,8 +9917,8 @@ function corujar(s){ if(!s||s.indexOf('class="evb')<0||s.indexOf('data-coruja')>
   return s; }
 { const _cb=evbSvg; evbSvg=function(v,c){ return corujar(_cb(v,c)); }; }
 evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
-setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} try{ document.querySelectorAll('svg.evb:not([data-coruja="3"])').forEach(n=>{ n.outerHTML=corujar(n.outerHTML); }); }catch(e){} },300);
-setInterval(()=>{ try{ document.querySelectorAll('svg.evb:not([data-coruja="3"])').forEach(n=>{ const st=n.dataset.st; const t=document.createElement('div'); t.innerHTML=corujar(n.outerHTML); const nn=t.firstElementChild; if(st) nn.dataset.st=st; n.replaceWith(nn); }); }catch(e){} },2000);
+setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} try{ document.querySelectorAll('svg.evb:not([data-coruja="4"])').forEach(n=>{ n.outerHTML=corujar(n.outerHTML); }); }catch(e){} },300);
+setInterval(()=>{ try{ document.querySelectorAll('svg.evb:not([data-coruja="4"])').forEach(n=>{ const st=n.dataset.st; const t=document.createElement('div'); t.innerHTML=corujar(n.outerHTML); const nn=t.firstElementChild; if(st) nn.dataset.st=st; n.replaceWith(nn); }); }catch(e){} },2000);
 
 /* ================= v9.16.1 · Espaço dos aparelhos da equipe: acima de 85% o administrador é avisado ================= */
 const ESPE={pre:'ap:~esp:', ch:'healthSearch.espAlto', alto:85, lista:[], avisados:{}};
