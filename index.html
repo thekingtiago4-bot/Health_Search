@@ -3859,7 +3859,7 @@ Store.init=async function(){
 };
 Store.salvar=async function(obj){ if(this.modo!=='nuvem') return _stSalvar(obj);
   try{ await _stSalvar(obj); localStorage.setItem('healthSearch.copiaEm',new Date().toISOString()); }catch(e){}
-  const syncOk=typeof NUV!=='undefined'&&NUV.ult&&!NUV.erro; const espera=syncOk?Math.max(700,300000-(Date.now()-(NV.ultEstado||0))):700;
+  const syncOk=typeof NUV!=='undefined'&&NUV.ult&&!NUV.erro; /* v9.19.2: cópia antiga (hs_estado) só do admin, no máximo a cada 6 h; os dados vão pelo hs_sync */ if(syncOk&&(!nvAdmin()||Date.now()-(NV.ultEstado||0)<6*3600e3)){ nvSelo('Salvo online'); return; } const espera=syncOk?Math.max(700,300000-(Date.now()-(NV.ultEstado||0))):700;
   clearTimeout(NV.tSalvar); nvSelo(syncOk?'Salvo online':'Salvando…');
   NV.tSalvar=setTimeout(async()=>{ NV.ultEstado=Date.now(); NV.salvando=true;
     if((S.romaneios||[]).length) S.romLimpoEm='';
@@ -3872,7 +3872,7 @@ Store.salvar=async function(obj){ if(this.modo!=='nuvem') return _stSalvar(obj);
 { const _g=RE.gravar.bind(RE); RE.gravar=function(){ _g(); if(Store.modo==='nuvem') Store.salvar(S); }; }
 
 /* outro usuário salvou: recarrega na hora */
-function nvTempoReal(){ if(NV.canal) return; NV.canal=NV.cli.channel('hs-estado').on('postgres_changes',{event:'*',schema:'public',table:'hs_estado'},async p=>{
+function nvTempoReal(){ if(NV.canal) return; if(typeof NUV!=='undefined') return; /* v9.19.2: hs_sync cuida de tudo; não recebe o estado inteiro ao vivo */ NV.canal=NV.cli.channel('hs-estado').on('postgres_changes',{event:'*',schema:'public',table:'hs_estado'},async p=>{
   if(!p.new||p.new.origem===NV.origem||NV.salvando) return; if(typeof NUV!=='undefined') return; /* v7.5.4: hs_sync cuida de tudo */ try{ const row=await nvCarregar(); if(!row||!row.dados) return; NV.versao=row.atualizado_em;
     { var _rl=S.romaneios; S=Object.assign(S,row.dados.s||{}); S.romaneios=hsMesclarRom(_rl,S.romaneios); } nvAplicarRE(row.dados.re); montarDicionario(); renderTudo(); if(!$('#t-reentregas').hidden) reTela(); toast('Atualizado por '+(row.atualizado_por||'outro usuário')+'.'); }catch(e){} }).subscribe(); }
 
@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.1', HS_DATA='10/11/2026';
+const HS_VERSAO='9.19.2', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6209,7 +6209,7 @@ const MAN=[
    ['Aparelho com dados diferentes','Todo aparelho abre as Reentregas no dia de hoje. Se um tablet/celular mostrar dados diferentes do computador, toque no ☁ (ao lado do nome do app) → “⬇ Puxar tudo da nuvem”: o aparelho fica igual à cópia online, a mesma dos outros.'],
    ['Backups da nuvem e aparelho desatualizado','Quando alguém entra num aparelho novo, ou num que ficou mais de 6 horas sem sincronizar, o app primeiro guarda na nuvem uma cópia do que está online (regiões, cadastros, reentregas, divergências) e só depois sincroniza. Um aparelho com mapa/configurações antigas não grava mais por cima da versão online: ele recebe a versão da nuvem. Para voltar: ☁ → 🗂 Backups da nuvem → ♻ Restaurar (administrador); antes de restaurar, o estado atual também é guardado. Ficam guardados os 30 backups mais recentes. Quando sua conta entra em outro aparelho, os aparelhos já abertos avisam: “Tablet … entrou com sua conta às 03:59”.'],
    ['💾 Salvar na nuvem e versões permanentes','Tudo o que você muda sobe sozinho para o banco online (Supabase) em cerca de 1,5 s e chega ao vivo nos outros aparelhos: quem abrir o app recebe sempre a última versão salva. O botão 💾 Salvar, no canto inferior direito (ou Ctrl+S), força o envio na hora e grava uma VERSÃO COMPLETA permanente. O administrador é o aparelho mestre: só o app dele (e o robô do GitHub, toda noite) grava as cópias oficiais; nos outros usuários o 💾 Salvar só envia as mudanças. O mapa vai dentro de cada cópia completa, junto com todas as abas. Uma cópia completa é feita por dia no app do administrador. Essas versões ninguém apaga nem altera, nem o administrador. Para ver: botão direito no 💾 Salvar, ou ☁ → 🕘 Versões salvas; o administrador pode “♻ Voltar para esta” (antes o estado atual é salvo, então dá para desfazer).'],
-   ['📦 Backup físico e liberar espaço','Na aba Correção (administrador): “📦 Backup físico + liberar espaço” baixa TUDO num arquivo “Health Search backup dd-mm-aaaa.json.gz”, abre o arquivo de novo para conferir e só então pergunta se pode liberar espaço. Liberar apaga do banco online apenas o que tem mais de 90 dias (bipes, romaneios do banco, reentregas, versões e cópias); os últimos 90 dias ficam online para as reentregas funcionarem. Para trazer de volta: “Restaurar” com o arquivo. Quando o banco passa de 70% dos 500 MB, aparece um aviso no topo só para o administrador. Guarde o arquivo em dois lugares (área de trabalho + pen drive ou Google Drive).'],
+   ['📦 Backup físico e liberar espaço','Na aba Correção (administrador): “📦 Backup físico + liberar espaço” baixa TUDO num arquivo “Health Search backup dd-mm-aaaa.json.gz”, abre o arquivo de novo para conferir e só então pergunta se pode liberar espaço. Liberar apaga do banco online apenas o que tem mais de 90 dias (bipes, romaneios do banco, reentregas, versões e cópias); os últimos 90 dias ficam online para as reentregas funcionarem. Para trazer de volta: “Restaurar” com o arquivo. Quando o banco passa de 70% dos 8 GB (plano Pro), aparece um aviso no topo só para o administrador. Guarde o arquivo em dois lugares (área de trabalho + pen drive ou Google Drive).'],
    ['🤖 Robô de backup (GitHub)','Toda noite o GitHub roda sozinho um robô que copia o banco inteiro para um repositório PRIVADO (Health_Search_Backups), sem depender de ninguém logado. Ele também mantém o Supabase ativo (o plano gratuito pausa o projeto depois de 7 dias sem uso).'],
    ['Bloquear um usuário','Em Usuários, desative a pessoa: na mesma hora ela é banida do login, as sessões abertas caem e o banco recusa qualquer leitura ou gravação dela. Em TODOS os aparelhos onde ela entrou, assim que o aparelho tiver internet (em até 1 minuto com o app aberto), o app apaga a cópia offline e mostra “Acesso bloqueado”.'],
    ['Uso sem internet','O app funciona offline com a última cópia guardada. Por segurança, se o aparelho ficar mais de 3 dias sem falar com o servidor, ele pede internet para abrir (para conferir se o acesso continua liberado).'],
@@ -7090,7 +7090,9 @@ function geoJuntar3(base,loc,rem){ base=base||{listas:[],aprend:{}}; loc=loc||{l
 /* ---- versões permanentes ---- */
 async function vsnItens(){ let data=[]; for(let pg=0;pg<40;pg++){ const {data:d1,error}=await NV.cli.from('hs_sync').select('chave,valor,apagado').or('chave.like.s:%,chave.like.re:%,chave.like.dv:%,chave.like.ls:%,chave.like.rom:%').range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; }
   return data.filter(r=>!r.apagado&&r.valor!=null).map(r=>({chave:r.chave,valor:r.valor})); }
-async function vsnGravar(tipo,resumo){ const itens=await vsnItens(); if(!itens.length) return {ok:false,msg:'nada na nuvem ainda'};
+async function vsnGravar(tipo,resumo){ /* v9.19.2: cópia feita dentro do banco (sem baixar nada); o caminho antigo fica só de reserva */
+  try{ const {data,error}=await NV.cli.rpc('hs_snap',{p_tipo:tipo,p_resumo:resumo||null,p_por:opEu(),p_aparelho:hsAparelho()}); if(!error&&data&&data.ok){ VSN.ok=true; return {ok:true,igual:!!data.igual,msg:data.msg||''}; } if(error&&!/hs_snap|PGRST202|function/i.test(error.message||'')) return {ok:false,msg:error.message}; }catch(e){}
+  const itens=await vsnItens(); if(!itens.length) return {ok:false,msg:'nada na nuvem ainda'};
   const {error}=await NV.cli.from('hs_versoes').insert({chave:'snap',tipo,valor:{itens},resumo:resumo||(itens.length+' itens'),por:opEu(),aparelho:hsAparelho()});
   if(error){ VSN.ok=false; const ok=await nuvBackupNuvem(tipo==='manual'?'salvo manualmente':'cópia automática'); return {ok,msg:ok?'guardado como backup (rode o SQL v8.4.0 para versões permanentes)':error.message,velho:true}; }
   VSN.ok=true; return {ok:true,n:itens.length}; }
@@ -7098,7 +7100,7 @@ async function hsSalvarAgora(){ if(!opOnline()){ toast('Sem internet: está guar
   const b=$('#hs-salvar'); if(b){ b.disabled=true; b.textContent='⏳ Salvando…'; }
   try{ NUV.desde=NUV.desde||''; await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro); const r=await vsnGravar('manual');
     if(!r.ok) throw new Error(r.msg); try{ localStorage.setItem('healthSearch.ultSalvar',new Date().toISOString()); }catch(e){}
-    toast('✔ Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+(r.velho?' ('+r.msg+')':' — versão guardada para sempre ('+r.n+' itens). Quem abrir agora já recebe esta.'));
+    toast('✔ Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+(r.velho?' ('+r.msg+')':r.igual?' — tudo já estava guardado ('+r.msg+'). Quem abrir agora já recebe esta.':' — versão guardada para sempre. Quem abrir agora já recebe esta.'));
   }catch(e){ toast('⚠ Não consegui salvar na nuvem: '+(e.message||e)+' — os dados continuam guardados neste aparelho.'); }
   finally{ if(b){ b.disabled=false; b.textContent='💾 Salvar'; } } }
 /* cópia completa automática: 1x por dia por aparelho logado (além das versões que o próprio banco guarda a cada mudança) */
@@ -7145,7 +7147,7 @@ const USO={pct:null,bytes:0};
 async function usoLer(){ try{ const {data,error}=await NV.cli.rpc('hs_uso'); if(error) throw error; USO.pct=+data.pct; USO.bytes=+data.bytes; usoAviso(); return data; }catch(e){ return null; } }
 function usoAviso(){ let el=$('#uso-aviso'); if(!nvAdmin()||USO.pct==null||USO.pct<70){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div'); el.id='uso-aviso'; el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:1550;background:#7a4a00;color:#fff;padding:8px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center;max-width:94vw;font-size:var(--fs-sm)'; document.body.appendChild(el); }
-  el.innerHTML=`<span>⚠ Banco online em <b>${USO.pct}%</b> (${(USO.bytes/1048576).toFixed(0)} MB de 500 MB). Faça o backup físico para liberar espaço.</span><button class="btn mini pri" type="button" id="uso-bt">📦 Backup físico</button><button class="btn mini" type="button" id="uso-x">✕</button>`;
+  el.innerHTML=`<span>⚠ Banco online em <b>${USO.pct}%</b> (${(USO.bytes/1048576).toFixed(0)} MB de 8 GB). Faça o backup físico para liberar espaço.</span><button class="btn mini pri" type="button" id="uso-bt">📦 Backup físico</button><button class="btn mini" type="button" id="uso-x">✕</button>`;
   $('#uso-bt').onclick=()=>bkfBackupFisico(); $('#uso-x').onclick=()=>el.remove(); }
 (function(){ let n=0; const t=setInterval(()=>{ if(!opOnline()||!NV.perfil){ if(++n>180) clearInterval(t); return; } clearInterval(t); if(nvAdmin()){ usoLer(); setInterval(()=>{ if(!document.hidden) usoLer(); },6*3600e3); } },1000); })();
 /* backup físico completo: baixa TUDO, confere o arquivo e só então oferece liberar espaço */
@@ -7169,7 +7171,7 @@ async function bkfBackupFisico(){ if(!opOnline()||!nvAdmin()){ toast('Só o admi
     setTimeout(usoLer,3000);
   }catch(e){ console.error(e); toast('⚠ Backup físico: '+(e.message||e)); } }
 { const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const b=$('#bkn-bt'); if(!b||$('#bkf-bt')) return; b.insertAdjacentHTML('afterend',' <button class="btn mini pri" id="bkf-bt" type="button" title="Baixa tudo num arquivo, confere, e oferece apagar do banco online o que tem mais de 90 dias">📦 Backup físico + liberar espaço</button> <small class="sec" id="uso-txt"></small>');
-  $('#bkf-bt').onclick=()=>bkfBackupFisico(); const u=$('#uso-txt'); if(u) usoLer().then(d=>{ if(d) u.textContent='· banco online: '+d.pct+'% de 500 MB'; }); }; }
+  $('#bkf-bt').onclick=()=>bkfBackupFisico(); const u=$('#uso-txt'); if(u) usoLer().then(d=>{ if(d) u.textContent='· banco online: '+d.pct+'% de 8 GB'; }); }; }
 /* ================= v8.6.0 · Bloqueio apaga a cópia do aparelho + validade offline + 🧠 Cérebro (mini IA que aprende as etiquetas) ================= */
 /* ---- 1) usuário bloqueado: na próxima vez que o aparelho falar com o servidor, apaga tudo dele ---- */
 function blqApagarAparelho(motivo){ try{ for(const k of Object.keys(localStorage)) if(/^(healthSearch|healthRomaneio|hs[._]|sb-)/.test(k)) localStorage.removeItem(k); }catch(e){}
@@ -9866,6 +9868,8 @@ setInterval(()=>{ try{ simAvisos(); }catch(e){} },5000);
 (function(){ try{ const s=MAN.find(x=>x.id==='romaneios'); if(s&&s.passos) s.passos.push(['Simulação vale na conferência (v9.19.0)','Enquanto “Simular sem algumas notas” estiver ligado, as notas tiradas da conta deixam de ser cobradas na Conferência total e no NexBip de toda a equipe: saem das pendentes e da porcentagem, como se não tivessem vindo. Aparece um aviso 🧪 com quem ligou e o botão “Voltar ao padrão”. A simulação vale só no dia em que foi ligada: no dia seguinte a conferência volta a cobrar tudo sozinha.']); }catch(e){} })();
 
 (function(){ try{ const s=MAN.find(x=>x.id==='sistema'); if(s&&s.passos) s.passos.push(['Economia de dados do banco (v9.19.1)','Para não estourar a cota de transferência do Supabase (Egress): o aviso ao vivo entre aparelhos agora é só um sinal leve, e os dados vêm depois pela sincronização; cada aparelho não baixa de volta o que ele mesmo enviou; a cópia completa de segurança ao entrar ou ao atualizar o app roda só no aparelho do administrador, no máximo 1 vez por dia. O robô do GitHub e as versões automáticas do banco continuam guardando tudo.']); }catch(e){} })();
+
+(function(){ try{ const s=MAN.find(x=>x.id==='sistema'); if(s&&s.passos) s.passos.push(['Salvar sem pesar o banco (v9.19.2)','O 💾 Salvar envia o que mudou e faz a cópia completa dentro do próprio banco, sem baixar nada para o aparelho. Se nada mudou desde a última cópia, ou se já existe uma de menos de 15 minutos, ele não duplica e avisa que tudo já estava guardado. A cópia antiga de segurança (tabela hs_estado) agora é feita só pelo aparelho do administrador, no máximo a cada 6 horas.']); }catch(e){} })();
 </script>
 
 <!-- Leitor de fotos (OCR) embutido para funcionar sem internet:

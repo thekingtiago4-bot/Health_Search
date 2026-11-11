@@ -1,1 +1,1 @@
-{"versao":"9.19.1","data":"2026-11-11","novidades":"Economia de dados do banco (Egress): ao vivo vira só um sinal, o aparelho não baixa de volta o que enviou e a cópia completa de segurança fica só com o admin, 1x por dia"}
+{"versao":"9.19.2","data":"2026-11-11","novidades":"Menos dados: 💾 Salvar faz a cópia dentro do banco e não duplica sem mudança; cópia antiga só do admin a cada 6 h; medidor do banco ajustado ao plano Pro (8 GB)"}
