@@ -1,1 +1,1 @@
-{"versao":"9.19.0","data":"2026-11-11","novidades":"Simulação ligada vale para a conferência de toda a equipe: notas tiradas não aparecem como pendentes nem contam na porcentagem (só no dia em que foi ligada)"}
+{"versao":"9.19.1","data":"2026-11-11","novidades":"Economia de dados do banco (Egress): ao vivo vira só um sinal, o aparelho não baixa de volta o que enviou e a cópia completa de segurança fica só com o admin, 1x por dia"}
