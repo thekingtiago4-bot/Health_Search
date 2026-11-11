@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.4', HS_DATA='11/11/2026';
+const HS_VERSAO='9.19.5', HS_DATA='11/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4471,7 +4471,7 @@ function simRender(){ const p=$('#sim-pn'); if(!p) return; try{ renderTotais(); 
     <table class="sim-tab"><thead><tr><th></th><th>Hoje</th><th>Sem essas notas</th><th>Diferença</th></tr></thead><tbody>${lin('Romaneios','rom')}${lin('Notas','notas')}${lin('Volumes','vol')}</tbody></table>${simCadResumo()}`; }
 function simCidLista(){ const m=new Map(); for(const {row} of todasLinhas()){ if(volNum(row.vol)===0) continue; const k=N(row.cid||''); if(!k) continue; const o=m.get(k)||{nome:String(row.cid||'').toUpperCase(),uf:String(row.uf||'').toUpperCase(),n:0,v:0}; o.n++; o.v+=volNum(row.vol)||0; m.set(k,o); }
   const sel=simCidSel(), q=N(SIM.cidQ||''); const L=[...m.entries()].sort((a,b)=>b[1].v-a[1].v); const vis=L.filter(([k,o])=>sel.has(k)||!q||k.includes(q));
-  return `<div class="sim-cid"><div class="sim-cid-top"><h3>Tirar cidades avulsas</h3><input type="search" id="sim-cid-q" placeholder="Pesquisar cidade" value="${esc(SIM.cidQ||'')}" autocomplete="off"><small>Clique numa cidade para tirar da conta; clique de novo para voltar.${sel.size?` <b>${fmtN(sel.size)}</b> tirada(s) · <button type="button" class="btn mini" id="sim-cid-limpa">Voltar todas</button>`:''}</small></div>
+  return `<div class="sim-cid"><div class="sim-cid-top"><h3>Tirar cidades avulsas</h3><input type="search" id="sim-cid-q" placeholder="🔎 Filtrar cidade" aria-label="Filtrar cidade" value="${esc(SIM.cidQ||'')}" autocomplete="off"><small>Clique numa cidade para tirar da conta; clique de novo para voltar.${sel.size?` <b>${fmtN(sel.size)}</b> tirada(s) · <button type="button" class="btn mini" id="sim-cid-limpa">Voltar todas</button>`:''}</small></div>
     <div class="sim-cid-l">${vis.length?vis.map(([k,o])=>`<button type="button" class="sim-cid-b${sel.has(k)?' on':''}" data-sim-cid="${esc(k)}" aria-pressed="${sel.has(k)}">${sel.has(k)?'✕ ':''}${esc(o.nome)}${o.uf?'/'+esc(o.uf):''} <small>${fmtN(o.n)} NF · ${fmtN(o.v)} vol.</small></button>`).join(''):'<small class="sub">Nenhuma cidade com esse nome nos romaneios de hoje.</small>'}</div></div>`; }
 function simCadResumo(){ if(!(SIM.cf||SIM.ag)) return ''; const m=new Map(); for(const {row} of todasLinhas()){ if(!simCadastrado(row)) continue; const c=cliAcha(row.dest,row.cid); const k=c?c.nome:String(row.dest||'?').toUpperCase()+' (agendada)'; const o=m.get(k)||{n:0,v:0}; o.n++; o.v+=volNum(row.vol)||0; m.set(k,o); }
   if(!m.size) return '<p class="sub" style="margin-top:8px">Nenhum cliente cadastrado em Agendamentos nos romaneios de hoje.</p>';
@@ -9482,7 +9482,11 @@ body:has(#nv-tela:not([hidden])) :is(#app-att,#eva-balao){display:none!important
   new MutationObserver(()=>{ const s=a.querySelector('span'); const m=s&&s.textContent.match(/Nova versão\s*([\d.]+)/); if(m&&!s.dataset.v957){ s.dataset.v957=1; s.innerHTML=`✨ Nova versão <b>${esc(m[1])}</b>`; a.title='Seus dados ficam salvos: o app envia tudo para a nuvem antes de atualizar.'; } }).observe(a,{childList:true,subtree:true});
   ok.addEventListener('click',async e=>{ if(ok.dataset.ok) return; e.stopImmediatePropagation(); ok.disabled=true; ok.textContent='Salvando…'; try{ if(typeof opOnline==='function'&&opOnline()) await nuvSinc(); }catch(x){} ok.dataset.ok=1; ok.disabled=false; ok.click(); },true);
   document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(j=>{ const c=(x,y)=>{ x=String(x).split('.').map(Number); y=String(y).split('.').map(Number); for(let i=0;i<3;i++){ const d=(x[i]||0)-(y[i]||0); if(d) return d; } return 0; }; if(j.versao&&c(j.versao,HS_VERSAO)>0){ a.querySelector('span').innerHTML=`✨ Nova versão <b>${esc(j.versao)}</b>`; a.hidden=false; } }).catch(()=>{}); } });
-  const s=MAN.find(x=>x.id==='menu2026'); if(s) s.passos.push(['✨ Nova versão','Com o app aberto, ele confere a cada 5 minutos (e quando você volta para a aba) se saiu versão nova. Aparece no topo “✨ Nova versão — Atualizar”. Ao tocar, o app salva tudo na nuvem e atualiza.']); })();
+  /* v9.19.5: aba aberta há muito tempo em versão velha se atualiza sozinha quando ninguém está usando (escondida, ou 3 min sem mexer e sem câmera ligada) — versão velha aberta causava perda de dados */
+  { let mexeu=Date.now(); for(const ev of ['pointerdown','keydown','touchstart']) document.addEventListener(ev,()=>{ mexeu=Date.now(); },{passive:true,capture:true});
+    setInterval(()=>{ if(a.hidden||ok.disabled) return; const cam=document.querySelector('#op-cam video'); const camOn=cam&&cam.srcObject&&!cam.paused; if(camOn) return;
+      if(document.hidden||Date.now()-mexeu>3*60e3){ try{ toast('Atualizando para a versão nova…'); }catch(x){} ok.click(); } },30000); }
+  const s=MAN.find(x=>x.id==='menu2026'); if(s) s.passos.push(['✨ Nova versão','Com o app aberto, ele confere a cada 5 minutos (e quando você volta para a aba) se saiu versão nova. Aparece no topo “✨ Nova versão — Atualizar”. Ao tocar, o app salva tudo na nuvem e atualiza. Se a aba ficar parada (escondida ou 3 minutos sem ninguém mexer, e sem a câmera do NexBip ligada), ele salva e se atualiza sozinho, para nunca ficar uma versão velha aberta (v9.19.5).']); })();
 
 /* ================= v9.5.8 · Tela de login com o logo animado ================= */
 const HS_LOGO_ANIM=`<svg class="hsl" viewBox="0 0 120 120" aria-hidden="true">
@@ -9848,7 +9852,7 @@ document.addEventListener('input',e=>{ if(e.target.id!=='sim-cid-q') return; SIM
 (function(){ const st=document.createElement('style'); st.textContent=`
  .sim-cid{border:1px solid var(--linha);border-radius:10px;padding:10px 12px;margin:8px 0 10px;background:var(--sup2)}
  .sim-cid-top{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:10px;text-align:center}.sim-cid-top h3{margin:0;font-size:1rem}.sim-cid-top small{color:var(--mudo)}
- .sim-cid-top input{width:min(420px,100%);border:1.5px solid var(--linha);border-radius:var(--r);padding:8px 12px;background:var(--sup);color:inherit;font:inherit;text-align:center}
+ .sim-cid-top input{width:min(560px,100%);border:2px solid var(--acento);border-radius:14px;padding:14px 18px;background:var(--sup);color:inherit;font:inherit;font-size:1.25rem;font-weight:600;text-align:center;margin:4px auto}.sim-cid-top input::placeholder{font-weight:500}
  .sim-cid-l{justify-content:center}
  .sim-cid-l{display:flex;flex-wrap:wrap;gap:6px;max-height:190px;overflow:auto}
  .sim-cid-b{border:1.5px solid var(--linha);background:var(--sup);color:inherit;border-radius:999px;padding:4px 10px;font:inherit;font-size:var(--fs-sm);font-weight:600;cursor:pointer}
