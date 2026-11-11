@@ -4131,7 +4131,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.15.1', HS_DATA='10/11/2026';
+const HS_VERSAO='9.16.0', HS_DATA='10/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9803,6 +9803,56 @@ evbReage=function(){ const s=document.querySelector('#t-eva .evb'); if(!s||s.dat
   setInterval(()=>{ try{ if(pronto()&&!OP.diaManual&&OP.dia&&OP.dia!==hojeISO()&&typeof opVoltarHoje==='function') opVoltarHoje(); }catch(e){} },60000);
 })();
 (function(){ try{ const s=MAN.find(x=>x.id==='operacao'); if(s&&s.passos) s.passos.push(['% de conferência ao vivo (v9.15.0)','A porcentagem de conferência e os bipes de outros aparelhos chegam sozinhos desde o login, sem precisar abrir o NexBip. Se a internet cair ou o aparelho hibernar, o app reconecta e busca os bipes que ficaram para trás.']); }catch(e){} })();
+
+/* ================= v9.16.0 · XMLs: no aparelho só os últimos 7 dias (a nuvem guarda todos) + medidor de espaço ================= */
+const XMLA={ch:'healthSearch.xmlArquivo',dias:7};
+function xmlArqLer(){ try{ return JSON.parse(localStorage.getItem(XMLA.ch)||'{}'); }catch(e){ return {}; } }
+const xmlLimite=()=>new Date(Date.now()-XMLA.dias*864e5).toISOString().slice(0,10);
+/* tira do aparelho SEM apagar da nuvem: a chave sai da sessão de sincronização, então nada de "apagado" sobe */
+function xmlArquivar(manual){ const lim=xmlLimite(), A=xmlArqLer(); let n=0;
+  for(const k of Object.keys(S.opXml||{})){ const x=S.opXml[k]; const em=String(x&&x.em||''); if(em&&em<lim){ A[k]=em.slice(0,10); delete S.opXml[k]; try{ NUV.sessao.delete('xml:'+k); }catch(e){} n++; } }
+  if(n){ try{ localStorage.setItem(XMLA.ch,JSON.stringify(A)); }catch(e){} salvar(); try{ opXmlInfo(); }catch(e){} }
+  if(manual) toast(n?`✔ ${fmtN(n)} XML(s) com mais de ${XMLA.dias} dias saíram deste aparelho. Continuam guardados na nuvem.`:`Nenhum XML com mais de ${XMLA.dias} dias neste aparelho.`);
+  return n; }
+/* XML antigo que volta da nuvem (aparelho novo) não é gravado de novo no aparelho */
+{ const _ap=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ if(chave.startsWith('xml:')&&!apagado&&valor&&valor.em&&String(valor.em)<xmlLimite()){ const A=xmlArqLer(); A[chave.slice(4)]=String(valor.em).slice(0,10); try{ localStorage.setItem(XMLA.ch,JSON.stringify(A)); }catch(e){} return; } return _ap(chave,valor,apagado); }; }
+/* o botão antigo "apagar XMLs antigos" apagava também da nuvem: agora só tira do aparelho */
+(function(){ const b=document.getElementById('op-xml-limpar'); if(b){ b.onclick=()=>xmlArquivar(true); b.title=`Tirar deste aparelho os XMLs com mais de ${XMLA.dias} dias (continuam na nuvem)`; } })();
+/* dia antigo no NexBip: busca na nuvem os XMLs daquele dia, só enquanto ele estiver aberto */
+{ const _ad=opAbrirDia; opAbrirDia=async function(dia){ const r=await _ad.apply(this,arguments);
+    try{ if(!dia||dia>=xmlLimite()||!opOnline()||!NV.cli) return r; const A=xmlArqLer(); const d0=new Date(new Date(dia).getTime()-4*864e5).toISOString().slice(0,10), d1=new Date(new Date(dia).getTime()+2*864e5).toISOString().slice(0,10);
+      const ks=Object.keys(A).filter(k=>A[k]>=d0&&A[k]<=d1&&!(S.opXml||{})[k]).map(k=>'xml:'+k); if(!ks.length) return r; let n=0;
+      for(let i=0;i<ks.length;i+=150){ const {data,error}=await NV.cli.from('hs_sync').select('chave,valor').in('chave',ks.slice(i,i+150)); if(error) throw error; for(const x of data||[]){ if(x&&x.valor){ S.opXml[x.chave.slice(4)]=x.valor; n++; } } }
+      if(n){ opRender(); toast(`🧾 ${fmtN(n)} XML(s) de ${fmtData(dia)} trazidos da nuvem para consulta.`); } }catch(e){ console.error('xml antigo',e); }
+    return r; }; }
+setTimeout(()=>{ try{ xmlArquivar(false); }catch(e){} },20000);
+setInterval(()=>{ try{ if(!OP.dia||OP.dia>=xmlLimite()) xmlArquivar(false); }catch(e){} },6*3600e3);
+
+/* ---- medidor de espaço (só o administrador vê) ---- */
+const ESP={lim:5000000, avisado:0, nomes:{opXml:'XMLs das notas (NexBip)',romaneios:'Romaneios',rdXml:'XMLs da Rota do dia',opRel:'Relatórios do dia',geo:'Mapa (regiões)',historico:'Histórico',aprendidos:'Aprendizado de leitura',cerebro:'Cérebro da Pluma',divergencias:'Divergências',ferCache:'Feriados',cidAtend:'Cidades atendidas',agendamentos:'Agendamentos',rdHist:'Histórico da Rota do dia',evaEnsino:'Ensino da Pluma'}};
+function espMedir(){ let tot=0; const fora=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i), v=localStorage.getItem(k)||''; tot+=k.length+v.length; if(k!=='healthSearch.v1') fora.push([k,k.length+v.length]); }
+  const det=[]; for(const f of Object.keys(S)){ let t=0; try{ t=(JSON.stringify(S[f])||'').length; }catch(e){} if(t>2000) det.push([ESP.nomes[f]||f,t,f]); }
+  const op=fora.filter(([k])=>/^healthSearch\.op\.|^hs\.op|bipes/i.test(k)).reduce((s,x)=>s+x[1],0); if(op) det.push(['Bipes guardados no aparelho',op,'_bipes']);
+  const resto=fora.filter(([k])=>!/^healthSearch\.op\.|^hs\.op|bipes/i.test(k)).reduce((s,x)=>s+x[1],0); if(resto) det.push(['Outros (configurações, cópias)',resto,'_outros']);
+  det.sort((a,b)=>b[1]-a[1]); return {tot,pct:Math.min(100,Math.round(tot/ESP.lim*100)),det}; }
+const espMB=n=>(n*2/1048576).toLocaleString('pt-BR',{maximumFractionDigits:1})+' MB';
+function espCor(p){ return p>=90?'var(--no)':p>=75?'#E8590C':'var(--ok)'; }
+function espChip(){ const adm=typeof nvAdmin==='function'&&nvAdmin(); let el=document.getElementById('esp-st');
+  if(!adm){ if(el) el.remove(); return; } const ref=document.getElementById('nv-eu')||document.getElementById('nuv-st'); if(!el&&ref){ ref.insertAdjacentHTML('afterend','<button type="button" id="esp-st" style="background:transparent;border:1.5px solid var(--linha);border-radius:999px;padding:1px 8px;margin-left:8px;font-size:var(--fs-sm);cursor:pointer;white-space:nowrap" title="Espaço usado neste aparelho"></button>'); el=document.getElementById('esp-st'); el.onclick=espPainel; }
+  if(!el) return; const m=espMedir(); el.textContent='💾 '+m.pct+'%'; el.style.color=espCor(m.pct); el.style.borderColor=m.pct>=75?espCor(m.pct):'var(--linha)'; el.title=`Espaço usado neste aparelho: ${espMB(m.tot)} de ~${espMB(ESP.lim)}. Clique para ver o que ocupa.`;
+  if(m.pct>=75&&Date.now()-ESP.avisado>3600e3){ ESP.avisado=Date.now(); toast(`⚠ Este aparelho está com ${m.pct}% do espaço ocupado. Clique em 💾 ${m.pct}% no topo para liberar antes que pare de gravar.`); } }
+function espPainel(){ const m=espMedir(); const f=document.createElement('div'); f.className='fundo'; const nArq=Object.keys(xmlArqLer()).length, lim=xmlLimite(); const velhos=Object.values(S.opXml||{}).filter(x=>x&&x.em&&x.em<lim).length;
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:520px"><h2>💾 Espaço deste aparelho</h2>
+   <div style="height:14px;border-radius:7px;background:var(--linha);overflow:hidden;margin:6px 0"><div style="height:100%;width:${m.pct}%;background:${espCor(m.pct)}"></div></div>
+   <p style="margin:0 0 10px"><b>${m.pct}%</b> usado · ${espMB(m.tot)} de ~${espMB(ESP.lim)}. O navegador para de gravar quando chega a 100%: por isso o aviso a partir de 75%.</p>
+   <div style="max-height:260px;overflow:auto">${m.det.slice(0,10).map(([n,t])=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--linha)"><span>${esc(n)}</span><b>${espMB(t)} · ${Math.round(t/m.tot*100)}%</b></div>`).join('')}</div>
+   <p class="sub" style="margin-top:10px">XMLs: o aparelho guarda só os dos últimos ${XMLA.dias} dias; os mais antigos ficam na nuvem (${fmtN(nArq)} já guardados lá) e voltam sozinhos quando você abre um dia antigo no NexBip.${velhos?` Há <b>${fmtN(velhos)}</b> XML(s) antigos aqui agora.`:''}</p>
+   <div class="botoes"><button class="btn" data-r="0">Fechar</button><button class="btn pri" data-r="x">Tirar XMLs antigos do aparelho</button></div></div>`;
+  document.body.appendChild(f); f.addEventListener('click',e=>{ const b=e.target.closest('[data-r]'); if(b&&b.dataset.r==='x'){ xmlArquivar(true); f.remove(); espChip(); return; } if(b||e.target===f) f.remove(); }); f.addEventListener('keydown',e=>{ if(e.key==='Escape') f.remove(); }); }
+setTimeout(espChip,6000); setInterval(espChip,60000);
+{ const _na=nexAvisos; nexAvisos=function(){ const a=_na(); try{ if(nvAdmin()){ const m=espMedir(); if(m.pct>=75) a.unshift({cor:espCor(m.pct),txt:`<b>Aparelho com ${m.pct}% do espaço ocupado</b> — clique em 💾 no topo para liberar`,acao:'esp'}); } }catch(e){} return a; }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="esp"]'); if(b) setTimeout(espPainel,50); });
+(function(){ try{ const s=MAN.find(x=>x.id==='operacao'); if(s&&s.passos) s.passos.push(['Espaço do aparelho e XMLs (v9.16.0)',`O administrador vê no topo o 💾 com a porcentagem do espaço usado neste aparelho. A partir de 75% aparece um aviso; clique no 💾 para ver o que ocupa mais. Os XMLs das notas ficam no aparelho só por ${XMLA.dias} dias e depois saem sozinhos, mas continuam na nuvem: ao abrir um dia antigo no NexBip, os XMLs daquele dia voltam para consulta. O botão de limpar XMLs também não apaga mais da nuvem.`]); }catch(e){} })();
 </script>
 
 <!-- Leitor de fotos (OCR) embutido para funcionar sem internet:
