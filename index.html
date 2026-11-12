@@ -4190,7 +4190,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.17', HS_DATA='12/11/2026';
+const HS_VERSAO='9.19.18', HS_DATA='12/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6300,7 +6300,7 @@ const MAN=[
 {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
   passos:[['Liberar a câmera','Na primeira vez toque em “🔓 Liberar câmera” e permita o acesso no navegador.'],
    ['📷 Registro (Recebimento/Expedição de carretas)','No menu, dentro de Operacional. Toque em “📷 Recebimento” (horário de Chegada) ou “📷 Expedição” (horário de Saída): a câmera abre; se a foto ficou boa toque em “Próximo”, senão “Tirar outra”. Preencha rota (ex.: CAJ X AQA), motorista, CPF, placa do cavalo e do baú, romaneio(s), paletes, rastreado e observação (fica “N/A” se deixar em branco) — o horário vem da hora da foto (dá para ajustar). Ao digitar o motorista, CPF e placas vêm sozinhos (se já usado antes) e o Romaneio(s) é puxado automaticamente pelos romaneios do dia com esse motorista — pode ajustar à mão. Ao salvar, o celular abre o compartilhamento: escolha a conversa do WhatsApp e envie (foto + legenda prontas; a legenda também fica copiada). Cada registro é um evento só (sem “entrada e saída” do mesmo caminhão). Avaria e Diversos virão em breve. As fotos não ficam guardadas no app (vão no WhatsApp); os dados dos registros ficam 90 dias.'],
-   ['📋 Checklist Agregados','Em Planejamento. Lista motoristas/agregados com placa e data de realização do checklist; o vencimento é sempre 30 dias depois. A linha fica amarela faltando 4 dias, laranja no último dia (ou no dia do vencimento) e vermelha quando vence. Só o administrador edita motorista, placa, data e se está ativo; “🗑” apaga a linha. O botão “📲 Enviar no WhatsApp” monta uma imagem da tabela e um texto pronto avisando quem está perto de vencer ou já vencido, prontos para colar/enviar no WhatsApp. A coluna Vencimento mostra a data em negrito e, ao lado, quantos dias faltam, “(hoje!)” ou há quantos dias venceu.'],
+   ['📋 Checklist Agregados','Em Planejamento. Lista motoristas/agregados com placa e data de realização do checklist; o vencimento é sempre 30 dias depois. A linha fica amarela faltando 4 dias, laranja no último dia (ou no dia do vencimento) e vermelha quando vence. Só o administrador edita motorista, placa, data e se está ativo; “🗑” apaga a linha. O botão “📲 Enviar no WhatsApp” monta uma imagem da tabela e um texto pronto avisando quem está perto de vencer ou já vencido, prontos para colar/enviar no WhatsApp. A coluna Vencimento mostra a data em negrito e, ao lado, quantos dias faltam, “(hoje!)” ou há quantos dias venceu. O administrador arrasta a alça “⠿” no começo da linha para colocar os motoristas na ordem que quiser, e essa ordem fica salva para todo mundo. O botão “＋ Adicionar” cria a linha no topo já com a data de hoje e o cursor no campo do motorista; motorista e placa sugerem o que já existe na lista. O botão “⬇️ Baixar a de hoje” salva a tabela como imagem JPEG no aparelho e já deixa a legenda copiada, para enviar por qualquer aplicativo quando não houver WhatsApp instalado. Nenhuma data de realização se perde: ao trocar a data, a anterior fica guardada e aparece o botão “🕘” ao lado, que abre embaixo da linha a lista de todas as realizações, da mais nova para a mais antiga, com quem registrou; só o administrador pode apagar uma data do histórico, e apenas para corrigir digitação errada.'],
    [' BIT — a assistente','O BIT é a corujinha no canto inferior direito, acima do 💾 Salvar. Toque nele e escreva o que precisa: “procura 442872”, “cliente unimed”, “quem atende Itanhandu MG”, “reentregas de hoje”, “bipados hoje”, “divergências”, “o que você aprendeu”, “quais regiões”, “cidades da região Minas Gerais”, “como faço backup físico?” (ele responde pelo Manual), “onde fica Ribeirão Preto?” (responde região e base e abre a cidade na Geolocalização), “notas de Ribeirão Preto origem Cajamar”, “notas da região Minas Gerais”, “notas do cliente Unimed”, “notas de Franca de ontem” ou “de 05/11” (usa o Banco de romaneios), e continua a conversa com “e de Franca?”, “e da MESA?”; “nota 442872” (tudo sobre a nota: romaneio, bipe, reentrega, divergência, XML); “feriado em Franca”, “feriados amanhã”; “reentregas de ontem” (com motivos); “divergências abertas”; “qual placa vai para Franca”; “caminhões na base”; “resumo do dia” ou “ajuda”. Instruções com “sempre…” ele guarda (veja com “minhas instruções”). Ele usa o 🧠 Cérebro: quando não tem certeza numa etiqueta (um QR Code de formato novo, ou um cliente que bate com mais de uma nota), ele anota a dúvida e o administrador responde em “❓ Dúvidas” — a resposta vira aprendizado para todos os aparelhos. Regras fixas do BIT: ele é só um assistente interna, usa apenas os dados da empresa que já estão no app, nunca envia nada para fora (não usa internet, IA externa, e-mail, WhatsApp, link ou arquivo), só mostra o que o usuário logado já pode ver e recusa qualquer pedido de enviar ou compartilhar dados. Escreva “regras” para ele repetir. O número laranja no BIT é a quantidade de dúvidas esperando resposta (qualquer usuário pode responder). Ele também cumprimenta (bom dia/boa tarde/boa noite), fala por um balãozinho sem atrapalhar e acompanha o NexBip: avisa caixa fora do romaneio, sem nota, duplicados seguidos e nota com gelo, comemora 25/50/75/90/100% com a previsão de quanto falta, e responde “o que falta” (começando pelas de alto valor) e “dica”.'],
    ['📊 Painel mensal da gerência','No Painel do gestor: escolha o mês e toque em “📄 Gerar PDF”. Sai uma página com reentregas por motivo, semana, cidade e motorista; divergências do mês por origem e por tipo; notas fora do romaneio por origem e motivo; e as cidades de MG mais atendidas (do Relatório Minas). Bom para apresentar à gerência.'],
    ['Alerta do robô de backup','Se o backup automático da noite falhar ou passar mais de 30 horas sem backup, aparece um aviso vermelho no topo só para o administrador.'],
@@ -7787,8 +7787,15 @@ function rgForm(edId){ const r0=edId?rgS().find(x=>x.id===edId):null; const ult=
 /* ================= v9.7.0 · Planejamento → Checklist Agregados: validade de 30 dias, avisos por cor e envio ao WhatsApp ================= */
 if(!NUV_CAMPOS.includes('checklist')) NUV_CAMPOS.push('checklist');
 const CK_SEED=[['ANDRÉ','RTR-2J84','2026-10-12'],['BETO','RFB-9J02','2026-10-24'],['CAMINHÃO BH','FPR-6B75','2026-10-15'],['CARLINHOS','QNI-6644','2026-10-24'],['CARLOS AMARAL','SJI-9J65','DESATIVADO'],['CARLOS AMARAL','SJI-9J65','2026-10-19'],['CAMINHÃO CASA','GCY-0380','2026-10-21'],['CAMINHÃO LKR','FSZ-2H63','2026-10-15'],['DIEGO JESUS','DEI-8F17','2026-11-02'],['GUSMÃO','EQF-3E99','2026-09-27'],['HENRIQUE','DGY-8F57','2026-10-15'],['JOÃO VAN BRANCA','EFV-8F65','2026-10-15'],['MARCELLO','RFR-0H89','2026-11-08'],['MATEUS HENRIQUE','QUF-8G64','2026-10-20'],['STANLEY','TMG-2E45','DESATIVADO'],['TARCÍSIO','RUE-5J27','2026-11-09']];
-function ckSeedRow(x){ const desat=x[2]==='DESATIVADO'; return {id:'ck'+Math.random().toString(36).slice(2),mot:x[0],placa:x[1],data:desat?'':x[2],ativo:!desat}; }
-function ckS(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); return S.checklist; }
+function ckSeedRow(x){ const desat=x[2]==='DESATIVADO'; const d=desat?'':x[2]; return {id:'ck'+Math.random().toString(36).slice(2),mot:x[0],placa:x[1],data:d,ativo:!desat,hist:d?[{d}]:[]}; }
+function ckS(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow);
+  /* v9.19.17 · histórico de realizações: nenhuma data se perde ao renovar o checklist */
+  for(const r of S.checklist) if(!Array.isArray(r.hist)) r.hist=r.data?[{d:r.data}]:[];
+  return S.checklist; }
+function ckRegHist(r,nova){ if(!nova) return; if(!Array.isArray(r.hist)) r.hist=[];
+  if(r.hist.some(h=>h.d===nova)) return;
+  r.hist.push({d:nova,em:new Date().toISOString(),por:(NV.perfil&&NV.perfil.nome)||''});
+  r.hist.sort((a,b)=>String(a.d).localeCompare(String(b.d))); }
 function ckSalvar(){ salvar(); ckRender(); }
 function ckVenc(reg){ if(!reg.data) return ''; const d=new Date(reg.data+'T00:00:00'); d.setDate(d.getDate()+30); return d.toISOString().slice(0,10); }
 function ckStatus(reg){ if(reg.ativo===false) return {cor:'cinza',txt:'DESATIVADO',venc:''}; if(!reg.data) return {cor:'cinza',txt:'SEM DATA',venc:''};
@@ -7828,14 +7835,20 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
     ${dragHandle}
     <td>${adm?`<input data-ck-f="mot" value="${esc(r.mot||'')}" list="ck-mots">`:esc(r.mot||'')}</td>
     <td>${adm?`<input data-ck-f="placa" value="${esc(r.placa||'')}" list="ck-placas" style="text-transform:uppercase">`:esc(r.placa||'')}</td>
-    <td>${adm?`<input data-ck-f="data" type="date" value="${esc(r.data||'')}">`:(r.data?fmtData(r.data):'-')}</td>
+    <td>${adm?`<input data-ck-f="data" type="date" value="${esc(r.data||'')}">`:(r.data?fmtData(r.data):'-')}${(r.hist||[]).length>1?`<button class="btn mini ck-hbt" type="button" data-ck-hist="${r.id}" title="Ver todas as realizações desta linha">🕘 ${r.hist.length}</button>`:''}</td>
     <td>${st.venc?(()=>{ /* v9.13.0 · Task #28 — ênfase na data de vencimento */
       const hoje=new Date(); hoje.setHours(0,0,0,0); const vd=new Date(st.venc+'T00:00:00'); const diff=Math.round((vd-hoje)/86400000);
       const datTxt=fmtData(st.venc); const difTxt=diff>0?`<small>(${diff} dia${diff===1?'':'s'})</small>`:diff===0?'<small>(hoje!)</small>':'<small>(vencido há '+Math.abs(diff)+' dia'+(Math.abs(diff)===1?'':'s')+')</small>';
       return `<b>${datTxt}</b> ${difTxt}`; })():'<i style="color:#999">N/A</i>'}</td>
     <td><b>${esc(st.txt)}</b></td>
     <td>${adm?`<label style="display:flex;align-items:center;gap:4px;font-size:.8em"><input type="checkbox" data-ck-f="ativo" ${r.ativo!==false?'checked':''}> ativo</label>`:(r.ativo!==false?'Sim':'Não')}</td>
-    ${adm?`<td><button class="btn mini" type="button" data-ck-del="${r.id}">🗑</button></td>`:''}</tr>`; };
+    ${adm?`<td><button class="btn mini" type="button" data-ck-del="${r.id}">🗑</button></td>`:''}</tr>${linhaHist(r)}`; };
+  /* v9.19.17 · linha escondida com todas as realizações já registradas */
+  const linhaHist=r=>{ const H=r.hist||[]; if(H.length<2) return '';
+    const itens=H.slice().reverse().map(h=>`<li><b>${esc(fmtData(h.d))}</b>${h.d===r.data?' <small style="color:#0E7490">(atual)</small>':''}${h.por?` <small>· registrado por ${esc(h.por)}</small>`:''}${adm&&h.d!==r.data?` <button class="btn mini" type="button" data-ck-hdel="${r.id}|${esc(h.d)}" title="Apagar esta data">🗑</button>`:''}</li>`).join('');
+    return `<tr class="ck-hist" data-ck-hist-row="${r.id}" hidden><td colspan="${6+(adm?2:0)}">
+      <b>Realizações de ${esc((r.mot||'—').toUpperCase())}</b> <span class="sub">— da mais nova para a mais antiga</span>
+      <ul class="ck-hist-lista">${itens}</ul></td></tr>`; };
   el.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
     ${adm?`<button class="btn mini" type="button" id="ck-add">＋ Adicionar</button>`:''}
     <button class="btn pri" type="button" id="ck-wa">📲 Enviar no WhatsApp</button>
@@ -7860,7 +7873,9 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
 (function(){ const st=document.createElement('style'); st.textContent=`.ck-tab{width:100%;border-collapse:collapse}.ck-tab th,.ck-tab td{padding:6px 8px;border:1px solid var(--linha);font-size:var(--fs-sm)}.ck-tab input{width:100%}
  tr.ck-vermelho td{background:#F4B3B0}tr.ck-laranja td{background:#F4B183}tr.ck-amarelo td{background:#FFF59D}tr.ck-cinza td{opacity:.6}
  .ck-drag-handle{cursor:grab;text-align:center;user-select:none;font-size:1.1em;opacity:.55;letter-spacing:-2px}.ck-drag-handle:active{cursor:grabbing}
- tr.ck-dragging{opacity:.4}tr.ck-drag-over td{border-top:3px solid #0E7490!important}`; document.head.appendChild(st);
+ tr.ck-dragging{opacity:.4}tr.ck-drag-over td{border-top:3px solid #0E7490!important}
+ .ck-hbt{margin-left:6px;padding:1px 6px;font-size:.78em;vertical-align:middle}
+ tr.ck-hist td{background:var(--sup)!important;font-size:var(--fs-sm)}.ck-hist-lista{margin:6px 0 0;padding-left:20px}.ck-hist-lista li{padding:2px 0}`; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="geo"]'); if(!ref) return;
   ref.insertAdjacentHTML('afterend',`<button data-tela="checklist"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="lbl">Checklist Agregados</span></button>`);
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-checklist'; sec.hidden=true;
@@ -7873,9 +7888,17 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
       toast('Nova linha no topo: digite o motorista e a placa.'); return; }
     const del=e.target.closest('[data-ck-del]'); if(del){ if(!nvAdmin()) return; S.checklist=ckS().filter(x=>x.id!==del.dataset.ckDel); ckSalvar(); return; }
     const wa=e.target.closest('#ck-wa'); if(wa){ ckEnviar(); return; }
-    const bx=e.target.closest('#ck-baixar'); if(bx) ckBaixar(); });
+    const bx=e.target.closest('#ck-baixar'); if(bx){ ckBaixar(); return; }
+    /* v9.19.17 · histórico de realizações */
+    const hb=e.target.closest('[data-ck-hist]'); if(hb){ const tr=document.querySelector(`[data-ck-hist-row="${hb.dataset.ckHist}"]`); if(tr) tr.hidden=!tr.hidden; return; }
+    const hd=e.target.closest('[data-ck-hdel]'); if(hd){ if(!nvAdmin()) return; const corte=hd.dataset.ckHdel.indexOf('|'); const id=hd.dataset.ckHdel.slice(0,corte), dia=hd.dataset.ckHdel.slice(corte+1);
+      const r=ckS().find(x=>x.id===id); if(!r||dia===r.data) return;
+      if(!confirm('Apagar a realização de '+fmtData(dia)+' do histórico de '+((r.mot||'—').toUpperCase())+'?\n\nUse só para corrigir data digitada errada.')) return;
+      r.hist=(r.hist||[]).filter(h=>h.d!==dia); ckSalvar(); return; } });
   document.body.addEventListener('change',e=>{ const inp=e.target.closest('[data-ck-f]'); if(!inp) return; const tr=inp.closest('[data-ck-row]'); if(!tr) return; const r=ckS().find(x=>x.id===tr.dataset.ckRow); if(!r) return;
-    const campo=inp.dataset.ckF; r[campo]=campo==='ativo'?inp.checked:(campo==='placa'?inp.value.toUpperCase():inp.value); salvar();
+    const campo=inp.dataset.ckF; r[campo]=campo==='ativo'?inp.checked:(campo==='placa'?inp.value.toUpperCase():inp.value);
+    if(campo==='data') ckRegHist(r,inp.value); /* v9.19.17: guarda a realização antes de qualquer coisa */
+    salvar();
     /* v9.19.17: só redesenha quando muda a cor/status da linha — assim não rouba o foco de quem está digitando */
     if(campo==='data'||campo==='ativo') ckRender(); else if(campo==='placa') inp.value=inp.value.toUpperCase(); }); })();
 /* ================= v8.9.1 · BIT mais inteligente: filtra as notas dos romaneios (cidade, região, origem, cliente) e entende frases ================= */
