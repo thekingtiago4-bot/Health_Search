@@ -2602,14 +2602,26 @@ function aplicarTema(){ const esc2 = S.tema==='escuro' || (!S.tema && matchMedia
 function baixar(blob,nome){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=nome; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1500); }
 function lerPacote(){ const el=document.getElementById('pacote-dados'); if(!el) return null; try{ return JSON.parse(el.textContent); }catch(e){ return null; } }
 function hsMesclarRom(local,remoto){
+  /* 9.19.13: romaneios de dias anteriores nunca entram pela sincronização —
+     isso evita que um romaneio de ontem que voltou pela nuvem apareça como "hoje"
+     e precise ser baixado de novo pela virada do dia */
   var L=Array.isArray(local)?local:[], Rm=Array.isArray(remoto)?remoto:[];
   var hj=hojeISO(), vis={};
-  for(var i=0;i<Rm.length;i++) if(Rm[i]&&Rm[i].id) vis[Rm[i].id]=1;
+  /* filtra remoto: só aceita romaneios de hoje (data via opDiaRom) */
+  var RmFiltrado=Rm.filter(function(r){
+    if(!r) return false;
+    try{
+      var d=typeof opDiaRom==='function'?opDiaRom(r):null;
+      if(d&&d<hj){ console.warn('[MERGE] romaneio de ontem barrado na entrada:',r.numero,d); return false; }
+      return true;
+    }catch(e){ return true; }
+  });
+  for(var i=0;i<RmFiltrado.length;i++) if(RmFiltrado[i]&&RmFiltrado[i].id) vis[RmFiltrado[i].id]=1;
   var manter=L.filter(function(r){
     if(!r||vis[r.id]) return false;
     try{ return typeof opDiaRom==='function' ? opDiaRom(r)===hj : true; }catch(e){ return true; }
   });
-  return Rm.concat(manter);
+  return RmFiltrado.concat(manter);
 }
 function aplicarPacote(pac){
   if(!pac || !pac.id || S.pacoteId===pac.id) return false;
@@ -3171,7 +3183,21 @@ function geoCoords(){ if(GEO.coords) return GEO.coords; const m=new Map(); const
   for(const it of el.textContent.trim().split('|')){ const i=it.indexOf(':'), j=it.indexOf(',',i); m.set(+it.slice(0,i),{lat:+it.slice(i+1,j),lon:+it.slice(j+1)}); } return GEO.coords=m; }
 function geoOriginais(){ try{ return JSON.parse(document.getElementById('geo-ref').textContent); }catch(e){ return []; } }
 const GEO_MATRIZ=[{id:'matriz',nome:'MATRIZ',tipo:'regiao',alias:[],cidades:[],cor:'#455A64',fonte:'opção fixa'},{id:'matriz-base',nome:'MATRIZ',tipo:'base',alias:[],cidades:[],cor:'#455A64',fonte:'opção fixa'}];
-function geoInit(){ if(!S.geo||!Array.isArray(S.geo.listas)) S.geo={listas:geoOriginais(),aprend:{},em:'1970-01-01T00:00:00.000Z'}; /* v9.15.0: mapa de fábrica nasce "velho" para nunca passar à frente do publicado */ S.geo.aprend=S.geo.aprend||{};
+function geoInit(){ if(!S.geo||!Array.isArray(S.geo.listas)){
+    /* 9.19.13: registra quando o mapa de fábrica é recriado, para achar a causa */
+    try{
+      const havia=localStorage.getItem('healthSearch.geo'); // idb? S.geo pode não ter chegado ainda
+      const reg={em:new Date().toISOString(),versao:typeof HS_VERSAO!=='undefined'?HS_VERSAO:'?',
+        haviaCopiaLocal:!!havia,
+        haviaSGeo:!!(window.S&&window.S.geo),
+        url:location.pathname};
+      const logs=JSON.parse(localStorage.getItem('healthSearch.geoInitLog')||'[]');
+      logs.unshift(reg); if(logs.length>20) logs.length=20;
+      localStorage.setItem('healthSearch.geoInitLog',JSON.stringify(logs));
+      console.warn('[GEO] mapa de fábrica recriado',reg);
+    }catch(e){}
+    S.geo={listas:geoOriginais(),aprend:{},em:'1970-01-01T00:00:00.000Z'};
+  } /* v9.15.0: mapa de fábrica nasce "velho" para nunca passar à frente do publicado */ S.geo.aprend=S.geo.aprend||{};
   for(const m of GEO_MATRIZ) if(!S.geo.listas.some(l=>l.id===m.id)) S.geo.listas.push(JSON.parse(JSON.stringify(m))); }
 /* 9.19.12: só uma edição feita por alguém na tela (clique/tecla) marca o mapa como "editado aqui". Sem essa marca, mapa diferente do publicado é cópia velha e não vale. */
 const GEOE={ch:'healthSearch.geoEdit', ler(){ try{ return JSON.parse(localStorage.getItem(this.ch)||'null'); }catch(e){ return null; } }, marcar(){ try{ const ua=navigator.userActivation; if(ua&&!ua.isActive) return; if(!this.ler()) localStorage.setItem(this.ch,JSON.stringify({em:new Date().toISOString()})); }catch(e){} }, limpar(){ try{ localStorage.removeItem(this.ch); }catch(e){} } };
@@ -4133,7 +4159,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.12', HS_DATA='11/11/2026';
+const HS_VERSAO='9.19.13', HS_DATA='12/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7098,10 +7124,11 @@ function geoJuntar3(base,loc,rem){ base=base||{listas:[],aprend:{}}; loc=loc||{l
         const r2=JSON.parse(JSON.stringify(remoto)); r2.em=new Date().toISOString();
         try{ vsnBaseGravar('s:geo',r2); }catch(e){}
         setTimeout(()=>{ toast('Mapa atualizado pelo administrador ✓ — regiões sincronizadas.'); try{ geoDesenhar(); }catch(e){} },300); return r2; }
-      /* 9.19.12: sem edição feita neste aparelho, a diferença é cópia velha — vale o mapa publicado, sem juntar (a junção lia cidade faltando como "apagada aqui" e encolhia o mapa) */
-      if(!GEOE.ler()){ console.warn('mapa: cópia local sem edição, usei o publicado',geoConta(local),geoConta(remoto)); return JSON.parse(JSON.stringify(remoto)); }
-      const j=geoJuntar3(anc,local,remoto); setTimeout(()=>toast('Mapa juntado com o dos colegas, cidade a cidade — nada foi perdido.'),300); return j; }
-    return _nj(chave,local,remoto); }; }
+      /* 9.19.13: sem edição, vale o publicado; COM edição também vale o publicado — só admin edita, junção 3 vias aposentada (causa original da perda de cidades) */
+      if(!GEOE.ler()){ console.warn('mapa: sem edição local, usei o publicado',geoConta(local),geoConta(remoto)); return JSON.parse(JSON.stringify(remoto)); }
+      /* com edição: o admin editou aqui → o local dele prevalece; outros usuários não chegam aqui (não têm GEOE) */
+      console.log('mapa: edição local do admin, mantendo local',geoConta(local)); return JSON.parse(JSON.stringify(local));
+    } return _nj(chave,local,remoto); }; }
 /* depois de cada sincronização bem-sucedida, guarda o mapa "igual à nuvem" como base da próxima junção */
 { const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); try{ if(!NUV.erro&&S.geo&&NUV.h['s:geo']===nuvHash(S.geo)) vsnBaseGravar('s:geo',S.geo); }catch(e){} return r; }; }
 
