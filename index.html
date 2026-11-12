@@ -4159,7 +4159,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.13', HS_DATA='12/11/2026';
+const HS_VERSAO='9.19.14', HS_DATA='12/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4614,8 +4614,11 @@ const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--ama
 #op-cam .mira{position:absolute;left:4%;right:4%;top:14%;bottom:26%;border:6px solid rgba(255,255,255,.9);border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.28);pointer-events:none;transition:border-color .1s}
 #op-cam .bar{position:absolute;left:0;right:0;bottom:0;padding:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;background:linear-gradient(transparent,rgba(0,0,0,.75))}
 #op-cam .bar button{font-size:1rem}
-#op-cam .msg{position:absolute;left:12px;right:12px;top:12px;color:#fff;border-radius:12px;padding:12px 14px;font-weight:600;background:rgba(0,0,0,.55)}
-#op-cam .msg b{display:block;font-size:1.2rem}#op-cam .msg,#op-res{cursor:pointer}#op-cam .vtot{position:absolute;left:12px;right:12px;bottom:84px;border-radius:14px;padding:10px 16px;color:#fff;display:flex;align-items:baseline;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.5);z-index:3}#op-cam .vtot span{font-weight:700;letter-spacing:.08em;font-size:13px;opacity:.9}#op-cam .vtot b{font-size:2.6rem;line-height:1;font-weight:800}#op-cam .vtot small{margin-left:auto;font-weight:700;font-size:14px}
+#op-cam .msg{position:absolute;left:12px;right:12px;top:12px;color:#fff;border-radius:12px;padding:12px 14px;font-weight:600;background:rgba(0,0,0,.55);transition:padding .15s,font-size .15s}
+#op-cam .msg b{display:block;font-size:1.2rem}
+#op-cam .msg.msg-erro{padding:18px 16px;border:2.5px solid rgba(255,255,255,.55);box-shadow:0 0 0 4px rgba(0,0,0,.35),0 8px 28px rgba(0,0,0,.55);animation:op-shake .35s ease-out}
+#op-cam .msg.msg-erro b{font-size:1.6rem}
+@keyframes op-shake{0%{transform:translateX(0)}18%{transform:translateX(-8px)}36%{transform:translateX(8px)}54%{transform:translateX(-6px)}72%{transform:translateX(5px)}88%{transform:translateX(-3px)}100%{transform:translateX(0)}}#op-cam .msg,#op-res{cursor:pointer}#op-cam .vtot{position:absolute;left:12px;right:12px;bottom:84px;border-radius:14px;padding:10px 16px;color:#fff;display:flex;align-items:baseline;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.5);z-index:3}#op-cam .vtot span{font-weight:700;letter-spacing:.08em;font-size:13px;opacity:.9}#op-cam .vtot b{font-size:2.6rem;line-height:1;font-weight:800}#op-cam .vtot small{margin-left:auto;font-weight:700;font-size:14px}
 @media (max-width:640px){.op-tab .m-oc{display:none}}
 #op-cam .op-camleg{position:absolute;left:10px;right:10px;bottom:76px;max-height:30vh;overflow:auto;color:#fff;background:rgba(0,0,0,.6);border-radius:12px;padding:8px 10px;font-size:.82rem;line-height:1.35}
 #op-cam .op-camleg b{font-weight:700}#op-cam .op-camleg .pt,.op-leg .pt{display:inline-block!important;width:10px;height:10px;border-radius:50%;margin:0 4px 0 8px;vertical-align:-1px}
@@ -4775,7 +4778,7 @@ let OP_AC=null;
 function opSom(st){ try{ OP_AC=OP_AC||new (window.AudioContext||window.webkitAudioContext)(); const ac=OP_AC; if(ac.state==='suspended') ac.resume();
   const seq={ok:[[1400,.09]],semnota:[[900,.1],[0,.06],[900,.1]],fora:[[220,.45]],dup:[[700,.08],[0,.04],[1100,.08],[0,.04],[700,.08]],info:[[600,.08]],reent:[[1200,.12],[0,.05],[800,.12],[0,.05],[1200,.12]]}[st]||[[600,.08]];
   let t=ac.currentTime; for(const [f,d] of seq){ if(f){ const o=ac.createOscillator(), g=ac.createGain(); o.type=st==='fora'?'sawtooth':'square'; o.frequency.value=f; g.gain.setValueAtTime(.18,t); g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t+d); } t+=d; } }catch(e){}
-  try{ if(navigator.vibrate) navigator.vibrate({ok:60,semnota:[80,60,80],fora:[300],dup:[50,40,50,40,50],reent:[120,60,120,60,120]}[st]||40); }catch(e){} }
+  try{ if(navigator.vibrate) navigator.vibrate({ok:60,semnota:[80,60,80],fora:[200,100,200],dup:[200,80,200,80,200],reent:[120,60,120,60,120]}[st]||40); }catch(e){} }
 function opMostrar(r){ opSom(r.status); const cor=(OP_ST[r.status]||{c:'#555'}).c;
   try{ let tb=document.querySelector('#op-cam .vtot'); const cam=document.querySelector('#op-cam'); if(cam&&!tb){ cam.insertAdjacentHTML('beforeend','<div class="vtot" hidden></div>'); tb=cam.querySelector('.vtot'); }
     if(tb){ if(r._vt){ const k=r._vk||0, t=r._vt; tb.hidden=false; tb.style.background=k>=t?'var(--ok)':cor; tb.innerHTML=`<span>VOLUMES</span><b>${k?fmtN(k)+' / ':''}${fmtN(t)}</b><small>${k>=t?'pedido completo ✓':'faltam '+fmtN(t-k)}</small>`; } else tb.hidden=true; } }catch(e){}
@@ -4795,6 +4798,10 @@ function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el
     const atraso=2000; OP.ultLeitura=Date.now()-(OP_ESPERA-atraso);
     /* atualiza o indicador de pausa para mostrar "2" em vez de "0,5" */
     const el=document.querySelector('#op-cam .pausa'); if(el){ el.hidden=false; const b=el.querySelector('b'); if(b) b.textContent='2'; clearTimeout(opCamPausa.t); opCamPausa.t=setTimeout(()=>{ el.hidden=true; },atraso); }
+  } else if(r&&(r.status==='fora'||r.status==='dup')){
+    /* v9.19.14 · aviso de erro mais visível: fonte maior + shake + vibração reforçada */
+    const m=document.querySelector('#op-cam .msg');
+    if(m){ m.classList.add('msg-erro'); setTimeout(()=>m.classList.remove('msg-erro'),3000); }
   }
 }; }
 
