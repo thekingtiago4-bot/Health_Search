@@ -1,1 +1,1 @@
-{"versao":"9.19.14","data":"2026-11-12","novidades":"aviso de bipe maior com vibração reforçada para 'fora do romaneio' e 'duplicado': animação shake, fonte maior e vibração [200,100,200]"}
+{"versao":"9.19.15","data":"2026-11-12","novidades":"segurança: senha provisória e API key do Meu Danfe agora usam modal com campo oculto (não mais prompt visível); CSP com frame-ancestors"}
