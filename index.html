@@ -2799,7 +2799,7 @@ async function reRestaurar(f){
     for(const l of ls){ if(l.chave){ const inc=at.find(x=>!x.chave&&x.nf===l.nf); if(inc){ const obs=inc.obs; Object.assign(inc,l); if(!inc.obs&&obs) inc.obs=obs; delete inc.imp; novas++; continue; } }
       const igual=at.some(x=>(l.chave&&x.chave===l.chave)||(!l.chave&&x.nf===l.nf&&x.obs===l.obs)); if(!igual){ at.push(l); novas++; } } }
   if(b.basesAprendidas && S.geo){ for(const [c,v] of Object.entries(b.basesAprendidas)) if(v&&v.base&&!(S.geo.aprend[c]||{}).base) geoEnsinar(c,'base',v.base); }
-  RE.gravar(); reTela(); $('#re-desfazer').hidden=false; toast(b.substituir?'Histórico da planilha atualizado: '+novas+' nota(s). Seus lançamentos foram mantidos.':'Backup restaurado: '+novas+' nota(s) nova(s) adicionada(s). Nada foi apagado.');
+  RE.gravar(); reTela(); if(nvAdmin()) $('#re-desfazer').hidden=false; toast(b.substituir?'Histórico da planilha atualizado: '+novas+' nota(s). Seus lançamentos foram mantidos.':'Backup restaurado: '+novas+' nota(s) nova(s) adicionada(s). Nada foi apagado.');
 }
 /* ---------- PAINEL ---------- */
 const RP={per:null,reg:'*',tipo:'*',det:null};
@@ -2894,8 +2894,8 @@ function reSub(t){ $$('[data-re-sub]').forEach(b=>b.setAttribute('aria-pressed',
     l[inp.dataset.c]=inp.value.trim().toUpperCase(); RE.gravar(); toast('NF '+l.nf+' corrigida.'); rpRender(); });
   $('#rp-regs').addEventListener('click',e=>{ const b=e.target.closest('[data-rp-reg]'); if(!b) return; RP.reg=b.dataset.rpReg; rpRender(); });
   $('#re-bkp').addEventListener('click',reBackup);
-  try{ if(localStorage.getItem('healthSearch.reentregas.antes')) $('#re-desfazer').hidden=false; }catch(e){}
-  $('#re-desfazer').addEventListener('click',()=>{ let a; try{ a=JSON.parse(localStorage.getItem('healthSearch.reentregas.antes')||'null'); }catch(e){} if(!a){ toast('Nada para desfazer.'); return; }
+  try{ if(localStorage.getItem('healthSearch.reentregas.antes')&&nvAdmin()) $('#re-desfazer').hidden=false; }catch(e){}
+  $('#re-desfazer').addEventListener('click',()=>{ if(!nvAdmin()){ toast('Só o administrador pode desfazer restaurações.'); return; } let a; try{ a=JSON.parse(localStorage.getItem('healthSearch.reentregas.antes')||'null'); }catch(e){} if(!a){ toast('Nada para desfazer.'); return; }
     if(!confirm('Voltar as reentregas para como estavam antes da última restauração?')) return; const D=RE.ler(); D.dias=a; if(!D.dias[D.atual]) D.atual=null; RE.gravar(); localStorage.removeItem('healthSearch.reentregas.antes'); $('#re-desfazer').hidden=true; reTela(); toast('Restauração desfeita.'); });
   $('#re-rest').addEventListener('click',()=>$('#re-rest-arq').click());
   $('#re-rest-arq').addEventListener('change',e=>{ const f=e.target.files[0]; e.target.value=''; if(f) reRestaurar(f); });
@@ -2905,7 +2905,7 @@ function reSub(t){ $$('[data-re-sub]').forEach(b=>b.setAttribute('aria-pressed',
   $('#re-dia').addEventListener('change',e=>{ RE.ler().atual=e.target.value; RE.gravar(); reTela(); reStatus(''); });
   $('#re-novo').addEventListener('click',()=>{ const v=prompt('Data do novo dia (dd/mm/aaaa):',reDataBR(reHoje())); if(!v) return; const m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(!m){ toast('Data inválida.'); return; }
     const iso=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); const D=RE.ler(); D.dias[iso]=D.dias[iso]||[]; D.atual=iso; RE.gravar(); reTela(); $('#re-bip').focus(); });
-  $('#re-apagar-dia').addEventListener('click',()=>{ const D=RE.ler(); if(!confirm('Apagar o dia '+reDataBR(D.atual)+' com '+reDia().length+' nota(s)?')) return; (D.apagados=D.apagados||[]).push(D.atual); delete D.dias[D.atual]; D.atual=Object.keys(D.dias).sort().pop()||null; reDia(); RE.gravar(); reTela(); });
+  $('#re-apagar-dia').addEventListener('click',()=>{ if(!nvAdmin()){ toast('Só o administrador pode apagar dias de reentrega.'); return; } const D=RE.ler(); if(!confirm('Apagar o dia '+reDataBR(D.atual)+' com '+reDia().length+' nota(s)?')) return; (D.apagados=D.apagados||[]).push(D.atual); delete D.dias[D.atual]; D.atual=Object.keys(D.dias).sort().pop()||null; reDia(); RE.gravar(); reTela(); });
   $('#re-imprimir').addEventListener('click',reImprimir);
   $('#re-csv').addEventListener('click',reCsv);
   $('#re-cfg').addEventListener('click',()=>{ /* v9.19.15 · api-key via modal */
@@ -2943,15 +2943,15 @@ document.addEventListener('click',async e=>{
   const da=e.target.closest('[data-del-ag]'); if(da){ S.agendamentos=S.agendamentos.filter(a=>a.id!==da.dataset.delAg); salvar(); renderTudo(); toast('Agendamento excluído.'); return; }
 });
 document.addEventListener('input',e=>{ const f=e.target.closest('[data-filtro]'); if(!f) return; const t=N(f.value); const tb=f.parentElement.querySelector('tbody'); for(const tr of tb.rows) tr.hidden = t && !t.split(' ').every(p=>tr.dataset.busca.includes(p)); });
-$('#bt-reset').onclick=async()=>{ if(!S.romaneios.length){ toast('Não há romaneios carregados.'); return; } if(await confirmar('Remover todos os romaneios?',`Vou tirar os ${S.romaneios.length} romaneios e as ${todasLinhas().length} notas da busca, para começar o próximo dia limpo. Os agendamentos continuam salvos.`,'Remover todos')){ S.romaneios=[]; S.pacoteInfo=null; S.romLimpoEm=new Date().toISOString(); abertos.clear(); salvar(); renderTudo(); toast('Romaneios removidos. Pronto para o próximo dia.'); } };
+$('#bt-reset').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrador pode remover romaneios.'); return; } if(!S.romaneios.length){ toast('Não há romaneios carregados.'); return; } if(await confirmar('Remover todos os romaneios?',`Vou tirar os ${S.romaneios.length} romaneios e as ${todasLinhas().length} notas da busca, para começar o próximo dia limpo. Os agendamentos continuam salvos.`,'Remover todos')){ S.romaneios=[]; S.pacoteInfo=null; S.romLimpoEm=new Date().toISOString(); abertos.clear(); salvar(); renderTudo(); toast('Romaneios removidos. Pronto para o próximo dia.'); } };
 $('#bt-csv').onclick=exportarCSV;
 $('#bt-zap').onclick=gerarPacote;
 $('#hist-filtro').addEventListener('input',renderHistorico);
-$('#bt-hist-limpar').onclick=async()=>{ const n=(S.historico||[]).length; if(!n){ toast('O histórico já está vazio.'); return; } if(await confirmar('Limpar o histórico?',`Vou apagar as ${n} pesquisas guardadas. Romaneios e agendamentos não mudam.`,'Limpar histórico')){ S.historico=[]; salvar(); renderHistorico(); renderResumo(); toast('Histórico limpo.'); } };
+$('#bt-hist-limpar').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrador pode limpar o histórico.'); return; } const n=(S.historico||[]).length; if(!n){ toast('O histórico já está vazio.'); return; } if(await confirmar('Limpar o histórico?',`Vou apagar as ${n} pesquisas guardadas. Romaneios e agendamentos não mudam.`,'Limpar histórico')){ S.historico=[]; salvar(); renderHistorico(); renderResumo(); toast('Histórico limpo.'); } };
 $('#bt-ag').onclick=salvarAg;
 $$('#form-ag input').forEach(i=>i.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); salvarAg(); } }));
 $$('#form-ag .seg button').forEach(b=>b.onclick=()=>{ setTipo(b.dataset.tipo); $('#ag-valor').focus(); });
-$('#bt-ag-passados').onclick=async()=>{ const hj=hojeISO(); const n=S.agendamentos.filter(a=>a.data<hj).length; if(!n){ toast('Nenhum agendamento passado.'); return; } if(await confirmar('Excluir agendamentos passados?',`São ${n} agendamento(s) com data anterior a hoje.`,'Excluir')){ S.agendamentos=S.agendamentos.filter(a=>a.data>=hj); salvar(); renderTudo(); } };
+$('#bt-ag-passados').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrador pode excluir agendamentos.'); return; } const hj=hojeISO(); const n=S.agendamentos.filter(a=>a.data<hj).length; if(!n){ toast('Nenhum agendamento passado.'); return; } if(await confirmar('Excluir agendamentos passados?',`São ${n} agendamento(s) com data anterior a hoje.`,'Excluir')){ S.agendamentos=S.agendamentos.filter(a=>a.data>=hj); salvar(); renderTudo(); } };
 $('#bt-tema').onclick=()=>{ const agora=document.documentElement.dataset.tema; S.tema= agora==='escuro'?'claro':'escuro'; aplicarTema(); salvar(); };
 const sol=$('#soltar');
 $('#arq').addEventListener('change',e=>importar(e.target.files));
@@ -3912,9 +3912,22 @@ function nvTempoReal(){ if(NV.canal) return; if(typeof NUV!=='undefined') return
     { var _rl=S.romaneios; S=Object.assign(S,row.dados.s||{}); S.romaneios=hsMesclarRom(_rl,S.romaneios); } nvAplicarRE(row.dados.re); montarDicionario(); renderTudo(); if(!$('#t-reentregas').hidden) reTela(); toast('Atualizado por '+(row.atualizado_por||'outro usuário')+'.'); }catch(e){} }).subscribe(); }
 
 function nvSelo(t,erro){ const e=$('#r-salvo'); if(e){ e.textContent=t; e.parentElement.classList.toggle('nv-erro',!!erro); } }
+/* v9.19.16 · arquitetura de dados linear: admin = linha reta (pode tudo), usuários só acumulam */
+function atualizarBotoesAdmin(){
+  const adm=nvAdmin();
+  /* botões destrutivos: só aparecem para admins */
+  ['bt-reset','re-apagar-dia','bt-hist-limpar','bt-ag-passados'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.hidden=!adm;
+  });
+  /* re-desfazer: só admin, E só se houver backup pendente no localStorage */
+  const rd=document.getElementById('re-desfazer');
+  if(rd){ try{ rd.hidden = !adm || !localStorage.getItem('healthSearch.reentregas.antes'); }catch(e){ rd.hidden=!adm; } }
+}
+
 function nvUI(){ const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||NV.user.email)}</b><small>${NV.perfil.papel==='admin'?'Administrador':NV.perfil.papel==='gestor'?'Gestor':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
   $('#nv-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
   const nb=document.querySelector('.nav [data-tela="usuarios"]'); if(nb) nb.hidden=NV.perfil.papel!=='admin'; const ng=document.getElementById('nav-grupo-adm'); if(ng) ng.hidden=NV.perfil.papel!=='admin';
+  atualizarBotoesAdmin();
   const _r=renderResumo; renderResumo=function(){ _r(); nvSelo('Salvo online'); }; }
 
 async function nvNovaSenha(){ await new Promise(res=>{ const f=nvTela(`<h2>Nova senha</h2><label>Nova senha<input id="nv-ns" type="password" autocomplete="new-password"></label><div class="nv-msg"></div><div class="nv-bts"><button class="btn pri" type="button">Salvar senha</button></div>`);
@@ -4177,7 +4190,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.15', HS_DATA='12/11/2026';
+const HS_VERSAO='9.19.16', HS_DATA='12/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4965,7 +4978,8 @@ async function nvEntrarPacote(){
     await NV.cli.auth.signOut({scope:'local'}); const f=nvTela(`<h2>Aguardando liberação</h2><p>Seu usuário ainda não foi liberado. Peça ao administrador para liberar o acesso.</p><div class="nv-bts"><button class="btn pri" type="button">Voltar</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
   nvFechar(); NV.pacote=true;
   const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||nvExibe(NV.user.email))}</b><small>${NV.perfil.papel==='admin'?'Administrador':NV.perfil.papel==='gestor'?'Gestor':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
-  const s=$('#nv-sair'); if(s) s.onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); }; }
+  const s=$('#nv-sair'); if(s) s.onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
+  atualizarBotoesAdmin(); }
 
 /* ================= v6.3.1 · histórico por PEDIDO e por reentrega lançada → alerta de reentrega (romaneio, bipe e mural) ================= */
 function reVarrerPed(){ const n=nexS(); n.histPed=n.histPed||{}; let novas=0;

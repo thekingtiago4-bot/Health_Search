@@ -1,1 +1,1 @@
-{"versao":"9.19.15","data":"2026-11-12","novidades":"segurança: senha provisória e API key do Meu Danfe agora usam modal com campo oculto (não mais prompt visível); CSP com frame-ancestors"}
+{"versao":"9.19.16","data":"2026-11-12","novidades":"arquitetura de dados linear: botões destrutivos (remover romaneios, apagar dia, limpar histórico, excluir agendamentos) ficam ocultos e bloqueados para usuários comuns — somente administrador pode deletar dados"}
