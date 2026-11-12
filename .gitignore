@@ -1,0 +1,27 @@
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Backups e temporários
+*.bak
+*.tmp
+*.old
+*.orig
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node (caso algum dia use build local)
+node_modules/
+
+# Variáveis de ambiente (nunca subir credenciais)
+.env
+.env.local
+.env*.local
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
