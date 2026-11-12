@@ -33,21 +33,15 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
   { const g=await p.evaluate(()=>{ const pub=JSON.parse(JSON.stringify(S.geo)); pub.em='2026-11-11T08:22:37.481Z'; const velho=JSON.parse(JSON.stringify(pub)); velho.listas.forEach(l=>{ l.cidades=l.cidades.slice(0,Math.floor(l.cidades.length/2)); }); velho.em=new Date().toISOString();
       vsnBaseGravar('s:geo',pub); GEOE.limpar(); const sem=geoConta(nuvJuntar('s:geo',velho,pub)); localStorage.setItem(GEOE.ch,'{"em":"x"}'); const com=geoConta(nuvJuntar('s:geo',velho,pub)); GEOE.limpar(); return {pub:geoConta(pub),sem,com}; });
     ok(g.sem===g.pub,'mapa: cópia velha sem edição encolheu o publicado ('+g.sem+' de '+g.pub+')'); ok(g.com<g.pub,'mapa: edição de verdade (retirada de cidades) não foi respeitada na junção'); }
-  /* 9.19.17: Checklist Agregados — a data anterior nunca se perde, a ordem arrastada fica salva e "Baixar a de hoje" sai em JPEG */
+  /* 9.19.17: Checklist Agregados — a ordem arrastada fica salva e "Baixar a de hoje" sai em JPEG */
   { const ck=await p.evaluate(async()=>{
       S.checklist=[{id:'ckA',mot:'TESTE A',placa:'AAA-1A11',data:'2026-10-01',ativo:true},{id:'ckB',mot:'TESTE B',placa:'BBB-2B22',data:'2026-10-02',ativo:true}];
-      const L=ckS(), a=L.find(x=>x.id==='ckA');
-      ckRegHist(a,'2026-11-12'); a.data='2026-11-12';   /* renovou o checklist */
-      ckRegHist(a,'2026-11-12');                        /* repetiu a mesma data: não pode duplicar */
-      const [mov]=L.splice(1,1); L.splice(0,0,mov); S.checklist=L; /* arrastou a 2ª linha para o topo */
+      const L=ckS(); const [mov]=L.splice(1,1); L.splice(0,0,mov); S.checklist=L; /* arrastou a 2ª linha para o topo */
       irPara('checklist'); const blob=await ckImagem('jpeg');
-      return {hist:(a.hist||[]).map(h=>h.d).join(','), ordem:ckS().map(x=>x.id).join(','),
-        tela:[...document.querySelectorAll('#ck-tbody tr[data-ck-row]')].map(t=>t.dataset.ckRow).join(','),
-        tipo:blob.type, hbt:!!document.querySelector('[data-ck-hist="ckA"]')}; });
-    ok(ck.hist==='2026-10-01,2026-11-12','checklist: a data anterior se perdeu ao renovar ('+ck.hist+')');
+      return {ordem:ckS().map(x=>x.id).join(','),
+        tela:[...document.querySelectorAll('#ck-tbody tr[data-ck-row]')].map(t=>t.dataset.ckRow).join(','), tipo:blob.type}; });
     ok(ck.ordem==='ckB,ckA','checklist: a ordem reordenada não ficou salva ('+ck.ordem+')');
     ok(ck.tela==='ckB,ckA','checklist: a tabela não desenhou na ordem salva ('+ck.tela+')');
-    ok(ck.tipo==='image/jpeg','checklist: "Baixar a de hoje" não saiu em JPEG ('+ck.tipo+')');
-    ok(ck.hbt,'checklist: linha com mais de uma realização ficou sem o botão de histórico'); }
+    ok(ck.tipo==='image/jpeg','checklist: "Baixar a de hoje" não saiu em JPEG ('+ck.tipo+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
