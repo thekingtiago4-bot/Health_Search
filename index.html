@@ -4190,7 +4190,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.16', HS_DATA='12/11/2026';
+const HS_VERSAO='9.19.17', HS_DATA='12/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7801,7 +7801,7 @@ function ckTexto(){ const L=ckS().filter(r=>r.ativo!==false&&r.data); const venc
   for(const {r,st} of vencidos) L2.push(`*${(r.mot||'-').toUpperCase()}*, seu checklist está *VENCIDO* (${fmtData(st.venc)})`);
   if(!vencendo.length&&!vencidos.length) L2.push('Nenhum motorista com checklist vencendo ou vencido no momento.');
   return L2.join('\n'); }
-async function ckImagem(){ const L=ckS(); const cor={vermelho:'#F4B3B0',laranja:'#F4B183',amarelo:'#FFF59D',verde:'#FFFFFF',cinza:'#E3E3E3'};
+async function ckImagem(fmt){ const L=ckS(); const cor={vermelho:'#F4B3B0',laranja:'#F4B183',amarelo:'#FFF59D',verde:'#FFFFFF',cinza:'#E3E3E3'};
   const lh=30,pad=10,cw=[180,110,110,110,140]; const w=cw.reduce((a,b)=>a+b,0)+pad*2; const h=lh*(L.length+2)+pad*2;
   const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); g.fillStyle='#FFFFFF'; g.fillRect(0,0,w,h);
   g.font='bold 14px Arial'; g.fillStyle='#0E7490'; g.fillText('CONTROLE · CHECKLISTS AGREGADOS',pad,pad+16);
@@ -7809,15 +7809,25 @@ async function ckImagem(){ const L=ckS(); const cor={vermelho:'#F4B3B0',laranja:
   heads.forEach((hd,i)=>{ g.fillStyle='#0E7490'; g.fillRect(x,y,cw[i],lh); g.strokeStyle='#FFFFFF'; g.strokeRect(x,y,cw[i],lh); g.fillStyle='#FFFFFF'; g.font='bold 12px Arial'; g.fillText(hd,x+6,y+19); x+=cw[i]; }); y+=lh;
   for(const r of L){ const st=ckStatus(r); x=pad; const vals=[(r.mot||'-').toUpperCase(),r.placa||'-',r.data?fmtData(r.data):'-',st.venc?fmtData(st.venc):'N/A',st.txt];
     vals.forEach((v,i)=>{ g.fillStyle=cor[st.cor]||'#FFFFFF'; g.fillRect(x,y,cw[i],lh); g.strokeStyle='#CCCCCC'; g.strokeRect(x,y,cw[i],lh); g.fillStyle='#222222'; g.font='12px Arial'; g.fillText(String(v).slice(0,22),x+6,y+19); x+=cw[i]; }); y+=lh; }
-  return await new Promise(res=>c.toBlob(res,'image/png')); }
+  const mime=fmt==='jpeg'?'image/jpeg':'image/png';
+  return await new Promise(res=>c.toBlob(res,mime,0.92)); }
+/* v9.19.17 · Baixar a de hoje: salva JPEG e copia legenda */
+async function ckBaixar(){ const txt=ckTexto();
+  try{ await navigator.clipboard.writeText(txt); }catch(e){}
+  const blob=await ckImagem('jpeg'); baixar(blob,'checklist-agregados-'+hojeISO()+'.jpg');
+  toast('Imagem salva! A legenda já está copiada — cole no WhatsApp ou onde quiser.'); }
 async function ckEnviar(){ const txt=ckTexto(); try{ await navigator.clipboard.writeText(txt); }catch(e){}
-  const blob=await ckImagem(); const f=new File([blob],'checklist-agregados.png',{type:'image/png'});
+  const blob=await ckImagem('png'); const f=new File([blob],'checklist-agregados.png',{type:'image/png'});
   try{ if(navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],text:txt}); toast('Escolha a conversa no WhatsApp e toque em enviar. (O texto também foi copiado.)'); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
   baixar(blob,f.name); window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); toast('A imagem foi baixada: anexe-a na conversa. O texto já vai no WhatsApp.'); }
+/* v9.19.17 · drag-and-drop state */
+let _ckDrag=null;
 function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); const adm=nvAdmin();
+  const dragHandle=adm?`<td class="ck-drag-handle" draggable="true" title="Arrastar para reordenar">⠿</td>`:'';
   const linha=r=>{ const st=ckStatus(r); return `<tr class="ck-${st.cor}" data-ck-row="${r.id}">
+    ${dragHandle}
     <td>${adm?`<input data-ck-f="mot" value="${esc(r.mot||'')}" list="ck-mots">`:esc(r.mot||'')}</td>
-    <td>${adm?`<input data-ck-f="placa" value="${esc(r.placa||'')}" style="text-transform:uppercase">`:esc(r.placa||'')}</td>
+    <td>${adm?`<input data-ck-f="placa" value="${esc(r.placa||'')}" list="ck-placas" style="text-transform:uppercase">`:esc(r.placa||'')}</td>
     <td>${adm?`<input data-ck-f="data" type="date" value="${esc(r.data||'')}">`:(r.data?fmtData(r.data):'-')}</td>
     <td>${st.venc?(()=>{ /* v9.13.0 · Task #28 — ênfase na data de vencimento */
       const hoje=new Date(); hoje.setHours(0,0,0,0); const vd=new Date(st.venc+'T00:00:00'); const diff=Math.round((vd-hoje)/86400000);
@@ -7826,12 +7836,31 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
     <td><b>${esc(st.txt)}</b></td>
     <td>${adm?`<label style="display:flex;align-items:center;gap:4px;font-size:.8em"><input type="checkbox" data-ck-f="ativo" ${r.ativo!==false?'checked':''}> ativo</label>`:(r.ativo!==false?'Sim':'Não')}</td>
     ${adm?`<td><button class="btn mini" type="button" data-ck-del="${r.id}">🗑</button></td>`:''}</tr>`; };
-  el.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">${adm?`<button class="btn mini" type="button" id="ck-add">＋ Adicionar</button>`:''}<button class="btn pri" type="button" id="ck-wa">📲 Enviar no WhatsApp</button></div>
-   <datalist id="ck-mots">${(S.cadMot||[]).map(m=>`<option value="${esc(m.nome)}">`).join('')}</datalist>
-   <div class="rolagem"><table class="ck-tab"><thead><tr><th>Motorista</th><th>Placa</th><th>Realização</th><th>Vencimento</th><th>Status</th><th>Ativo</th>${adm?'<th></th>':''}</tr></thead><tbody>${L.map(linha).join('')}</tbody></table></div>
-   <p class="sub" style="margin-top:8px">Válido por 30 dias a partir da data de realização. 🟡 faltam 4 dias · 🟠 falta 1 dia ou venceu hoje · 🔴 vencido.</p>`; }
+  el.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    ${adm?`<button class="btn mini" type="button" id="ck-add">＋ Adicionar</button>`:''}
+    <button class="btn pri" type="button" id="ck-wa">📲 Enviar no WhatsApp</button>
+    <button class="btn" type="button" id="ck-baixar">⬇️ Baixar a de hoje</button>
+   </div>
+   <datalist id="ck-mots">${[...new Set([...(S.cadMot||[]).map(m=>m.nome),...L.map(r=>r.mot)].filter(Boolean))].sort().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+   <datalist id="ck-placas">${[...new Set(L.map(r=>r.placa).filter(Boolean))].sort().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>
+   <div class="rolagem"><table class="ck-tab"><thead><tr>${adm?'<th style="width:28px"></th>':''}<th>Motorista</th><th>Placa</th><th>Realização</th><th>Vencimento</th><th>Status</th><th>Ativo</th>${adm?'<th></th>':''}</tr></thead><tbody id="ck-tbody">${L.map(linha).join('')}</tbody></table></div>
+   <p class="sub" style="margin-top:8px">Válido por 30 dias a partir da data de realização. 🟡 faltam 4 dias · 🟠 falta 1 dia ou venceu hoje · 🔴 vencido.${adm?' Arraste ⠿ para reordenar.':''}</p>`;
+  /* drag-and-drop: apenas admin */
+  if(adm){ const tbody=$('#ck-tbody'); if(!tbody) return;
+    const limpar=()=>tbody.querySelectorAll('.ck-dragging,.ck-drag-over').forEach(x=>x.classList.remove('ck-dragging','ck-drag-over'));
+    tbody.addEventListener('dragstart',e=>{ const tr=e.target.closest('tr[data-ck-row]'); if(!tr) return; _ckDrag=tr.dataset.ckRow; tr.classList.add('ck-dragging'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',_ckDrag); }catch(e2){} });
+    tbody.addEventListener('dragend',()=>{ _ckDrag=null; limpar(); });
+    tbody.addEventListener('dragover',e=>{ if(!_ckDrag) return; e.preventDefault(); try{ e.dataTransfer.dropEffect='move'; }catch(e2){}
+      const tr=e.target.closest('tr[data-ck-row]'); if(!tr||tr.dataset.ckRow===_ckDrag) return;
+      tbody.querySelectorAll('.ck-drag-over').forEach(x=>x.classList.remove('ck-drag-over')); tr.classList.add('ck-drag-over'); });
+    tbody.addEventListener('drop',e=>{ e.preventDefault(); const trAlvo=e.target.closest('tr[data-ck-row]'); const origem=_ckDrag; limpar(); _ckDrag=null;
+      if(!trAlvo||!origem||trAlvo.dataset.ckRow===origem) return;
+      const lista=ckS(); const iA=lista.findIndex(x=>x.id===origem); const iB=lista.findIndex(x=>x.id===trAlvo.dataset.ckRow); if(iA<0||iB<0) return;
+      const [item]=lista.splice(iA,1); lista.splice(iB,0,item); S.checklist=lista; ckSalvar(); }); } }
 (function(){ const st=document.createElement('style'); st.textContent=`.ck-tab{width:100%;border-collapse:collapse}.ck-tab th,.ck-tab td{padding:6px 8px;border:1px solid var(--linha);font-size:var(--fs-sm)}.ck-tab input{width:100%}
- tr.ck-vermelho td{background:#F4B3B0}tr.ck-laranja td{background:#F4B183}tr.ck-amarelo td{background:#FFF59D}tr.ck-cinza td{opacity:.6}`; document.head.appendChild(st);
+ tr.ck-vermelho td{background:#F4B3B0}tr.ck-laranja td{background:#F4B183}tr.ck-amarelo td{background:#FFF59D}tr.ck-cinza td{opacity:.6}
+ .ck-drag-handle{cursor:grab;text-align:center;user-select:none;font-size:1.1em;opacity:.55;letter-spacing:-2px}.ck-drag-handle:active{cursor:grabbing}
+ tr.ck-dragging{opacity:.4}tr.ck-drag-over td{border-top:3px solid #0E7490!important}`; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="geo"]'); if(!ref) return;
   ref.insertAdjacentHTML('afterend',`<button data-tela="checklist"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="lbl">Checklist Agregados</span></button>`);
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-checklist'; sec.hidden=true;
@@ -7839,11 +7868,16 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
   const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir2=irPara; irPara=function(t){ _ir2(t); const bt=document.querySelector('.nav [data-tela="checklist"]'); if(t==='checklist'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-checklist'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); ckRender(); } else if(bt) bt.removeAttribute('aria-current'); };
   document.querySelector('.nav [data-tela="checklist"]').addEventListener('click',()=>irPara('checklist'));
-  document.body.addEventListener('click',e=>{ const add=e.target.closest('#ck-add'); if(add){ ckS().push({id:'ck'+Math.random().toString(36).slice(2),mot:'',placa:'',data:'',ativo:true}); ckSalvar(); return; }
+  document.body.addEventListener('click',e=>{ const add=e.target.closest('#ck-add'); if(add){ if(!nvAdmin()) return; const novo={id:'ck'+Math.random().toString(36).slice(2),mot:'',placa:'',data:hojeISO(),ativo:true}; ckS().unshift(novo); ckSalvar();
+      try{ const inp=document.querySelector(`[data-ck-row="${novo.id}"] [data-ck-f="mot"]`); if(inp){ inp.focus(); inp.scrollIntoView({block:'center',behavior:'smooth'}); } }catch(e2){}
+      toast('Nova linha no topo: digite o motorista e a placa.'); return; }
     const del=e.target.closest('[data-ck-del]'); if(del){ if(!nvAdmin()) return; S.checklist=ckS().filter(x=>x.id!==del.dataset.ckDel); ckSalvar(); return; }
-    const wa=e.target.closest('#ck-wa'); if(wa) ckEnviar(); });
+    const wa=e.target.closest('#ck-wa'); if(wa){ ckEnviar(); return; }
+    const bx=e.target.closest('#ck-baixar'); if(bx) ckBaixar(); });
   document.body.addEventListener('change',e=>{ const inp=e.target.closest('[data-ck-f]'); if(!inp) return; const tr=inp.closest('[data-ck-row]'); if(!tr) return; const r=ckS().find(x=>x.id===tr.dataset.ckRow); if(!r) return;
-    const campo=inp.dataset.ckF; r[campo]=campo==='ativo'?inp.checked:(campo==='placa'?inp.value.toUpperCase():inp.value); salvar(); ckRender(); }); })();
+    const campo=inp.dataset.ckF; r[campo]=campo==='ativo'?inp.checked:(campo==='placa'?inp.value.toUpperCase():inp.value); salvar();
+    /* v9.19.17: só redesenha quando muda a cor/status da linha — assim não rouba o foco de quem está digitando */
+    if(campo==='data'||campo==='ativo') ckRender(); else if(campo==='placa') inp.value=inp.value.toUpperCase(); }); })();
 /* ================= v8.9.1 · BIT mais inteligente: filtra as notas dos romaneios (cidade, região, origem, cliente) e entende frases ================= */
 const EVA_ORIG=[[/\b(caj|cajamar|matriz)\b/,'CAJ'],[/\b(mesa|integracao|agendad[ao]s?)\b/,'MESA'],[/\b(df|brasilia|distrito federal)\b/,'DF'],[/\bvia ?minas\b|\bgiovan/,'VIA MINAS'],[/\b(aqa|araraquara)\b/,'AQA'],[/\blkr\b/,'LKR'],[/\bcremer\b/,'CREMER']];
 const EVA_NAO_CIDADE=new Set(['notas','nota','todas','todos','puxe','puxa','mostra','mostre','lista','liste','quais','quantas','quantos','me','de','da','do','das','dos','origem','cliente','romaneio','romaneios','hoje','pedidos','pedido','nfs','nf','volumes','entregas','que','vieram','veio','para','pra','em','na','no','e','com','sem','regiao','base','cidade','as','os','a','o','ver','buscar','busca','abrir','abre']);
