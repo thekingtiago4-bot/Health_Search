@@ -3173,7 +3173,9 @@ function geoOriginais(){ try{ return JSON.parse(document.getElementById('geo-ref
 const GEO_MATRIZ=[{id:'matriz',nome:'MATRIZ',tipo:'regiao',alias:[],cidades:[],cor:'#455A64',fonte:'opção fixa'},{id:'matriz-base',nome:'MATRIZ',tipo:'base',alias:[],cidades:[],cor:'#455A64',fonte:'opção fixa'}];
 function geoInit(){ if(!S.geo||!Array.isArray(S.geo.listas)) S.geo={listas:geoOriginais(),aprend:{},em:'1970-01-01T00:00:00.000Z'}; /* v9.15.0: mapa de fábrica nasce "velho" para nunca passar à frente do publicado */ S.geo.aprend=S.geo.aprend||{};
   for(const m of GEO_MATRIZ) if(!S.geo.listas.some(l=>l.id===m.id)) S.geo.listas.push(JSON.parse(JSON.stringify(m))); }
-function geoMudou(){ GEO.idx={}; GEO.cls={}; S.geo.em=new Date().toISOString(); salvar(); }
+/* 9.19.12: só uma edição feita por alguém na tela (clique/tecla) marca o mapa como "editado aqui". Sem essa marca, mapa diferente do publicado é cópia velha e não vale. */
+const GEOE={ch:'healthSearch.geoEdit', ler(){ try{ return JSON.parse(localStorage.getItem(this.ch)||'null'); }catch(e){ return null; } }, marcar(){ try{ const ua=navigator.userActivation; if(ua&&!ua.isActive) return; if(!this.ler()) localStorage.setItem(this.ch,JSON.stringify({em:new Date().toISOString()})); }catch(e){} }, limpar(){ try{ localStorage.removeItem(this.ch); }catch(e){} } };
+function geoMudou(){ GEO.idx={}; GEO.cls={}; S.geo.em=new Date().toISOString(); GEOE.marcar(); salvar(); }
 const kmDist=(a,b)=>{ const la=(a.lat+b.lat)/2*Math.PI/180; const dx=(a.lon-b.lon)*111.32*Math.cos(la), dy=(a.lat-b.lat)*110.57; return Math.sqrt(dx*dx+dy*dy); };
 const geoLista=id=>S.geo.listas.find(l=>l.id===id);
 const geoNome=id=>{ const l=geoLista(id); return l?l.nome:id; };
@@ -4131,7 +4133,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.19.11', HS_DATA='11/11/2026';
+const HS_VERSAO='9.19.12', HS_DATA='11/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7096,6 +7098,8 @@ function geoJuntar3(base,loc,rem){ base=base||{listas:[],aprend:{}}; loc=loc||{l
         const r2=JSON.parse(JSON.stringify(remoto)); r2.em=new Date().toISOString();
         try{ vsnBaseGravar('s:geo',r2); }catch(e){}
         setTimeout(()=>{ toast('Mapa atualizado pelo administrador ✓ — regiões sincronizadas.'); try{ geoDesenhar(); }catch(e){} },300); return r2; }
+      /* 9.19.12: sem edição feita neste aparelho, a diferença é cópia velha — vale o mapa publicado, sem juntar (a junção lia cidade faltando como "apagada aqui" e encolhia o mapa) */
+      if(!GEOE.ler()){ console.warn('mapa: cópia local sem edição, usei o publicado',geoConta(local),geoConta(remoto)); return JSON.parse(JSON.stringify(remoto)); }
       const j=geoJuntar3(anc,local,remoto); setTimeout(()=>toast('Mapa juntado com o dos colegas, cidade a cidade — nada foi perdido.'),300); return j; }
     return _nj(chave,local,remoto); }; }
 /* depois de cada sincronização bem-sucedida, guarda o mapa "igual à nuvem" como base da próxima junção */
@@ -8948,11 +8952,12 @@ function geoPendente(){ return !!(S.geo&&NUV.h&&NUV.h['s:geo']&&nuvHash(S.geo)!=
 async function geoPublicar(){ if(!nvAdmin()){ toast('Só o administrador publica o mapa.'); return; } if(!opOnline()){ toast('Sem internet: publique quando a conexão voltar.'); return; }
   const novo=geoConta(S.geo), ant=(geoPubLer()||{}).cid||0;
   if(novo===0){ toast('O mapa está vazio: não publiquei. Use Correção → Recuperar regiões.'); return; }
-  if(ant&&novo<ant*0.8&&!await confirmar('Publicar mapa menor?',`O mapa publicado tinha ${ant} cidades e este tem ${novo}. Publicar mesmo assim?`,'Publicar')) return;
+  if(ant&&novo<ant&&!await confirmar('Publicar mapa menor?',`O mapa publicado tem ${ant} cidades e este tem ${novo} (${ant-novo} a menos). Se você não tirou essas cidades de propósito, cancele. Publicar mesmo assim?`,'Publicar')) return;
   NUV.publicarGeo=true; const b=$('#geo-pub'); if(b){ b.disabled=true; b.textContent='⏳ Publicando…'; }
   try{ await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro);
     try{ await NV.cli.from('hs_sync').upsert({chave:'bkp:s:geo:'+new Date().toISOString(),tipo:'s',valor:S.geo,apagado:false,atualizado_por:opEu()}); }catch(e){}
     try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:new Date().toISOString(),cid:novo})); }catch(e){}
+    GEOE.limpar(); try{ vsnBaseGravar('s:geo',JSON.parse(JSON.stringify(S.geo))); }catch(e){}
     toast(`✔ Mapa publicado (${novo} cidades). Todos recebem esta versão.`); }
   catch(e){ toast('⚠ Não publiquei: '+(e.message||e)+' — as mudanças continuam neste aparelho.'); }
   finally{ NUV.publicarGeo=false; geoPubBarra(); } }
@@ -8963,12 +8968,23 @@ function geoPubBarra(){ const t=document.getElementById('t-geo'); if(!t) return;
   $('#geo-pub-txt').innerHTML=p?'<b style="color:#E8590C">Alterações no mapa não publicadas.</b> Só você vê. Clique em Publicar para todos receberem.':`Mapa publicado${info?' em '+esc(new Date(info.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):''}${info&&info.cid?' · '+info.cid+' cidades':''}.`;
   const b=$('#geo-pub'); if(b){ b.disabled=false; b.textContent='📤 Publicar mapa'; } }
 setInterval(()=>{ try{ geoPubBarra(); }catch(e){} },3000);
+/* 9.19.12: o mapa deste aparelho só pode ser diferente do publicado se alguém editou aqui. Se está diferente sem edição, é cópia velha: volta para o publicado (aparelho, cópia à parte e base da junção). */
+async function geoConferir(){ if(geoConferir.r||!opOnline()||NUV.rodando||NUV.publicarGeo||NUV.aplicando) return false; if(!geoPendente()||GEOE.ler()) return false; geoConferir.r=1;
+  try{ const {data,error}=await NV.cli.from('hs_sync').select('valor,apagado').eq('chave','s:geo').maybeSingle(); if(error||!data||data.apagado) return false; const rem=data.valor; const n=geoConta(rem); if(!n||!Array.isArray(rem.listas)) return false;
+    if(GEOE.ler()||NUV.publicarGeo) return false; const antes=geoConta(S.geo);
+    await GIDB.gravar('geo',JSON.parse(JSON.stringify(rem))); S.geo=rem; GEO.idx={}; GEO.cls={}; NUV.h['s:geo']=nuvHash(rem); try{ nuvGuardar(); }catch(e){} try{ vsnBaseGravar('s:geo',JSON.parse(JSON.stringify(rem))); }catch(e){}
+    try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:(geoPubLer()||{}).em||new Date().toISOString(),cid:n})); }catch(e){}
+    salvar(); try{ renderTudo(); }catch(e){} try{ desenharGeo(); }catch(e){} try{ geoPubBarra(); }catch(e){}
+    toast(`🗺 O mapa deste aparelho estava diferente do publicado (${antes} cidades) sem nenhuma edição sua. Voltei para o mapa publicado: ${n} cidades.`); return true; }
+  catch(e){ console.error(e); return false; } finally{ geoConferir.r=0; } }
+setInterval(()=>{ geoConferir(); },20000); setTimeout(()=>{ geoConferir(); },9000);
 window.addEventListener('beforeunload',e=>{ try{ if(nvAdmin()&&geoPendente()){ e.preventDefault(); e.returnValue=''; } }catch(x){} });
 { const _na=nexAvisos; nexAvisos=function(){ const a=_na(); try{ if(nvAdmin()&&geoPendente()) a.unshift({cor:'#E8590C',txt:'<b>Mapa com alterações não publicadas</b> — Geolocalização → 📤 Publicar mapa',acao:'geo'}); }catch(e){} return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="geo"]'); if(b) setTimeout(()=>irPara('geo'),50); });
 (function(){ const i=MAN.findIndex(s=>/Geolocaliza/i.test(s.t)); const item={id:'mapa-pub',t:'Mapa publicado',img:'mural',intro:'O mapa é só visual e fica guardado em cada aparelho. Só o administrador publica mudanças.',
   passos:[['Editar','O administrador pinta as cidades como sempre. As mudanças ficam só no aparelho dele até publicar; aparece o aviso “Alterações no mapa não publicadas”.'],
    ['📤 Publicar mapa','Na Geolocalização, clique em Publicar mapa. Todos recebem a nova versão e guardam no aparelho (funciona sem internet). Cada publicação fica guardada como cópia.'],
+   ['O mapa publicado é o que vale (v9.19.12)','O mapa de um aparelho só pode ficar diferente do publicado quando o administrador edita naquele aparelho (clicando no mapa, no Editor de regiões, em Alimentar ou na Correção). Se o app encontrar um mapa diferente do publicado sem nenhuma edição feita ali — cópia antiga, mapa de fábrica, dado que voltou de outra aba — ele troca sozinho pelo mapa publicado e avisa com 🗺 no topo. Ao publicar um mapa com menos cidades que o anterior, o app sempre pergunta antes, dizendo quantas cidades a menos.'],
    ['Proteção','O app não publica mapa vazio, pede confirmação se o mapa ficar bem menor, e nenhum aparelho aceita receber um mapa vazio ou com menos da metade das cidades.']]};
   MAN.splice(i>=0?i+1:MAN.length,0,item); })();
 
