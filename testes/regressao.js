@@ -359,6 +359,55 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(mk.qtd===1&&mk.tot===4&&mk.falt==='3','romaneio: faltando a caixa 3/4 tem que virar divergência ('+mk.qtd+'/'+mk.tot+' falt='+mk.falt+')');
     ok(/741351:ok/.test(mk.bip),'romaneio: a nota de 1 volume tinha que ficar conferida ('+mk.bip+')');
     ok(mk.aberta2,'romaneio: depois de confirmar os volumes a janela tem que continuar aberta'); }
+  /* 9.26.6: marcar como divergência na lista do romaneio (fica laranja do lado das bipadas) */
+  { const dvm=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'dv1',numero:'0236361',base:'CAJ',arquivo:a,rows:[{nf:'770001',ped:'880001',vol:'1',dest:'CLIENTE DV',cid:'FRANCA',uf:'SP'}]}];
+      S.divergencias=[]; OP.dia=h; renderTudo(); irPara('operacao'); OP.bipes=[];
+      opRomLista('dv1'); await w(200);
+      document.querySelector('.fundo [data-rl-dv]').click(); await w(500);
+      const txt=(document.querySelector('.fundo .modal')||{}).innerText||'';
+      const d=S.divergencias[0]||{}; const bip=OP.bipes.map(x=>x.nf+':'+x.status).join(' ');
+      const aberta=!!document.querySelector('.fundo [data-rl-mk]')||/Bipadas/.test(txt);
+      [...document.querySelectorAll('.fundo')].forEach(x=>x.remove()); S.divergencias=[];
+      return {qtd:d.qtd,tot:d.tot,bip,txt:txt.replace(/\s+/g,' '),aberta}; });
+    ok(dvm.qtd===1&&dvm.tot===1,'romaneio: o botão de divergência tinha que abrir divergência de 1 volume ('+dvm.qtd+'/'+dvm.tot+')');
+    ok(/divergência/i.test(dvm.txt),'romaneio: a nota marcada tem que aparecer como divergência do lado das bipadas');
+    ok(/Faltando \(0\)/.test(dvm.txt),'romaneio: a nota marcada como divergência sai de Faltando ('+dvm.txt.slice(0,120)+')');
+    ok(dvm.aberta,'romaneio: a janela tem que continuar aberta depois de marcar divergência'); }
+  /* 9.26.6: busca na Conferência total marca batida/divergência sem abrir romaneio */
+  { const bq=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'bq1',numero:'0236362',base:'DF',arquivo:a,rows:[
+        {nf:'880011',ped:'990011',vol:'1',dest:'DROGARIA ESTRELA',cid:'UBERABA',uf:'MG'},
+        {nf:'880012',ped:'990012',vol:'1',dest:'OUTRO CLIENTE',cid:'ASSIS',uf:'SP'}]}];
+      S.divergencias=[]; OP.dia=h; OP.bipes=[]; renderTudo(); irPara('conftotal'); await w(250);
+      const inp=document.getElementById('ct-q'); if(!inp) return {erro:'sem campo de busca'};
+      inp.value='ESTRELA'; inp.dispatchEvent(new Event('input',{bubbles:true})); await w(200);
+      const achou=document.querySelectorAll('#ct-res [data-ctb]').length;
+      document.querySelector('#ct-res [data-m="ok"]').click(); await w(450);
+      const bip=OP.bipes.map(x=>x.nf+':'+x.status).join(' ');
+      const depois=(document.getElementById('ct-res')||{}).innerText||'';
+      inp.value='OUTRO'; inp.dispatchEvent(new Event('input',{bubbles:true})); await w(200);
+      document.querySelector('#ct-res [data-m="dv"]').click(); await w(500);
+      const d=S.divergencias[0]||{}; S.divergencias=[];
+      return {achou,bip,depois:depois.replace(/\s+/g,' '),dvNf:d.nf,dvQtd:d.qtd}; });
+    ok(!bq.erro,'conferência total: '+bq.erro);
+    ok(bq.achou===2,'busca: "ESTRELA" tinha que achar a nota com os dois botões ('+bq.achou+')');
+    ok(/880011:ok/.test(bq.bip),'busca: o botão Batida tinha que conferir a NF 880011 ('+bq.bip+')');
+    ok(/conferida/.test(bq.depois),'busca: depois de marcar, a nota tem que aparecer como conferida ('+bq.depois.slice(0,120)+')');
+    ok(String(bq.dvNf)==='880012'&&bq.dvQtd===1,'busca: o botão Divergência tinha que abrir divergência da NF 880012 ('+bq.dvNf+' '+bq.dvQtd+')'); }
+  /* 9.26.6: na aba NexBip o BIT não abre balão — só o número na cabeça dele */
+  { const bb=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      irPara('operacao'); await w(150); EVA.naoLidas=0; EVA.aberta=false;
+      const antes=(document.getElementById('eva-qt')||{}).textContent;
+      evaBalao('teste de recado na operação',4000); await w(150);
+      const bal=document.getElementById('eva-balao'); const naOp={bal:!bal||bal.hidden,qt:(document.getElementById('eva-qt')||{}).textContent,esc:(document.getElementById('eva-qt')||{}).hidden};
+      irPara('conftotal'); await w(150); evaBalao('recado fora da operação',4000); await w(150);
+      const b2=document.getElementById('eva-balao'); const fora=!!b2&&!b2.hidden;
+      if(b2) b2.hidden=true; EVA.naoLidas=0; irPara('operacao');
+      return {antes,naOp,fora}; });
+    ok(bb.naOp.bal,'BIT: na aba NexBip não pode abrir balão de recado');
+    ok(bb.naOp.esc===false&&+bb.naOp.qt>0,'BIT: o recado da aba NexBip tem que virar número na cabeça dele ('+bb.naOp.qt+')');
+    ok(bb.fora,'BIT: fora da aba NexBip o balão continua aparecendo'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();

@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.26.5', HS_DATA='13/11/2026';
+const HS_VERSAO='9.26.6', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4847,7 +4847,7 @@ function opSom(st){ try{ OP_AC=OP_AC||new (window.AudioContext||window.webkitAud
   const seq={ok:[[1400,.09]],semnota:[[900,.1],[0,.06],[900,.1]],fora:[[220,.45]],dup:[[700,.08],[0,.04],[1100,.08],[0,.04],[700,.08]],info:[[600,.08]],reent:[[1200,.12],[0,.05],[800,.12],[0,.05],[1200,.12]]}[st]||[[600,.08]];
   let t=ac.currentTime; for(const [f,d] of seq){ if(f){ const o=ac.createOscillator(), g=ac.createGain(); o.type=st==='fora'?'sawtooth':'square'; o.frequency.value=f; g.gain.setValueAtTime(.18,t); g.gain.exponentialRampToValueAtTime(.001,t+d); o.connect(g).connect(ac.destination); o.start(t); o.stop(t+d); } t+=d; } }catch(e){}
   try{ if(navigator.vibrate) navigator.vibrate({ok:60,semnota:[80,60,80],fora:[200,100,200],dup:[200,80,200,80,200],reent:[120,60,120,60,120]}[st]||40); }catch(e){} }
-function opMostrar(r){ opSom(r.status); const cor=(OP_ST[r.status]||{c:'#555'}).c;
+function opMostrar(r){ OP.resultadoAte=Date.now()+3500; opSom(r.status); const cor=(OP_ST[r.status]||{c:'#555'}).c;
   try{ let tb=document.querySelector('#op-cam .vtot'); const cam=document.querySelector('#op-cam'); if(cam&&!tb){ cam.insertAdjacentHTML('beforeend','<div class="vtot" hidden></div>'); tb=cam.querySelector('.vtot'); }
     if(tb){ if(r._vt){ const k=r._vk||0, t=r._vt; tb.hidden=false; tb.style.background=k>=t?'var(--ok)':cor; tb.innerHTML=`<span>VOLUMES</span><b>${k?fmtN(k)+' / ':''}${fmtN(t)}</b><small>${k>=t?'pedido completo ✓':'faltam '+fmtN(t-k)}</small>`; } else tb.hidden=true; } }catch(e){}
   const el=$('#op-res'); el.style.background=cor; el.style.color='#fff'; el.innerHTML=`<b>${esc(r.titulo)}</b><small>${esc(r.linha||'')}</small>`; el.classList.add('pisca'); setTimeout(()=>el.classList.remove('pisca'),160);
@@ -6235,7 +6235,7 @@ function etqInterpretar(linhas){ const L=linhas.map(l=>l.toUpperCase().replace(/
 function opFrame(v){ const w=Math.min(1600,v.videoWidth), h=Math.round(v.videoHeight*w/v.videoWidth); const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d',{willReadFrequently:true}); cx.filter='grayscale(1) contrast(1.4)'; cx.drawImage(v,0,0,w,h); return cv; }
 async function opOcr(v){ const OCR=window.HS_OCR; if(!OCR||!OCR.tem()||!OCR.suportado()) return null; OCRK.ocupado=true; OCRK.ult=Date.now();
   /* v9.20.0: com o resultado de um bipe na tela (OP.espera), a leitura de texto não escreve nem restaura o aviso do topo */
-  const msg=OP.espera?null:document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; if(msg) msg.innerHTML='<b>🔤 Lendo o texto da etiqueta…</b>Segure firme.';
+  const msg=(OP.espera||Date.now()<(OP.resultadoAte||0))?null:document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; if(msg) msg.innerHTML='<b>🔤 Lendo o texto da etiqueta…</b>Segure firme.';
   try{ const ws=(await OCR.ler(opFrame(v))).filter(w=>w.conf>35); const r=etqInterpretar(etqLinhas(ws)); if(r&&r.modelo==='Caixa Health Log'){ const t=etqNfTopoDir(ws); if(t) r.nfTopo=t; } return r; }catch(e){ console.error(e); return null; }
   finally{ OCRK.ocupado=false; OCRK.ult=Date.now(); if(msg&&ant&&!OP.espera) msg.innerHTML=ant; } }
 /* registra uma etiqueta lida por texto */
@@ -8484,7 +8484,7 @@ function evaListar(f,dia){ EVA.ultF=f; EVA.ultDia=dia; const rs=evaRomDoDia(dia)
   /* tela Conferência total */
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-conftotal'; sec.hidden=true;
   sec.innerHTML=`<h1>Conferência total</h1><p class="sub">Andamento da conferência do dia: quanto já foi bipado no total, por origem e por romaneio. Os bipes são feitos no <b>NexBip</b>.</p>
-   <div id="ct-geral"></div><div id="ct-mover"></div>
+   <div id="ct-geral"></div><div id="ct-busca"></div><div id="ct-mover"></div>
    <div id="ct-ferr-c" hidden></div>`;
   const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=nav.querySelector('[data-tela="conftotal"]'); if(t==='conftotal'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-conftotal'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); try{ opRender(); }catch(e){} ctMontar(); const ti=$('#mb-tit'); if(ti) ti.textContent='Conferência total'; } else if(bt) bt.removeAttribute('aria-current'); };
@@ -8494,6 +8494,11 @@ function evaListar(f,dia){ EVA.ultF=f; EVA.ultDia=dia; const rs=evaRomDoDia(dia)
   const leg=document.querySelector('#t-operacao .op-leg'); if(leg) leg.removeAttribute('open');
   const st=document.createElement('style'); st.textContent=`.ct-big{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;padding:16px;border:1px solid var(--linha);border-radius:16px;background:var(--sup);margin:10px 0 14px}
    .ct-anel{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--ok,#2f9e44) calc(var(--p)*1%),var(--sup2,#2a3a40) 0)}.ct-anel b{width:90px;height:90px;border-radius:50%;background:var(--sup);display:grid;place-items:center;font-size:1.6em}
+   .ct-busca{display:flex;gap:8px;margin:14px 0 2px}
+   .ct-busca input{flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--linha);background:var(--sup);color:var(--tinta);font-size:var(--fs)}
+   .ct-r{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--linha)}
+   .ct-bts{display:flex;gap:6px}.ct-bdv{color:#E8590C;border-color:#E8590C}
+   .ct-ok{color:var(--ok);font-size:var(--fs-sm)}.ct-dv{color:#E8590C;font-size:var(--fs-sm);font-weight:600}
    .ct-origs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.ct-o{border:1px solid var(--linha);border-radius:12px;padding:8px 10px}.ct-o .bar{height:7px;border-radius:5px;background:var(--sup2);overflow:hidden;margin-top:6px}.ct-o .bar i{display:block;height:100%}
    
    @media(max-width:560px){.ct-big{grid-template-columns:1fr;justify-items:center;text-align:center}}`; document.head.appendChild(st);
@@ -8510,7 +8515,37 @@ function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   const g=$('#ct-geral'); if(g) g.innerHTML=tn?`<div class="ct-big"><div class="ct-anel" style="--p:${pct}"><b>${pct}%</b></div><div><h2 style="margin:0 0 4px">${fmtN(ok)} de ${fmtN(tn)} nota(s) conferida(s)</h2><p class="sub" style="margin:0 0 10px">${fmtN(fn)} faltando · ${fmtN(L.length)} romaneio(s) de hoje</p>
      <div class="ct-origs">${[...porB].map(([b,a])=>{ const p=a.tn?Math.round(100*(a.tn-a.fn)/a.tn):0; return `<div class="ct-o"><b style="color:${opCorBase(b)}">${esc(b)}</b> <span class="sub">${fmtN(a.tn-a.fn)}/${fmtN(a.tn)} · ${p}%</span><div class="bar"><i style="width:${p}%;background:${opCorBase(b)}"></i></div></div>`; }).join('')}</div></div></div>`
     :'<div class="vazio-lista">Nenhum romaneio de hoje carregado. Coloque os PDFs na aba Romaneios.</div>';
-  const q=$('#qt-ct'); if(q){ q.textContent=pct+'%'; q.hidden=!tn; } }
+  const q=$('#qt-ct'); if(q){ q.textContent=pct+'%'; q.hidden=!tn; }
+  try{ ctBuscaRender(); }catch(e){} }
+/* v9.26.6 · buscar a nota aqui mesmo (NF, pedido, cliente, cidade) e marcar como batida ou divergência,
+   sem ter que abrir romaneio por romaneio. */
+const CTB={res:[],q:''};
+function ctBuscaRender(){ const el=$('#ct-busca'); if(!el) return;
+  if(!el.dataset.pronto){ el.dataset.pronto='1';
+    el.innerHTML=`<div class="ct-busca"><input type="search" id="ct-q" placeholder="Buscar NF, pedido, cliente ou cidade para marcar" autocomplete="off"><button class="btn" type="button" id="ct-qx">Limpar</button></div><div id="ct-res"></div>`;
+    $('#ct-q').addEventListener('input',e=>{ CTB.q=e.target.value; ctBuscaLista(); });
+    $('#ct-qx').onclick=()=>{ CTB.q=''; $('#ct-q').value=''; ctBuscaLista(); };
+    $('#ct-res').addEventListener('click',async e=>{ const b2=e.target.closest('[data-ctb]'); if(!b2) return; const it=CTB.res[+b2.dataset.ctb]; if(!it) return;
+      b2.disabled=true; const fez=await opMarcarMao(it.x,b2.dataset.m); if(!fez){ b2.disabled=false; return; } ctBuscaLista(); });
+  }
+  const inp=$('#ct-q'); if(inp&&inp.value!==CTB.q) inp.value=CTB.q;
+  ctBuscaLista(); }
+function ctBuscaLista(){ const el=$('#ct-res'); if(!el) return; const q=N(CTB.q||'');
+  if(q.length<2){ el.innerHTML=''; CTB.res=[]; return; }
+  let pend=[]; OP._semFiltro=true; try{ pend=opPendentes(); }finally{ OP._semFiltro=false; }
+  const casa=x=>[opK(x.nf),opK(x.ped),x.dest,x.cid,x.rem].map(v=>N(v||'')).some(v=>v.includes(q));
+  CTB.res=pend.filter(it=>casa(it.x)).slice(0,40);
+  const bip=[]; const vis=new Set();
+  for(const r of (S.romaneios||[])) for(const x of (r.rows||[])){ if(!casa(x)) continue; const k=opNotaK(x); if(!k||vis.has(k)) continue; vis.add(k);
+    if(CTB.res.some(it=>opNotaK(it.x)===k)) continue; if(bip.length<15) bip.push({r,x}); }
+  const dvDe=x=>{ try{ const d=dvAcha(opK(x.ped),opK(x.nf)); return d&&d.st!=='resolvida'?d:null; }catch(e){ return null; } };
+  const linha=(it,i)=>{ const x=it.x, d=dvDe(x), tot=volNum(x.vol)||1;
+    return `<div class="ct-r"><div><b>NF ${esc(opK(x.nf)||'—')}</b> <small class="sub">ped. ${esc(opK(x.ped)||'—')} · ${fmtN(tot)} vol. · ${esc((it.r&&it.r.numero)||'')}</small><br><small class="sub">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</small></div>`+
+      (i==null?`<span class="${d?'ct-dv':'ct-ok'}">${d?'⚠ divergência '+esc(dvNum(d)):'✔ conferida'}</span>`
+             :`<span class="ct-bts"><button class="btn mini" type="button" data-ctb="${i}" data-m="ok">✔ Batida</button><button class="btn mini ct-bdv" type="button" data-ctb="${i}" data-m="dv">⚠ Divergência</button></span>`)+`</div>`; };
+  el.innerHTML=(CTB.res.length?`<p class="sub" style="margin:8px 0 4px">Faltando (${CTB.res.length})</p>`+CTB.res.map((it,i)=>linha(it,i)).join(''):'')
+    +(bip.length?`<p class="sub" style="margin:10px 0 4px">Já conferidas (${bip.length})</p>`+bip.map(it=>linha(it,null)).join(''):'')
+    +((!CTB.res.length&&!bip.length)?'<p class="sub" style="margin:8px 0">Nada encontrado nos romaneios de hoje.</p>':''); }
 /* mantém tudo no lugar a cada atualização da conferência */
 { const _r=opRender; opRender=function(){ const r=_r.apply(this,arguments); try{ ctMontar(); }catch(e){} return r; }; }
 /* BUG#1-FIX v9.11.0: substituído setTimeout(1500ms) frágil por monkey-patch em renderTudo.
@@ -8550,6 +8585,12 @@ function evaBalao(html,ms,tipo){ if(EVA.aberta){ evaFala(html); return; } if(tip
   let b=$('#eva-balao'); if(!b){ b=document.createElement('div'); b.id='eva-balao'; b.setAttribute('role','status'); document.body.appendChild(b); b.onclick=()=>{ b.hidden=true; evaAbrir(true); }; }
   b.innerHTML=html+'<span class="eva-bx" aria-label="Fechar">✕</span>'; b.hidden=false; b.querySelector('.eva-bx').onclick=e=>{ e.stopPropagation(); b.hidden=true; };
   EVA.msgs.push({html}); clearTimeout(evaBalao.t); evaBalao.t=setTimeout(()=>{ b.hidden=true; },ms||9000); try{ const bt=$('#eva-bt'); bt.animate([{transform:'translateY(0)'},{transform:'translateY(-8px)'},{transform:'translateY(0)'}],{duration:500,iterations:2}); }catch(e){} }
+/* v9.26.6 · na tela do NexBip o BIT não abre balão: fica só o botão do canto com o número na cabeça */
+{ const _eb=evaBalao; evaBalao=function(html,ms,tipo){ try{ const op=document.getElementById('t-operacao');
+      if(op&&!op.hidden&&!EVA.aberta){ EVA.msgs.push({html}); EVA.naoLidas=(EVA.naoLidas||0)+1; try{ evaBadge(); }catch(e){} return; } }catch(e){}
+    return _eb.apply(this,arguments); }; }
+{ const _ea=evaAbrir; evaAbrir=function(){ EVA.naoLidas=0; try{ evaBadge(); }catch(e){} return _ea.apply(this,arguments); }; }
+{ const _ir9=irPara; irPara=function(t){ if(t==='eva'){ EVA.naoLidas=0; setTimeout(()=>{ try{ evaBadge(); }catch(e){} },50); } return _ir9.apply(this,arguments); }; }
 (function(){ const st=document.createElement('style'); st.textContent=`#eva-balao{position:fixed;left:50%;right:auto;top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;transform:translateX(-50%);z-index:1520;max-width:min(300px,calc(100vw - 110px));background:#fff;color:#1f2937;border-radius:14px 14px 4px 14px;padding:10px 26px 10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:var(--fs-sm);line-height:1.35;cursor:pointer;animation:evaIn .25s ease}
  body:has(#op-cam) #eva-balao{top:calc(176px + env(safe-area-inset-top,0px))} /* 9.19.11: com a câmera aberta, o recado fica abaixo do aviso do bipe, sem tampar */
  body:has(#op-cam) #hs-salvar{display:none!important} /* 9.20.1: o 💾 Salvar tampava o botão Fechar da câmera */
@@ -8642,7 +8683,7 @@ function etqAchouAlgo(p,idx){ if(!p) return false; const ns=[...(p.nfs||[]),...(
       /* v9.20.0: a mensagem "o BIT está se esforçando" só aparece quando há etiqueta na frente que ele não leu.
          Nunca por cima do resultado de um bipe que acabou de sair (OP.espera) — era isso que cobria o aviso verde. */
       const msg=document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; let escreveu=false;
-      const diz=t=>{ if(msg&&!OP.espera){ msg.innerHTML=t; escreveu=true; } };
+      const diz=t=>{ if(msg&&!OP.espera&&Date.now()>(OP.resultadoAte||0)){ msg.innerHTML=t; escreveu=true; } };
       OCRK.ocupado=true; let linhas=[]; const t0=Date.now();
       let wsUlt=[]; for(const [nome,R,inv,gir,aut] of passes){ if(Date.now()-t0>4500) break; diz(`<b> O BIT está se esforçando…</b>lendo de novo (${nome}). Segure firme.`);
         try{ const ws=await OCR.ler(etqQuadro(v,R,inv,gir,aut)); wsUlt=ws.filter(w=>w.conf>30); const L=etqLinhas(ws.filter(w=>w.conf>30)); linhas=linhas.concat(L); const pp=etqInterpretar(linhas); if(etqAchouAlgo(pp,idx)||(pp.dest&&pp.cid&&cerPorCliente(pp,idx))){ linhas=linhas; break; } }catch(e){} }
@@ -8937,20 +8978,21 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 /* v9.26.5 · fase de aprendizado das etiquetas: dá para marcar a nota como bipada na mão,
    pelo quadradinho antes do "NF ...". Com mais de 1 volume ele pergunta quais chegaram,
    e a janela do romaneio continua aberta para marcar as próximas. */
-function opQuantosMao(x,tot){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1700'; const falt=new Set();
+function opQuantosMao(x,tot,dv){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1700'; const falt=new Set();
   f.innerHTML=`<div class="modal" role="dialog" style="max-width:520px"><h2 style="margin:0 0 2px">NF ${esc(opK(x.nf)||'—')} · ${fmtN(tot)} volumes</h2>
    <p class="sub" style="margin:0 0 12px">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</p>
-   <p style="margin:0 0 8px"><b>Chegaram todos os ${fmtN(tot)} volumes?</b></p>
+   <p style="margin:0 0 8px"><b>${dv?'Quais caixas faltaram?':'Chegaram todos os '+fmtN(tot)+' volumes?'}</b></p>
    ${volGradeHtml(tot,[],'mcx')}
-   <p class="sub" style="margin:8px 0 14px">Se faltou alguma caixa, toque nela. Sem tocar em nada = chegaram todas.</p>
+   <p class="sub" style="margin:8px 0 14px">${dv?'Toque nas caixas que faltaram. Sem tocar em nada, conta como se faltasse só 1.':'Se faltou alguma caixa, toque nela. Sem tocar em nada = chegaram todas.'}</p>
    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn" type="button" data-a="c">Cancelar</button><button class="btn pri" type="button" data-a="ok">Confirmar</button></div></div>`;
   f.addEventListener('click',e=>{ const c=e.target.closest('[data-mcx]');
     if(c){ const i=+c.dataset.mcx; if(falt.has(i)){ falt.delete(i); c.classList.remove('on'); } else { falt.add(i); c.classList.add('on'); } return; }
     const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='c')){ f.remove(); res(null); return; }
     if(b&&b.dataset.a==='ok'){ const fa=[...falt].sort((p,q)=>p-q); f.remove(); res({chegou:Math.max(0,tot-fa.length),faltaram:fa}); } });
   document.body.appendChild(f); }); }
-async function opMarcarMao(x){ const tot=Math.max(1,volNum(x.vol)||1); let chegou=tot, faltaram=[];
-  if(tot>1){ const r=await opQuantosMao(x,tot); if(!r) return false; chegou=r.chegou; faltaram=r.faltaram; }
+async function opMarcarMao(x,modo){ const dv=modo==='dv'; const tot=Math.max(1,volNum(x.vol)||1); let chegou=tot, faltaram=[];
+  if(tot>1){ const r=await opQuantosMao(x,tot,dv); if(!r) return false; chegou=r.chegou; faltaram=r.faltaram; }
+  if(dv&&chegou>=tot){ chegou=tot-1<0?0:(tot>1?tot-1:0); if(tot===1){ chegou=0; faltaram=[1]; } }
   const cod=String(opK(x.nf)||opK(x.ped)||''); if(!cod) return false;
   const bruto=String(x.nf||x.ped||'').replace(/\D/g,'');
   const txt=bruto.length>=4?bruto:(cod.length>=3?('NF'+cod):cod);
@@ -8958,12 +9000,16 @@ async function opMarcarMao(x){ const tot=Math.max(1,volNum(x.vol)||1); let chego
   const antes=OP.bipes.length; try{ opLer([txt],'mão'); }catch(e){ console.error(e); }
   if(OP.bipes.length<=antes){ toast('Não consegui marcar a NF '+cod+'.'); return false; }
   const b=OP.bipes[0];
-  if(tot>1&&chegou<tot){ try{ opConfFalta(b,tot,chegou,'',faltaram); }catch(e){ console.error(e); } toast('NF '+cod+': chegaram '+chegou+' de '+tot+' — foi para divergências.'); }
+  if(chegou<tot){ try{ opConfFalta(b,tot,chegou,'',faltaram); }catch(e){ console.error(e); }
+    try{ const d2=dvAcha(b.ped,b.nf); if(d2) d2.conferida=true; }catch(e){}
+    toast('⚠ NF '+cod+': '+chegou+' de '+tot+' — conferida e em divergência.'); }
   else { try{ opConfMarcar(b,'ok',chegou); }catch(e){} toast('✔ NF '+cod+' marcada como conferida.'); }
   try{ opRender(); }catch(e){} return true; }
 function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) return; OP._semFiltro=true; let pend; try{ pend=opPendentes().filter(it=>it.r.id===id); }finally{ OP._semFiltro=false; }
   const falta=new Set(pend.map(it=>it.x)); const bs=OP.bipes.filter(b=>b.status!=='fora');
-  const lin=(x,extra,mk)=>`<div style="padding:6px 0;border-bottom:1px solid var(--linha)">${mk!=null?`<input type="checkbox" class="rl-mk" data-rl-mk="${mk}" title="Marcar como bipada" style="width:18px;height:18px;vertical-align:-3px;margin-right:8px;accent-color:var(--ok)">`:''}<b>NF ${esc(opK(x.nf)||'—')}</b>${x.ped?` <small class="sub">ped. ${esc(opK(x.ped))}</small>`:''} <small style="float:right">${extra}</small><br><small class="sub" style="margin-left:${mk!=null?'26px':'0'}">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</small></div>`;
+  const temDv=x=>{ try{ const d=dvAcha(opK(x.ped),opK(x.nf)); return d&&d.st!=='resolvida'?d:null; }catch(e){ return null; } };
+  const lin=(x,extra,mk)=>{ const d=temDv(x); const lar=d&&mk==null;
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--linha)${lar?';box-shadow:inset 3px 0 0 #E8590C;padding-left:8px':''}">${mk!=null?`<input type="checkbox" class="rl-mk" data-rl-mk="${mk}" title="Marcar como bipada (chegou tudo)" style="width:18px;height:18px;vertical-align:-3px;margin-right:6px;accent-color:var(--ok)"><button type="button" class="rl-dv" data-rl-dv="${mk}" title="Marcar como divergência" style="border:0;background:transparent;color:#E8590C;font-size:16px;cursor:pointer;padding:0 6px 0 0;vertical-align:-2px">⚠</button>`:''}<b${lar?' style="color:#E8590C"':''}>NF ${esc(opK(x.nf)||'—')}</b>${x.ped?` <small class="sub">ped. ${esc(opK(x.ped))}</small>`:''} <small style="float:right">${extra}</small><br><small class="sub" style="margin-left:${mk!=null?'46px':'0'}">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}${lar?` · <b style="color:#E8590C">⚠ divergência ${esc(dvNum(d))}${d.qtd?' · faltam '+d.qtd:''}</b>`:''}</small></div>`; };
   const rows=(r.rows||[]).filter(x=>(opK(x.ped)||opK(x.nf))&&volNum(x.vol)!==0);
   const feitas=rows.filter(x=>!falta.has(x)).map(x=>{ const quem=bs.filter(b=>(opK(x.nf)&&b.nf===opK(x.nf))||(opK(x.ped)&&b.ped===opK(x.ped))); return lin(x,`${fmtN(volNum(x.vol)||1)} vol. · ${esc([...new Set(quem.map(b=>(b.usuario||'').split(' ')[0]))].join(', '))}`); });
   const falt=pend.map((it,i)=>lin(it.x,`${opPorVol()?fmtN(it.lidos)+' de '+fmtN(it.esp):fmtN(volNum(it.x.vol)||1)+' vol.'}${volNum(it.x.vol)>=10?' · <b style="color:#7950F2">alta</b>':''}`,i));
@@ -8972,10 +9018,13 @@ function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) re
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;overflow:auto;flex:1;min-height:0"><div><h3 style="color:var(--ok);margin:0 0 6px;position:sticky;top:0;background:var(--papel,#0c2b31)">✔ Bipadas (${feitas.length})</h3>${feitas.join('')||'<p class="sub">Nenhuma ainda.</p>'}</div>
    <div><h3 style="color:var(--amar);margin:0 0 6px;position:sticky;top:0;background:var(--papel,#0c2b31)">⏳ Faltando (${falt.length})</h3>${falt.join('')||'<p class="sub" style="color:var(--ok)">Nada faltando ✅</p>'}</div></div>
    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px"><button class="btn" data-a="f">Filtrar a Operação por este romaneio</button><button class="btn pri" data-a="x">Fechar</button></div></div>`;
-  f.addEventListener('change',async e=>{ const c=e.target.closest('[data-rl-mk]'); if(!c) return; const it=pend[+c.dataset.rlMk]; if(!it){ c.checked=false; return; }
-    c.disabled=true; const fez=await opMarcarMao(it.x); const rolagem=(f.querySelector('.modal div[style*="grid-template-columns"]')||{}).scrollTop||0;
-    if(!fez){ c.checked=false; c.disabled=false; return; }
-    f.remove(); opRomLista(id); const novo=document.querySelector('.fundo .modal div[style*="grid-template-columns"]'); if(novo) novo.scrollTop=rolagem; });
+  const refaz=async(i,modo,el)=>{ const it=pend[i]; if(!it) return; if(el) el.disabled=true;
+    const rolagem=(f.querySelector('.modal div[style*="grid-template-columns"]')||{}).scrollTop||0;
+    const fez=await opMarcarMao(it.x,modo);
+    if(!fez){ if(el){ el.disabled=false; if(el.type==='checkbox') el.checked=false; } return; }
+    f.remove(); opRomLista(id); const novo=document.querySelector('.fundo .modal div[style*="grid-template-columns"]'); if(novo) novo.scrollTop=rolagem; };
+  f.addEventListener('change',e=>{ const c=e.target.closest('[data-rl-mk]'); if(c) refaz(+c.dataset.rlMk,'ok',c); });
+  f.addEventListener('click',e=>{ const c=e.target.closest('[data-rl-dv]'); if(c){ e.preventDefault(); refaz(+c.dataset.rlDv,'dv',c); } },true);
   f.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='x')){ f.remove(); return; } if(b&&b.dataset.a==='f'){ f.remove(); OP.romFiltro=id; opRender(); } });
   document.body.appendChild(f); }
 
@@ -9128,6 +9177,7 @@ function evaEtqHtml(){ const P=evaEtqPendentes(); if(!P.length) return 'Não ten
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-eva-etq-sim]'); if(!b) return; const lid=b.dataset.evaEtqSim; const bip=OP.bipes.find(x=>String(x.id||x.local_id)===lid); if(!bip) return; const c=evaEtqSug(bip)[0]; if(!c){ toast('Essa sugestão não existe mais.'); return; } oresResolver(lid,c); try{ evaFala(evaEtqHtml()); }catch(e){} });
 { const _ee2=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/etiqueta/.test(t)) return evaEtqHtml(); return _ee2(txt); }; }
 { const _eb2=evaBadge; evaBadge=function(){ _eb2(); try{ const n=evaEtqPendentes().length; const b=$('#eva-qt'); if(b&&n){ b.textContent=(+b.textContent||0)+n; b.hidden=false; } }catch(e){} }; }
+{ const _ebd=evaBadge; evaBadge=function(){ _ebd(); try{ const n=EVA.naoLidas||0; const b=$('#eva-qt'); if(b&&n){ b.textContent=(+b.textContent||0)+n; b.hidden=false; } }catch(e){} }; }
 { const _enb=evaNoNexBip; evaNoNexBip=function(b){ const r=_enb(b); try{ if(b&&['fora','pit','semnota'].includes(b.status)){ const c=evaEtqSug(b)[0]; if(c&&c.score>=60) evaBalao(`🏷 Acho que essa caixa é o pedido <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''} — ${esc(c.motivos.join(', '))}. Toque em Resolver para confirmar.`,9000,'etqpalpite'); } }catch(e){} return r; }; }
 function rotaS(){ return S.rotas=S.rotas||{atual:null,hist:[]}; }
 async function rotaLerPdf(f){ const buf=await f.arrayBuffer(); const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf),verbosity:0,isOffscreenCanvasSupported:false}).promise; const its=[];
