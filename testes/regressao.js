@@ -302,7 +302,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
   /* 9.26.3: etiqueta de caixa Health Log bipando de verdade — a NF da direita acha a nota no romaneio */
   { const bp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'hl',numero:'0019486',base:'CAJ',arquivo:a,rows:[{nf:'000021',ped:'555001',vol:'1',dest:'SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE',cid:'PRESIDENTE PRUDENTE',uf:'SP'}]}];
-      OP.dia=h; OP.releitura=false; OP.espera=false; OP.visto=new Map(); OP.ultLeitura=0; renderTudo(); irPara('operacao'); OP.bipes=[]; await w(100);
+      OP.dia=h; OP.releitura=false; try{ opConfFechar(); }catch(e){} OP.espera=false; OP.confB=null; OP.visto=new Map(); OP.ultLeitura=0; renderTudo(); irPara('operacao'); OP.bipes=[]; await w(100);
       const t=['000151 VOL.: 1 DE 1 000000021','12/11/2026','SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE','R WENCESLAU BRAZ, 5','VILA EUCLIDES','ESTADO: SP CEP: 19014030','PESO: 0.0000 EMBALADOR:','CIDADE: PRESIDENTE PRUDENTE 000027 000219','TRANSP.: - HEALTH LOG'];
       opLerEtiqueta(etqInterpretar(t)); await w(300);
       const b=OP.bipes.find(x=>opK(x.nf)==='21')||OP.bipes[0]||{};
@@ -312,13 +312,53 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
   /* 9.26.4: o mesmo bipe, mas com o texto sujo que o OCR entrega na foto real (NF 25) */
   { const bp2=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'hl2',numero:'0019487',base:'CAJ',arquivo:a,rows:[{nf:'000025',ped:'555002',vol:'2',dest:'LABORSERV PASTEUR LTDA EPP',cid:'TEODORO SAMPAIO',uf:'SP'}]}];
-      OP.dia=h; OP.releitura=false; OP.espera=false; OP.visto=new Map(); OP.ultLeitura=0; renderTudo(); irPara('operacao'); OP.bipes=[];
+      OP.dia=h; OP.releitura=false; try{ opConfFechar(); }catch(e){} OP.espera=false; OP.confB=null; OP.visto=new Map(); OP.ultLeitura=0; renderTudo(); irPara('operacao'); OP.bipes=[];
       const t=['000153 VO oe 2 000000025','LABORSERV PASTEUR LTDA Epp','R VICTORIO SCAPIN, BOE','centro','OOP CEP: 1928\u00a2a00','TESO:_____0.0000 au: a Jie ee','tapas TEODORO mT rrewgp HEALTH Log'];
       opLerEtiqueta(etqInterpretar(t)); await w(300);
       const b=OP.bipes.find(x=>opK(x.nf)==='25')||OP.bipes[0]||{};
       return {st:b.status,nf:b.nf,todos:OP.bipes.map(x=>x.nf+':'+x.status).join(' ')}; });
     ok(bp2.st==='ok','etiqueta de caixa (foto real): deveria bipar como conferida e veio "'+bp2.st+'" ('+bp2.todos+')');
     ok(opKi(bp2.nf)==='25','etiqueta de caixa (foto real): bipou a nota errada ('+bp2.nf+' em vez de 25)'); }
+  /* 9.26.5: o OCR erra os zeros da frente (000000037 sai 800000037) — vale o maior final que existe no romaneio */
+  { const sf=await p.evaluate(()=>({ a:etqHLSufixos('800000037'), b:etqHLSufixos('000000025'), c:etqHLSufixos('200008025') }));
+    ok(sf.a.includes('37'),'sufixos: 800000037 tem que oferecer 37 ('+sf.a.join('|')+')');
+    ok(sf.b[0]==='25','sufixos: 000000025 tem que começar por 25 ('+sf.b.join('|')+')');
+    ok(sf.c.includes('25')&&sf.c.includes('8025'),'sufixos: 200008025 tem que oferecer 8025 e 25 ('+sf.c.join('|')+')'); }
+  /* a NF é o número de cima à direita (regra fixa da etiqueta de caixa) */
+  { const tp=await p.evaluate(()=>etqNfTopoDir([
+      {text:'000153',x0:10,x1:60,y0:10,y1:30},{text:'VOL.:',x0:70,x1:100,y0:10,y1:30},
+      {text:'000000025',x0:200,x1:300,y0:8,y1:34},{text:'19280000',x0:200,x1:280,y0:200,y1:220}]));
+    ok(tp==='000000025','NF do topo à direita: esperado 000000025, veio "'+tp+'"'); }
+  /* 9.26.5: quadradinho na lista do romaneio marca a nota como bipada (e pergunta os volumes se tiver mais de 1) */
+  { const mk=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'mk1',numero:'0236360',base:'CAJ',motorista:'REGINALDO',arquivo:a,rows:[
+        {nf:'741351',ped:'734641',vol:'1',dest:'CLINICA VERA CRUZ LTDA',cid:'PATOS DE MINAS',uf:'MG'},
+        {nf:'741828',ped:'735284',vol:'4',dest:'EDUARDA APARECIDA',cid:'PLANURA',uf:'MG'}]}];
+      S.divergencias=[]; OP.dia=h; renderTudo(); irPara('operacao'); OP.bipes=[];
+      opRomLista('mk1'); await w(200);
+      const cx=[...document.querySelectorAll('.fundo [data-rl-mk]')]; const antes=cx.length;
+      /* 1 volume: marca e pronto */
+      cx[0].checked=true; cx[0].dispatchEvent(new Event('change',{bubbles:true})); await w(400);
+      const depois1=document.querySelectorAll('.fundo [data-rl-mk]').length;
+      const aberta1=!!document.querySelector('.fundo [data-rl-mk]');
+      /* 4 volumes: tem que perguntar */
+      document.querySelector('.fundo [data-rl-mk]').checked=true;
+      document.querySelector('.fundo [data-rl-mk]').dispatchEvent(new Event('change',{bubbles:true})); await w(300);
+      const perguntou=!!document.querySelector('[data-mcx]');
+      const grade=[...document.querySelectorAll('[data-mcx]')].map(x=>x.textContent).join(',');
+      document.querySelector('[data-mcx="3"]').click();
+      [...document.querySelectorAll('.fundo [data-a="ok"]')].pop().click(); await w(450);
+      const d=S.divergencias[0]||{}; const aberta2=!!document.querySelector('.fundo [data-rl-mk]')||!!document.querySelector('.fundo .modal');
+      const bip=OP.bipes.map(x=>x.nf+':'+x.status).join(' ');
+      [...document.querySelectorAll('.fundo')].forEach(x=>x.remove()); S.divergencias=[];
+      return {antes,depois1,aberta1,perguntou,grade,qtd:d.qtd,tot:d.tot,falt:(d.falt||[]).join(','),bip,aberta2}; });
+    ok(mk.antes===2,'romaneio: cada nota faltando precisa de um quadradinho ('+mk.antes+')');
+    ok(mk.depois1===1&&mk.aberta1,'romaneio: ao marcar, a nota sai de Faltando e a janela continua aberta ('+mk.depois1+')');
+    ok(mk.perguntou,'romaneio: nota com 4 volumes tem que perguntar quais chegaram');
+    ok(mk.grade==='1/4,2/4,3/4,4/4','romaneio: a grade de caixas veio errada ('+mk.grade+')');
+    ok(mk.qtd===1&&mk.tot===4&&mk.falt==='3','romaneio: faltando a caixa 3/4 tem que virar divergência ('+mk.qtd+'/'+mk.tot+' falt='+mk.falt+')');
+    ok(/741351:ok/.test(mk.bip),'romaneio: a nota de 1 volume tinha que ficar conferida ('+mk.bip+')');
+    ok(mk.aberta2,'romaneio: depois de confirmar os volumes a janela tem que continuar aberta'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();

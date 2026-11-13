@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.26.4', HS_DATA='13/11/2026';
+const HS_VERSAO='9.26.5', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6236,13 +6236,19 @@ function opFrame(v){ const w=Math.min(1600,v.videoWidth), h=Math.round(v.videoHe
 async function opOcr(v){ const OCR=window.HS_OCR; if(!OCR||!OCR.tem()||!OCR.suportado()) return null; OCRK.ocupado=true; OCRK.ult=Date.now();
   /* v9.20.0: com o resultado de um bipe na tela (OP.espera), a leitura de texto não escreve nem restaura o aviso do topo */
   const msg=OP.espera?null:document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; if(msg) msg.innerHTML='<b>🔤 Lendo o texto da etiqueta…</b>Segure firme.';
-  try{ const ws=await OCR.ler(opFrame(v)); return etqInterpretar(etqLinhas(ws.filter(w=>w.conf>35))); }catch(e){ console.error(e); return null; }
+  try{ const ws=(await OCR.ler(opFrame(v))).filter(w=>w.conf>35); const r=etqInterpretar(etqLinhas(ws)); if(r&&r.modelo==='Caixa Health Log'){ const t=etqNfTopoDir(ws); if(t) r.nfTopo=t; } return r; }catch(e){ console.error(e); return null; }
   finally{ OCRK.ocupado=false; OCRK.ult=Date.now(); if(msg&&ant&&!OP.espera) msg.innerHTML=ant; } }
 /* registra uma etiqueta lida por texto */
 function opLerEtiqueta(p){ if(!p) return false; const idx=opIndice(); const ext={dest:p.dest,cid:p.cid,tot:p.tot};
   if(p.pit){ const ped=p.nums.find(n=>n.length===6)||p.nums[0]||''; OP.extra=Object.assign(ext,{status:'pit',ped,nf:''}); OP.silencio=true; try{ opLer([ped||'000000'],'texto'); }finally{ OP.silencio=false; }
     const b=OP.bipes[0]; opMostrar({status:'pit',titulo:'Fora do romaneio · PITÁGORAS'+(ped?' · Pedido '+ped:''),linha:'Etiqueta dupla com MAFRA HOSPITALAR: o pedido está no rodapé da nota. '+[b&&b.dest,b&&b.cid].filter(Boolean).join(' · ')}); opRender(); return true; }
   if(p.cremer){ const pd=(p.nums.find(n=>n.length===6)||''); const ac=cremerAchar(pd,p); if(ac){ OP.extra={tot:p.tot||null}; opLer([opK(ac.x.nf)||opK(ac.x.ped)],'texto'); return true; } }
+  /* v9.26.5 · caixa da Health Log: a NF é o número de cima à direita. O OCR erra os zeros da frente
+     (000000025 vira 800000025), então vale o MAIOR final desse número que exista no romaneio de hoje. */
+  if(p.modelo==='Caixa Health Log'){ const tok=p.nfTopo||p.nfs[0]||'';
+    if(tok){ const achSuf=etqHLSufixos(tok).find(v=>idx.nf.has(opK(v)));
+      if(achSuf){ const linha=(idx.nf.get(opK(achSuf))||[])[0]; const txt=String((linha&&linha.x&&linha.x.nf)||achSuf).replace(/\D/g,'');
+        OP.extra={tot:p.tot||null}; opLer([txt.length>=4?txt:achSuf.padStart(6,'0')],'texto'); return true; } } }
   const cand=[...p.nfs,...p.nums.filter(n=>!p.nfs.includes(n))]; const ach=cand.find(n=>idx.nf.has(opK(n))||idx.ped.has(opK(n)));
   if(ach){ OP.extra={tot:p.tot||null}; opLer([ach],'texto'); return true; }
   const nfF=p.nfs[0]||(p.modelo&&p.nums.find(n=>n.length===6));
@@ -8603,30 +8609,50 @@ function ctLista(){ const sec=$('#t-conftotal'); if(!sec||sec.hidden) return; co
 function etqRecAmarelo(src,W,H){ const sw=200, sh=Math.round(H*sw/W); const c=document.createElement('canvas'); c.width=sw; c.height=sh; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,0,0,sw,sh); const d=x.getImageData(0,0,sw,sh).data;
   let x0=sw,y0=sh,x1=-1,y1=-1,n=0; for(let y=0;y<sh;y++) for(let i=0;i<sw;i++){ const k=(y*sw+i)*4, r=d[k],g=d[k+1],b=d[k+2]; if(r>150&&g>130&&b<110&&r-b>70&&g-b>60){ n++; if(i<x0)x0=i; if(i>x1)x1=i; if(y<y0)y0=y; if(y>y1)y1=y; } }
   if(n<sw*sh*0.04||x1<0) return null; const k=W/sw; return {x:Math.max(0,(x0-3)*k),y:Math.max(0,(y0-3)*k),w:Math.min(W,(x1-x0+6)*k),h:Math.min(H,(y1-y0+6)*k)}; }
-function etqQuadro(src,R,inv,gir){ const W=src.videoWidth||src.width, H=src.videoHeight||src.height; R=R||{x:0,y:0,w:W,h:H}; const w=1500, h=Math.max(40,Math.round(R.h*w/R.w)); const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+function etqQuadro(src,R,inv,gir,aut){ const W=src.videoWidth||src.width, H=src.videoHeight||src.height; R=R||{x:0,y:0,w:W,h:H}; const w=1500, h=Math.max(40,Math.round(R.h*w/R.w)); const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
   const cx=cv.getContext('2d',{willReadFrequently:true}); cx.filter=(inv?'invert(1) ':'')+'grayscale(1) contrast(1.6)';
   /* v9.25.1: a etiqueta da caixa costuma estar de cabeça para baixo na foto — gira 180° e tenta de novo */
   if(gir){ cx.translate(w,h); cx.rotate(Math.PI); }
-  cx.drawImage(src,R.x,R.y,R.w,R.h,0,0,w,h); return cv; }
+  cx.drawImage(src,R.x,R.y,R.w,R.h,0,0,w,h);
+  /* v9.26.5 · etiqueta térmica cinza (caixa da Health Log): estica o contraste de verdade (min/max do próprio quadro) */
+  if(aut){ try{ const d=cx.getImageData(0,0,w,h), A=d.data, hist=new Uint32Array(256); let n=0;
+      for(let i=0;i<A.length;i+=4){ hist[A[i]]++; n++; }
+      let lo=0,hi=255,ac=0; const corte=n*0.01;
+      for(let i=0;i<256;i++){ ac+=hist[i]; if(ac>corte){ lo=i; break; } }
+      ac=0; for(let i=255;i>=0;i--){ ac+=hist[i]; if(ac>corte){ hi=i; break; } }
+      if(hi-lo>12){ const k=255/(hi-lo); for(let i=0;i<A.length;i+=4){ const v=Math.max(0,Math.min(255,(A[i]-lo)*k)); A[i]=A[i+1]=A[i+2]=v; } cx.putImageData(d,0,0); }
+    }catch(e){} }
+  return cv; }
+/* v9.26.5 · o número da NOTA FISCAL é o de cima à direita da etiqueta (regra do Tiago, só na caixa da Health Log) */
+function etqNfTopoDir(ws){ try{ if(!ws||!ws.length) return '';
+    const dg=t=>String(t||'').replace(/[OQ]/g,'0').replace(/[IL]/g,'1').replace(/\D/g,'');
+    const ys=ws.map(w=>(w.y0+w.y1)/2); const y0=Math.min(...ys), y1=Math.max(...ys); const corte=y0+(y1-y0)*0.45;
+    const ns=ws.map(w=>({n:dg(w.text),x:(w.x0+w.x1)/2,y:(w.y0+w.y1)/2})).filter(o=>o.n.length>=6&&o.n.length<=12&&o.y<=corte);
+    if(!ns.length) return ''; ns.sort((a,b)=>b.x-a.x);
+    return (ns.find(o=>o.n.length>=8)||ns[0]).n; }catch(e){ return ''; } }
+/* o OCR erra os zeros da frente (000000025 sai 800000025): vale o maior final que existe no romaneio de hoje */
+function etqHLSufixos(tok){ const d=String(tok||'').replace(/\D/g,''); const out=[];
+  for(let i=0;i<d.length-1;i++){ const v=d.slice(i).replace(/^0+(?=\d)/,''); if(v.length>=2&&!out.includes(v)) out.push(v); }
+  return out; }
 /* a primeira leitura falhou? tenta outras passadas e junta tudo */
 function etqAchouAlgo(p,idx){ if(!p) return false; const ns=[...(p.nfs||[]),...(p.nums||[])].map(opK); return ns.some(n=>idx.nf.has(n)||idx.ped.has(n)); }
 { const _oo=opOcr; opOcr=async function(v){ const p=await _oo(v); try{ const OCR=window.HS_OCR; if(!OCR||!OCR.tem()) return p; const idx=opIndice(); if(etqAchouAlgo(p,idx)) return p;
       const W=v.videoWidth||v.width, H=v.videoHeight||v.height; const amar=etqRecAmarelo(v,W,H); const centro={x:W*.1,y:H*.22,w:W*.8,h:H*.56};
-      const passes=[amar&&['amarela',amar,false],['centro',centro,false],['inteira',null,false],['centro de cabeça para baixo',centro,false,true],['inteira de cabeça para baixo',null,false,true],amar&&['amarela invertida',amar,true],['centro invertido',centro,true]].filter(Boolean);
+      const passes=[amar&&['amarela',amar,false],['centro',centro,false],['centro realçado',centro,false,false,true],['inteira realçada',null,false,false,true],['inteira',null,false],['centro de cabeça para baixo',centro,false,true],['inteira de cabeça para baixo',null,false,true],amar&&['amarela invertida',amar,true],['centro invertido',centro,true]].filter(Boolean);
       /* v9.20.0: a mensagem "o BIT está se esforçando" só aparece quando há etiqueta na frente que ele não leu.
          Nunca por cima do resultado de um bipe que acabou de sair (OP.espera) — era isso que cobria o aviso verde. */
       const msg=document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; let escreveu=false;
       const diz=t=>{ if(msg&&!OP.espera){ msg.innerHTML=t; escreveu=true; } };
       OCRK.ocupado=true; let linhas=[]; const t0=Date.now();
-      for(const [nome,R,inv,gir] of passes){ if(Date.now()-t0>4500) break; diz(`<b> O BIT está se esforçando…</b>lendo de novo (${nome}). Segure firme.`);
-        try{ const ws=await OCR.ler(etqQuadro(v,R,inv,gir)); const L=etqLinhas(ws.filter(w=>w.conf>30)); linhas=linhas.concat(L); const pp=etqInterpretar(linhas); if(etqAchouAlgo(pp,idx)||(pp.dest&&pp.cid&&cerPorCliente(pp,idx))){ linhas=linhas; break; } }catch(e){} }
+      let wsUlt=[]; for(const [nome,R,inv,gir,aut] of passes){ if(Date.now()-t0>4500) break; diz(`<b> O BIT está se esforçando…</b>lendo de novo (${nome}). Segure firme.`);
+        try{ const ws=await OCR.ler(etqQuadro(v,R,inv,gir,aut)); wsUlt=ws.filter(w=>w.conf>30); const L=etqLinhas(ws.filter(w=>w.conf>30)); linhas=linhas.concat(L); const pp=etqInterpretar(linhas); if(etqAchouAlgo(pp,idx)||(pp.dest&&pp.cid&&cerPorCliente(pp,idx))){ linhas=linhas; break; } }catch(e){} }
       OCRK.ocupado=false; OCRK.ult=Date.now(); if(msg&&ant&&escreveu&&!OP.espera) msg.innerHTML=ant; if(!linhas.length) return p;
       const q=etqInterpretar(linhas); const base=p||{nfs:[],nums:[]}; /* junta: números de todas as passadas (inclusive números soltos de 6+ dígitos) */
       const soltos=[...new Set(linhas.join(' ').match(/\b\d{5,9}\b/g)||[])]; const res=Object.assign({},q,base);
       res.nfs=[...new Set([...(base.nfs||[]),...(q.nfs||[])])]; res.nums=[...new Set([...(base.nums||[]),...(q.nums||[]),...soltos])];
       for(const k of ['dest','cid','tot','vol','uf']) if(!res[k]&&q[k]) res[k]=q[k]; if(!base.dest&&q.dest) res.dest=q.dest; if(!base.cid&&q.cid) res.cid=q.cid;
       /* v9.26.4: na etiqueta de caixa da Health Log o número da direita é a NF e os de 6 dígitos são códigos — não deixa os "soltos" virarem nota/pedido */
-      if(q.modelo==='Caixa Health Log'&&q.nfs&&q.nfs[0]&&!(base.nfs||[]).length){ res.modelo='Caixa Health Log'; res.nfs=[q.nfs[0]]; res.nums=[q.nfs[0]]; res.etqCod=q.etqCod||''; }
+      if(q.modelo==='Caixa Health Log'&&q.nfs&&q.nfs[0]&&!(base.nfs||[]).length){ res.modelo='Caixa Health Log'; const topo=etqNfTopoDir(wsUlt)||q.nfTopo||(base&&base.nfTopo)||''; res.nfTopo=topo||q.nfs[0]; res.nfs=[topo||q.nfs[0]]; res.nums=[topo||q.nfs[0]]; res.etqCod=q.etqCod||''; }
       CERx.linhas=linhas.map(l=>String(l).toUpperCase().replace(/\s+/g,' ').trim()); return res; }catch(e){ console.error('eva ocr',e); return p; } }; }
 /* duas notas do mesmo cliente/cidade: desempata pelos últimos dígitos lidos (ex.: leu 24870 → pedido 044870) */
 { const _oo=opOcr; opOcr=async function(v){ const p=await _oo(v); try{ if(!p) return p; const idx=opIndice(); if(etqAchouAlgo(p,idx)) return p; const lidos=(p.nums||[]).concat(p.nfs||[]).map(x=>String(x).replace(/\D/g,'')).filter(x=>x.length>=4);
@@ -8908,17 +8934,48 @@ function opRomChips(){ if(OP.dia!==hojeISO()) return ''; let L; try{ L=opPorRom(
   return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;align-items:center"><span class="sub" style="margin:0 4px 0 0">Romaneio:</span>${chip('','Todos',(tn-fn)+'/'+tn,!OP.romFiltro,'var(--mudo)')}${L.sort((a,b)=>(a.base+a.r.numero).localeCompare(b.base+b.r.numero)).map(x=>chip(x.r.id,opRotOrigem(x,L)+' · '+(x.r.numero||''),(x.tn-x.fn)+'/'+x.tn+(x.fn?'':' ✅'),OP.romFiltro===x.r.id,opCorBase(x.base))).join('')}</div>`; }
 { const _r=opRender; opRender=function(){ const r=_r.apply(this,arguments); try{ const cards=$('#op-cards'); if(!cards) return r; let el=$('#op-romchips'); if(!el){ cards.insertAdjacentHTML('beforebegin','<div id="op-romchips"></div>'); el=$('#op-romchips'); } el.innerHTML=opRomChips(); }catch(e){ console.error(e); } return r; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-op-rf]'); if(!b) return; OP.romFiltro=b.dataset.opRf; opRender(); });
+/* v9.26.5 · fase de aprendizado das etiquetas: dá para marcar a nota como bipada na mão,
+   pelo quadradinho antes do "NF ...". Com mais de 1 volume ele pergunta quais chegaram,
+   e a janela do romaneio continua aberta para marcar as próximas. */
+function opQuantosMao(x,tot){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1700'; const falt=new Set();
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:520px"><h2 style="margin:0 0 2px">NF ${esc(opK(x.nf)||'—')} · ${fmtN(tot)} volumes</h2>
+   <p class="sub" style="margin:0 0 12px">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</p>
+   <p style="margin:0 0 8px"><b>Chegaram todos os ${fmtN(tot)} volumes?</b></p>
+   ${volGradeHtml(tot,[],'mcx')}
+   <p class="sub" style="margin:8px 0 14px">Se faltou alguma caixa, toque nela. Sem tocar em nada = chegaram todas.</p>
+   <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn" type="button" data-a="c">Cancelar</button><button class="btn pri" type="button" data-a="ok">Confirmar</button></div></div>`;
+  f.addEventListener('click',e=>{ const c=e.target.closest('[data-mcx]');
+    if(c){ const i=+c.dataset.mcx; if(falt.has(i)){ falt.delete(i); c.classList.remove('on'); } else { falt.add(i); c.classList.add('on'); } return; }
+    const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='c')){ f.remove(); res(null); return; }
+    if(b&&b.dataset.a==='ok'){ const fa=[...falt].sort((p,q)=>p-q); f.remove(); res({chegou:Math.max(0,tot-fa.length),faltaram:fa}); } });
+  document.body.appendChild(f); }); }
+async function opMarcarMao(x){ const tot=Math.max(1,volNum(x.vol)||1); let chegou=tot, faltaram=[];
+  if(tot>1){ const r=await opQuantosMao(x,tot); if(!r) return false; chegou=r.chegou; faltaram=r.faltaram; }
+  const cod=String(opK(x.nf)||opK(x.ped)||''); if(!cod) return false;
+  const bruto=String(x.nf||x.ped||'').replace(/\D/g,'');
+  const txt=bruto.length>=4?bruto:(cod.length>=3?('NF'+cod):cod);
+  OP.extra={tot,dest:x.dest||'',cid:x.cid||''};
+  const antes=OP.bipes.length; try{ opLer([txt],'mão'); }catch(e){ console.error(e); }
+  if(OP.bipes.length<=antes){ toast('Não consegui marcar a NF '+cod+'.'); return false; }
+  const b=OP.bipes[0];
+  if(tot>1&&chegou<tot){ try{ opConfFalta(b,tot,chegou,'',faltaram); }catch(e){ console.error(e); } toast('NF '+cod+': chegaram '+chegou+' de '+tot+' — foi para divergências.'); }
+  else { try{ opConfMarcar(b,'ok',chegou); }catch(e){} toast('✔ NF '+cod+' marcada como conferida.'); }
+  try{ opRender(); }catch(e){} return true; }
 function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) return; OP._semFiltro=true; let pend; try{ pend=opPendentes().filter(it=>it.r.id===id); }finally{ OP._semFiltro=false; }
   const falta=new Set(pend.map(it=>it.x)); const bs=OP.bipes.filter(b=>b.status!=='fora');
-  const lin=(x,extra)=>`<div style="padding:6px 0;border-bottom:1px solid var(--linha)"><b>NF ${esc(opK(x.nf)||'—')}</b>${x.ped?` <small class="sub">ped. ${esc(opK(x.ped))}</small>`:''} <small style="float:right">${extra}</small><br><small class="sub">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</small></div>`;
+  const lin=(x,extra,mk)=>`<div style="padding:6px 0;border-bottom:1px solid var(--linha)">${mk!=null?`<input type="checkbox" class="rl-mk" data-rl-mk="${mk}" title="Marcar como bipada" style="width:18px;height:18px;vertical-align:-3px;margin-right:8px;accent-color:var(--ok)">`:''}<b>NF ${esc(opK(x.nf)||'—')}</b>${x.ped?` <small class="sub">ped. ${esc(opK(x.ped))}</small>`:''} <small style="float:right">${extra}</small><br><small class="sub" style="margin-left:${mk!=null?'26px':'0'}">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</small></div>`;
   const rows=(r.rows||[]).filter(x=>(opK(x.ped)||opK(x.nf))&&volNum(x.vol)!==0);
   const feitas=rows.filter(x=>!falta.has(x)).map(x=>{ const quem=bs.filter(b=>(opK(x.nf)&&b.nf===opK(x.nf))||(opK(x.ped)&&b.ped===opK(x.ped))); return lin(x,`${fmtN(volNum(x.vol)||1)} vol. · ${esc([...new Set(quem.map(b=>(b.usuario||'').split(' ')[0]))].join(', '))}`); });
-  const falt=pend.map(it=>lin(it.x,`${opPorVol()?fmtN(it.lidos)+' de '+fmtN(it.esp):fmtN(volNum(it.x.vol)||1)+' vol.'}${volNum(it.x.vol)>=10?' · <b style="color:#7950F2">alta</b>':''}`));
+  const falt=pend.map((it,i)=>lin(it.x,`${opPorVol()?fmtN(it.lidos)+' de '+fmtN(it.esp):fmtN(volNum(it.x.vol)||1)+' vol.'}${volNum(it.x.vol)>=10?' · <b style="color:#7950F2">alta</b>':''}`,i));
   const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
-  f.innerHTML=`<div class="modal" role="dialog" style="max-width:900px;width:calc(100% - 24px);max-height:88vh;display:flex;flex-direction:column"><h2 style="margin:0 0 4px">${esc(r.base||'')} · ${esc(r.numero||'')}</h2><p class="sub" style="margin:0 0 10px">${esc(r.motorista||'')} · ${fmtN(rows.length)} nota(s)</p>
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:900px;width:calc(100% - 24px);max-height:88vh;display:flex;flex-direction:column"><h2 style="margin:0 0 4px">${esc(r.base||'')} · ${esc(r.numero||'')}</h2><p class="sub" style="margin:0 0 10px">${esc(r.motorista||'')} · ${fmtN(rows.length)} nota(s) · <span style="color:var(--ok)">marque o quadradinho para dar a nota como bipada</span></p>
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;overflow:auto;flex:1;min-height:0"><div><h3 style="color:var(--ok);margin:0 0 6px;position:sticky;top:0;background:var(--papel,#0c2b31)">✔ Bipadas (${feitas.length})</h3>${feitas.join('')||'<p class="sub">Nenhuma ainda.</p>'}</div>
    <div><h3 style="color:var(--amar);margin:0 0 6px;position:sticky;top:0;background:var(--papel,#0c2b31)">⏳ Faltando (${falt.length})</h3>${falt.join('')||'<p class="sub" style="color:var(--ok)">Nada faltando ✅</p>'}</div></div>
    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px"><button class="btn" data-a="f">Filtrar a Operação por este romaneio</button><button class="btn pri" data-a="x">Fechar</button></div></div>`;
+  f.addEventListener('change',async e=>{ const c=e.target.closest('[data-rl-mk]'); if(!c) return; const it=pend[+c.dataset.rlMk]; if(!it){ c.checked=false; return; }
+    c.disabled=true; const fez=await opMarcarMao(it.x); const rolagem=(f.querySelector('.modal div[style*="grid-template-columns"]')||{}).scrollTop||0;
+    if(!fez){ c.checked=false; c.disabled=false; return; }
+    f.remove(); opRomLista(id); const novo=document.querySelector('.fundo .modal div[style*="grid-template-columns"]'); if(novo) novo.scrollTop=rolagem; });
   f.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='x')){ f.remove(); return; } if(b&&b.dataset.a==='f'){ f.remove(); OP.romFiltro=id; opRender(); } });
   document.body.appendChild(f); }
 
