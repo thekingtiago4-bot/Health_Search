@@ -278,5 +278,20 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       document.getElementById('ck-add').click(); await w(250);
       const r={d:ckTudo().length-antes,dl:document.querySelectorAll('#ck-tbody tr').length-linhasAntes,vazia:ckTudo().some(x=>!x.mot)}; S.checklist=[]; return r; });
     ok(ad.d===1&&ad.dl===1&&ad.vazia,'checklist: o ＋ Adicionar não criou a linha nova ('+JSON.stringify(ad)+')'); }
+  /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
+  { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.nex=null; nexS();
+      S.romaneios=[{id:'r1',numero:'0001',base:'CAJ',arquivo:a,rows:[{nf:'100',ped:'900',vol:'1',dest:'A',cid:'X'},{nf:'101',ped:'901',vol:'1',dest:'B',cid:'X'},{nf:'102',ped:'902',vol:'1',dest:'C',cid:'X'}]},
+                   {id:'r2',numero:'0002',base:'DF',arquivo:a,rows:[{nf:'100',ped:'900',vol:'1',dest:'A',cid:'X'},{nf:'103',ped:'903',vol:'1',dest:'D',cid:'X'}]}];
+      OP.dia=h; OP.bipes=[]; renderTudo();
+      const bruto=opPorRom().reduce((s,x)=>s+x.tn,0);
+      nexRetirar(S.romaneios[0],S.romaneios[0].rows[2],'teste');
+      const L=opPorRom(); const comFiltro=L.reduce((s,x)=>s+x.tn,0), falt=L.reduce((s,x)=>s+x.fn,0);
+      const cada=L.map(x=>x.r.numero+':'+x.tn+'/'+x.fn).join(' ');
+      S.nex=null; nexS(); return {bruto,comFiltro,falt,cada,ok:L.every(x=>x.fn<=x.tn)}; });
+    ok(c.bruto===4,'conferência: a NF repetida em dois romaneios deveria contar uma vez só (deu '+c.bruto+' de 4)');
+    ok(c.comFiltro===3,'conferência: a nota retirada da operação não deveria entrar no total (deu '+c.comFiltro+' de 3)');
+    ok(c.falt===3,'conferência: faltando deveria ser 3 ('+c.falt+') — '+c.cada);
+    ok(c.ok,'conferência: nenhuma origem pode ter mais faltando do que notas ('+c.cada+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

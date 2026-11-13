@@ -1,1 +1,1 @@
-{"versao":"9.26.0","data":"2026-11-13","novidades":"Agora da para dizer QUAIS caixas faltaram (1/6, 2/6...): o app escreve faltaram as caixas 2/6 e 6/6 na divergencia, na lista e no Excel. Corrigido o + Adicionar do Checklist e a exclusao agora pede confirmacao."}
+{"versao":"9.26.1","data":"2026-11-13","novidades":"O total da Conferencia agora bate com os romaneios: nota repetida em dois romaneios conta uma vez so, e nota tirada da operacao (checkbox dos romaneios) ou pela simulacao nao entra na conta nem na lista do que falta."}

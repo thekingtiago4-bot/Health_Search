@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.26.0', HS_DATA='13/11/2026';
+const HS_VERSAO='9.26.1', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5145,8 +5145,12 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 /* ---------- painel ---------- */
 function opEntrar(){ opXmlInfo(); $('#op-modo').checked=opPorVol(); if(OP.dia!==($('#op-dia').value||hojeISO())||!OP.bipes.length) opAbrirDia($('#op-dia').value||hojeISO()); else opRender(); opFila(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
 function opVisiveis(){ return OP.usuario?OP.bipes.filter(b=>b.usuario===OP.usuario):OP.bipes; }
-function opPendentes(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[];
-  for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; const esp=volNum(x.vol); if(esp===0) continue; if(simFora(x)) continue;
+/* v9.26.1 · uma nota conta uma vez só: repetida em dois romaneios conta no primeiro,
+   e o que foi tirado da operação (checkbox dos romaneios) ou pela simulação não conta. */
+ const opNotaK=x=>{ const nf=opK(x&&x.nf), ped=opK(x&&x.ped); return nf?('N'+nf):(ped?('P'+ped):''); };
+ function opForaFiltro(x){ try{ if(simFora(x)) return true; }catch(e){} try{ const k=nexK(x); if(k&&nexS().fora[k]) return true; }catch(e){} return false; }
+ function opPendentes(){ if(OP.dia!==hojeISO()) return []; const opVistoK=new Set(); const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[];
+  for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; const esp=volNum(x.vol); if(esp===0) continue; if(opForaFiltro(x)) continue; const _nk=opNotaK(x); if(_nk){ if(opVistoK.has(_nk)) continue; opVistoK.add(_nk); }
     const lidos=new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size; const fa=opFaltaAnt(ped,nf); const espF=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
     if(lidos<espF) out.push({r,x,ped,nf,esp:espF,lidos,valor:opValor(ped,nf,x),falta:fa}); }
   return out.sort((a,b)=>b.valor-a.valor); }
@@ -8861,10 +8865,13 @@ function opOutraCaixa(textos,origem,quem,ja,tt){ const old=document.getElementBy
 
 /* ================= v7.9.14 · Operação: progresso por romaneio e por origem (DF, AQA, CAJ, MESA…) ================= */
 OP.romFiltro=OP.romFiltro||'';
-function opPorRom(){ OP._semFiltro=true; let pend; try{ pend=opPendentes(); }finally{ OP._semFiltro=false; } const pm=new Map(); for(const it of pend){ const a=pm.get(it.r.id)||{n:0,v:0}; a.n++; a.v+=Math.max(0,(it.esp||1)-(it.lidos||0)); pm.set(it.r.id,a); }
-  const hoje=hojeISO(); const roms=(S.romaneios||[]).filter(r=>opDiaRom(r)===hoje); const out=[];
-  for(const r of roms){ const rows=(r.rows||[]).filter(x=>(opK(x.ped)||opK(x.nf))&&volNum(x.vol)!==0&&!simFora(x)); const tn=rows.length; const tv=rows.reduce((t,x)=>t+(opPorVol()?(volNum(x.vol)||1):1),0); const f=pm.get(r.id)||{n:0,v:0};
-    out.push({r,base:r.base||'?',tn,fn:f.n,tv,fv:f.v}); } return out; }
+ function opPorRom(){ OP._semFiltro=true; let pend; try{ pend=opPendentes(); }finally{ OP._semFiltro=false; }
+ const pk=new Map(); for(const it of pend){ const k=opNotaK(it.x); if(k&&!pk.has(k)) pk.set(k,Math.max(0,(it.esp||1)-(it.lidos||0))); }
+  const hoje=hojeISO(); const roms=(S.romaneios||[]).filter(r=>opDiaRom(r)===hoje); const out=[]; const vis=new Set();
+  for(const r of roms){ const rows=(r.rows||[]).filter(x=>{ if(!(opK(x.ped)||opK(x.nf))) return false; if(volNum(x.vol)===0) return false; if(opForaFiltro(x)) return false; const k=opNotaK(x); if(k){ if(vis.has(k)) return false; vis.add(k); } return true; });
+    const tn=rows.length; const tv=rows.reduce((t,x)=>t+(opPorVol()?(volNum(x.vol)||1):1),0); let fn=0, fv=0;
+    for(const x of rows){ const k=opNotaK(x); if(k&&pk.has(k)){ fn++; fv+=pk.get(k); } }
+    out.push({r,base:r.base||'?',tn,fn,tv,fv}); } return out; }
 const OP_COR_BASE={'CAJ':'#4F7CF7','AQA':'#20C997','DF':'#F59F00','MESA':'#BE4BDB','VIA MINAS':'#E8590C','CREMER':'#E64980','?':'#868E96'};
 /* v9.20.2 · quando a MESMA origem tem dois ou mais romaneios no dia (dois de Cajamar, dois do DF…),
    cada um passa a aparecer pelo primeiro nome do motorista. Com um romaneio só, continua a sigla (CAJ, DF, MESA). */
