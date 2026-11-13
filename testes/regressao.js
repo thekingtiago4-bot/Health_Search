@@ -187,5 +187,16 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
               sem:[rpSemMot('NENHUM'),rpSemMot('(SEM MOTORISTA)'),rpSemMot('ALEXANDRE')].join(',')}; });
     ok(v.bip,'divergências: a caixa de bipar a nota não está visível');
     ok(v.sem==='true,true,false','ranking: NENHUM / SEM MOTORISTA deveriam ficar fora e um nome de verdade dentro ('+v.sem+')'); }
+  /* 9.23.1: Editar abre o formulário (ele vive dentro de "Ou preencher à mão") e traz o total da nota */
+  { const e2=await p.evaluate(()=>{ S.divergencias=[{id:'d1',n:1,d:hojeISO(),ped:'',nf:'909958',tipo:'Falta de volume',qtd:1,tot:31,cli:'',obs:'faltavam 1 volume(s)',st:'aberta',por:'t',em:new Date().toISOString(),hist:[]}];
+      renderTudo(); irPara('divergencias');
+      const linha=document.querySelector('#t-divergencias .op-tab tbody tr').innerText.replace(/\s+/g,' ');
+      document.querySelector('[data-dv="editar"]').click();
+      const f=document.getElementById('dv-form'), det=f.closest('details');
+      const r={linha,aberto:!!(det&&det.open),qtd:document.getElementById('dv-qtd').value,tot:(document.getElementById('dv-tot')||{}).value,botao:document.getElementById('dv-ok').textContent};
+      S.divergencias=[]; return r; });
+    ok(/1 de 31/.test(e2.linha),'divergência: a coluna Vol. deveria mostrar "1 de 31" ('+e2.linha.slice(0,90)+')');
+    ok(e2.aberto,'divergência: o Editar não abriu o formulário "Ou preencher à mão"');
+    ok(e2.qtd==='1'&&e2.tot==='31'&&e2.botao==='Salvar alterações','divergência: o Editar não trouxe os dados para o formulário ('+JSON.stringify(e2)+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
