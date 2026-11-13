@@ -170,5 +170,22 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       return {temForm,naTela:document.getElementById('re-motivos').innerHTML.includes('FERIADO')}; });
     ok(m.temForm,'reentregas: o quadro de motivos não montou (campo de cadastrar ausente)');
     ok(m.naTela,'reentregas: o motivo cadastrado não aparece na lista'); }
+  /* 9.23.0: nota com divergência de volume — bipar abate o que chegou e resolve quando zera */
+  { const d=await p.evaluate(()=>{ const h=hojeISO();
+      S.divergencias=[{id:'d1',n:1,d:h,ped:'724486',nf:'731084',tipo:'Falta de volume',qtd:4,cli:'X',obs:'',st:'aberta',por:'t',em:new Date().toISOString(),hist:[]}];
+      const b={ped:'724486',nf:'731084',tot:5,vol:1};
+      const achou=!!opDvPend(b);
+      opDvChegaram(b,S.divergencias[0],3); const meio=S.divergencias[0].qtd+'/'+(S.divergencias[0].st==='resolvida');
+      opDvChegaram(b,S.divergencias[0],1); const fim=S.divergencias[0].qtd+'/'+(S.divergencias[0].st==='resolvida');
+      S.divergencias=[]; return {achou,meio,fim}; });
+    ok(d.achou,'divergência: o bipe não reconheceu que a nota tinha volume faltando');
+    ok(d.meio==='1/false','divergência: faltavam 4, chegaram 3 — deveria sobrar 1 em aberto ('+d.meio+')');
+    ok(d.fim==='0/true','divergência: chegando o último volume, deveria resolver sozinha ('+d.fim+')'); }
+  /* 9.23.0: caixa de bipe de volta nas Divergências e ranking sem "NENHUM" */
+  { const v=await p.evaluate(()=>{ irPara('divergencias');
+      return {bip:!!document.getElementById('dv-bip')&&!!document.getElementById('dv-bip').offsetParent,
+              sem:[rpSemMot('NENHUM'),rpSemMot('(SEM MOTORISTA)'),rpSemMot('ALEXANDRE')].join(',')}; });
+    ok(v.bip,'divergências: a caixa de bipar a nota não está visível');
+    ok(v.sem==='true,true,false','ranking: NENHUM / SEM MOTORISTA deveriam ficar fora e um nome de verdade dentro ('+v.sem+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

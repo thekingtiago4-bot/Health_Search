@@ -4196,7 +4196,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.22.2', HS_DATA='13/11/2026';
+const HS_VERSAO='9.23.0', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4944,8 +4944,44 @@ function opConfFechar(){ opConfLimpar(); OP.espera=false; OP.confB=null;
   try{ const ag=Date.now(); OP.ultLeitura=ag; if(OP.ultPrin&&OP.visto) OP.visto.set(OP.ultPrin,ag); }catch(e){}
   try{ opCamPausa(); }catch(e){} }
 /* mostra os dois botões depois de cada bipe (só com a câmera aberta e só quando o bipe foi registrado) */
+/* v9.23.0 · nota que tem divergência aberta de volume: ao bipar, a câmera para e pergunta quantos
+   volumes chegaram AGORA. O que chegou abate o que faltava; zerou, a divergência é resolvida sozinha. */
+function opDvPend(b){ try{ const d=dvAcha(b&&b.ped,b&&b.nf); return (d&&d.st!=='resolvida'&&(+d.qtd||0)>0)?d:null; }catch(e){ return null; } }
+function opDvPainel(b,d){ const cam=document.querySelector('#op-cam'); if(!cam) return; OP.espera=true; OP.confB=b; opConfLimpar();
+  const falta=Math.max(0,+d.qtd||0);
+  const el=document.createElement('div'); el.className='op-conf';
+  el.innerHTML=`<div class="tit">⚠ ${esc(d.tipo||'Divergência')} ${esc(dvNum(d))} · faltavam <b>${falta}</b> volume(s)<br><span style="font-weight:600;opacity:.9">Chegaram todos agora?</span></div>
+    <div class="bts"><button type="button" class="no" data-d="nao">✗<small>chegaram só alguns</small></button><button type="button" class="sim" data-d="sim">✓<small>chegaram os ${falta}</small></button></div>`;
+  cam.appendChild(el);
+  el.addEventListener('click',e=>{ const bt=e.target.closest('[data-d]'); if(!bt) return; e.stopPropagation();
+    if(bt.dataset.d==='sim') opDvChegaram(b,d,falta); else { try{ if(navigator.vibrate) navigator.vibrate([120,60,120]); }catch(er){} opDvQuantos(b,d,falta); } }); }
+function opDvQuantos(b,d,falta){ const cam=document.querySelector('#op-cam'); if(!cam) return; opConfLimpar();
+  const el=document.createElement('div'); el.className='op-qt';
+  const grade=falta<=12?`<div class="gr">${Array.from({length:falta+1},(_,i)=>`<button type="button" data-dn="${i}" class="${i===falta?'tudo':''}">${i}</button>`).join('')}</div>`:'';
+  el.innerHTML=`<h4>Quantos volumes chegaram agora?<br><span style="font-weight:600;opacity:.85;font-size:.86rem">Faltavam ${falta} · pedido ${esc(b.ped||b.nf||'')}</span></h4>${grade}
+    <input id="op-dv-n" type="number" min="0" max="${falta}" inputmode="numeric" placeholder="quantos chegaram"${falta<=12?' hidden':''}>
+    <div class="pe"><button type="button" data-da="x" style="background:#f1f3f5;color:#111">Voltar</button><button type="button" data-da="ok" style="background:#C2255C;color:#fff">Confirmar</button></div>`;
+  cam.appendChild(el);
+  el.addEventListener('click',e=>{ const n=e.target.closest('[data-dn]'), a=e.target.closest('[data-da]');
+    if(n){ e.stopPropagation(); opDvChegaram(b,d,+n.dataset.dn); return; }
+    if(!a) return; e.stopPropagation();
+    if(a.dataset.da==='x'){ opDvPainel(b,d); return; }
+    const v=el.querySelector('#op-dv-n').value; if(v===''){ toast('Diga quantos volumes chegaram.'); return; }
+    opDvChegaram(b,d,Math.max(0,Math.min(falta,+v||0))); }); }
+function opDvChegaram(b,d,n){ const falta=Math.max(0,+d.qtd||0), chegou=Math.max(0,Math.min(falta,+n||0)), resta=falta-chegou;
+  const eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
+  d.qtd=resta; (d.hist=d.hist||[]).push({em:ag,por:eu,t:`Chegaram ${chegou} volume(s) na conferência do bipe — ${resta?('ainda faltam '+resta):'nada mais falta'}`});
+  if(!resta){ d.st='resolvida'; d.res={d:hojeISO(),obs:`Os ${chegou} volume(s) que faltavam chegaram e foram bipados.`,por:eu}; try{ dvParaReentregas(d); }catch(e){} }
+  salvar(); try{ dvRender(); }catch(e){} try{ dvBadge(); }catch(e){}
+  const m=document.querySelector('#op-cam .msg');
+  if(m){ m.style.background=resta?'#C2255C':'#2B8A3E'; m.innerHTML=resta?`<b>⚠ Ainda faltam ${resta} volume(s)</b>${esc(dvNum(d))} · chegaram ${chegou} agora`:`<b>✔ Divergência ${esc(dvNum(d))} resolvida</b>os ${chegou} volume(s) que faltavam chegaram`; }
+  try{ opSom(resta?'fora':'ok'); }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate(resta?[90,50,90,50,320]:[60]); }catch(e){}
+  toast(resta?`Faltam ${resta} volume(s) na divergência ${dvNum(d)}.`:`✔ Divergência ${dvNum(d)} resolvida e lançada nas reentregas de hoje.`);
+  opConfFechar(); }
 function opConfPedir(r){ const cam=document.querySelector('#op-cam'); if(!cam||!r||!r._b) return; if(OP.destino||OP.releitura) return;
   const b=r._b, tot=Math.max(1,+b.tot||1), st=b.status;
+  { const d=opDvPend(b); if(d){ opDvPainel(b,d); return; } }
   /* v9.20.1 · regra do Tiago: a parada é o sinal visual de "esta caixa tem mais de um volume".
      Nota de um volume só (1 de 1) bipa e segue direto na câmera, sem pergunta nenhuma. */
   if(tot<=1) return;
@@ -6202,7 +6238,10 @@ function rpMarcar(id,k,itens){ $$('#'+id+' .rp-h').forEach((e,i)=>{ if(itens[i])
 { const _rr=rpRender; rpRender=function(){ _rr(); rpCardsNovos(); const sel=RP._sel||[]; const tot=sel.length;
   const cid=rpAgrupa(sel,'cid').slice(0,10); rpBarras($('#rp-cid'),cid.map(([n,o])=>({n,v:o.n})),v=>v+(v>1?' notas':' nota'),'var(--no)'); $$('#rp-cid .rp-h').forEach((e,i)=>e.querySelector('.vl').textContent=`${cid[i][1].n} · ${rpPct(cid[i][1].n,tot)}`); rpMarcar('rp-cid','cid',cid);
   const mt=rpAgrupa(sel,'motivo').slice(0,10); rpBarras($('#rp-mot'),mt.map(([n,o])=>({n,v:o.n})),v=>v+'','var(--amar)'); $$('#rp-mot .rp-h').forEach((e,i)=>e.querySelector('.vl').textContent=`${mt[i][1].n} · ${rpPct(mt[i][1].n,tot)}`); rpMarcar('rp-mot','motivo',mt);
-  const mo=rpAgrupa(sel,'mot').slice(0,12); rpBarras($('#rp-mtr'),mo.map(([n,o])=>({n,v:o.n})),v=>v+''); $$('#rp-mtr .rp-h').forEach((e,i)=>{ const o=mo[i][1]; const top=rpAgrupa(o.itens,'motivo').slice(0,2).map(([m,q])=>m.slice(0,28)+' ('+q.n+')').join(', '); e.querySelector('.vl').textContent=`${o.n} · ${top}`; e.title=mo[i][0]+' — '+top; }); rpMarcar('rp-mtr','mot',mo);
+  const moTudo=rpAgrupa(sel,'mot'); const semMot=moTudo.filter(([n])=>rpSemMot(n)).reduce((t,[,o])=>t+o.n,0);
+  const mo=moTudo.filter(([n])=>!rpSemMot(n)).slice(0,12);
+  try{ const dica=document.querySelector('#rp-mtr')&&document.querySelector('#rp-mtr').closest('.rp-card').querySelector('.rp-dica');
+    if(dica) dica.innerHTML=semMot?`motorista digitado na observação (MOTIVO - MOTORISTA) · <b style="color:#E8590C">${semMot} reentrega(s) sem motorista</b> — acerte em Correção`:'motorista digitado na observação (MOTIVO - MOTORISTA)'; }catch(e){} rpBarras($('#rp-mtr'),mo.map(([n,o])=>({n,v:o.n})),v=>v+''); $$('#rp-mtr .rp-h').forEach((e,i)=>{ const o=mo[i][1]; const top=rpAgrupa(o.itens,'motivo').slice(0,2).map(([m,q])=>m.slice(0,28)+' ('+q.n+')').join(', '); e.querySelector('.vl').textContent=`${o.n} · ${top}`; e.title=mo[i][0]+' — '+top; }); rpMarcar('rp-mtr','mot',mo);
   const cl=rpAgrupa(sel,'cli'); const byN=cl.slice(0,10), byV=cl.slice().sort((a,b)=>b[1].v-a[1].v).slice(0,10); rpMarcar('rp-cli-n','cli',byN); rpMarcar('rp-cli-v','cli',byV);
   const tp=[]; $$('#rp-tip .rp-h').forEach(e=>tp.push([e.title])); rpMarcar('rp-tip','tipo',tp); const uf=[]; $$('#rp-uf .rp-h').forEach(e=>uf.push([e.title])); rpMarcar('rp-uf','uf',uf);
   $$('#rp-kpi>div').forEach(d=>d.dataset.rpTodos='1'); }; }
@@ -7032,7 +7071,11 @@ function cadMotCPF(n){ const canon=motCanon(n); if(!canon) return ''; const m=(S
 function cadDatalists(){ let d=$('#cad-dl'); if(!d){ d=document.createElement('div'); d.id='cad-dl'; d.hidden=true; document.body.appendChild(d); }
   d.innerHTML=`<datalist id="cad-mot-dl">${(S.cadMot||[]).map(m=>`<option value="${esc(m.nome)}">`).join('')}</datalist><datalist id="cad-motivos-dl">${(S.cadMotivos||[]).map(m=>`<option value="${esc(m)}">`).join('')}</datalist>`; }
 /* motorista: campo próprio da reentrega > nome da observação; sempre pelo cadastro (apelidos juntam) */
-{ const _m=rpMot; rpMot=function(x){ const n=_m(x); return n==='(SEM MOTORISTA)'?n:motCanon(n); }; } try{ RPK.mot.f=rpMot; }catch(e){}
+/* v9.23.0 · "NENHUM", "SEM MOTORISTA" e vazio não são motorista: ficam de fora do ranking e aparecem
+   como aviso, para o Tiago acertar em Correção. */
+const RP_SEM_MOT=['(SEM MOTORISTA)','SEM MOTORISTA','NENHUM','NENHUMA','NAO INFORMADO','N/A','-'];
+function rpSemMot(n){ return RP_SEM_MOT.includes(String(n||'').trim().toUpperCase()); }
+{ const _m=rpMot; rpMot=function(x){ const n=_m(x); return rpSemMot(n)?'(SEM MOTORISTA)':motCanon(n); }; } try{ RPK.mot.f=rpMot; }catch(e){}
 /* coluna Motorista na tabela de reentregas */
 (function(){ const th=document.querySelector('#re-tab thead tr'); if(th&&!th.querySelector('.th-mot')){ const ths=[...th.children]; const ob=ths.find(t=>/Observa/.test(t.textContent)); if(ob) ob.insertAdjacentHTML('afterend','<th class="th-mot">Motorista</th>'); } })();
 { const _rt=reTela; reTela=function(n){ _rt(n); cadDatalists(); const L=reDia(); $$('#re-tab tbody tr').forEach((tr,i)=>{ const ob=tr.querySelector('[data-f="obs"]'); if(!ob||tr.querySelector('[data-f="mot"]')) return; ob.setAttribute('list','cad-motivos-dl'); const l=L[i]||{};
@@ -9626,7 +9669,11 @@ function confRelTela(){ const dias=Object.entries(S.confDias||{}).sort((a,b)=>b[
 /* ---- Bipar só no NexBip: depois do bipe, quadrados Divergência e Avaria ---- */
 { const _om=opMostrar; opMostrar=function(r){ _om(r); try{ if(!(r&&(r._ped||r._nf))) return; const row={ped:r._ped,nf:r._nf,dest:r._dest,cid:r._cid};
     const h=dvavBarra([{row}]).replace(/<button class="btn mini" type="button" data-dvav-acao="tempo">[^<]*<\/button>/,''); const el=$('#op-res'); el.insertAdjacentHTML('beforeend',`<div class="dvav-wrap" style="margin-top:8px;color:var(--txt,#fff)">${h}</div>`); window._dvavRes={hits:[{row}]}; }catch(e){ console.error(e); } }; }
-(function(){ for(const id of ['t-divergencias','t-avarias']){ const s=document.getElementById(id); if(!s) continue; const bip=s.querySelector('.op-bip'); if(bip){ bip.style.display='none'; bip.insertAdjacentHTML('afterend',`<p class="sec" style="margin:4px 0 10px">📷 Para registrar, bipe a caixa no <a href="#" data-ir-nexbip>NexBip</a> (ou pesquise na Busca) e marque o quadrado <b>${id==='t-avarias'?'Avaria':'Divergência'}</b>.</p>`); } } })();
+/* v9.23.0 · a caixa de bipe VOLTOU para as Divergências: dá para bipar a nota ali e dizer quantos
+   volumes faltam, sem precisar do NexBip — serve para reentrega de outro turno, lançada depois. */
+(function(){ for(const id of ['t-divergencias','t-avarias']){ const s=document.getElementById(id); if(!s) continue; const bip=s.querySelector('.op-bip'); if(!bip) continue;
+  if(id==='t-avarias'){ bip.style.display='none'; bip.insertAdjacentHTML('afterend','<p class="sec" style="margin:4px 0 10px">📷 Para registrar, bipe a caixa no <a href="#" data-ir-nexbip>NexBip</a> (ou pesquise na Busca) e marque o quadrado <b>Avaria</b>.</p>'); }
+  else bip.insertAdjacentHTML('afterend','<p class="sec" style="margin:4px 0 10px">Bipe aqui a nota e diga <b>quantos volumes faltam</b> — serve para o que não deu para lançar na hora. Na conferência do dia dá para marcar pelo <a href="#" data-ir-nexbip>NexBip</a> também.</p>'); } })();
 document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-ir-nexbip]')){ e.preventDefault(); irPara('operacao'); } });
 
 /* ---- Romaneios: só “carregar” em cima; resto em ⋯ Mais; Banco de romaneios vira sub-aba; sem arquivo de WhatsApp ---- */
