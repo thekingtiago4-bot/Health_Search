@@ -209,5 +209,21 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(m2.apagou==='FERIADO,LOCAL FECHADO','motivos: o botão Excluir não apagou ('+m2.apagou+')');
     ok(m2.subiu==='LOCAL FECHADO,FERIADO','motivos: o botão ▲ não mudou a ordem ('+m2.subiu+')');
     ok(m2.editou==='LOCAL FECHADO 2,FERIADO'&&m2.naTela,'motivos: editar o texto do motivo não salvou ('+m2.editou+')'); }
+  /* 9.24.0: motivos da nota acrescentada viraram cadastro, e TODOS os botões do quadro funcionam */
+  { const fm=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      S.foraMotivos=null; irPara('romaneios'); renderRomaneios(); const ini=foraMot().length;
+      const f=document.getElementById('fm-add'); f.querySelector('[name=n]').value='VEIO NO CARRO SEGUINTE';
+      f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); await w(150); const criou=foraMot().slice(-1)[0];
+      const n=foraMot().length; document.querySelector(`#rb-motivos [data-fm-sobe="${n-1}"]`).click(); await w(150);
+      const subiu=foraMot()[n-2];
+      const inp=document.querySelector('#rb-motivos [data-fm-ed="0"]'); inp.value='PRESA NA CAIXA'; inp.dispatchEvent(new Event('change',{bubbles:true})); await w(150);
+      const editou=foraMot()[0];
+      const usaNoSelect=foraMot().includes('VEIO NO CARRO SEGUINTE');
+      S.foraMotivos=null; return {ini,criou,subiu,editou,usaNoSelect}; });
+    ok(fm.ini===6,'motivos da nota acrescentada: lista de fábrica deveria ter 6 ('+fm.ini+')');
+    ok(fm.criou==='VEIO NO CARRO SEGUINTE','motivos da nota acrescentada: o Cadastrar não funcionou');
+    ok(fm.subiu==='VEIO NO CARRO SEGUINTE','motivos da nota acrescentada: o ▲ não mudou a ordem');
+    ok(fm.editou==='PRESA NA CAIXA','motivos da nota acrescentada: editar o texto não salvou');
+    ok(fm.usaNoSelect,'motivos da nota acrescentada: a lista do pop-up não usa o cadastro'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
