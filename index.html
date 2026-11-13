@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.24.0', HS_DATA='13/11/2026';
+const HS_VERSAO='9.24.1', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6838,7 +6838,9 @@ function fmMotivosSalvar(){ salvar(); fmMotivosRender(); }
 document.addEventListener('submit',e=>{ const f=e.target; if(f.id!=='fm-add') return; e.preventDefault();
   const v=String(new FormData(f).get('n')||'').trim(); if(!v) return;
   if(foraMot().some(m=>rpNz(m)===rpNz(v))){ toast('Esse motivo já existe.'); return; }
-  foraMot().push(v); fmMotivosSalvar(); f.reset(); toast('Motivo cadastrado.'); });
+  /* v9.24.1: sem aviso flutuante — o motivo já aparece na lista logo abaixo */
+  foraMot().push(v); fmMotivosSalvar(); f.reset();
+  try{ const n=$('#rb-motivos .cad-it:last-child input'); if(n){ n.style.transition='background .6s'; n.style.background='color-mix(in srgb,var(--ok) 28%,transparent)'; setTimeout(()=>{ n.style.background=''; },900); } }catch(e){} });
 document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.closest('#rb-motivos button[type="button"]'); if(!t) return; const d=t.dataset;
   if(d.fmDel!=null){ const L=foraMot(); if(L.length<=1){ toast('Precisa sobrar pelo menos um motivo.'); return; }
     if(!await confirmar('Excluir motivo',`Tirar “${L[+d.fmDel]}” da lista?`,'Excluir')) return; L.splice(+d.fmDel,1); fmMotivosSalvar(); return; }
