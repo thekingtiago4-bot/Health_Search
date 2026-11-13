@@ -4149,16 +4149,18 @@ document.addEventListener('keydown',e=>{ if(ED.on&&e.key==='Escape'&&!document.q
 /* ---------- aba Correção ---------- */
 const reSemNF=v=>/^\s*(N\s*\/\s*A|S\s*\/\s*N|SEM\s*NF)\s*$/i.test(String(v||''));
 const reLinhaInvalida=l=>{ const nf=String(l.nf||''); if(reSemNF(nf)) return !String(l.cid||'').trim(); return /\d{2}\/\d{2}\/\d{2,4}/.test(nf)||!/^\d{3,12}$/.test(z(nf))||!String(l.cid||'').trim(); };
-function corItens(){ const out={geo:[],fora:[],nrec:[],reMot:[],reBase:[],ret:[],sus:0,inval:[]};
+function corItens(){ const out={geo:[],fora:[],nrec:[],reMot:[],reSemMot:[],reBase:[],ret:[],sus:0,inval:[]};
   try{ out.geo=geoParaConferir(); }catch(e){}
   const vist=new Set();
   for(const [k,e] of Object.entries(S.cidAtend||{})){
     if(!e.c){ out.nrec.push({k,e}); continue; } if(vist.has(e.c)) continue; vist.add(e.c); const o=geoMun(e.c); if(!o||!GEO_UFS.has(o.u)) continue;
     for(const tipo of ['regiao','base']){ const r=geoClass(e.c,tipo); if(!r.ids.length) out.fora.push({c:e.c,tipo,r}); } }
-  const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias)) ls.forEach((l,i)=>{ if(reLinhaInvalida(l)){ out.inval.push({d,i,l}); return; } if(!String(l.obs||'').trim()) out.reMot.push({d,i,l}); if(!l.base&&!reBase(l.cid,l.uf)) out.reBase.push({d,i,l}); });
+  const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias)) ls.forEach((l,i)=>{ if(reLinhaInvalida(l)){ out.inval.push({d,i,l}); return; } if(!String(l.obs||'').trim()) out.reMot.push({d,i,l}); if(!l.base&&!reBase(l.cid,l.uf)) out.reBase.push({d,i,l});
+    /* v9.27.0 · o painel avisa "N reentrega(s) sem motorista — acerte em Correção"; aqui é esse lugar */
+    else if(String(l.obs||'').trim()){ try{ if(rpSemMot(rpMot({l,cli:l.cli,tipo:l.tipo}))) out.reSemMot.push({d,i,l}); }catch(e){} } });
   try{ out.ret=Object.values(nexS().fora).filter(o=>!o.motivo); out.sus=nexSuspeitas().length; }catch(e){}
   return out; }
-const corTotal=o=>(o.inval||[]).length+o.geo.length+o.fora.length+o.nrec.length+o.reMot.length+o.reBase.length+o.ret.length+o.sus;
+const corTotal=o=>(o.inval||[]).length+o.geo.length+o.fora.length+o.nrec.length+o.reMot.length+(o.reSemMot||[]).length+o.reBase.length+o.ret.length+o.sus;
 function corBadge(){ const q=$('#qt-cor'); if(!q) return; if(!nvAdmin()){ q.hidden=true; return; } const n=corTotal(corItens()); q.textContent=n; q.hidden=!n; }
 function corSelLista(tipo,c,atual){ return `<select data-cor-ens="${c}" data-tipo="${tipo}"><option value="">Escolher ${tipo==='base'?'base':'região'}…</option>${S.geo.listas.filter(l=>l.tipo===tipo).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(l=>`<option value="${esc(l.id)}"${l.id===atual?' selected':''}>${esc(l.nome)}</option>`).join('')}<option value="-">Nenhuma (não atendemos)</option></select>`; }
 function renderCorrecao(){ const el=$('#cor-corpo'); if(!el) return; if(!nvAdmin()){ el.innerHTML='<div class="vazio-lista">Somente o administrador acessa a Correção.</div>'; return; }
@@ -4170,6 +4172,7 @@ function renderCorrecao(){ const el=$('#cor-corpo'); if(!el) return; if(!nvAdmin
    +bloco('Cidades sem região ou base',o.fora.length,'Apareceram nos romaneios, mas estão longe de qualquer lista. Ensine qual atende, ou use o Editor de regiões.',`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Cidade</th><th>Falta</th><th>Mais perto</th><th>Ensinar</th></tr></thead><tbody>${o.fora.map(x=>`<tr><td class="forte">${cid(x.c)}</td><td>${x.tipo==='base'?'Base':'Região'}</td><td>${x.r.sug?esc(geoNome(x.r.sug))+` <small class="sec">${x.r.dn||''} km</small>`:'—'}</td><td>${x.r.sug?`<button class="btn mini pri" type="button" data-cor-aceita="${esc(x.r.sug)}" style="margin-right:6px">✓ ${esc(geoNome(x.r.sug))}</button>`:''}${corSelLista(x.tipo,x.c,'')}</td></tr>`).join('')}</tbody></table></div>`)
    +bloco('Cidades não reconhecidas',o.nrec.length,'O nome veio diferente do IBGE (abreviado ou cortado no romaneio). Diga qual é: vale para os próximos romaneios.',`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Como veio</th><th>UF</th><th>Qual cidade é</th></tr></thead><tbody>${o.nrec.map(({k,e})=>`<tr><td class="forte">${esc(e.nome)||'<i class="sec">(sem nome)</i>'} <button class="op-x" type="button" title="Descartar esta linha" data-cor-nrec-del="${esc(k)}">✕</button></td><td><select data-cor-uf="${esc(k)}" title="Corrigir a UF">${(['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].includes(e.uf)?'':`<option value="" selected>${esc(e.uf||'?')}</option>`)+['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(u=>`<option ${u===e.uf?'selected':''}>${u}</option>`).join('')}</select></td><td>${(e.cand||[]).length?`<select data-cor-alias="${esc(k)}"><option value="">Escolher…</option>${e.cand.map(c=>{ const m=geoMun(c); return m?`<option value="${c}">${esc(m.n)}</option>`:''; }).join('')}</select>`:`<input data-cor-alias-txt="${esc(k)}" placeholder="Digite o nome certo e Enter" autocomplete="off">`}</td></tr>`).join('')}</tbody></table></div>`)
    +bloco('Reentregas sem motivo',o.reMot.length,'Motivo é o que alimenta o painel e o relatório da diretoria.',`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Dia</th><th>NF</th><th>Cliente</th><th>Cidade</th><th>Motivo</th></tr></thead><tbody>${o.reMot.map(x=>`<tr><td>${esc(reDataBR(x.d))}</td><td class="forte">${esc(x.l.nf)}</td><td>${esc(x.l.cli)}</td><td>${esc(x.l.cid)}/${esc(x.l.uf)}</td><td><input list="nx-mots-cor" data-cor-remot="${esc(x.d)}|${x.i}" placeholder="Digite o motivo" autocomplete="off"></td></tr>`).join('')}</tbody></table></div><datalist id="nx-mots-cor">${NEX_MOTIVOS.map(m=>`<option value="${esc(m)}">`).join('')}</datalist>`)
+   +bloco('Reentregas sem motorista',(o.reSemMot||[]).length,'Têm motivo, mas não dizem quem entregou — é o que falta no painel "Motoristas com mais reentregas".',`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Dia</th><th>NF</th><th>Cliente</th><th>Cidade</th><th>Motivo</th><th>Motorista</th></tr></thead><tbody>${(o.reSemMot||[]).map(x=>`<tr><td>${esc(reDataBR(x.d))}</td><td class="forte">${esc(x.l.nf)}</td><td>${esc(x.l.cli)}</td><td>${esc(x.l.cid)}/${esc(x.l.uf)}</td><td>${esc(String(x.l.obs||'').slice(0,60))}</td><td><input data-cor-semmot="${esc(x.d)}|${x.i}" list="cad-mot-dl" placeholder="Quem entregou?" style="min-width:150px"></td></tr>`).join('')}</tbody></table></div>`)
    +bloco('Reentregas sem base',o.reBase.length,'A cidade não tem base definida. Escolher aqui ensina o programa para essa cidade.',`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Dia</th><th>NF</th><th>Cidade</th><th>Base</th></tr></thead><tbody>${o.reBase.map(x=>`<tr><td>${esc(reDataBR(x.d))}</td><td class="forte">${esc(x.l.nf)}</td><td>${esc(x.l.cid)}/${esc(x.l.uf)}</td><td>${(()=>{ const r=reBaseIds(x.l.cid,x.l.uf); return r.c?corSelLista('base',r.c,''):`<select data-cor-rebase="${esc(x.d)}|${x.i}"><option value="">Escolher base…</option>${S.geo.listas.filter(l=>l.tipo==='base').map(l=>`<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join('')}</select>`; })()}</td></tr>`).join('')}</tbody></table></div>`)
    +bloco('Retiradas sem motivo',o.ret.length,'Notas tiradas da operação sem explicar por quê.',`<div class="rolagem"><table class="nx-tab"><thead><tr><th>NF</th><th>Destinatário</th><th>Cidade</th><th>Romaneio</th><th>Motivo</th></tr></thead><tbody>${o.ret.map(r=>`<tr><td class="forte">${esc(r.nf)}</td><td>${esc(r.dest)}</td><td>${esc(r.cid)}/${esc(r.uf)}</td><td>${esc(r.num)}</td><td><input list="nx-mots-cor" data-nx-mot="${esc(r.k)}" placeholder="Digite o motivo" autocomplete="off"></td></tr>`).join('')}</tbody></table></div>`);
   corBadge(); }
@@ -4184,6 +4187,8 @@ document.addEventListener('change',e=>{ const t=e.target; if(!t.closest||!t.clos
   if(d.corAliasTxt!=null){ const e2=S.cidAtend[d.corAliasTxt]; const r=resolverCidade(t.value,e2.uf); if(!r.o){ toast('Não achei essa cidade em '+e2.uf+'. Confira a grafia.'); return; } corAlias(d.corAliasTxt,r.o.c); return; }
   if(d.corRemot!=null){ const [dia,i]=d.corRemot.split('|'); const l=RE.ler().dias[dia][+i]; if(l&&t.value.trim()){ l.obs=t.value.trim(); RE.gravar(); renderCorrecao(); } return; }
   if(d.corRebase!=null){ const [dia,i]=d.corRebase.split('|'); const l=RE.ler().dias[dia][+i]; if(l&&t.value){ l.base=t.value; RE.gravar(); renderCorrecao(); } return; }
+  if(d.corSemmot!=null){ const [dia,i]=d.corSemmot.split('|'); const l=RE.ler().dias[dia][+i]; const v=t.value.trim().toUpperCase();
+    if(l&&v){ l.mot=v; try{ S.reMotoristas=[...new Set([v,...(S.reMotoristas||[])])].slice(0,200); salvar(); }catch(e){} RE.gravar(); renderCorrecao(); try{ rpRender(); }catch(e){} toast('Motorista anotado: '+v); } return; }
   if(d.nxMot!=null) setTimeout(renderCorrecao,50); });
 document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.dataset&&e.target.dataset.corAliasTxt!=null) e.target.dispatchEvent(new Event('change',{bubbles:true})); });
 function corAlias(k,c){ const e=S.cidAtend[k]; if(!e) return; S.cidAlias=S.cidAlias||{}; S.cidAlias[normCid(e.nome)+'|'+e.uf]=c; const o=geoMun(c); e.c=c; e.nome=o?o.n:e.nome; e.cand=[]; salvar(); renderTudo(); renderCorrecao(); toast('Aprendido: '+(o?o.n:'')+'/'+e.uf+'.'); }
@@ -4214,7 +4219,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.26.9', HS_DATA='13/11/2026';
+const HS_VERSAO='9.27.0', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6359,10 +6364,12 @@ const rpPct=(n,t)=>t?(100*n/t).toLocaleString('pt-BR',{maximumFractionDigits:1})
 
 /* cartões novos no painel */
 function rpCardsNovos(){ const g=$('#re-painel .rp-grade'); if(!g||$('#rp-cid')) return;
-  g.insertAdjacentHTML('beforeend',`
+  /* v9.27.0 · os motoristas ficavam no fim da página e ninguém via: sobem para logo abaixo dos clientes */
+  const alvo=(($('#rp-mes')||{}).closest?$('#rp-mes').closest('.rp-card'):null);
+  const onde=alvo?'beforebegin':'beforeend'; (alvo||g).insertAdjacentHTML(onde,`
+  <div class="rp-card rp-larga"><h3>Motoristas com mais reentregas <small class="rp-dica">motorista digitado na observação (MOTIVO - MOTORISTA)</small> <button class="rp-ver" type="button" data-rp-ver="mot">Ver todos</button></h3><div id="rp-mtr"></div></div>
   <div class="rp-card"><h3>Cidades com mais reentregas <button class="rp-ver" type="button" data-rp-ver="cid">Ver todas</button></h3><div id="rp-cid"></div></div>
-  <div class="rp-card"><h3>Maiores motivos <button class="rp-ver" type="button" data-rp-ver="motivo">Ver todos</button></h3><div id="rp-mot"></div></div>
-  <div class="rp-card rp-larga"><h3>Motoristas com mais reentregas <small class="rp-dica">motorista digitado na observação (MOTIVO - MOTORISTA)</small> <button class="rp-ver" type="button" data-rp-ver="mot">Ver todos</button></h3><div id="rp-mtr"></div></div>`);
+  <div class="rp-card"><h3>Maiores motivos <button class="rp-ver" type="button" data-rp-ver="motivo">Ver todos</button></h3><div id="rp-mot"></div></div>`);
   for(const [id,k] of [['rp-cli-n','cli'],['rp-cli-v','cli'],['rp-tip','tipo'],['rp-uf','uf']]){ const h=$('#'+id); if(h){ const t=h.previousElementSibling; if(t&&t.tagName==='H3'&&!t.querySelector('.rp-ver')) t.insertAdjacentHTML('beforeend',`<button class="rp-ver" type="button" data-rp-ver="${k}">Ver todos</button>`); } } }
 function rpMarcar(id,k,itens){ $$('#'+id+' .rp-h').forEach((e,i)=>{ if(itens[i]){ e.dataset.rpK=k; e.dataset.rpV=itens[i][0]; } }); }
 { const _rr=rpRender; rpRender=function(){ _rr(); rpCardsNovos(); const sel=RP._sel||[]; const tot=sel.length;
@@ -9221,6 +9228,15 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 { const _ebd=evaBadge; evaBadge=function(){ _ebd(); try{ const n=EVA.naoLidas||0; const b=$('#eva-qt'); if(b&&n){ b.textContent=(+b.textContent||0)+n; b.hidden=false; } }catch(e){} }; }
 { const _enb=evaNoNexBip; evaNoNexBip=function(b){ const r=_enb(b); try{ if(b&&['fora','pit','semnota'].includes(b.status)){ const c=evaEtqSug(b)[0]; if(c&&c.score>=60) evaBalao(`🏷 Acho que essa caixa é o pedido <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''} — ${esc(c.motivos.join(', '))}. Toque em Resolver para confirmar.`,9000,'etqpalpite'); } }catch(e){} return r; }; }
 function rotaS(){ return S.rotas=S.rotas||{atual:null,hist:[]}; }
+/* v9.27.0 · na folha de rotas o "CARRO 10" da lista é o veículo/motorista, não uma cidade:
+   sobe para o campo Motorista e sai da lista de cidades. Quem não tem CARRO fica com o motorista em branco. */
+const ROT_CARRO=/^CARRO\s*\d{1,3}[A-Z]?$/;
+function rotaAjeita(a){ if(!a||!Array.isArray(a.veiculos)) return false; let mudou=false;
+  for(const v of a.veiculos){ const cs=Array.isArray(v.cidades)?v.cidades:[];
+    const i=cs.findIndex(c=>ROT_CARRO.test(String(c||'').toUpperCase().replace(/\s+/g,' ').trim()));
+    if(i<0) continue; const nome=String(cs[i]).toUpperCase().replace(/\s+/g,' ').trim();
+    cs.splice(i,1); if(!String(v.motorista||'').trim()) v.motorista=nome; mudou=true; }
+  return mudou; }
 async function rotaLerPdf(f){ const buf=await f.arrayBuffer(); const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf),verbosity:0,isOffscreenCanvasSupported:false}).promise; const its=[];
   for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const tc=await pg.getTextContent(); for(const i of tc.items){ const t=(i.str||'').trim(); if(t) its.push({t,x:i.transform[4]+(i.width||0)/2,y:i.transform[5]-n*2000,x0:i.transform[4]}); } }
   /* linhas */ const rows=[]; for(const it of its.sort((a,b)=>b.y-a.y||a.x-b.x)){ let r=rows.find(r=>Math.abs(r.y-it.y)<3.5); if(!r){ r={y:it.y,its:[]}; rows.push(r); } r.its.push(it); } rows.forEach(r=>r.its.sort((a,b)=>a.x-b.x));
@@ -9233,7 +9249,7 @@ async function rotaLerPdf(f){ const buf=await f.arrayBuffer(); const doc=await p
     if(campo){ for(const i of resto){ const v=bloco[col(i.x)]; v[campo]=(v[campo]?v[campo]+' ':'')+i.t.trim(); } }
     else { for(const i of r.its){ if(/^ROTA\b/i.test(i.t)) continue; bloco[col(i.x)].cidades.push(rot(i.t)); } } }
   let ok=veic.filter(v=>v.placa&&v.placa!=='-'); if(!ok.length) ok=rotaLerSemPlaca(rows);
-  return {titulo:titulo||('ROTA '+(data?fmtData(data):'')),data:data||hojeISO(),veiculos:ok,arquivo:f.name}; }
+  const r={titulo:titulo||('ROTA '+(data?fmtData(data):'')),data:data||hojeISO(),veiculos:ok,arquivo:f.name}; rotaAjeita(r); return r; }
 /* v8.3.2: folha de rotas sem PLACA/AGREGADO (cidades por coluna, OBS em vermelho, VOLUMES/PARADAS/VALOR/CONF por bloco) */
 function rotaLerSemPlaca(rows){ const rot=s=>s.toUpperCase().replace(/\s+/g,' ').trim(); const lab=r=>rot(r.its[0].t);
   const ehRot=r=>/^(VOLUMES|PARADAS|VALOR|CONF\.?)$/.test(lab(r)); const lefts=[];
@@ -9280,7 +9296,7 @@ const ROT_CSS=`#t-rotadia .rot-top{display:flex;gap:10px;align-items:center;flex
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=document.querySelector('.nav [data-tela="rotadia"]'); if(t==='rotadia'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-rotadia'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); const n=bt&&bt.querySelector('.rot-novo'); if(n) n.remove(); rotaRender(); } else if(bt) bt.removeAttribute('aria-current'); };
   document.querySelector('.nav [data-tela="rotadia"]').addEventListener('click',()=>irPara('rotadia')); })();
 const ROT={ver:''};
-function rotaRender(){ const el=$('#rot-corpo'); if(!el) return; const R=rotaS(); const a=ROT.ver?(R.hist||[]).find(h=>h.id===ROT.ver)||R.atual:R.atual; const pode=rotEhRoteirizador(); const atual=a&&R.atual&&a.id===R.atual.id;
+function rotaRender(){ const el=$('#rot-corpo'); if(!el) return; const R=rotaS(); const a=ROT.ver?(R.hist||[]).find(h=>h.id===ROT.ver)||R.atual:R.atual; try{ if(a&&rotaAjeita(a)&&!ROT.ver&&rotEhRoteirizador()){ R.em=new Date().toISOString(); salvar(); nuvSinc(); } }catch(e){} const pode=rotEhRoteirizador(); const atual=a&&R.atual&&a.id===R.atual.id;
   const num=s=>+String(s||'').replace(/[^\d,]/g,'').replace(',','.')||0; const tot=a?a.veiculos.reduce((t,v)=>({vol:t.vol+num(v.volumes),par:t.par+num(v.paradas),val:t.val+(+String(v.valor||'').replace(/[^\d,]/g,'').replace(',','.')||0)}),{vol:0,par:0,val:0}):null;
   el.innerHTML=`<div class="rot-top">${pode?`<label class="btn pri" style="cursor:pointer">⬆ Publicar folha de rota (PDF)<input type="file" accept="application/pdf" id="rot-up" hidden></label>${R.atual?'<button class="btn perigo" type="button" id="rot-tirar">Tirar a rota atual</button>':''}`:'<span class="sub" style="margin:0">Somente leitura — quem publica é o administrador ou um roteirizador.</span>'}
     ${(R.hist||[]).length?`<select class="bus" id="rot-hist" style="max-width:260px"><option value="">Rota atual</option>${R.hist.map(h=>`<option value="${esc(h.id)}" ${ROT.ver===h.id?'selected':''}>${esc(h.titulo)} · ${esc(new Date(h.em).toLocaleString('pt-BR').slice(0,17))}</option>`).join('')}</select>`:''}${a?'<button class="btn" type="button" id="rot-print">Imprimir</button>':''}</div>

@@ -449,6 +449,37 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(imp.rail==='none','impressão: o menu da esquerda não deve sair no papel ('+imp.rail+')');
     ok(imp.rol==='visible'&&imp.alt==='none','impressão: caixas com rolagem própria têm que abrir inteiras ('+imp.rol+' / '+imp.alt+')');
     ok(folhas>1,'impressão: o PDF tinha que sair com mais de uma folha ('+folhas+')'); }
+  /* 9.27.0: na folha de rotas o "CARRO 10" é o veículo/motorista, não uma cidade */
+  { const rt=await p.evaluate(()=>{ const a={titulo:'ROTA 13/11/2026',data:hojeISO(),veiculos:[
+        {placa:'ROTA 01',motorista:'',cidades:['CARRO 10','ASSIS','PRESIDENTE PRUDENTE']},
+        {placa:'ROTA 03',motorista:'',cidades:['REINALDO','ARACATUBA','TUPA']},
+        {placa:'ROTA 08',motorista:'JOSE',cidades:['CARRO 14','GUARIBA']}]};
+      const mudou=rotaAjeita(a);
+      return {mudou,v:a.veiculos.map(v=>v.motorista+'|'+v.cidades.join(',')) }; });
+    ok(rt.v[0]==='CARRO 10|ASSIS,PRESIDENTE PRUDENTE','rotas: o CARRO tem que virar motorista e sair das cidades ('+rt.v[0]+')');
+    ok(rt.v[1]==='|REINALDO,ARACATUBA,TUPA','rotas: sem CARRO, o motorista fica em branco e nada sai das cidades ('+rt.v[1]+')');
+    ok(rt.v[2]==='JOSE|GUARIBA','rotas: motorista já preenchido não pode ser trocado, mas o CARRO sai das cidades ('+rt.v[2]+')'); }
+  /* 9.27.0: o cartão de motoristas sobe para perto dos clientes no painel de reentregas */
+  { const pos=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      irPara('reentregas'); await w(200); try{ reSub('painel'); }catch(e){} await w(400);
+      const t=[...document.querySelectorAll('#re-painel .rp-card h3')].map(x=>x.textContent);
+      return { i:t.findIndex(x=>/Motoristas com mais/.test(x)), mes:t.findIndex(x=>/Notas e volumes/.test(x)), n:t.length }; });
+    ok(pos.i>=0,'painel: o cartão "Motoristas com mais reentregas" tem que existir');
+    ok(pos.i<pos.mes,'painel: o cartão de motoristas tem que vir antes do gráfico por mês ('+pos.i+' de '+pos.n+')'); }
+  /* 9.27.0: "N reentrega(s) sem motorista — acerte em Correção" agora tem o bloco correspondente na Correção */
+  { const cm=await p.evaluate(()=>{ const h=hojeISO(); const D=RE.ler(); D.dias=D.dias||{};
+      D.dias[h]=[{nf:'5001',ped:'1',cli:'CLIENTE SEM MOT',cid:'ASSIS',uf:'SP',qtd:1,val:10,obs:'FALTA DE VOLUME'},
+                 {nf:'5002',ped:'2',cli:'CLIENTE COM MOT',cid:'ASSIS',uf:'SP',qtd:1,val:10,obs:'AVARIA - JOAO'},
+                 {nf:'5003',ped:'3',cli:'SEM OBS',cid:'ASSIS',uf:'SP',qtd:1,val:10,obs:''}];
+      try{ RE.gravar(D); }catch(e){ try{ localStorage.setItem(RE.chave,JSON.stringify(D)); RE.d=D; }catch(e2){} }
+      const o=corItens(); const sm=(o.reSemMot||[]).map(x=>x.l.nf).join(',');
+      const antes=sm; const alvo=(o.reSemMot||[])[0];
+      let depois=''; if(alvo){ const l=RE.ler().dias[alvo.d][alvo.i]; l.mot='MARCIA'; RE.gravar(); depois=(corItens().reSemMot||[]).map(x=>x.l.nf).join(','); }
+      D.dias[h]=[]; try{ RE.gravar(D); }catch(e){}
+      return {antes,depois,semObs:(o.reMot||[]).map(x=>x.l.nf).join(',')}; });
+    ok(cm.antes==='5001','correção: a nota com motivo e sem motorista tem que entrar no bloco novo ('+cm.antes+')');
+    ok(cm.semObs==='5003','correção: a nota sem observação continua no bloco de "sem motivo" ('+cm.semObs+')');
+    ok(cm.depois==='','correção: depois de anotar o motorista a nota tem que sair da lista ('+cm.depois+')'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();
