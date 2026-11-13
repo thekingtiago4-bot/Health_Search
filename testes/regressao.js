@@ -137,5 +137,17 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(m.banner&&m.tinha==='ADRIEL DOS SANTOS','aviso de motorista fora do Cadastro Agregado não apareceu ('+m.tinha+')');
     ok(m.cadastrado==='transf/CAJ','botão Cadastrar não cadastrou o motorista com a origem do romaneio ('+m.cadastrado+')');
     ok(m.sumiu,'motorista cadastrado continuou na lista de quem está fora do cadastro'); }
+  /* 9.22.1: mapa que perdeu cidades volta ao publicado mesmo com a marca de edição; edição pequena é respeitada */
+  { const g=await p.evaluate(()=>{ const pub=JSON.parse(JSON.stringify(S.geo));
+      const tri=pub.listas.find(l=>!(l.cidades||[]).length&&l.tipo!=='base')||pub.listas[pub.listas.length-1];
+      if(tri) tri.cidades=Array.from({length:60},(_,i)=>'C'+i);
+      const pequeno=JSON.parse(JSON.stringify(S.geo)); pequeno.listas[0].cidades.splice(0,3);
+      const grande=JSON.parse(JSON.stringify(S.geo)); grande.listas[0].cidades.push(...Array.from({length:40},(_,i)=>'X'+i));
+      return {zerada:geoPerdeu(S.geo,pub),pouco:geoPerdeu(pequeno,S.geo),muito:geoPerdeu(S.geo,grande),
+              botoes:(()=>{ try{ irPara('geo'); geoPubBarra(); }catch(e){} return !!document.getElementById('geo-voltar')&&!!document.getElementById('geo-diag'); })()}; });
+    ok(g.zerada,'mapa: região inteira zerada aqui e cheia no publicado deveria contar como perda');
+    ok(!g.pouco,'mapa: apagar 3 cidades à mão não pode contar como perda (é edição de verdade)');
+    ok(g.muito,'mapa: 40 cidades a menos que o publicado deveria contar como perda');
+    ok(g.botoes,'mapa: faltam os botões “Usar o mapa publicado” e “Diagnóstico”'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

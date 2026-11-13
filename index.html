@@ -1070,6 +1070,7 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
         </table>
       </div>
       <p class="re-vazio" id="re-vazio">Nenhuma nota lançada neste dia.</p>
+      <div id="re-motivos" class="cad-gr" style="margin-top:18px"></div>
       </div>
     </section>
 
@@ -2703,6 +2704,7 @@ function reBaseSel(i,l){ const {c,ids}=reBaseIds(l.cid,l.uf); const atual=l.base
 function reBase(cid,uf,ov){ if(ov){ if(!S.geo) return ''; const l=geoLista(ov); return l?l.nome:''; } try{ if(!cid||!uf) return ''; const r=resolverCidade(cid,uf); if(!r.o) return ''; const g=geoClass(r.o.c,'base'); return (g.ids||[]).map(id=>{ const l=geoLista(id); return l?(l.nome||id):id; }).join(' / '); }catch(e){ return ''; } }
 function reStatus(m,tipo){ const e=$('#re-status'); e.textContent=m||''; e.className='re-status'+(tipo?' '+tipo:''); }
 function reTela(novaIdx){
+  try{ reMotivosRender(); }catch(e){}
   const D=RE.ler(); const linhas=reDia();
   const dias=Object.keys(D.dias).sort().reverse();
   const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -4190,7 +4192,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.22.0', HS_DATA='12/11/2026';
+const HS_VERSAO='9.22.1', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7047,7 +7049,7 @@ const CAD_CSS=`#t-cadastros .cad-gr{display:grid;grid-template-columns:repeat(au
   const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return;
   ref.insertAdjacentHTML('beforebegin',`<button data-tela="cadastros"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 8h5M17 12h5M19 16h3"/></svg><span class="lbl">Cadastros</span></button>`);
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-cadastros'; sec.hidden=true;
-  sec.innerHTML=`<h1>Cadastros</h1><p class="sub">Cadastro Agregado (motoristas de distribuição e de transferência, com CPF e rastreador) e os motivos das reentregas. O que estiver aqui aparece como sugestão ao digitar, manda na planilha do Checklist e organiza os relatórios. Vale para toda a equipe (fica salvo online).</p><div id="cad-corpo"></div>`;
+  sec.innerHTML=`<h1>Cadastros</h1><p class="sub">Cadastro Agregado: os motoristas de distribuição e de transferência, com CPF, rastreador e origem. O que estiver aqui aparece como sugestão ao digitar, manda na planilha do Checklist e organiza os relatórios. Vale para toda a equipe (fica salvo online). <b>Os motivos da reentrega agora ficam na própria tela de Reentregas.</b></p><div id="cad-corpo"></div>`;
   const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); if(t==='cadastros'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-cadastros'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); cadRender(); } else { const cb=document.querySelector('.nav [data-tela="cadastros"]'); if(cb) cb.removeAttribute('aria-current'); } };
   document.querySelector('.nav [data-tela="cadastros"]').addEventListener('click',()=>irPara('cadastros'));
@@ -7073,11 +7075,13 @@ function cadRender(){ const el=$('#cad-corpo'); if(!el) return; cadInit(); const
       ${colunaMot('transf','🚛 Motoristas transferência','Chegam com as transferências. Aparecem como sugestão no Registro de carretas, já com o CPF. Em <b>origem</b> você diz de qual base ele vem — aí todo romaneio dele já entra como daquela origem.')}
     </div>
     ${(S.cadMot||[]).length?`<div style="text-align:right;margin:8px 0 0"><button class="btn mini" data-cad-limpa="1" type="button" title="Tira do cadastro os nomes sem nenhuma reentrega">Excluir os sem uso</button></div>`:''}
-
-   <div class="cad-bx"><h3>📝 Motivos</h3><p class="sub" style="margin:0">Só os motivos que vocês usam. Apague os que nunca vai usar; a ordem aqui é a ordem das sugestões.</p>
+</div>`; }
+/* v9.22.1 · os motivos saíram de Cadastros e moraram na tela de Reentregas, que é onde são usados */
+function cadMotivosHtml(){ return `<div class="cad-bx"><h3>📝 Motivos da reentrega</h3><p class="sub" style="margin:0">São as opções que aparecem quando você lança uma nota aqui em cima. Só os motivos que vocês usam; a ordem daqui é a ordem das sugestões.</p>
     <form class="cad-add" id="cad-mtv-f"><input class="bus" name="n" placeholder="Novo motivo (ex.: FERIADO)" required><button class="btn pri mini">Cadastrar</button></form><div style="text-align:right;margin:4px 0"><button class="btn mini" data-cad-limpa-mtv="1" type="button">Excluir os sem uso</button></div>
-    ${(S.cadMotivos||[]).map((m,i)=>`<div class="cad-it"><div><input class="bus" data-cad-mtv="${i}" value="${esc(m)}"><small class="u">${motivoUso(m)} uso(s)</small></div><span><button class="btn mini" data-cad-sobe="${i}" type="button" title="Subir">▲</button> <button class="btn mini perigo" data-cad-mtv-del="${i}" type="button">Excluir</button></span></div>`).join('')||'<p class="sub">Nenhum motivo.</p>'}</div></div>`; }
-function cadMudou(){ cadInit(); salvar(); cadDatalists(); cadRender(); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} }
+    ${(S.cadMotivos||[]).map((m,i)=>`<div class="cad-it"><div><input class="bus" data-cad-mtv="${i}" value="${esc(m)}"><small class="u">${motivoUso(m)} uso(s)</small></div><span><button class="btn mini" data-cad-sobe="${i}" type="button" title="Subir">▲</button> <button class="btn mini perigo" data-cad-mtv-del="${i}" type="button">Excluir</button></span></div>`).join('')||'<p class="sub">Nenhum motivo cadastrado ainda.</p>'}</div>`; }
+function reMotivosRender(){ const el=$('#re-motivos'); if(!el) return; el.innerHTML=cadMotivosHtml(); }
+function cadMudou(){ cadInit(); salvar(); cadDatalists(); cadRender(); try{ reMotivosRender(); if(!$('#t-reentregas').hidden) reTela(); }catch(e){} }
 document.addEventListener('submit',e=>{ const f=e.target; const tipoNovo=f.dataset&&f.dataset.cadAdd; if(f.id!=='cad-mot-f'&&f.id!=='cad-mtv-f'&&!tipoNovo) return; e.preventDefault(); const fd=new FormData(f); const v=String(fd.get('n')||'').trim().toUpperCase(); if(!v) return;
   if(tipoNovo){ if(S.cadMot.some(m=>cadApelidos(m).includes(rpNz(v)))){ toast('Esse nome já está no cadastro.'); return; }
     const novo={nome:v,alias:'',cpf:rgCPF(String(fd.get('cpf')||'')),tipo:tipoNovo==='transf'?'transf':'agregado'};
@@ -9382,23 +9386,66 @@ function geoPubBarra(){ const t=document.getElementById('t-geo'); if(!t) return;
   if(!el){ t.querySelector('.sub').insertAdjacentHTML('afterend','<div id="geo-pub-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 10px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--linha)"><span id="geo-pub-txt"></span><button class="btn pri mini" type="button" id="geo-pub">📤 Publicar mapa</button></div>'); el=document.getElementById('geo-pub-bar'); $('#geo-pub').onclick=geoPublicar; }
   const p=geoPendente(), info=geoPubLer(); el.style.borderColor=p?'#E8590C':'var(--linha)';
   $('#geo-pub-txt').innerHTML=p?'<b style="color:#E8590C">Alterações no mapa não publicadas.</b> Só você vê. Clique em Publicar para todos receberem.':`Mapa publicado${info?' em '+esc(new Date(info.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):''}${info&&info.cid?' · '+info.cid+' cidades':''}.`;
-  const b=$('#geo-pub'); if(b){ b.disabled=false; b.textContent='📤 Publicar mapa'; } }
+  const b=$('#geo-pub'); if(b){ b.disabled=false; b.textContent='📤 Publicar mapa'; }
+  /* v9.22.1: socorro e diagnóstico ao lado de Publicar */
+  if(b&&!document.getElementById('geo-voltar')) b.insertAdjacentHTML('afterend','<button class="btn mini" id="geo-voltar" type="button" title="Descarta o mapa deste aparelho e traz o publicado. Não publica nada.">↩ Usar o mapa publicado</button> <button class="btn mini" id="geo-diag" type="button" title="Mostra quantas cidades há aqui e no publicado, e quando o mapa de fábrica foi recriado">🔎 Diagnóstico</button>');
+  /* aviso forte quando este aparelho tem menos cidades do que o publicado */
+  const aqui=geoConta(S.geo), la=(geoPubLer()||{}).cid||0;
+  if(p&&la&&la-aqui>=25){ $('#geo-pub-txt').innerHTML=`<b style="color:#C92A2A">⚠ Este aparelho está com ${aqui} cidades e o publicado tem ${la}.</b> Não publique: toque em “Usar o mapa publicado”.`; if(b) b.disabled=true; } }
 setInterval(()=>{ try{ geoPubBarra(); }catch(e){} },3000);
+/* v9.22.1 · perda de mapa: comparado com o publicado, o aparelho está com um buraco grande
+   (25 cidades a menos no total, ou uma região inteira zerada que lá tem cidades).
+   Isso não é edição de ninguém — é a cópia que se perdeu. Nesse caso o publicado volta
+   MESMO existindo a marca de edição, que é o que faltava para a perda parar de voltar. */
+function geoPorLista(g){ const m={}; for(const l of ((g&&g.listas)||[])) m[l.id||l.nome]=((l.cidades||[]).length); return m; }
+function geoPerdeu(loc,pub){ try{ if(!pub||!Array.isArray(pub.listas)) return false;
+  const a=geoConta(loc), b=geoConta(pub); if(!b) return false;
+  if(b-a>=25) return true;
+  const ml=geoPorLista(loc), mp=geoPorLista(pub);
+  for(const k in mp){ if(mp[k]>=5&&!ml[k]) return true; }
+  return false; }catch(e){ return false; } }
 /* 9.19.12: o mapa deste aparelho só pode ser diferente do publicado se alguém editou aqui. Se está diferente sem edição, é cópia velha: volta para o publicado (aparelho, cópia à parte e base da junção). */
-async function geoConferir(){ if(geoConferir.r||!opOnline()||NUV.rodando||NUV.publicarGeo||NUV.aplicando) return false; if(!geoPendente()||GEOE.ler()) return false; geoConferir.r=1;
+async function geoConferir(forcar){ if(geoConferir.r||!opOnline()||NUV.rodando||NUV.publicarGeo||NUV.aplicando) return false;
+  /* com a marca de edição ainda vale conferir: lá embaixo, se o aparelho tiver perdido cidades, o publicado volta assim mesmo */
+  if(!forcar&&!geoPendente()) return false; geoConferir.r=1;
   try{ const {data,error}=await NV.cli.from('hs_sync').select('valor,apagado').eq('chave','s:geo').maybeSingle(); if(error||!data||data.apagado) return false; const rem=data.valor; const n=geoConta(rem); if(!n||!Array.isArray(rem.listas)) return false;
-    if(GEOE.ler()||NUV.publicarGeo) return false; const antes=geoConta(S.geo);
+    const perdeu=geoPerdeu(S.geo,rem);
+    if((GEOE.ler()&&!forcar&&!perdeu)||NUV.publicarGeo) return false; const antes=geoConta(S.geo);
+    GEOE.limpar();
     await GIDB.gravar('geo',JSON.parse(JSON.stringify(rem))); S.geo=rem; GEO.idx={}; GEO.cls={}; NUV.h['s:geo']=nuvHash(rem); try{ nuvGuardar(); }catch(e){} try{ vsnBaseGravar('s:geo',JSON.parse(JSON.stringify(rem))); }catch(e){}
     try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:(geoPubLer()||{}).em||new Date().toISOString(),cid:n})); }catch(e){}
     salvar(); try{ renderTudo(); }catch(e){} try{ desenharGeo(); }catch(e){} try{ geoPubBarra(); }catch(e){}
-    toast(`🗺 O mapa deste aparelho estava diferente do publicado (${antes} cidades) sem nenhuma edição sua. Voltei para o mapa publicado: ${n} cidades.`); return true; }
+    toast(perdeu?`🗺 Este aparelho estava com ${antes} cidades e o mapa publicado tem ${n}. Trouxe o publicado de volta. Nada foi publicado por engano.`
+      :`🗺 O mapa deste aparelho estava diferente do publicado (${antes} cidades) sem nenhuma edição sua. Voltei para o mapa publicado: ${n} cidades.`); return true; }
   catch(e){ console.error(e); return false; } finally{ geoConferir.r=0; } }
-setInterval(()=>{ geoConferir(); },20000); setTimeout(()=>{ geoConferir(); },9000);
+setInterval(()=>{ geoConferir(); },20000); setTimeout(()=>{ geoConferir(); },9000); setTimeout(()=>{ geoConferir(); },2500);
+/* v9.22.1 · botão de socorro: joga fora o mapa deste aparelho e traz o publicado, sem publicar nada */
+async function geoVoltarPublicado(){ if(!nvAdmin()) return;
+  const antes=geoConta(S.geo);
+  if(!confirm('Trazer o mapa publicado e descartar o que está neste aparelho?\n\nAqui tem '+antes+' cidade(s). Nada é publicado: só este aparelho muda.')) return;
+  const b=document.getElementById('geo-voltar'); if(b){ b.disabled=true; b.textContent='Trazendo…'; }
+  const ok=await geoConferir(true);
+  if(!ok) toast('⚠ Não consegui trazer agora (sem internet ou sincronização em andamento). Tente de novo em alguns segundos.');
+  if(b){ b.disabled=false; b.textContent='↩ Usar o mapa publicado'; } }
+/* v9.22.1 · diagnóstico do mapa: mostra o registro de quando o mapa de fábrica foi recriado */
+function geoDiagnostico(){ let logs=[]; try{ logs=JSON.parse(localStorage.getItem('healthSearch.geoInitLog')||'[]'); }catch(e){}
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  const marca=GEOE.ler();
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:560px"><h2 style="margin-top:0">🔎 Diagnóstico do mapa</h2>
+    <p class="sub">Neste aparelho: <b>${geoConta(S.geo)}</b> cidade(s). Publicado: <b>${(geoPubLer()||{}).cid||'?'}</b>. Marca de edição: <b>${marca?('sim · '+esc(new Date(marca.em||marca).toLocaleString('pt-BR'))):'não'}</b>.</p>
+    <p class="sub" style="margin-top:6px">Por região neste aparelho: ${Object.entries(geoPorLista(S.geo)).filter(([k,v])=>v).map(([k,v])=>esc(k)+' · '+v).join(' | ')||'—'}</p>
+    <p class="sub" style="margin-top:10px"><b>Quando o mapa de fábrica foi recriado neste aparelho:</b></p>
+    ${logs.length?`<ul style="font-size:.86rem;line-height:1.5">${logs.slice(0,8).map(l=>`<li>${esc(new Date(l.em).toLocaleString('pt-BR'))} · versão ${esc(l.versao||'?')} · cópia no aparelho: <b>${l.haviaCopiaLocal?'sim':'não'}</b> · S.geo já existia: <b>${l.haviaSGeo?'sim':'não'}</b></li>`).join('')}</ul>`:'<p class="sub">Nenhum registro — o mapa de fábrica não foi recriado neste aparelho desde a versão 9.19.13.</p>'}
+    <div class="botoes"><button class="btn" type="button" data-fechar="1">Fechar</button></div></div>`;
+  document.body.appendChild(f); f.addEventListener('click',e=>{ if(e.target===f||e.target.closest('[data-fechar]')) f.remove(); }); }
+document.addEventListener('click',e=>{ const t=e.target.closest&&e.target.closest('#geo-voltar,#geo-diag'); if(!t) return;
+  if(t.id==='geo-voltar') geoVoltarPublicado(); else geoDiagnostico(); });
 window.addEventListener('beforeunload',e=>{ try{ if(nvAdmin()&&geoPendente()){ e.preventDefault(); e.returnValue=''; } }catch(x){} });
 { const _na=nexAvisos; nexAvisos=function(){ const a=_na(); try{ if(nvAdmin()&&geoPendente()) a.unshift({cor:'#E8590C',txt:'<b>Mapa com alterações não publicadas</b> — Geolocalização → 📤 Publicar mapa',acao:'geo'}); }catch(e){} return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="geo"]'); if(b) setTimeout(()=>irPara('geo'),50); });
 (function(){ const i=MAN.findIndex(s=>/Geolocaliza/i.test(s.t)); const item={id:'mapa-pub',t:'Mapa publicado',img:'mural',intro:'O mapa é só visual e fica guardado em cada aparelho. Só o administrador publica mudanças.',
-  passos:[['Editar','O administrador pinta as cidades como sempre. As mudanças ficam só no aparelho dele até publicar; aparece o aviso “Alterações no mapa não publicadas”.'],
+  passos:[['Se o mapa aparecer errado ou menor','Na barra do mapa há dois botões: **↩ Usar o mapa publicado**, que joga fora o mapa deste aparelho e traz o publicado (não publica nada), e **🔎 Diagnóstico**, que mostra quantas cidades há aqui e no publicado, por região, e quando o mapa de fábrica foi recriado neste aparelho. Se este aparelho estiver com 25 cidades a menos que o publicado, ou com uma região inteira zerada que lá tem cidades, o app traz o publicado sozinho — mesmo que exista marca de edição — e bloqueia o botão Publicar, para ninguém publicar um mapa furado por engano. Apagar algumas cidades à mão continua valendo como edição normal.'],
+   ['Editar','O administrador pinta as cidades como sempre. As mudanças ficam só no aparelho dele até publicar; aparece o aviso “Alterações no mapa não publicadas”.'],
    ['📤 Publicar mapa','Na Geolocalização, clique em Publicar mapa. Todos recebem a nova versão e guardam no aparelho (funciona sem internet). Cada publicação fica guardada como cópia.'],
    ['O mapa publicado é o que vale (v9.19.12)','O mapa de um aparelho só pode ficar diferente do publicado quando o administrador edita naquele aparelho (clicando no mapa, no Editor de regiões, em Alimentar ou na Correção). Se o app encontrar um mapa diferente do publicado sem nenhuma edição feita ali — cópia antiga, mapa de fábrica, dado que voltou de outra aba — ele troca sozinho pelo mapa publicado e avisa com 🗺 no topo. Ao publicar um mapa com menos cidades que o anterior, o app sempre pergunta antes, dizendo quantas cidades a menos.'],
    ['Proteção','O app não publica mapa vazio, pede confirmação se o mapa ficar bem menor, e nenhum aparelho aceita receber um mapa vazio ou com menos da metade das cidades.']]};
