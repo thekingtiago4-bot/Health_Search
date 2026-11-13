@@ -94,5 +94,24 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(/Adriel/.test(o)&&/Reginaldo/.test(o)&&!/CAJ/.test(o),'origem com 2 romaneios de Cajamar não trocou CAJ pelo motorista ('+o+')');
     ok(/Carlos/.test(o)&&/Pedro/.test(o)&&!/MESA/.test(o),'origem com 2 romaneios da MESA não trocou pelo motorista ('+o+')');
     ok(/DF/.test(o)&&!/Joao/.test(o),'origem com 1 romaneio só deveria continuar sendo a sigla ('+o+')'); }
+  /* 9.21.0: Cadastro Agregado manda na planilha do Checklist (rastreador sim · não · desativado) */
+  { const k=await p.evaluate(()=>{ cadInit();
+      S.cadMot=[{nome:'ADRIEL',alias:'',cpf:'111.222.333-44',tipo:'agregado',rast:'sim'},
+                {nome:'BETO',alias:'',cpf:'',tipo:'agregado',rast:'desativado'},
+                {nome:'CARLOS',alias:'',cpf:'',tipo:'agregado',rast:'nao'},
+                {nome:'GIOVANNI',alias:'',cpf:'555.666.777-88',tipo:'transf'}];
+      S.checklist=[{id:'k1',mot:'ADRIEL',placa:'ABC-1D23',data:hojeISO(),ativo:true},
+                   {id:'k2',mot:'BETO',placa:'DEF-4G56',data:'2026-10-01',ativo:true},
+                   {id:'k3',mot:'CARLOS',placa:'GHI-7J89',data:hojeISO(),ativo:true}];
+      ckSincronizar(); irPara('checklist');
+      return {todos:ckLista('todos').map(x=>x.mot).join(','),ativos:ckLista('ativos').map(x=>x.mot).join(','),
+              des:ckLista('desativados').map(x=>x.mot).join(','),st:ckStatus(ckS().find(x=>x.mot==='BETO')).txt,
+              novo:(()=>{ S.cadMot.push({nome:'NOVATO',alias:'',cpf:'',tipo:'agregado',rast:'sim'}); ckSincronizar(); return ckS().some(x=>x.mot==='NOVATO'); })(),
+              cpf:cadMotCPF('GIOVANNI')}; });
+    ok(k.todos==='ADRIEL,BETO','checklist: rastreador Não deveria tirar o motorista da planilha ('+k.todos+')');
+    ok(k.ativos==='ADRIEL'&&k.des==='BETO','checklist: filtro de ativos/desativados errado ('+k.ativos+' | '+k.des+')');
+    ok(k.st==='DESATIVADO','checklist: rastreador desativado não deixou a linha como DESATIVADO ('+k.st+')');
+    ok(k.novo,'checklist: cadastrar um agregado não criou a linha dele na planilha');
+    ok(k.cpf==='555.666.777-88','registro: CPF do motorista de transferência não vem do cadastro'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

@@ -4190,7 +4190,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.20.2', HS_DATA='12/11/2026';
+const HS_VERSAO='9.21.0', HS_DATA='12/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6436,7 +6436,8 @@ const MAN=[
 {id:'operacao',t:'Operação — conferência por câmera',img:'operacao',intro:'Confira as caixas apontando a câmera para a etiqueta. Cada bipe é cruzado com os romaneios DO DIA.',
   passos:[['Liberar a câmera','Na primeira vez toque em “🔓 Liberar câmera” e permita o acesso no navegador.'],
    ['📷 Registro (Recebimento/Expedição de carretas)','No menu, dentro de Operacional. Toque em “📷 Recebimento” (horário de Chegada) ou “📷 Expedição” (horário de Saída): a câmera abre; se a foto ficou boa toque em “Próximo”, senão “Tirar outra”. Preencha rota (ex.: CAJ X AQA), motorista, CPF, placa do cavalo e do baú, romaneio(s), paletes, rastreado e observação (fica “N/A” se deixar em branco) — o horário vem da hora da foto (dá para ajustar). Ao digitar o motorista, CPF e placas vêm sozinhos (se já usado antes) e o Romaneio(s) é puxado automaticamente pelos romaneios do dia com esse motorista — pode ajustar à mão. Ao salvar, o celular abre o compartilhamento: escolha a conversa do WhatsApp e envie (foto + legenda prontas; a legenda também fica copiada). Cada registro é um evento só (sem “entrada e saída” do mesmo caminhão). Avaria e Diversos virão em breve. As fotos não ficam guardadas no app (vão no WhatsApp); os dados dos registros ficam 90 dias.'],
-   ['📋 Checklist Agregados','Em Planejamento. Lista motoristas/agregados com placa e data de realização do checklist; o vencimento é sempre 30 dias depois. A linha fica amarela faltando 4 dias, laranja no último dia (ou no dia do vencimento) e vermelha quando vence. Só o administrador edita motorista, placa, data e se está ativo; “🗑” apaga a linha. O botão “📲 Enviar no WhatsApp” monta uma imagem da tabela e um texto pronto avisando quem está perto de vencer ou já vencido, prontos para colar/enviar no WhatsApp. A coluna Vencimento mostra a data em negrito e, ao lado, quantos dias faltam, “(hoje!)” ou há quantos dias venceu. O administrador arrasta a alça “⠿” no começo da linha para colocar os motoristas na ordem que quiser, e essa ordem fica salva para todo mundo. O botão “＋ Adicionar” cria a linha no topo já com a data de hoje e o cursor no campo do motorista; motorista e placa sugerem o que já existe na lista. O botão “⬇️ Baixar a de hoje” salva a tabela como imagem JPEG no aparelho e já deixa a legenda copiada, para enviar por qualquer aplicativo quando não houver WhatsApp instalado.'],
+   ['👥 Cadastro Agregado (em Cadastros)','Na tela Cadastros, o quadro “🚚 Cadastro Agregado” tem duas colunas. **Motoristas agregados**: os da distribuição, que fazem a entrega e trazem as reentregas — nome, CPF e **rastreador (Sim · Não · Desativado)**. **Motoristas transferência**: os que chegam com as transferências — nome e CPF. O rastreador manda na planilha do Checklist: **Sim** entra na planilha normalmente; **Não** deixa o motorista fora dela; **Desativado** mantém ele na planilha com Realização e Vencimento em N/A e status DESATIVADO, para você saber de quem pedir para religar o rastreador. Cadastrar um agregado já cria a linha dele no Checklist (a placa e a data você preenche lá). O CPF cadastrado preenche sozinho no Registro de carretas, e os motoristas de transferência aparecem primeiro na sugestão de motorista do Registro.'],
+   ['📋 Checklist Agregados','Em Planejamento. Lista motoristas/agregados com placa e data de realização do checklist; o vencimento é sempre 30 dias depois. A linha fica amarela faltando 4 dias, laranja no último dia (ou no dia do vencimento) e vermelha quando vence. Só o administrador edita motorista, placa, data e o rastreador; “🗑” apaga a linha. A coluna **Rastreador** (Sim · Não · Desativado) é a mesma do Cadastro Agregado: mudar aqui muda lá, e vice-versa. Os botões “📲 Enviar no WhatsApp” e “⬇️ Baixar a de hoje” perguntam antes **o que você quer mandar**: ativos e desativados, somente ativos ou somente desativados. A planilha sai em formato de relatório — cabeçalho, resumo com quantos estão válidos, vencendo, vencidos e desativados, faixa de cor por linha e legenda no rodapé — junto com um texto pronto avisando quem está perto de vencer ou já vencido. A coluna Vencimento mostra a data em negrito e, ao lado, quantos dias faltam, “(hoje!)” ou há quantos dias venceu. O administrador arrasta a alça “⠿” no começo da linha para colocar os motoristas na ordem que quiser, e essa ordem fica salva para todo mundo. O botão “＋ Adicionar” cria a linha no topo já com a data de hoje e o cursor no campo do motorista; motorista e placa sugerem o que já existe na lista. O botão “⬇️ Baixar a de hoje” salva a tabela como imagem JPEG no aparelho e já deixa a legenda copiada, para enviar por qualquer aplicativo quando não houver WhatsApp instalado.'],
    [' BIT — a assistente','O BIT é a corujinha no canto inferior direito, acima do 💾 Salvar. Toque nele e escreva o que precisa: “procura 442872”, “cliente unimed”, “quem atende Itanhandu MG”, “reentregas de hoje”, “bipados hoje”, “divergências”, “o que você aprendeu”, “quais regiões”, “cidades da região Minas Gerais”, “como faço backup físico?” (ele responde pelo Manual), “onde fica Ribeirão Preto?” (responde região e base e abre a cidade na Geolocalização), “notas de Ribeirão Preto origem Cajamar”, “notas da região Minas Gerais”, “notas do cliente Unimed”, “notas de Franca de ontem” ou “de 05/11” (usa o Banco de romaneios), e continua a conversa com “e de Franca?”, “e da MESA?”; “nota 442872” (tudo sobre a nota: romaneio, bipe, reentrega, divergência, XML); “feriado em Franca”, “feriados amanhã”; “reentregas de ontem” (com motivos); “divergências abertas”; “qual placa vai para Franca”; “caminhões na base”; “resumo do dia” ou “ajuda”. Instruções com “sempre…” ele guarda (veja com “minhas instruções”). Ele usa o 🧠 Cérebro: quando não tem certeza numa etiqueta (um QR Code de formato novo, ou um cliente que bate com mais de uma nota), ele anota a dúvida e o administrador responde em “❓ Dúvidas” — a resposta vira aprendizado para todos os aparelhos. Regras fixas do BIT: ele é só um assistente interna, usa apenas os dados da empresa que já estão no app, nunca envia nada para fora (não usa internet, IA externa, e-mail, WhatsApp, link ou arquivo), só mostra o que o usuário logado já pode ver e recusa qualquer pedido de enviar ou compartilhar dados. Escreva “regras” para ele repetir. O número laranja no BIT é a quantidade de dúvidas esperando resposta (qualquer usuário pode responder). Ele também cumprimenta (bom dia/boa tarde/boa noite), fala por um balãozinho sem atrapalhar e acompanha o NexBip: avisa caixa fora do romaneio, sem nota, duplicados seguidos e nota com gelo, comemora 25/50/75/90/100% com a previsão de quanto falta, e responde “o que falta” (começando pelas de alto valor) e “dica”.'],
    ['📊 Painel mensal da gerência','No Painel do gestor: escolha o mês e toque em “📄 Gerar PDF”. Sai uma página com reentregas por motivo, semana, cidade e motorista; divergências do mês por origem e por tipo; notas fora do romaneio por origem e motivo; e as cidades de MG mais atendidas (do Relatório Minas). Bom para apresentar à gerência.'],
    ['Alerta do robô de backup','Se o backup automático da noite falhar ou passar mais de 30 horas sem backup, aparece um aviso vermelho no topo só para o administrador.'],
@@ -6971,10 +6972,18 @@ function cadUsados(){ const mots=new Map(), mtv=new Map(); try{ const D=RE.ler()
 function cadInit(){ let mud=false;
   if(!Array.isArray(S.cadMotivos)){ const {mtv}=cadUsados(); const usados=[...mtv.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]); S.cadMotivos=[...new Set([...usados,...NEX_MOTIVOS.map(m=>m.toUpperCase())])]; mud=true; }
   if(!Array.isArray(S.cadMot)){ const {mots}=cadUsados(); S.cadMot=[...new Set([...mots.keys(),...(S.reMotoristas||[])])].filter(Boolean).sort().map(n=>({nome:n,alias:''})); mud=true; }
-  if(S.cadV!==2){ S.cadMot=S.cadMot.filter(m=>cadPareceNome(m.nome)); S.cadV=2; mud=true; } NEX_MOTIVOS.splice(0,NEX_MOTIVOS.length,...S.cadMotivos); S.reMotoristas=S.cadMot.map(m=>m.nome); return mud; }
+  if(S.cadV!==2){ S.cadMot=S.cadMot.filter(m=>cadPareceNome(m.nome)); S.cadV=2; mud=true; }
+  /* v9.21.0 · cada motorista passa a ter tipo (agregado = distribuição / transf = transferência)
+     e, nos agregados, o rastreador: sim · não · desativado. Quem já estava cadastrado é agregado com rastreador Sim. */
+  for(const m of S.cadMot){ if(!m.tipo){ m.tipo='agregado'; mud=true; } if(m.tipo==='agregado'&&!m.rast){ m.rast='sim'; mud=true; } } NEX_MOTIVOS.splice(0,NEX_MOTIVOS.length,...S.cadMotivos); S.reMotoristas=S.cadMot.map(m=>m.nome); return mud; }
 function cadApelidos(m){ return [m.nome,...String(m.alias||'').split(/[,;\n]+/)].map(rpNz).filter(Boolean); }
 function motCanon(n){ const k=rpNz(n); if(!k) return ''; for(const m of (S.cadMot||[])) if(cadApelidos(m).includes(k)) return m.nome; return k; }
 /* v9.7.2: CPF cadastrado do motorista (prioridade no preenchimento automático do Registro) */
+const CAD_RAST={sim:'Sim',nao:'Não',desativado:'Desativado'};
+function cadTipo(m){ return m&&m.tipo==='transf'?'transf':'agregado'; }
+function cadRastDe(m){ return cadTipo(m)==='agregado'?(m.rast||'sim'):''; }
+/* rastreador de um motorista pelo nome (ou apelido): 'sim' · 'nao' · 'desativado' · '' quando não está no cadastro */
+function cadRastNome(n){ const canon=motCanon(n); if(!canon) return ''; const m=(S.cadMot||[]).find(x=>x.nome===canon&&cadTipo(x)==='agregado'); return m?cadRastDe(m):''; }
 function cadMotCPF(n){ const canon=motCanon(n); if(!canon) return ''; const m=(S.cadMot||[]).find(x=>x.nome===canon); return (m&&m.cpf)||''; }
 function cadDatalists(){ let d=$('#cad-dl'); if(!d){ d=document.createElement('div'); d.id='cad-dl'; d.hidden=true; document.body.appendChild(d); }
   d.innerHTML=`<datalist id="cad-mot-dl">${(S.cadMot||[]).map(m=>`<option value="${esc(m.nome)}">`).join('')}</datalist><datalist id="cad-motivos-dl">${(S.cadMotivos||[]).map(m=>`<option value="${esc(m)}">`).join('')}</datalist>`; }
@@ -6991,12 +7000,14 @@ function cadNotasLevadas(){ const per=(typeof RP!=='undefined'&&RP.per)||'*'; co
 { const _rr=rpRender; rpRender=function(){ _rr(); try{ const lev=cadNotasLevadas(); $$('#rp-mtr .rp-h').forEach(e=>{ const n=e.dataset.rpV; const q=lev.get(n); const vl=e.querySelector('.vl'); if(!vl||!q) return; const re=parseInt(vl.textContent)||0; vl.textContent=vl.textContent.replace(/^(\d+)/,`$1 de ${fmtN(q)} (${(100*re/q).toLocaleString('pt-BR',{maximumFractionDigits:1})}%)`); }); }catch(e){} }; }
 /* tela Cadastros */
 const CAD_CSS=`#t-cadastros .cad-gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:14px}#t-cadastros .cad-bx{background:var(--sup);border:1.5px solid var(--linha);border-radius:var(--r);padding:14px 16px}
-#t-cadastros .cad-it{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--linha)}#t-cadastros .cad-m{display:block;padding:10px 0;border-bottom:1px solid var(--linha)}#t-cadastros .cad-m input{width:100%;box-sizing:border-box}#t-cadastros .cad-m .nm{font-weight:700;font-size:15px}#t-cadastros .cad-m .cf{margin-top:6px;font-size:13px}#t-cadastros .cad-m .al{margin-top:6px;font-size:13px}#t-cadastros .cad-pe{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}#t-cadastros .cad-pe small{flex:1}#t-cadastros .cad-pe select{max-width:170px;font-size:12px;padding:5px 6px}#t-cadastros .cad-it input{width:100%}#t-cadastros .cad-add{display:flex;gap:6px;margin:8px 0}#t-cadastros .cad-add input{flex:1}#t-cadastros small.u{color:var(--mudo)}#t-cadastros input,#t-cadastros select{background:var(--papel);color:var(--tinta);border:1.5px solid var(--linha);border-radius:8px;padding:7px 9px;font:inherit}#t-cadastros select option{background:#0C2B31;color:#fff}#t-cadastros input:focus{outline:2px solid var(--acento);outline-offset:0}`;
+#t-cadastros .cad-it{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--linha)}#t-cadastros .cad-m{display:block;padding:10px 0;border-bottom:1px solid var(--linha)}#t-cadastros .cad-m input{width:100%;box-sizing:border-box}#t-cadastros .cad-m .nm{font-weight:700;font-size:15px}#t-cadastros .cad-m .cf{margin-top:6px;font-size:13px}#t-cadastros .cad-m .al{margin-top:6px;font-size:13px}#t-cadastros .cad-pe{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}#t-cadastros .cad-pe small{flex:1}#t-cadastros .cad-pe select{max-width:170px;font-size:12px;padding:5px 6px}#t-cadastros .cad-larga{grid-column:1/-1}#t-cadastros .cad-duas{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+#t-cadastros .cad-col{border:1.5px solid var(--linha);border-radius:12px;padding:10px 12px;background:var(--papel)}
+#t-cadastros .cad-col h4{font-size:15px}#t-cadastros .cad-it input{width:100%}#t-cadastros .cad-add{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}#t-cadastros .cad-add input{flex:1;min-width:110px}#t-cadastros .cad-add button{flex:0 0 auto}#t-cadastros small.u{color:var(--mudo)}#t-cadastros input,#t-cadastros select{background:var(--papel);color:var(--tinta);border:1.5px solid var(--linha);border-radius:8px;padding:7px 9px;font:inherit}#t-cadastros select option{background:#0C2B31;color:#fff}#t-cadastros input:focus{outline:2px solid var(--acento);outline-offset:0}`;
 (function(){ const st=document.createElement('style'); st.textContent=CAD_CSS; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return;
   ref.insertAdjacentHTML('beforebegin',`<button data-tela="cadastros"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 8h5M17 12h5M19 16h3"/></svg><span class="lbl">Cadastros</span></button>`);
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-cadastros'; sec.hidden=true;
-  sec.innerHTML=`<h1>Cadastros</h1><p class="sub">Motoristas e motivos usados nas reentregas. O que estiver aqui aparece como sugestão ao digitar e organiza o relatório. Vale para toda a equipe (fica salvo online).</p><div id="cad-corpo"></div>`;
+  sec.innerHTML=`<h1>Cadastros</h1><p class="sub">Cadastro Agregado (motoristas de distribuição e de transferência, com CPF e rastreador) e os motivos das reentregas. O que estiver aqui aparece como sugestão ao digitar, manda na planilha do Checklist e organiza os relatórios. Vale para toda a equipe (fica salvo online).</p><div id="cad-corpo"></div>`;
   const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); if(t==='cadastros'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-cadastros'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); cadRender(); } else { const cb=document.querySelector('.nav [data-tela="cadastros"]'); if(cb) cb.removeAttribute('aria-current'); } };
   document.querySelector('.nav [data-tela="cadastros"]').addEventListener('click',()=>irPara('cadastros'));
@@ -7005,19 +7016,37 @@ function cadRender(){ const el=$('#cad-corpo'); if(!el) return; cadInit(); const
   const usoMot=n=>{ let q=0; for(const [k,v] of mots) if(motCanon(k)===n) q+=v; return q; };
   const soltos=[...mots.keys()].filter(k=>!(S.cadMot||[]).some(m=>cadApelidos(m).includes(rpNz(k))));
   const motivoUso=m=>mtv.get(rpNz(m))||0;
-  el.innerHTML=`<div class="cad-gr"><div class="cad-bx"><h3>🚚 Motoristas e parceiros</h3><p class="sub" style="margin:0">Em <b>apelidos</b> ponha outras formas de escrever (ex.: ALEXANDR, ALE) e o nome que vem no romaneio — assim tudo conta como uma pessoa e o ranking mostra a taxa (reentregas ÷ notas levadas).</p>
-    <form class="cad-add" id="cad-mot-f"><input class="bus" name="n" placeholder="Nome do motorista" required><button class="btn pri mini">Cadastrar</button></form>
-    ${(S.cadMot||[]).length?`<div style="text-align:right;margin:4px 0"><button class="btn mini" data-cad-limpa="1" type="button" title="Tira do cadastro os nomes sem nenhuma reentrega">Excluir os sem uso</button></div>`:''}${(S.cadMot||[]).map((m,i)=>`<div class="cad-m"><input class="bus nm" data-cad-mot="${i}" data-k="nome" value="${esc(m.nome)}" title="Nome do motorista (como vai aparecer no relatório)"><input class="bus cf" data-cad-mot="${i}" data-k="cpf" value="${esc(m.cpf||'')}" inputmode="numeric" placeholder="CPF (preenche sozinho no Registro)"><input class="bus al" data-cad-mot="${i}" data-k="alias" value="${esc(m.alias||'')}" placeholder="Outros jeitos de escrever / nome no romaneio (separe por vírgula)"><div class="cad-pe"><small class="u">${usoMot(m.nome)} reentrega(s)</small><select class="bus" data-cad-merge="${i}"><option value="">Juntar com…</option>${(S.cadMot||[]).map((o,j)=>j===i?'':`<option value="${j}">${esc(o.nome)}</option>`).join('')}</select><button class="btn mini perigo" data-cad-mot-del="${i}" type="button">Excluir</button></div></div>`).join('')||'<p class="sub">Nenhum motorista.</p>'}
-    ${soltos.length?`<h4 style="margin-top:14px">Nomes usados nas reentregas que não estão no cadastro</h4>${soltos.map(k=>`<div class="cad-it"><div><b>${esc(k)}</b> <small class="u">${mots.get(k)} reentrega(s)</small></div><span><button class="btn mini pri" data-cad-novo="${esc(k)}" type="button">Cadastrar</button> <select class="bus" data-cad-junta="${esc(k)}" style="min-width:0"><option value="">É apelido de…</option>${(S.cadMot||[]).map((m,i)=>`<option value="${i}">${esc(m.nome)}</option>`).join('')}</select></span></div>`).join('')}`:''}</div>
+  const linhaMot=(m,i)=>`<div class="cad-m"><input class="bus nm" data-cad-mot="${i}" data-k="nome" value="${esc(m.nome)}" title="Nome do motorista (como vai aparecer no relatório)">
+    <input class="bus cf" data-cad-mot="${i}" data-k="cpf" value="${esc(m.cpf||'')}" inputmode="numeric" placeholder="CPF (preenche sozinho no Registro)">
+    ${cadTipo(m)==='agregado'?`<div class="cad-pe"><small class="u" style="flex:0 0 auto">Rastreador</small><select class="bus" data-cad-mot="${i}" data-k="rast" title="Sim: entra no Checklist · Não: fica fora da planilha · Desativado: entra na planilha como N/A, para pedir para religar">${Object.entries(CAD_RAST).map(([k,t])=>`<option value="${k}" ${cadRastDe(m)===k?'selected':''}>${t}</option>`).join('')}</select></div>`:''}
+    <input class="bus al" data-cad-mot="${i}" data-k="alias" value="${esc(m.alias||'')}" placeholder="Outros jeitos de escrever / nome no romaneio (separe por vírgula)">
+    <div class="cad-pe"><small class="u">${usoMot(m.nome)} reentrega(s)</small><select class="bus" data-cad-merge="${i}"><option value="">Juntar com…</option>${(S.cadMot||[]).map((o,j)=>j===i?'':`<option value="${j}">${esc(o.nome)}</option>`).join('')}</select><button class="btn mini perigo" data-cad-mot-del="${i}" type="button">Excluir</button></div></div>`;
+  const colunaMot=(tipo,tit,sub)=>{ const L=(S.cadMot||[]).map((m,i)=>[m,i]).filter(([m])=>cadTipo(m)===tipo);
+    return `<div class="cad-col"><h4 style="margin:0 0 2px">${tit} <small class="u" style="font-weight:400">(${L.length})</small></h4><p class="sub" style="margin:0 0 6px">${sub}</p>
+      <form class="cad-add" data-cad-add="${tipo}"><input class="bus" name="n" placeholder="Nome" required><input class="bus" name="cpf" placeholder="CPF" inputmode="numeric" style="max-width:148px"><button class="btn pri mini">Cadastrar</button></form>
+      ${L.map(([m,i])=>linhaMot(m,i)).join('')||'<p class="sub">Nenhum motorista nesta coluna ainda.</p>'}</div>`; };
+  el.innerHTML=`<div class="cad-gr"><div class="cad-bx cad-larga"><h3>🚚 Cadastro Agregado</h3><p class="sub" style="margin:0 0 10px">Motorista e CPF de quem roda com a gente. O <b>CPF</b> preenche sozinho no Registro de carretas, e o <b>rastreador</b> dos agregados manda na planilha do Checklist: <b>Sim</b> entra na planilha, <b>Não</b> fica fora dela e <b>Desativado</b> entra como N/A (para você saber de quem pedir para religar). Em <b>apelidos</b> ponha outras formas de escrever o nome — assim tudo conta como uma pessoa só nos relatórios.</p>
+    <div class="cad-duas">
+      ${colunaMot('agregado','🏠 Motoristas agregados','Distribuição: fazem a entrega e trazem as reentregas. São eles que entram no Checklist Agregados.')}
+      ${colunaMot('transf','🚛 Motoristas transferência','Chegam com as transferências. Aparecem como sugestão no Registro de carretas, já com o CPF.')}
+    </div>
+    ${(S.cadMot||[]).length?`<div style="text-align:right;margin:8px 0 0"><button class="btn mini" data-cad-limpa="1" type="button" title="Tira do cadastro os nomes sem nenhuma reentrega">Excluir os sem uso</button></div>`:''}
+
    <div class="cad-bx"><h3>📝 Motivos</h3><p class="sub" style="margin:0">Só os motivos que vocês usam. Apague os que nunca vai usar; a ordem aqui é a ordem das sugestões.</p>
     <form class="cad-add" id="cad-mtv-f"><input class="bus" name="n" placeholder="Novo motivo (ex.: FERIADO)" required><button class="btn pri mini">Cadastrar</button></form><div style="text-align:right;margin:4px 0"><button class="btn mini" data-cad-limpa-mtv="1" type="button">Excluir os sem uso</button></div>
     ${(S.cadMotivos||[]).map((m,i)=>`<div class="cad-it"><div><input class="bus" data-cad-mtv="${i}" value="${esc(m)}"><small class="u">${motivoUso(m)} uso(s)</small></div><span><button class="btn mini" data-cad-sobe="${i}" type="button" title="Subir">▲</button> <button class="btn mini perigo" data-cad-mtv-del="${i}" type="button">Excluir</button></span></div>`).join('')||'<p class="sub">Nenhum motivo.</p>'}</div></div>`; }
 function cadMudou(){ cadInit(); salvar(); cadDatalists(); cadRender(); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} }
-document.addEventListener('submit',e=>{ const f=e.target; if(f.id!=='cad-mot-f'&&f.id!=='cad-mtv-f') return; e.preventDefault(); const v=String(new FormData(f).get('n')||'').trim().toUpperCase(); if(!v) return;
-  if(f.id==='cad-mot-f'){ if(S.cadMot.some(m=>cadApelidos(m).includes(rpNz(v)))){ toast('Esse nome já está no cadastro.'); return; } S.cadMot.push({nome:v,alias:'',cpf:''}); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); }
+document.addEventListener('submit',e=>{ const f=e.target; const tipoNovo=f.dataset&&f.dataset.cadAdd; if(f.id!=='cad-mot-f'&&f.id!=='cad-mtv-f'&&!tipoNovo) return; e.preventDefault(); const fd=new FormData(f); const v=String(fd.get('n')||'').trim().toUpperCase(); if(!v) return;
+  if(tipoNovo){ if(S.cadMot.some(m=>cadApelidos(m).includes(rpNz(v)))){ toast('Esse nome já está no cadastro.'); return; }
+    const novo={nome:v,alias:'',cpf:rgCPF(String(fd.get('cpf')||'')),tipo:tipoNovo==='transf'?'transf':'agregado'};
+    if(novo.tipo==='agregado') novo.rast='sim';
+    S.cadMot.push(novo); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); cadMudou(); try{ ckSincronizar(); }catch(er){} toast(v+' cadastrado.'); return; }
+  if(f.id==='cad-mot-f'){ if(S.cadMot.some(m=>cadApelidos(m).includes(rpNz(v)))){ toast('Esse nome já está no cadastro.'); return; } S.cadMot.push({nome:v,alias:'',cpf:'',tipo:'agregado',rast:'sim'}); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); }
   else { if(S.cadMotivos.some(m=>rpNz(m)===rpNz(v))){ toast('Esse motivo já existe.'); return; } S.cadMotivos.push(v); } cadMudou(); });
 document.addEventListener('change',e=>{ const t=e.target; if(!t.closest||!t.closest('#t-cadastros')) return;
-  if(t.dataset.cadMot!=null){ const m=S.cadMot[+t.dataset.cadMot]; if(!m) return; let v=t.dataset.k==='cpf'?rgCPF(t.value):t.value.trim().toUpperCase(); if(t.dataset.k==='nome'&&!v){ toast('O nome não pode ficar vazio.'); t.value=m.nome; return; } m[t.dataset.k]=v; cadMudou(); return; }
+  if(t.dataset.cadMot!=null){ const m=S.cadMot[+t.dataset.cadMot]; if(!m) return; const k=t.dataset.k;
+    let v=k==='cpf'?rgCPF(t.value):(k==='rast'||k==='tipo')?t.value:t.value.trim().toUpperCase();
+    if(k==='nome'&&!v){ toast('O nome não pode ficar vazio.'); t.value=m.nome; return; } m[k]=v; cadMudou(); try{ ckSincronizar(); if(!$('#t-checklist').hidden) ckRender(); }catch(e){} return; }
   if(t.dataset.cadMtv!=null){ const v=t.value.trim().toUpperCase(); if(!v) return; S.cadMotivos[+t.dataset.cadMtv]=v; cadMudou(); return; }
   if(t.dataset.cadMerge!=null&&t.value!==''){ const de=S.cadMot[+t.dataset.cadMerge], para=S.cadMot[+t.value]; para.alias=[para.alias,de.nome,de.alias].filter(Boolean).join(', '); S.cadMot.splice(+t.dataset.cadMerge,1); cadMudou(); toast(de.nome+' juntado em '+para.nome+'.'); return; }
   if(t.dataset.cadJunta!=null&&t.value!==''){ const m=S.cadMot[+t.value]; m.alias=[m.alias,t.dataset.cadJunta].filter(Boolean).join(', '); cadMudou(); toast(t.dataset.cadJunta+' agora conta como '+m.nome+'.'); } });
@@ -7881,7 +7910,11 @@ function rgPrevia(){ const f=document.createElement('div'); f.className='fundo';
   f.addEventListener('click',e=>{ const b=e.target.closest('[data-p]'); if(!b) return; f.remove(); if(b.dataset.p==='outra') rgFoto(); else if(b.dataset.p==='ok') rgForm(); else RG.foto=null; }); document.body.appendChild(f); }
 /* passo 2: formulário */
 function rgForm(edId){ const r0=edId?rgS().find(x=>x.id===edId):null; const ult=rgS().slice(-1)[0]||{}; const v=r0||{tipo:RG.tipo,titulo:'TRANSFERÊNCIA',rota:ult.rota||'',rast:'Sim'};
-  const L=rgS(); const lst=k=>[...new Set(L.map(x=>x[k]).filter(Boolean).concat(k==='mot'?(S.cadMot||[]).map(m=>m.nome):[]))].slice(-300);
+  /* v9.21.0: na sugestão de motorista vêm primeiro os de transferência do Cadastro Agregado */
+  const L=rgS(); const lst=k=>{ const hist=[...new Set(L.map(x=>x[k]).filter(Boolean))].slice(-300);
+    if(k!=='mot') return hist;
+    const tr=(S.cadMot||[]).filter(m=>cadTipo(m)==='transf').map(m=>m.nome);
+    return [...new Set([...tr,...hist])]; };
   const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
   f.innerHTML=`<div class="modal" role="dialog" style="max-width:min(560px,96vw);max-height:92vh;overflow:auto"><h2 style="margin-top:0">${v.tipo==='exp'?'Expedição':'Recebimento'}${edId?' · editar':''}</h2>
    <form id="rg-f" class="rg-form"><label>Título<input name="titulo" value="${esc(v.titulo||'')}" list="rg-l-tit"></label><label>Rota<input name="rota" value="${esc(v.rota||'')}" list="rg-l-rota" placeholder="CAJ X AQA" required></label>
@@ -7927,38 +7960,103 @@ function ckSeedRow(x){ const desat=x[2]==='DESATIVADO'; return {id:'ck'+Math.ran
 function ckS(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); return S.checklist; }
 function ckSalvar(){ salvar(); ckRender(); }
 function ckVenc(reg){ if(!reg.data) return ''; const d=new Date(reg.data+'T00:00:00'); d.setDate(d.getDate()+30); return d.toISOString().slice(0,10); }
-function ckStatus(reg){ if(reg.ativo===false) return {cor:'cinza',txt:'DESATIVADO',venc:''}; if(!reg.data) return {cor:'cinza',txt:'SEM DATA',venc:''};
+/* v9.21.0 · o rastreador do Cadastro Agregado manda na planilha:
+   sim = entra normal · não = fica fora da planilha · desativado = entra como N/A, status DESATIVADO. */
+function ckRast(reg){ const r=(typeof cadRastNome==='function'?cadRastNome(reg&&reg.mot):'')||''; if(r) return r; return reg&&reg.ativo===false?'desativado':'sim'; }
+function ckDesativado(reg){ return ckRast(reg)==='desativado'; }
+function ckLista(filtro){ const L=ckS().filter(r=>ckRast(r)!=='nao');
+  if(filtro==='ativos') return L.filter(r=>!ckDesativado(r));
+  if(filtro==='desativados') return L.filter(ckDesativado);
+  return L; }
+/* cada agregado do cadastro (rastreador sim ou desativado) tem a sua linha na planilha */
+function ckSincronizar(){ try{ const L=ckS(); let mud=false;
+    for(const m of (S.cadMot||[])){ if(cadTipo(m)!=='agregado'||cadRastDe(m)==='nao') continue;
+      if(L.some(r=>motCanon(r.mot)===m.nome||rpNz(r.mot)===rpNz(m.nome))) continue;
+      L.push({id:'ck'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),mot:m.nome,placa:'',data:'',ativo:true}); mud=true; }
+    if(mud) salvar(); return mud; }catch(e){ return false; } }
+function ckStatus(reg){ if(ckDesativado(reg)) return {cor:'cinza',txt:'DESATIVADO',venc:''}; if(!reg.data) return {cor:'cinza',txt:'SEM DATA',venc:''};
   const venc=ckVenc(reg), hoje=hojeISO(), dif=Math.round((new Date(venc)-new Date(hoje))/864e5);
   if(dif<0) return {cor:'vermelho',txt:'VENCIDO',venc,dif}; if(dif<=1) return {cor:'laranja',txt:dif===0?'VENCE HOJE':'VENCE EM 1 DIA',venc,dif}; if(dif<=4) return {cor:'amarelo',txt:'VENCE EM '+dif+' DIAS',venc,dif}; return {cor:'verde',txt:'VÁLIDO',venc,dif}; }
-function ckTexto(){ const L=ckS().filter(r=>r.ativo!==false&&r.data); const vencendo=[],vencidos=[];
+function ckTexto(filtro){ const L=ckLista(filtro||'todos').filter(r=>!ckDesativado(r)&&r.data); const vencendo=[],vencidos=[];
   for(const r of L){ const st=ckStatus(r); if(st.cor==='vermelho') vencidos.push({r,st}); else if(typeof st.dif==='number'&&st.dif<=3) vencendo.push({r,st}); }
   const L2=['Bom dia senhores,','','Segue planilha de controle atualizada:',''];
   for(const {r,st} of vencendo) L2.push(`*${(r.mot||'-').toUpperCase()}*, seu checklist está previsto para vencer *${fmtData(st.venc)}*`);
   for(const {r,st} of vencidos) L2.push(`*${(r.mot||'-').toUpperCase()}*, seu checklist está *VENCIDO* (${fmtData(st.venc)})`);
   if(!vencendo.length&&!vencidos.length) L2.push('Nenhum motorista com checklist vencendo ou vencido no momento.');
+  const des=ckLista('desativados'); if((filtro==='todos'||filtro==='desativados')&&des.length){ L2.push(''); L2.push('Com rastreador desativado (sem validade): '+des.map(r=>String(r.mot||'').toUpperCase()).join(', ')); }
   return L2.join('\n'); }
-async function ckImagem(fmt){ const L=ckS(); const cor={vermelho:'#F4B3B0',laranja:'#F4B183',amarelo:'#FFF59D',verde:'#FFFFFF',cinza:'#E3E3E3'};
-  const lh=30,pad=10,cw=[180,110,110,110,140]; const w=cw.reduce((a,b)=>a+b,0)+pad*2; const h=lh*(L.length+2)+pad*2;
-  const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); g.fillStyle='#FFFFFF'; g.fillRect(0,0,w,h);
-  g.font='bold 14px Arial'; g.fillStyle='#0E7490'; g.fillText('CONTROLE · CHECKLISTS AGREGADOS',pad,pad+16);
-  const heads=['Motorista','Placa','Realização','Vencimento','Status']; let y=pad+lh, x=pad;
-  heads.forEach((hd,i)=>{ g.fillStyle='#0E7490'; g.fillRect(x,y,cw[i],lh); g.strokeStyle='#FFFFFF'; g.strokeRect(x,y,cw[i],lh); g.fillStyle='#FFFFFF'; g.font='bold 12px Arial'; g.fillText(hd,x+6,y+19); x+=cw[i]; }); y+=lh;
-  for(const r of L){ const st=ckStatus(r); x=pad; const vals=[(r.mot||'-').toUpperCase(),r.placa||'-',r.data?fmtData(r.data):'-',st.venc?fmtData(st.venc):'N/A',st.txt];
-    vals.forEach((v,i)=>{ g.fillStyle=cor[st.cor]||'#FFFFFF'; g.fillRect(x,y,cw[i],lh); g.strokeStyle='#CCCCCC'; g.strokeRect(x,y,cw[i],lh); g.fillStyle='#222222'; g.font='12px Arial'; g.fillText(String(v).slice(0,22),x+6,y+19); x+=cw[i]; }); y+=lh; }
+/* v9.21.0 · planilha do Checklist em formato de relatório: cabeçalho, resumo, faixa de cor por status e legenda */
+function ckRRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+const CK_COR={vermelho:{f:'#FDECEA',b:'#C0392B'},laranja:{f:'#FDF0E3',b:'#D2691E'},amarelo:{f:'#FEF9E0',b:'#B7950B'},verde:{f:'#EAF7F0',b:'#1E8449'},cinza:{f:'#F0F2F3',b:'#7B8A8B'}};
+async function ckImagem(fmt,filtro){ const L=ckLista(filtro||'todos');
+  const esc2=2, pad=26, lh=38, cw=[250,130,140,210,170], w=cw.reduce((a,b)=>a+b,0)+pad*2;
+  const topo=104, resumo=52, cab=40, rodape=64, h=topo+resumo+cab+lh*Math.max(L.length,1)+rodape;
+  const c=document.createElement('canvas'); c.width=w*esc2; c.height=h*esc2; const g=c.getContext('2d'); g.scale(esc2,esc2);
+  g.fillStyle='#FFFFFF'; g.fillRect(0,0,w,h);
+  /* cabeçalho */
+  g.fillStyle='#0E5C66'; g.fillRect(0,0,w,topo-18);
+  g.fillStyle='#FFFFFF'; g.font='bold 22px Arial'; g.fillText('CONTROLE DE CHECKLIST · AGREGADOS',pad,42);
+  g.font='13px Arial'; g.fillStyle='#BFE3E8';
+  const qual=filtro==='ativos'?'somente ativos':filtro==='desativados'?'somente desativados':'ativos e desativados';
+  g.fillText('Health Log · Araraquara (AQA)   ·   '+qual+'   ·   atualizado em '+fmtData(hojeISO()),pad,66);
+  /* resumo */
+  const cont={verde:0,amarelo:0,laranja:0,vermelho:0,cinza:0}; for(const r of L) cont[ckStatus(r).cor]++;
+  const chips=[['Válidos',cont.verde,'verde'],['Vencendo',cont.amarelo+cont.laranja,'amarelo'],['Vencidos',cont.vermelho,'vermelho'],['Sem data / desativados',cont.cinza,'cinza']];
+  let cx=pad; const cy=topo-8;
+  for(const [t,n,k] of chips){ const cl=CK_COR[k]; g.font='bold 13px Arial'; const lw=g.measureText(t+'  '+n).width+26;
+    g.fillStyle=cl.f; ckRRect(g,cx,cy,lw,30,15); g.fill(); g.strokeStyle=cl.b; g.lineWidth=1.2; g.stroke();
+    g.fillStyle=cl.b; g.fillText(t+'  '+n,cx+13,cy+20); cx+=lw+10; }
+  /* cabeçalho da tabela */
+  let y=topo+resumo-14, x=pad; const heads=['Motorista','Placa','Realização','Vencimento','Status'];
+  g.fillStyle='#0E5C66'; ckRRect(g,pad,y,w-pad*2,cab,8); g.fill();
+  g.fillStyle='#FFFFFF'; g.font='bold 13px Arial';
+  heads.forEach((hd,i)=>{ g.fillText(hd,x+12,y+25); x+=cw[i]; }); y+=cab;
+  /* linhas */
+  if(!L.length){ g.fillStyle='#7B8A8B'; g.font='14px Arial'; g.fillText('Nenhum motorista nesta seleção.',pad+12,y+26); }
+  L.forEach((r,n)=>{ const st=ckStatus(r), cl=CK_COR[st.cor]||CK_COR.cinza;
+    g.fillStyle=n%2?'#FAFBFB':'#FFFFFF'; g.fillRect(pad,y,w-pad*2,lh);
+    g.fillStyle=cl.b; g.fillRect(pad,y,4,lh);
+    const venc=st.venc?fmtData(st.venc):'N/A';
+    let dias=''; if(st.venc&&typeof st.dif==='number') dias=st.dif>0?'em '+st.dif+' dia'+(st.dif===1?'':'s'):st.dif===0?'hoje':'há '+Math.abs(st.dif)+' dia'+(Math.abs(st.dif)===1?'':'s');
+    const des=ckDesativado(r);
+    const vals=[String(r.mot||'-').toUpperCase(),r.placa||'-',(des||!r.data)?'N/A':fmtData(r.data),venc];
+    x=pad; vals.forEach((v,i)=>{ g.fillStyle=(v==='N/A')?'#9AA7A9':'#1B2B2E'; g.font=i===0?'bold 13px Arial':'13px Arial';
+      const txt=String(v).slice(0,26); g.fillText(txt,x+12,y+24); const lw=g.measureText(txt).width;
+      if(i===3&&dias){ g.fillStyle='#8A9A9C'; g.font='11px Arial'; g.fillText(dias,x+12+lw+8,y+24); } x+=cw[i]; });
+    g.font='bold 12px Arial'; const tw=g.measureText(st.txt).width+22;
+    g.fillStyle=cl.f; ckRRect(g,x+12,y+9,tw,21,10); g.fill(); g.strokeStyle=cl.b; g.lineWidth=1; g.stroke();
+    g.fillStyle=cl.b; g.fillText(st.txt,x+23,y+24);
+    g.strokeStyle='#E7EBEC'; g.lineWidth=1; g.beginPath(); g.moveTo(pad,y+lh+.5); g.lineTo(w-pad,y+lh+.5); g.stroke(); y+=lh; });
+  /* rodapé */
+  g.fillStyle='#7B8A8B'; g.font='12px Arial';
+  g.fillText('Validade de 30 dias a partir da realização.   Amarelo: faltam até 4 dias   ·   Laranja: vence hoje ou amanhã   ·   Vermelho: vencido.',pad,y+24);
+  g.fillText('Cinza: sem data ou rastreador desativado (nesse caso não há validade).   Gerado pelo Health Search em '+new Date().toLocaleString('pt-BR')+'.',pad,y+42);
   const mime=fmt==='jpeg'?'image/jpeg':'image/png';
-  return await new Promise(res=>c.toBlob(res,mime,0.92)); }
+  return await new Promise(res=>c.toBlob(res,mime,0.95)); }
+/* v9.21.0 · antes de mandar ou baixar, escolhe o que vai na planilha */
+function ckEscolher(){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  const n=t=>ckLista(t).length;
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:420px"><h2 style="margin-top:0">O que você quer mandar?</h2>
+    <p class="sub" style="margin:0 0 12px">A planilha sai só com o que você escolher aqui.</p>
+    <div style="display:grid;gap:8px">
+      <button class="btn pri" type="button" data-ck-e="todos">Ativos e desativados <small style="opacity:.8">(${n('todos')} motorista(s))</small></button>
+      <button class="btn" type="button" data-ck-e="ativos">Somente ativos <small style="opacity:.8">(${n('ativos')})</small></button>
+      <button class="btn" type="button" data-ck-e="desativados">Somente desativados <small style="opacity:.8">(${n('desativados')})</small></button>
+    </div><div class="botoes"><button class="btn" type="button" data-ck-e="">Cancelar</button></div></div>`;
+  document.body.appendChild(f);
+  f.addEventListener('click',e=>{ const b=e.target.closest('[data-ck-e]'); if(!b&&e.target!==f) return; const v=b?b.dataset.ckE:''; f.remove(); res(v||null); }); }); }
 /* v9.19.17 · Baixar a de hoje: salva JPEG e copia legenda */
-async function ckBaixar(){ const txt=ckTexto();
+async function ckBaixar(){ const filtro=await ckEscolher(); if(!filtro) return; const txt=ckTexto(filtro);
   try{ await navigator.clipboard.writeText(txt); }catch(e){}
-  const blob=await ckImagem('jpeg'); baixar(blob,'checklist-agregados-'+hojeISO()+'.jpg');
+  const blob=await ckImagem('jpeg',filtro); baixar(blob,'checklist-agregados-'+hojeISO()+'.jpg');
   toast('Imagem salva! A legenda já está copiada — cole no WhatsApp ou onde quiser.'); }
-async function ckEnviar(){ const txt=ckTexto(); try{ await navigator.clipboard.writeText(txt); }catch(e){}
-  const blob=await ckImagem('png'); const f=new File([blob],'checklist-agregados.png',{type:'image/png'});
+async function ckEnviar(){ const filtro=await ckEscolher(); if(!filtro) return; const txt=ckTexto(filtro); try{ await navigator.clipboard.writeText(txt); }catch(e){}
+  const blob=await ckImagem('png',filtro); const f=new File([blob],'checklist-agregados.png',{type:'image/png'});
   try{ if(navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],text:txt}); toast('Escolha a conversa no WhatsApp e toque em enviar. (O texto também foi copiado.)'); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
   baixar(blob,f.name); window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); toast('A imagem foi baixada: anexe-a na conversa. O texto já vai no WhatsApp.'); }
 /* v9.19.17 · drag-and-drop state */
 let _ckDrag=null;
-function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); const adm=nvAdmin();
+function ckRender(){ const el=$('#ck-corpo'); if(!el) return; try{ ckSincronizar(); }catch(e){} const L=ckLista('todos'); const adm=nvAdmin();
   const dragHandle=adm?`<td class="ck-drag-handle" draggable="true" title="Arrastar para reordenar">⠿</td>`:'';
   const linha=r=>{ const st=ckStatus(r); return `<tr class="ck-${st.cor}" data-ck-row="${r.id}">
     ${dragHandle}
@@ -7970,7 +8068,7 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
       const datTxt=fmtData(st.venc); const difTxt=diff>0?`<small>(${diff} dia${diff===1?'':'s'})</small>`:diff===0?'<small>(hoje!)</small>':'<small>(vencido há '+Math.abs(diff)+' dia'+(Math.abs(diff)===1?'':'s')+')</small>';
       return `<b>${datTxt}</b> ${difTxt}`; })():'<i style="color:#999">N/A</i>'}</td>
     <td><b>${esc(st.txt)}</b></td>
-    <td>${adm?`<label style="display:flex;align-items:center;gap:4px;font-size:.8em"><input type="checkbox" data-ck-f="ativo" ${r.ativo!==false?'checked':''}> ativo</label>`:(r.ativo!==false?'Sim':'Não')}</td>
+    <td>${adm?`<select data-ck-f="rast" style="font-size:.85em">${Object.entries(CAD_RAST).map(([k,t])=>`<option value="${k}" ${ckRast(r)===k?'selected':''}>${t}</option>`).join('')}</select>`:(CAD_RAST[ckRast(r)]||'Sim')}</td>
     ${adm?`<td><button class="btn mini" type="button" data-ck-del="${r.id}">🗑</button></td>`:''}</tr>`; };
   el.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
     ${adm?`<button class="btn mini" type="button" id="ck-add">＋ Adicionar</button>`:''}
@@ -7979,8 +8077,8 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
    </div>
    <datalist id="ck-mots">${[...new Set([...(S.cadMot||[]).map(m=>m.nome),...L.map(r=>r.mot)].filter(Boolean))].sort().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
    <datalist id="ck-placas">${[...new Set(L.map(r=>r.placa).filter(Boolean))].sort().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>
-   <div class="rolagem"><table class="ck-tab"><thead><tr>${adm?'<th style="width:28px"></th>':''}<th>Motorista</th><th>Placa</th><th>Realização</th><th>Vencimento</th><th>Status</th><th>Ativo</th>${adm?'<th></th>':''}</tr></thead><tbody id="ck-tbody">${L.map(linha).join('')}</tbody></table></div>
-   <p class="sub" style="margin-top:8px">Válido por 30 dias a partir da data de realização. 🟡 faltam 4 dias · 🟠 falta 1 dia ou venceu hoje · 🔴 vencido.${adm?' Arraste ⠿ para reordenar.':''}</p>`;
+   <div class="rolagem"><table class="ck-tab"><thead><tr>${adm?'<th style="width:28px"></th>':''}<th>Motorista</th><th>Placa</th><th>Realização</th><th>Vencimento</th><th>Status</th><th>Rastreador</th>${adm?'<th></th>':''}</tr></thead><tbody id="ck-tbody">${L.map(linha).join('')}</tbody></table></div>
+   <p class="sub" style="margin-top:8px">Válido por 30 dias a partir da data de realização. 🟡 faltam 4 dias · 🟠 falta 1 dia ou venceu hoje · 🔴 vencido. O <b>rastreador</b> vem do Cadastro Agregado: <b>Não</b> tira o motorista desta planilha e <b>Desativado</b> deixa ele aqui como N/A.${adm?' Arraste ⠿ para reordenar.':''}</p>`;
   /* drag-and-drop: apenas admin */
   if(adm){ const tbody=$('#ck-tbody'); if(!tbody) return;
     const limpar=()=>tbody.querySelectorAll('.ck-dragging,.ck-drag-over').forEach(x=>x.classList.remove('ck-dragging','ck-drag-over'));
@@ -8011,7 +8109,14 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; const L=ckS(); con
     const wa=e.target.closest('#ck-wa'); if(wa){ ckEnviar(); return; }
     const bx=e.target.closest('#ck-baixar'); if(bx) ckBaixar(); });
   document.body.addEventListener('change',e=>{ const inp=e.target.closest('[data-ck-f]'); if(!inp) return; const tr=inp.closest('[data-ck-row]'); if(!tr) return; const r=ckS().find(x=>x.id===tr.dataset.ckRow); if(!r) return;
-    const campo=inp.dataset.ckF; r[campo]=campo==='ativo'?inp.checked:(campo==='placa'?inp.value.toUpperCase():inp.value); salvar();
+    const campo=inp.dataset.ckF;
+    if(campo==='rast'){ /* v9.21.0: o rastreador mora no Cadastro Agregado; a linha só reflete */
+      const v=inp.value; r.ativo=v!=='desativado';
+      try{ cadInit(); const canon=motCanon(r.mot); let m=(S.cadMot||[]).find(x=>x.nome===canon&&cadTipo(x)==='agregado');
+        if(!m&&String(r.mot||'').trim()){ m={nome:String(r.mot).trim().toUpperCase(),alias:'',cpf:'',tipo:'agregado'}; S.cadMot.push(m); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); }
+        if(m) m.rast=v; }catch(er){}
+      salvar(); ckRender(); try{ if(!$('#t-cadastros').hidden) cadRender(); }catch(er){} return; }
+    r[campo]=campo==='ativo'?inp.checked:(campo==='placa'?inp.value.toUpperCase():inp.value); salvar();
     /* v9.19.17: só redesenha quando muda a cor/status da linha — assim não rouba o foco de quem está digitando */
     if(campo==='data'||campo==='ativo') ckRender(); else if(campo==='placa') inp.value=inp.value.toUpperCase(); }); })();
 /* ================= v8.9.1 · BIT mais inteligente: filtra as notas dos romaneios (cidade, região, origem, cliente) e entende frases ================= */
