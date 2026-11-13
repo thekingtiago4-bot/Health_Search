@@ -3945,7 +3945,7 @@ async function renderUsuarios(){ const el=$('#nv-users'); if(!el) return; if(Sto
   const {data,error}=await NV.cli.from('perfis').select('*').order('nome'); if(error){ el.innerHTML='<div class="vazio-lista">'+esc(nvTraduz(error.message))+'</div>'; return; } NV.lista=data;
   el.innerHTML=`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Nome</th><th>Usuário</th><th>E-mail de recuperação</th><th>Perfil</th><th>Situação</th><th></th></tr></thead><tbody>${data.map(u=>{ const eu=u.id===NV.user.id;
     return `<tr><td class="forte">${esc(u.nome||'')}${eu?' <small class="sec">(você)</small>':''}</td><td>${esc(u.usuario||'—')}</td><td>${nvEmailReal(u.email)?esc(u.email):'<span class="nv-falta">falta e-mail</span>'}</td>
-    <td>${u.papel==='admin'?'Administrador':'Usuário'}</td><td>${u.ativo?'<span class="nx-ok">Ativo</span>':'<span class="sec">Bloqueado</span>'}</td>
+    <td>${u.papel==='admin'?'Administrador':'Usuário'}</td><td>${u.ativo?'<span class="nx-ok">Ativo</span>':'<span class="sec">Bloqueado</span>'}${u.trocar_senha?'<br><small class="sub">troca de senha no 1º acesso</small>':''}</td>
     <td class="nx-acoes"><button class="btn mini pri" type="button" data-nv-editar="${u.id}">Editar</button>${eu?'':`<button class="btn mini" type="button" data-nv-ativo="${u.id}" data-v="${u.ativo?0:1}">${u.ativo?'Bloquear':'Liberar'}</button>`}<button class="btn mini" type="button" data-nv-senha="${u.id}" data-nome="${esc(u.nome||'')}">Redefinir senha</button></td></tr>`; }).join('')}</tbody></table></div>`; }
 function nvValidar(nome,usuario,email){ if(!nome) return 'Preencha o nome.'; if(!/^[a-z0-9._-]{3,40}$/.test(usuario)) return 'Usuário: 3 a 40 caracteres, só letras, números, ponto, hífen ou _ (ex.: tiago.souza).'; if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return 'E-mail inválido (ou deixe em branco).'; return ''; }
 function nvEditar(u){ const eu=u.id===NV.user.id; const f=document.createElement('div'); f.className='fundo';
@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.26.7', HS_DATA='13/11/2026';
+const HS_VERSAO='9.26.8', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5197,9 +5197,20 @@ async function nvEntrarPacote(){
   for(;;){ try{ await nvLib(); break; }catch(e){ const f=nvTela(`<h2>Sem internet</h2><p>Para usar o Health Search é preciso entrar com seu usuário. Conecte-se à internet e tente de novo.</p><div class="nv-bts"><button class="btn pri" type="button">Tentar de novo</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); } }
   NV.cli=window.supabase.createClient(cfg.url,cfg.chave,{auth:{persistSession:true,storageKey:'hs-sessao'}}); NV.cfg=cfg;
   for(;;){ const {data}=await NV.cli.auth.getSession(); NV.user=data.session?data.session.user:await nvLogin();
-    try{ NV.perfil=await nvPerfil(); }catch(e){ NV.perfil=null; }
+    /* v9.26.8 · antes, qualquer tropeço aqui virava "Aguardando liberação" e escondia o motivo de verdade */
+    let erroPerfil=null; try{ NV.perfil=await nvPerfil(); }catch(e){ NV.perfil=null; erroPerfil=e; }
     if(NV.perfil&&NV.perfil.ativo) break;
-    await NV.cli.auth.signOut({scope:'local'}); const f=nvTela(`<h2>Aguardando liberação</h2><p>Seu usuário ainda não foi liberado. Peça ao administrador para liberar o acesso.</p><div class="nv-bts"><button class="btn pri" type="button">Voltar</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
+    const quem=esc((NV.user&&(NV.user.email||NV.user.id))||'');
+    let tit='Aguardando liberação', txt='Seu usuário ainda não foi liberado. Peça ao administrador para liberar o acesso.', det='';
+    if(erroPerfil){ tit='Não consegui confirmar seu acesso';
+      txt='Seu login funcionou, mas o programa não conseguiu ler o seu cadastro agora. Veja a internet e tente de novo; se continuar, mostre esta tela ao administrador.';
+      det='Motivo técnico: '+esc(String((erroPerfil&&(erroPerfil.message||erroPerfil.msg))||erroPerfil)); }
+    else if(!NV.perfil){ tit='Usuário sem cadastro no programa';
+      txt='Sua senha está certa, mas este usuário não tem cadastro no Health Search. Peça ao administrador para criar o seu acesso na aba Usuários.'; det='Entrou como: '+quem; }
+    else { det='Entrou como: '+quem+' · cadastro bloqueado pelo administrador'; }
+    try{ console.warn('[acesso]',tit,det); }catch(e){}
+    await NV.cli.auth.signOut({scope:'local'});
+    const f=nvTela(`<h2>${tit}</h2><p>${txt}</p>${det?`<p class="sub" style="font-size:.82rem;opacity:.8">${det}</p>`:''}<div class="nv-bts"><button class="btn pri" type="button">Tentar de novo</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
   nvFechar(); NV.pacote=true;
   const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||nvExibe(NV.user.email))}</b><small>${NV.perfil.papel==='admin'?'Administrador':NV.perfil.papel==='gestor'?'Gestor':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
   const s=$('#nv-sair'); if(s) s.onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
