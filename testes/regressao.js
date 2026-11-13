@@ -113,5 +113,13 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(k.st==='DESATIVADO','checklist: rastreador desativado não deixou a linha como DESATIVADO ('+k.st+')');
     ok(k.novo,'checklist: cadastrar um agregado não criou a linha dele na planilha');
     ok(k.cpf==='555.666.777-88','registro: CPF do motorista de transferência não vem do cadastro'); }
+  /* 9.21.1: a origem do romaneio sai do motorista cadastrado (troca de motorista da rota sem mexer no código) */
+  { const o=await p.evaluate(()=>{ cadInit();
+      S.cadMot=[{nome:'FELIPE',alias:'',cpf:'',tipo:'transf',base:'VIA MINAS'},
+                {nome:'JULIANO',alias:'',cpf:'',tipo:'transf',base:'DF'},
+                {nome:'REGINALDO',alias:'',cpf:'',tipo:'transf',base:'CAJ'}];
+      const mk=(mot,baseCod,obs)=>{ const r={id:'r'+mot,numero:'1',motorista:mot,baseCod,observacoes:obs||'',rows:[]}; aplicarRegraBase(r); return r.base; };
+      return [mk('FELIPE','001'),mk('JULIANO','001'),mk('REGINALDO','001'),mk('GIOVANNI PEREIRA','001'),mk('ZEZINHO','004')].join(','); });
+    ok(o==='VIA MINAS,DF,CAJ,VIA MINAS,DF','origem pelo motorista cadastrado saiu errada ('+o+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
