@@ -480,6 +480,27 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(cm.antes==='5001','correção: a nota com motivo e sem motorista tem que entrar no bloco novo ('+cm.antes+')');
     ok(cm.semObs==='5003','correção: a nota sem observação continua no bloco de "sem motivo" ('+cm.semObs+')');
     ok(cm.depois==='','correção: depois de anotar o motorista a nota tem que sair da lista ('+cm.depois+')'); }
+  /* 9.27.1: a nota sem base E sem motorista tem que entrar nos dois blocos, e o campo da tela faz a linha sumir */
+  { const c2=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO();
+      const guardaCid=S.cidAtend; S.cidAtend={}; S.geo=S.geo||{listas:[],aprend:{}}; if(!S.geo.listas) S.geo.listas=[];
+      const D=RE.ler(); D.dias=D.dias||{};
+      D.dias[h]=[{nf:'6001',ped:'1',cli:'SEM BASE E SEM MOT',cid:'CIDADE QUE NAO EXISTE',uf:'SP',qtd:1,val:10,obs:'FALTA DE VOLUME'},
+                 {nf:'6002',ped:'2',cli:'COM BASE SEM MOT',cid:'ASSIS',uf:'SP',qtd:1,val:10,base:'AQA',obs:'AVARIA'}];
+      RE.gravar();
+      const o=corItens(); const nosDois=(o.reSemMot||[]).some(x=>x.l.nf==='6001')&&(o.reBase||[]).some(x=>x.l.nf==='6001');
+      try{ NV.perfil={papel:'admin',ativo:true}; }catch(e){} renderCorrecao(); await w(150);
+      const campos=document.querySelectorAll('[data-cor-semmot]').length;
+      const x=document.querySelectorAll('[data-cor-naore]').length;
+      const inp=document.querySelector('[data-cor-semmot]');
+      if(inp){ inp.value='MARCIA'; inp.dispatchEvent(new Event('change',{bubbles:true})); }
+      await w(250);
+      const sobrou=(corItens().reSemMot||[]).length;
+      D.dias[h]=[]; RE.gravar(); S.cidAtend=guardaCid; renderCorrecao();
+      return {nosDois,campos,sobrou,x}; });
+    ok(c2.nosDois,'correção: nota sem base e sem motorista tem que aparecer nos dois blocos');
+    ok(c2.campos===2,'correção: os dois casos sem motorista precisam de campo ('+c2.campos+')');
+    ok(c2.sobrou===1,'correção: ao escrever o motorista a linha tem que sair ('+c2.sobrou+' sobrou de 2)');
+    ok(c2.x===2,'correção: cada linha precisa do X de "não é reentrega" ('+c2.x+')'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();
