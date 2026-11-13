@@ -198,5 +198,16 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(/1 de 31/.test(e2.linha),'divergência: a coluna Vol. deveria mostrar "1 de 31" ('+e2.linha.slice(0,90)+')');
     ok(e2.aberto,'divergência: o Editar não abriu o formulário "Ou preencher à mão"');
     ok(e2.qtd==='1'&&e2.tot==='31'&&e2.botao==='Salvar alterações','divergência: o Editar não trouxe os dados para o formulário ('+JSON.stringify(e2)+')'); }
+  /* 9.23.2: os botões do quadro de motivos funcionam dentro da tela de Reentregas */
+  { const m2=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      S.cadMotivos=['FERADI','FERIADO','LOCAL FECHADO']; irPara('reentregas'); reMotivosRender();
+      document.querySelector('#re-motivos [data-cad-mtv-del="0"]').click(); await w(150); const apagou=S.cadMotivos.join(',');
+      document.querySelector('#re-motivos [data-cad-sobe="1"]').click(); await w(150); const subiu=S.cadMotivos.join(',');
+      const inp=document.querySelector('#re-motivos [data-cad-mtv="0"]'); inp.value='LOCAL FECHADO 2'; inp.dispatchEvent(new Event('change',{bubbles:true})); await w(150);
+      const editou=S.cadMotivos.join(','); const naTela=document.getElementById('re-motivos').innerHTML.includes('LOCAL FECHADO 2');
+      S.cadMotivos=[]; return {apagou,subiu,editou,naTela}; });
+    ok(m2.apagou==='FERIADO,LOCAL FECHADO','motivos: o botão Excluir não apagou ('+m2.apagou+')');
+    ok(m2.subiu==='LOCAL FECHADO,FERIADO','motivos: o botão ▲ não mudou a ordem ('+m2.subiu+')');
+    ok(m2.editou==='LOCAL FECHADO 2,FERIADO'&&m2.naTela,'motivos: editar o texto do motivo não salvou ('+m2.editou+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

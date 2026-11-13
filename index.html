@@ -4196,7 +4196,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.23.1', HS_DATA='13/11/2026';
+const HS_VERSAO='9.23.2', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7159,7 +7159,9 @@ document.addEventListener('submit',e=>{ const f=e.target; const tipoNovo=f.datas
     S.cadMot.push(novo); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); cadMudou(); try{ ckSincronizar(); }catch(er){} toast(v+' cadastrado.'); return; }
   if(f.id==='cad-mot-f'){ if(S.cadMot.some(m=>cadApelidos(m).includes(rpNz(v)))){ toast('Esse nome já está no cadastro.'); return; } S.cadMot.push({nome:v,alias:'',cpf:'',tipo:'agregado',rast:'sim'}); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); }
   else { if(S.cadMotivos.some(m=>rpNz(m)===rpNz(v))){ toast('Esse motivo já existe.'); return; } S.cadMotivos.push(v); } cadMudou(); });
-document.addEventListener('change',e=>{ const t=e.target; if(!t.closest||!t.closest('#t-cadastros')) return;
+/* v9.23.2 · os quadros de cadastro também vivem fora da tela Cadastros (os motivos foram para Reentregas),
+   então os cliques e as edições valem em #t-cadastros e em #re-motivos. */
+document.addEventListener('change',e=>{ const t=e.target; if(!t.closest||!t.closest('#t-cadastros, #re-motivos')) return;
   if(t.dataset.cadMot!=null){ const m=S.cadMot[+t.dataset.cadMot]; if(!m) return; const k=t.dataset.k;
     let v=k==='cpf'?rgCPF(t.value):(k==='rast'||k==='tipo'||k==='base')?t.value:t.value.trim().toUpperCase();
     if(k==='nome'&&!v){ toast('O nome não pode ficar vazio.'); t.value=m.nome; return; } m[k]=v; cadMudou();
@@ -7168,7 +7170,7 @@ document.addEventListener('change',e=>{ const t=e.target; if(!t.closest||!t.clos
   if(t.dataset.cadMtv!=null){ const v=t.value.trim().toUpperCase(); if(!v) return; S.cadMotivos[+t.dataset.cadMtv]=v; cadMudou(); return; }
   if(t.dataset.cadMerge!=null&&t.value!==''){ const de=S.cadMot[+t.dataset.cadMerge], para=S.cadMot[+t.value]; para.alias=[para.alias,de.nome,de.alias].filter(Boolean).join(', '); S.cadMot.splice(+t.dataset.cadMerge,1); cadMudou(); toast(de.nome+' juntado em '+para.nome+'.'); return; }
   if(t.dataset.cadJunta!=null&&t.value!==''){ const m=S.cadMot[+t.value]; m.alias=[m.alias,t.dataset.cadJunta].filter(Boolean).join(', '); cadMudou(); toast(t.dataset.cadJunta+' agora conta como '+m.nome+'.'); } });
-document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.closest('#t-cadastros button[type="button"]'); if(!t) return; const d=t.dataset;
+document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.closest('#t-cadastros button[type="button"], #re-motivos button[type="button"]'); if(!t) return; const d=t.dataset;
   if(d.cadLimpa){ const {mots}=cadUsados(); const usa=n=>[...mots.keys()].some(k=>motCanon(k)===n); const sem=S.cadMot.filter(m=>!usa(m.nome)); if(!sem.length){ toast('Todos têm reentregas.'); return; } if(await confirmar('Excluir sem uso',`Tirar ${sem.length} nome(s) sem nenhuma reentrega do cadastro?`,'Excluir')){ S.cadMot=S.cadMot.filter(m=>usa(m.nome)); cadMudou(); } return; }
   if(d.cadLimpaMtv){ const {mtv}=cadUsados(); const sem=S.cadMotivos.filter(m=>!(mtv.get(rpNz(m))||0)); if(!sem.length){ toast('Todos os motivos têm uso.'); return; } if(await confirmar('Excluir motivos sem uso',`Tirar ${sem.length} motivo(s) que nunca foram usados?`,'Excluir')){ S.cadMotivos=S.cadMotivos.filter(m=>mtv.get(rpNz(m))); cadMudou(); } return; }
   if(d.cadBase!=null){ const m=S.cadMot[+d.cadBase]; if(!m) return; const bs=cadBases(m); const b=d.b;
