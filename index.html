@@ -467,6 +467,23 @@ tr.alvo td{background:var(--tealBg)!important}
 }
 
 @media print{ .rail,.busca,.modos,.dica,.acoes,.soltar,.barra .btn{display:none!important} main{padding:0} }
+/* v9.26.9 · imprimir em PDF: sem barra de rolagem no papel e saindo todas as folhas.
+   A casca do app tem altura de tela (html,body 100% + trilho 100vh) e caixas com rolagem própria;
+   no papel isso cortava tudo na primeira folha. */
+@media print{
+  html,body{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+  .app{display:block!important;min-height:0!important}
+  .rail,.resumo,#nx-sino,#hs-salvar,#eva-bt,.ajuda-q,#op-sem-rom{display:none!important}
+  main{padding:0!important;overflow:visible!important}
+  .tela{max-width:none!important}
+  .rolagem,.xl-tab,.vm-cids,.nx-log,.modal,.rel .rolagem,.rom .corpo .rolagem,.vm-rom .rolagem,.geo-prev .nomes,
+  [class*="rolag"],[style*="overflow:auto"],[style*="overflow: auto"],[style*="overflow-y:auto"]{
+    max-height:none!important;height:auto!important;overflow:visible!important}
+  thead{display:table-header-group} tfoot{display:table-footer-group}
+  tr,.cx,.card,.kpi,canvas,svg,img{break-inside:avoid;page-break-inside:avoid}
+  h1,h2,h3{break-after:avoid;page-break-after:avoid}
+  #re-painel .rp-2col,#re-painel [style*="grid-template-columns"]{grid-template-columns:1fr!important}
+}
 /* ---------- Via Minas ---------- */
 .base.vm{background:#FFE7C2;color:#8A4B00}
 :root[data-tema="escuro"] .base.vm{background:#4A3214;color:#FFC877}
@@ -4197,7 +4214,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.26.8', HS_DATA='13/11/2026';
+const HS_VERSAO='9.26.9', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);

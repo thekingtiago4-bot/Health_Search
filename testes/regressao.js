@@ -430,6 +430,25 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       return {com,sem}; });
     ok(/sem os romaneios de hoje/.test(sr.com),'aviso: aparelho sem romaneios do dia tem que avisar na tela do NexBip');
     ok(!sr.sem,'aviso: com os romaneios carregados o aviso tem que sumir'); }
+  /* 9.26.9: impressão em PDF — sem rolagem no papel e sem parar na folha 1 */
+  { await p.evaluate(()=>{ const sec=document.querySelector('.tela:not([hidden])')||document.body;
+      const d=document.createElement('div'); d.id='teste-impressao';
+      d.innerHTML='<div class="rolagem" style="max-height:200px;overflow:auto">'+Array.from({length:120},(_,i)=>'<p>linha '+(i+1)+'</p>').join('')+'</div>';
+      sec.appendChild(d); });
+    await p.emulateMedia({media:'print'});
+    const imp=await p.evaluate(()=>{ const g=(el,q)=>el?getComputedStyle(el)[q]:'';
+      return { body:g(document.body,'overflowY'), rail:g(document.querySelector('.rail'),'display'),
+        rol:g(document.querySelector('#teste-impressao .rolagem'),'overflowY'),
+        alt:g(document.querySelector('#teste-impressao .rolagem'),'maxHeight'),
+        alturaPagina:document.documentElement.scrollHeight }; });
+    const pdf=await p.pdf({format:'A4'});
+    const folhas=(pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g)||[]).length;
+    await p.emulateMedia({media:'screen'});
+    await p.evaluate(()=>{ const d=document.getElementById('teste-impressao'); if(d) d.remove(); });
+    ok(imp.body==='visible','impressão: o corpo da página não pode ficar com rolagem no papel ('+imp.body+')');
+    ok(imp.rail==='none','impressão: o menu da esquerda não deve sair no papel ('+imp.rail+')');
+    ok(imp.rol==='visible'&&imp.alt==='none','impressão: caixas com rolagem própria têm que abrir inteiras ('+imp.rol+' / '+imp.alt+')');
+    ok(folhas>1,'impressão: o PDF tinha que sair com mais de uma folha ('+folhas+')'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();
