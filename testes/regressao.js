@@ -55,8 +55,9 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       out.bipes1=OP.bipes.length; out.espera=!!OP.espera; out.bts=[...document.querySelectorAll('#op-cam .op-conf .bts button')].map(x=>x.className).join(',');
       await w(2500); out.fantasma=OP.bipes.length; /* etiqueta parada na frente não pode bipar sozinha de novo */
       document.querySelector('#op-cam .op-conf .no').click(); await w(200);
-      out.qtd=[...document.querySelectorAll('#op-cam .op-qt .gr button')].map(x=>x.textContent).join(',');
-      document.querySelector('#op-cam .op-qt .gr button[data-n="1"]').click(); await w(300);
+      out.qtd=[...document.querySelectorAll('#op-cam .op-qt .vol-cx')].map(x=>x.textContent).join(',');
+      document.querySelector('#op-cam .op-qt [data-cx="1"]').click(); await w(80);
+      document.querySelector('#op-cam .op-qt [data-a="ok"]').click(); await w(300);
       const d=S.divergencias[0]||{}; out.dv=d.tipo+'/'+d.qtd;
       { const bb=OP.bipes.find(x=>x.ped==='724486')||{}; out.conf={conferido_por:bb.conferido_por||'',conferido_qt:bb.conferido_qt}; } out.esperaFim=!!OP.espera; out.vols=OP.bipes.filter(x=>x.ped==='724486').length;
       /* 9.20.1: nota de um volume só não abre a tela de conferência (o parar é o sinal de "tem mais de uma caixa") */
@@ -70,7 +71,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(c.espera===true,'conferência do bipe: a câmera não travou esperando a resposta');
     ok(c.bts==='no,sim','conferência do bipe: botões ✗ e ✓ não apareceram ('+c.bts+')');
     ok(c.fantasma===1,'bipe fantasma: a etiqueta parada na frente foi bipada de novo ('+c.fantasma+' bipes)');
-    ok(c.qtd==='0,1,2,3','conferência do bipe: faltou a escolha de quantos volumes chegaram ('+c.qtd+')');
+    ok(c.qtd==='1/3,2/3,3/3','conferência do bipe: faltou a grade de caixas ('+c.qtd+')');
     ok(c.dv==='Falta de volume/2','conferência do bipe: divergência errada ('+c.dv+')');
     ok(c.conf&&c.conf.conferido_por&&c.conf.conferido_qt===1,'conferência do bipe: não gravou quem respondeu / quantos volumes contou ('+JSON.stringify(c.conf)+')');
     ok(c.vols===1,'conferência do bipe: chegou 1 de 3 e o app marcou '+c.vols+' volume(s) conferido(s)');
@@ -258,5 +259,24 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(e4.cid==='PRESIDENTE PRUDENTE'&&e4.vol==='1/1','etiqueta de caixa: cidade ou volume errado ('+e4.cid+' '+e4.vol+')');
     ok(e4.modelo==='Caixa Health Log','etiqueta de caixa: não reconheceu o modelo ('+e4.modelo+')');
     ok(e4.semCep,'etiqueta de caixa: o CEP não pode entrar como número de nota'); }
+  /* 9.26.0: grade de caixas (1/6, 2/6…) na divergência, e o ＋ Adicionar do Checklist */
+  { const g=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'a',numero:'0019486',arquivo:a,rows:[{nf:'731084',ped:'724486',vol:'6',dest:'DROGARIA TESTE',cid:'FRANCA',uf:'SP'}]}];
+      S.divergencias=[]; renderTudo(); irPara('divergencias'); dvBipar('724486'); await w(400);
+      const chips=[...document.querySelectorAll('.fundo [data-dcx]')].map(x=>x.textContent).join(',');
+      document.querySelector('.fundo [data-dcx="2"]').click(); document.querySelector('.fundo [data-dcx="6"]').click(); await w(120);
+      document.querySelector('.fundo .modal [data-r="1"]').click(); await w(400);
+      const d=S.divergencias[0]||{}; const lista=document.querySelector('#dv-lista').innerText.replace(/\s+/g,' ');
+      S.divergencias=[]; return {chips,qtd:d.qtd,falt:(d.falt||[]).join(','),obs:d.obs,lista}; });
+    ok(g.chips==='1/6,2/6,3/6,4/6,5/6,6/6','divergência: a grade de caixas não apareceu ('+g.chips+')');
+    ok(g.qtd===2&&g.falt==='2,6','divergência: marcar 2/6 e 6/6 deveria dar 2 volumes faltando ('+g.qtd+' / '+g.falt+')');
+    ok(/faltaram as caixas 2\/6 e 6\/6/.test(g.obs||''),'divergência: a observação deveria dizer quais caixas faltaram ('+g.obs+')');
+    ok(/caixas 2\/6 e 6\/6/.test(g.lista),'divergência: a lista deveria mostrar quais caixas faltaram'); }
+  { const ad=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      S.ckApagados=[]; S.checklist=[{id:'k1',mot:'ANDRE',placa:'RTR-2J84',data:hojeISO(),ativo:true}]; irPara('checklist'); ckRender();
+      const antes=ckTudo().length, linhasAntes=document.querySelectorAll('#ck-tbody tr').length;
+      document.getElementById('ck-add').click(); await w(250);
+      const r={d:ckTudo().length-antes,dl:document.querySelectorAll('#ck-tbody tr').length-linhasAntes,vazia:ckTudo().some(x=>!x.mot)}; S.checklist=[]; return r; });
+    ok(ad.d===1&&ad.dl===1&&ad.vazia,'checklist: o ＋ Adicionar não criou a linha nova ('+JSON.stringify(ad)+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

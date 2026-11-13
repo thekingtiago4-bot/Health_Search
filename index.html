@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.25.1', HS_DATA='13/11/2026';
+const HS_VERSAO='9.26.0', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4944,6 +4944,21 @@ function opVolFaixa(k,t){ try{ const tb=document.querySelector('#op-cam .vtot');
     tb.hidden=false; tb.style.background=k>=t?'var(--ok)':'#C2255C';
     tb.innerHTML=`<span>VOLUMES</span><b>${fmtN(k)} / ${fmtN(t)}</b><small>${k>=t?'pedido completo ✓':'faltam '+fmtN(t-k)}</small>`;
     try{ const m=document.querySelector('#op-cam .msg'); if(m){ const pos=()=>{ tb.style.bottom='auto'; tb.style.top=(m.offsetTop+m.offsetHeight+8)+'px'; }; pos(); requestAnimationFrame(pos); } }catch(e){} }catch(e){} }
+/* v9.26.0 · grade de caixas: em vez de só dizer quantos volumes faltam, o conferente marca QUAIS
+   caixas chegaram (1/6, 2/6, …). O que sobra é o que faltou, e isso vai escrito na divergência
+   ("faltaram as caixas 2/6 e 6/6"), que é o que ele repassa para a equipe. */
+const VOL_GRADE_MAX=30;
+function volGradeHtml(tot,sel,attr,so){ const S0=new Set(sel||[]); const lista=so&&so.length?so:Array.from({length:tot},(_,i)=>i+1);
+  return `<div class="vol-grade">${lista.map(i=>`<button type="button" class="vol-cx${S0.has(i)?' on':''}" data-${attr}="${i}">${i}/${tot}</button>`).join('')}</div>`; }
+function volLista(a,tot){ a=(a||[]).slice().sort((x,y)=>x-y); if(!a.length) return '';
+  const t=a.map(i=>i+'/'+tot); return t.length===1?t[0]:t.slice(0,-1).join(', ')+' e '+t[t.length-1]; }
+(function(){ const st=document.createElement('style'); st.textContent=`
+.vol-grade{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin:4px 0 2px}
+.vol-cx{min-width:62px;border:2px solid var(--linha);background:var(--sup);color:inherit;border-radius:12px;padding:10px 8px;font-family:inherit;font-size:1rem;font-weight:800;cursor:pointer}
+.vol-cx.on{background:var(--ok);border-color:var(--ok);color:#fff}
+#op-cam .vol-cx{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.1);color:#fff}
+#op-cam .vol-cx.on{background:#16a34a;border-color:#16a34a;color:#fff}
+`; document.head.appendChild(st); })();
 function opConfLimpar(){ const cam=document.querySelector('#op-cam'); if(cam) cam.querySelectorAll('.op-conf,.op-qt,.op-toque').forEach(e=>e.remove()); }
 /* libera a câmera: a etiqueta que acabou de ser lida não vale como bipe novo enquanto estiver na frente */
 function opConfFechar(){ opConfLimpar(); OP.espera=false; OP.confB=null;
@@ -5026,18 +5041,25 @@ function opConfMarcar(b,resp,qt){ try{ const a=OP.bipes.find(x=>x.local_id===b.l
   opLocalGravar(); opEnviar(a); }catch(e){} }
 /* ✗: quantos volumes chegaram (0 = não veio nenhuma caixa) */
 function opConfQuantos(b,tot){ const cam=document.querySelector('#op-cam'); if(!cam) return; opConfLimpar();
-  const d=document.createElement('div'); d.className='op-qt';
-  const grade=tot<=12?`<div class="gr">${Array.from({length:tot+1},(_,i)=>`<button type="button" data-n="${i}" class="${i===tot?'tudo':''}">${i}</button>`).join('')}</div>`:'';
-  d.innerHTML=`<h4>Quantos volumes chegaram?<br><span style="font-weight:600;opacity:.85;font-size:.86rem">Pedido ${esc(b.ped||b.nf||'')} · a nota tem ${tot} · 0 = não veio nenhuma caixa</span></h4>${grade}
-    <input id="op-qt-n" type="number" min="0" max="${tot}" inputmode="numeric" placeholder="quantidade que chegou"${tot<=12?' hidden':''}>
-    <input id="op-qt-o" placeholder="observação (opcional) — ex.: faltaram 2 caixas">
-    <div class="pe"><button type="button" data-a="x" style="background:#f1f3f5;color:#111">Voltar</button><button type="button" data-a="ok" style="background:#C2255C;color:#fff">Registrar divergência</button></div>`;
+  const d=document.createElement('div'); d.className='op-qt'; const sel=new Set();
+  const grade=tot<=VOL_GRADE_MAX;
+  d.innerHTML=`<h4>${grade?'Quais caixas chegaram?':'Quantos volumes chegaram?'}<br><span style="font-weight:600;opacity:.85;font-size:.86rem">Pedido ${esc(b.ped||b.nf||'')} · a nota tem ${tot} · marque o que está na sua mão</span></h4>
+    ${grade?volGradeHtml(tot,[],'cx'):''}
+    <input id="op-qt-n" type="number" min="0" max="${tot}" inputmode="numeric" placeholder="quantidade que chegou"${grade?' hidden':''}>
+    <input id="op-qt-o" placeholder="observação (opcional)">
+    <div class="pe"><button type="button" data-a="x" style="background:#f1f3f5;color:#111">Voltar</button><button type="button" data-a="ok" style="background:#C2255C;color:#fff">Confirmar<span id="op-qt-c"></span></button></div>`;
   cam.appendChild(d);
+  const resumo=()=>{ const c=d.querySelector('#op-qt-c'); if(!c) return;
+    const falt=[...Array(tot).keys()].map(i=>i+1).filter(i=>!sel.has(i));
+    c.textContent=grade?` · chegaram ${sel.size} de ${tot}`:''; 
+    const h=d.querySelector('h4 span'); if(h&&grade) h.innerHTML=`Pedido ${esc(b.ped||b.nf||'')} · a nota tem ${tot} · ${falt.length?'faltam '+esc(volLista(falt,tot)):'<b>nenhuma faltando</b>'}`; };
+  resumo();
   const obs=()=>(d.querySelector('#op-qt-o').value||'').trim();
-  d.addEventListener('click',e=>{ const n=e.target.closest('[data-n]'), a=e.target.closest('[data-a]');
-    if(n){ e.stopPropagation(); opConfFalta(b,tot,+n.dataset.n,obs()); return; }
+  d.addEventListener('click',e=>{ const cx=e.target.closest('[data-cx]'), a=e.target.closest('[data-a]');
+    if(cx){ e.stopPropagation(); const i=+cx.dataset.cx; if(sel.has(i)) sel.delete(i); else sel.add(i); cx.classList.toggle('on',sel.has(i)); resumo(); return; }
     if(!a) return; e.stopPropagation();
     if(a.dataset.a==='x'){ opConfPedir({_b:b}); return; }
+    if(grade){ const falt=[...Array(tot).keys()].map(i=>i+1).filter(i=>!sel.has(i)); opConfFalta(b,tot,sel.size,obs(),falt); return; }
     const v=d.querySelector('#op-qt-n').value; if(v===''){ toast('Diga quantos volumes chegaram.'); return; }
     opConfFalta(b,tot,Math.max(0,Math.min(tot,+v||0)),obs()); }); }
 /* conferência por volume ligada: completa as caixas contadas fisicamente, sem bipar uma por uma */
@@ -5049,25 +5071,28 @@ function opConfCompletar(b,tot,chegou){ try{ if(!opPorVol()) return 0; const n=M
     c.criado_em=new Date().toISOString(); c.chave='C'+(b.ped||b.nf)+'#'+v; OP.bipes.unshift(c); opEnviar(c); add++; }
   if(add){ opLocalGravar(); opRender(); } return add; }catch(e){ console.error('conf vol',e); return 0; } }
 /* abre (ou atualiza) a divergência de Falta de volume com a quantidade que faltou */
-function opConfFalta(b,tot,chegou,obs){ const falta=Math.max(0,Math.max(1,+tot||1)-Math.max(0,+chegou||0));
+function opConfFalta(b,tot,chegou,obs,faltaram){ const falta=Math.max(0,Math.max(1,+tot||1)-Math.max(0,+chegou||0));
   opConfCompletar(b,tot,chegou);
   if(!falta){ opConfMarcar(b,'ok',chegou); opVolFaixa(tot,tot); try{ opSom('ok'); }catch(e){} toast('✔ Tudo certo: nenhuma divergência.'); opConfFechar(); return; }
   opConfMarcar(b,'falta',chegou); opVolFaixa(chegou,tot);
   const L=dvS(), eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
-  const texto=obs||`chegaram ${chegou} de ${tot} volume(s) — faltaram ${falta}`;
+  const quais=(faltaram&&faltaram.length)?volLista(faltaram,tot):'';
+  const texto=obs||(quais?`faltaram as caixas ${quais}`:`chegaram ${chegou} de ${tot} volume(s) — faltaram ${falta}`);
   let d=dvAcha(b.ped,b.nf);
-  if(d){ Object.assign(d,{tipo:'Falta de volume',qtd:falta,obs:texto}); (d.hist=d.hist||[]).push({em:ag,por:eu,t:`Atualizada na conferência do bipe (chegaram ${chegou} de ${tot})`}); }
+  if(d){ Object.assign(d,{tipo:'Falta de volume',qtd:falta,obs:texto,tot}); if(faltaram&&faltaram.length) d.falt=faltaram.slice();
+    (d.hist=d.hist||[]).push({em:ag,por:eu,t:`Atualizada na conferência do bipe (chegaram ${chegou} de ${tot}${quais?'; faltaram '+quais:''})`}); }
   else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1;
     d={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped:b.ped,nf:b.nf,tipo:'Falta de volume',qtd:falta,
+       tot,falt:(faltaram&&faltaram.length)?faltaram.slice():null,
        cli:String(b.dest||'').toUpperCase(),rem:'',obs:texto,st:'aberta',por:eu,em:ag,rom:b.romaneio||'',
-       hist:[{em:ag,por:eu,t:`Aberta na conferência do bipe (chegaram ${chegou} de ${tot})`}]}; L.push(d); }
+       hist:[{em:ag,por:eu,t:`Aberta na conferência do bipe (chegaram ${chegou} de ${tot}${quais?'; faltaram '+quais:''})`}]}; L.push(d); }
   salvar(); try{ dvRender(); }catch(e){}
   const m=document.querySelector('#op-cam .msg');
-  if(m){ m.style.background='#C2255C'; m.innerHTML=`<b>⚠ Divergência ${dvNum(d)} · faltaram ${falta} volume(s)</b>${esc(texto)} · pedido ${esc(b.ped||b.nf||'')}`; }
+  if(m){ m.style.background='#C2255C'; m.innerHTML=`<b>⚠ Divergência ${dvNum(d)} · ${quais?'faltaram as caixas '+esc(quais):'faltaram '+falta+' volume(s)'}</b>${esc(texto)} · pedido ${esc(b.ped||b.nf||'')}`; }
   try{ opSom('fora'); }catch(e){}
   /* vibração própria da falta de volume: três toques curtos e um longo */
   try{ if(navigator.vibrate) navigator.vibrate([90,50,90,50,90,50,320]); }catch(e){}
-  toast(`⚠ Divergência ${dvNum(d)} aberta: faltaram ${falta} volume(s) do pedido ${b.ped||b.nf||''}.`);
+  toast(`⚠ Divergência ${dvNum(d)}: ${quais?'faltaram as caixas '+quais:'faltaram '+falta+' volume(s)'} do pedido ${b.ped||b.nf||''}.`);
   opConfFechar(); }
 
 /* ---------- guardar: aparelho + banco online ---------- */
@@ -5530,8 +5555,8 @@ function dvBadge(){ const q=$('#qt-dv'); if(!q) return; const n=dvS().filter(d=>
       if(dvCidade.mudou){ dvCidade.mudou=false; try{ salvar(); }catch(e){} } return r; }; }
   $('#dv-filtro').oninput=dvRenderLista;
   $('#dv-cards').onclick=e=>{ const b=e.target.closest('[data-f]'); if(!b) return; DV.filtro=b.dataset.f; dvRender(); };
-  $('#dv-csv').onclick=()=>{ const linhas=[['Nº','Aberta em','Situação','Tipo','Pedido','NF','Volumes','Volumes da nota','Cliente','Cidade','Remetente','Observação','Aberta por','Apareceu em','Romaneio','Resolvida em','Solução']];
-    for(const d of dvS()) linhas.push([dvNum(d),fmtData(d.d),DV_ST[d.st].t,d.tipo,d.ped,d.nf,d.qtd||'',d.tot||'',d.cli,dvCidade(d),d.rem,d.obs,d.por,d.apareceu?fmtData(d.apareceu.d):'',d.apareceu?d.apareceu.rom:'',d.res?fmtData(d.res.d):'',d.res?d.res.obs:'']);
+  $('#dv-csv').onclick=()=>{ const linhas=[['Nº','Aberta em','Situação','Tipo','Pedido','NF','Volumes','Volumes da nota','Caixas que faltaram','Cliente','Cidade','Remetente','Observação','Aberta por','Apareceu em','Romaneio','Resolvida em','Solução']];
+    for(const d of dvS()) linhas.push([dvNum(d),fmtData(d.d),DV_ST[d.st].t,d.tipo,d.ped,d.nf,d.qtd||'',d.tot||'',(d.falt&&d.falt.length&&d.tot)?volLista(d.falt,d.tot):'',d.cli,dvCidade(d),d.rem,d.obs,d.por,d.apareceu?fmtData(d.apareceu.d):'',d.apareceu?d.apareceu.rom:'',d.res?fmtData(d.res.d):'',d.res?d.res.obs:'']);
     const csv='﻿'+linhas.map(l=>l.map(v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(';')).join('\r\n'); baixar(new Blob([csv],{type:'text/csv;charset=utf-8'}),`Divergencias_${hojeISO()}.csv`); };
   $('#dv-lista').onclick=async e=>{ const b=e.target.closest('[data-dv]'); if(!b) return; const d=dvS().find(x=>x.id===b.dataset.id); if(!d) return; const eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
     const a=b.dataset.dv;
@@ -5568,7 +5593,7 @@ function dvRender(){ if(!$('#dv-cards')) return; const L=dvSo(), F=window.DVF||{
 function dvRenderLista(){ const el=$('#dv-lista'); if(!el) return; const F=window.DVF||{filtro:'abertas'}; const q=N($('#dv-filtro').value||'');
   const L=dvSo().filter(d=>F.filtro==='todas'||(F.filtro==='abertas'?d.st!=='resolvida':d.st===F.filtro)).filter(d=>!q||N([d.ped,d.nf,d.cli,d.rem,d.tipo,d.obs,dvNum(d)].join(' ')).includes(q)).sort((a,b)=>(b.st==='apareceu')-(a.st==='apareceu')||(b.n||0)-(a.n||0));
   $('#dv-tit').textContent={abertas:'Divergências abertas',apareceu:'Apareceram no romaneio',resolvida:'Resolvidas',todas:'Todas as divergências'}[F.filtro];
-  el.innerHTML=L.length?`<table class="op-tab"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Vol.</th><th class="m-oc">Cliente</th><th>Observação</th><th></th></tr></thead><tbody>${L.map(d=>`<tr><td><b>${dvNum(d)}</b><div class="dv-hist">${fmtData(d.d)}${d.por?' · '+esc(d.por):''}</div></td><td class="dv-st" style="color:${DV_ST[d.st].c}">${DV_ST[d.st].t}${d.apareceu?`<div class="dv-hist">rom. ${esc(d.apareceu.rom)} em ${fmtData(d.apareceu.d)}</div>`:''}${d.res?`<div class="dv-hist">${fmtData(d.res.d)} · ${esc(d.res.obs||'')}</div>`:''}</td><td>${esc(d.tipo)}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${d.qtd||''}${d.tot?`<span class="sub" style="margin:0"> de ${d.tot}</span>`:''}${(d.tot&&+d.qtd>+d.tot)?`<div class="dv-hist" style="color:var(--no)">⚠ falta mais que o total da nota</div>`:''}</td><td class="m-oc">${esc(d.cli||'')}${dvCidade(d)?`<div class="dv-hist" style="color:var(--acento)">📍 ${esc(dvCidade(d))}</div>`:''}${d.rem?`<div class="dv-hist">${esc(d.rem)}</div>`:''}</td><td>${esc(d.obs||'')}</td>
+  el.innerHTML=L.length?`<table class="op-tab"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Vol.</th><th class="m-oc">Cliente</th><th>Observação</th><th></th></tr></thead><tbody>${L.map(d=>`<tr><td><b>${dvNum(d)}</b><div class="dv-hist">${fmtData(d.d)}${d.por?' · '+esc(d.por):''}</div></td><td class="dv-st" style="color:${DV_ST[d.st].c}">${DV_ST[d.st].t}${d.apareceu?`<div class="dv-hist">rom. ${esc(d.apareceu.rom)} em ${fmtData(d.apareceu.d)}</div>`:''}${d.res?`<div class="dv-hist">${fmtData(d.res.d)} · ${esc(d.res.obs||'')}</div>`:''}</td><td>${esc(d.tipo)}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${d.qtd||''}${d.tot?`<span class="sub" style="margin:0"> de ${d.tot}</span>`:''}${(d.falt&&d.falt.length&&d.tot)?`<div class="dv-hist" style="color:var(--no)">caixas ${esc(volLista(d.falt,d.tot))}</div>`:''}${(d.tot&&+d.qtd>+d.tot)?`<div class="dv-hist" style="color:var(--no)">⚠ falta mais que o total da nota</div>`:''}</td><td class="m-oc">${esc(d.cli||'')}${dvCidade(d)?`<div class="dv-hist" style="color:var(--acento)">📍 ${esc(dvCidade(d))}</div>`:''}${d.rem?`<div class="dv-hist">${esc(d.rem)}</div>`:''}</td><td>${esc(d.obs||'')}</td>
     <td><div class="dv-acoes">${d.st!=='resolvida'?`<button class="btn mini pri" type="button" data-dv="resolver" data-id="${d.id}">Resolver</button>`:`<button class="btn mini" type="button" data-dv="reabrir" data-id="${d.id}">Reabrir</button>`}<button class="btn mini" type="button" data-dv="editar" data-id="${d.id}">Editar</button>${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar" data-dv="apagar" data-id="${d.id}">✕</button>`:''}</div></td></tr>`).join('')}</tbody></table>`:'<div class="vazio-lista">Nenhuma divergência aqui.</div>'; }
 
 
@@ -5591,24 +5616,32 @@ function dvJanelaFalta(l){ return new Promise(res=>{ const ja=dvAcha(l.ped,l.nf)
   const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:440px">
     <h2>${ja?'Atualizar divergência '+esc(dvNum(ja)):'Registrar divergência'}</h2>
     <p style="margin:0 0 10px"><b>Pedido ${esc(l.ped||'—')} · NF ${esc(l.nf||'—')}</b><br>${esc(row.dest||'')}${row.cid?' · '+esc(row.cid):''}${vol?` · nota com <b>${vol}</b> vol.`:''}${l.rom?' · romaneio '+esc(l.rom.numero||''):''}${l.doBanco?'<br><span class="sub" style="margin:0">Achei esta nota no Banco de romaneios ('+esc(fmtData(l.doBanco))+').</span>':''}${!l.row?'<br><span style="color:var(--no)">Não está nos romaneios carregados nem no Banco de romaneios — preencha o que souber.</span>':''}</p>
+    ${(vol&&vol>1&&vol<=VOL_GRADE_MAX)?`<div style="font-weight:600;margin-bottom:4px">Quais caixas <u>faltaram</u>? <span class="sub" style="margin:0;font-weight:400">a nota tem ${vol} — marque as que não chegaram</span></div>${volGradeHtml(vol,(ja&&ja.falt)||[],'dcx')}<p class="sub" id="dvj-r" style="margin:2px 0 8px"></p>`:''}
     <label style="display:flex;flex-direction:column;gap:4px;font-weight:600">Quantos volumes faltam?${vol?` <span class="sub" style="margin:0;font-weight:400">a nota tem ${vol} volume(s)</span>`:''}<input type="number" min="1" ${vol?`max="${vol}"`:''} inputmode="numeric" id="dvj-q" value="${ja&&ja.qtd?ja.qtd:''}" style="font-size:1.6rem;padding:10px;border:2px solid #C2255C;border-radius:10px;background:var(--sup);color:inherit"></label>
     <label style="display:flex;flex-direction:column;gap:4px;font-weight:600;margin-top:10px">Tipo<select id="dvj-t" style="padding:8px;border:1.5px solid var(--linha);border-radius:8px;background:var(--sup);color:inherit">${DV_TIPOS.map(t=>`<option ${(ja?ja.tipo:'Falta de volume')===t?'selected':''}>${t}</option>`).join('')}</select></label>
     <label style="display:flex;flex-direction:column;gap:4px;font-weight:600;margin-top:10px">Observação (opcional)<input id="dvj-o" value="${esc(ja&&ja.obs||'')}" style="padding:8px;border:1.5px solid var(--linha);border-radius:8px;background:var(--sup);color:inherit"></label>
     <div class="botoes"><button class="btn" data-r="0" type="button">Cancelar</button><button class="btn pri" data-r="1" type="button">Salvar</button></div></div>`;
   document.body.appendChild(f); const q=f.querySelector('#dvj-q'); setTimeout(()=>q.focus(),30);
-  const fim=ok=>{ const v={qtd:+q.value||null,tipo:f.querySelector('#dvj-t').value,obs:f.querySelector('#dvj-o').value.trim()}; f.remove(); res(ok?v:null); };
-  f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(b) fim(b.dataset.r==='1'); };
+  /* v9.26.0: marcando as caixas que faltaram, a quantidade e a observação saem sozinhas */
+  const sel=new Set(((ja&&ja.falt)||[])); const resumo=()=>{ const el=f.querySelector('#dvj-r'); if(!el) return;
+    el.innerHTML=sel.size?`Faltaram <b>${esc(volLista([...sel],vol))}</b>`:'Nenhuma caixa marcada.'; q.value=sel.size||q.value; };
+  resumo();
+  const fim=ok=>{ const v={qtd:+q.value||null,tipo:f.querySelector('#dvj-t').value,obs:f.querySelector('#dvj-o').value.trim(),falt:[...sel].sort((a,b)=>a-b)};
+    if(v.falt.length){ v.qtd=v.falt.length; if(!v.obs) v.obs='faltaram as caixas '+volLista(v.falt,vol); }
+    f.remove(); res(ok?v:null); };
+  f.onclick=e=>{ const cx=e.target.closest('[data-dcx]'); if(cx){ const i=+cx.dataset.dcx; if(sel.has(i)) sel.delete(i); else sel.add(i); cx.classList.toggle('on',sel.has(i)); resumo(); return; }
+    const b=e.target.closest('[data-r]'); if(b) fim(b.dataset.r==='1'); };
   f.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); fim(true); } if(e.key==='Escape') fim(false); }); }); }
 async function dvBipar(textos){ const l=dvLeitura(textos); if(!l||(!l.ped&&!l.nf)){ toast('Não reconheci o código.'); return; } opSom('info');
   const v=await dvJanelaFalta(l); if(!v) return; if(v.tipo==='Falta de volume'&&!v.qtd){ toast('Informe quantos volumes faltam.'); return dvBipar(textos); }
   const L=dvS(), eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString(), row=l.row||{}; let d=dvAcha(l.ped,l.nf);
   const obs=v.obs||(v.tipo==='Falta de volume'&&v.qtd?`faltavam ${v.qtd} volume(s)${volNum(row.vol)?' de '+volNum(row.vol):''}`:'');
   const totNota=volNum(row.vol)||l.tot||null; /* v9.23.1: guarda quantos volumes a nota tem */
-  if(d){ Object.assign(d,{tipo:v.tipo,qtd:v.qtd,obs}); if(totNota&&!d.tot) d.tot=totNota;
+  if(d){ Object.assign(d,{tipo:v.tipo,qtd:v.qtd,obs}); if(v.falt&&v.falt.length) d.falt=v.falt.slice(); if(totNota&&!d.tot) d.tot=totNota;
     if(!d.cli&&row.dest) d.cli=String(row.dest).toUpperCase(); if(!d.cid&&row.cid) d.cid=String(row.cid).toUpperCase(); if(!d.uf&&row.uf) d.uf=String(row.uf).toUpperCase();
     if(!d.ped&&l.ped) d.ped=l.ped; if(!d.nf&&l.nf) d.nf=l.nf;
     (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Atualizada pelo bipe'}); }
-  else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped:l.ped,nf:l.nf,tipo:v.tipo,qtd:v.qtd,tot:totNota,cli:String(row.dest||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),uf:String(row.uf||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pelo bipe'}]}; L.push(d); }
+  else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped:l.ped,nf:l.nf,tipo:v.tipo,qtd:v.qtd,tot:totNota,falt:(v.falt&&v.falt.length)?v.falt.slice():null,cli:String(row.dest||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),uf:String(row.uf||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pelo bipe'}]}; L.push(d); }
   salvar(); dvRender(); toast(`✔ Divergência ${dvNum(d)} salva: ${v.tipo}${v.qtd?' · '+v.qtd+' vol.':''}.`); setTimeout(()=>{ const c=$('#dv-bip'); if(c&&!TOQUE) c.focus(); },50); }
 (function(){ const c=$('#dv-bip'); if(!c) return; c.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=c.value.trim(); c.value=''; if(v) dvBipar(v); } });
   $('#dv-bt-cam').onclick=()=>{ OP.destino=dvBipar; opCamAbrir().then(()=>{ const m=document.querySelector('#op-cam .msg'); if(m) m.innerHTML='<b>Divergência</b>Aponte para a etiqueta ou a nota. Depois informe quantos volumes faltam.'; }); }; })();
@@ -6537,6 +6570,7 @@ const MAN=[
    ['📷 Registro (Recebimento/Expedição de carretas)','No menu, dentro de Operacional. Toque em “📷 Recebimento” (horário de Chegada) ou “📷 Expedição” (horário de Saída): a câmera abre; se a foto ficou boa toque em “Próximo”, senão “Tirar outra”. Preencha rota (ex.: CAJ X AQA), motorista, CPF, placa do cavalo e do baú, romaneio(s), paletes, rastreado e observação (fica “N/A” se deixar em branco) — o horário vem da hora da foto (dá para ajustar). Ao digitar o motorista, CPF e placas vêm sozinhos (se já usado antes) e o Romaneio(s) é puxado automaticamente pelos romaneios do dia com esse motorista — pode ajustar à mão. Ao salvar, o celular abre o compartilhamento: escolha a conversa do WhatsApp e envie (foto + legenda prontas; a legenda também fica copiada). Cada registro é um evento só (sem “entrada e saída” do mesmo caminhão). Avaria e Diversos virão em breve. As fotos não ficam guardadas no app (vão no WhatsApp); os dados dos registros ficam 90 dias.'],
    ['👥 Cadastro Agregado (em Cadastros)','Na tela Cadastros, o quadro “🚚 Cadastro Agregado” tem duas colunas. **Motoristas agregados**: os da distribuição, que fazem a entrega e trazem as reentregas — nome, CPF e **rastreador (Sim · Não · Desativado)**. **Motoristas transferência**: os que chegam com as transferências — nome e CPF. O rastreador manda na planilha do Checklist: **Sim** entra na planilha normalmente; **Não** deixa o motorista fora dela; **Desativado** mantém ele na planilha com Realização e Vencimento em N/A e status DESATIVADO, para você saber de quem pedir para religar o rastreador. Cadastrar um agregado já cria a linha dele no Checklist (a placa e a data você preenche lá). O CPF cadastrado preenche sozinho no Registro de carretas, e os motoristas de transferência aparecem primeiro na sugestão de motorista do Registro. Nos de transferência há também a **origem**: diga de qual base o motorista vem (CAJ, DF, MESA, Via Minas…) e **todo romaneio que chegar com o nome dele já entra com essa origem**. É o que antes estava fixo no código (“Giovanni = Via Minas”, “Integração = MESA”): se a rota trocar de motorista, basta mudar aqui — cadastre o Felipe como Via Minas e pronto. A ordem é: o que estiver escrito no romaneio (“VIA MINAS”) manda primeiro, depois a origem do motorista cadastrado, e por último as regras antigas (001 = CAJ, 004 = DF). Dá para marcar **mais de uma origem** no mesmo motorista (quem roda CAJ e DF, por exemplo): nesse caso o código do próprio romaneio desempata. E, na aba Romaneios, aparece um aviso amarelo listando os motoristas dos romaneios carregados que ainda não estão no cadastro, com um botão que já cadastra cada um como transferência, com a origem que o romaneio tem hoje — é só conferir o CPF depois.'],
    ['📝 Motivos da nota acrescentada depois','Na tela **Romaneios**, embaixo da lista, há o quadro “Motivos da nota acrescentada depois”. São as opções que aparecem na pergunta “Por que essas notas entraram depois?” quando você acrescenta nota num romaneio. Dá para cadastrar motivo novo, mudar o texto de um, subir na ordem (▲), excluir e voltar aos motivos de fábrica. A lista vale para toda a equipe. Os motivos da **reentrega** são outros e ficam na tela de Reentregas.'],
+   ['Quais caixas faltaram','Quando a nota tem mais de um volume, na hora de registrar a falta aparece a **grade das caixas** — 1/6, 2/6, 3/6… No bipe você marca **as que chegaram**; na aba Divergências você marca **as que faltaram**. O app conta sozinho quantos volumes faltam e escreve na divergência “faltaram as caixas 2/6 e 6/6”, que é o que você repassa para a equipe. Isso aparece na lista e sai no Excel, numa coluna própria.'],
    ['📋 Checklist Agregados','Em Planejamento. Lista motoristas/agregados com placa e data de realização do checklist; o vencimento é sempre 30 dias depois. A linha fica amarela faltando 4 dias, laranja no último dia (ou no dia do vencimento) e vermelha quando vence. Só o administrador edita motorista, placa, data e o rastreador; “🗑” apaga a linha. A coluna **Rastreador** (Sim · Não · Desativado) é a mesma do Cadastro Agregado: mudar aqui muda lá, e vice-versa. Os botões “📲 Enviar no WhatsApp” e “⬇️ Baixar a de hoje” perguntam antes **o que você quer mandar**: ativos e desativados, somente ativos ou somente desativados. A planilha sai em formato de relatório — cabeçalho, resumo com quantos estão válidos, vencendo, vencidos e desativados, faixa de cor por linha e legenda no rodapé — junto com um texto pronto avisando quem está perto de vencer ou já vencido. A coluna Vencimento mostra a data em negrito e, ao lado, quantos dias faltam, “(hoje!)” ou há quantos dias venceu. O administrador arrasta a alça “⠿” no começo da linha para colocar os motoristas na ordem que quiser, e essa ordem fica salva para todo mundo. O botão “＋ Adicionar” cria a linha no topo já com a data de hoje e o cursor no campo do motorista; motorista e placa sugerem o que já existe na lista. O botão “⬇️ Baixar a de hoje” salva a tabela como imagem JPEG no aparelho e já deixa a legenda copiada, para enviar por qualquer aplicativo quando não houver WhatsApp instalado.'],
    [' BIT — a assistente','O BIT é a corujinha no canto inferior direito, acima do 💾 Salvar. Toque nele e escreva o que precisa: “procura 442872”, “cliente unimed”, “quem atende Itanhandu MG”, “reentregas de hoje”, “bipados hoje”, “divergências”, “o que você aprendeu”, “quais regiões”, “cidades da região Minas Gerais”, “como faço backup físico?” (ele responde pelo Manual), “onde fica Ribeirão Preto?” (responde região e base e abre a cidade na Geolocalização), “notas de Ribeirão Preto origem Cajamar”, “notas da região Minas Gerais”, “notas do cliente Unimed”, “notas de Franca de ontem” ou “de 05/11” (usa o Banco de romaneios), e continua a conversa com “e de Franca?”, “e da MESA?”; “nota 442872” (tudo sobre a nota: romaneio, bipe, reentrega, divergência, XML); “feriado em Franca”, “feriados amanhã”; “reentregas de ontem” (com motivos); “divergências abertas”; “qual placa vai para Franca”; “caminhões na base”; “resumo do dia” ou “ajuda”. Instruções com “sempre…” ele guarda (veja com “minhas instruções”). Ele usa o 🧠 Cérebro: quando não tem certeza numa etiqueta (um QR Code de formato novo, ou um cliente que bate com mais de uma nota), ele anota a dúvida e o administrador responde em “❓ Dúvidas” — a resposta vira aprendizado para todos os aparelhos. Regras fixas do BIT: ele é só um assistente interna, usa apenas os dados da empresa que já estão no app, nunca envia nada para fora (não usa internet, IA externa, e-mail, WhatsApp, link ou arquivo), só mostra o que o usuário logado já pode ver e recusa qualquer pedido de enviar ou compartilhar dados. Escreva “regras” para ele repetir. O número laranja no BIT é a quantidade de dúvidas esperando resposta (qualquer usuário pode responder). Ele também cumprimenta (bom dia/boa tarde/boa noite), fala por um balãozinho sem atrapalhar e acompanha o NexBip: avisa caixa fora do romaneio, sem nota, duplicados seguidos e nota com gelo, comemora 25/50/75/90/100% com a previsão de quanto falta, e responde “o que falta” (começando pelas de alto valor) e “dica”.'],
    ['📊 Painel mensal da gerência','No Painel do gestor: escolha o mês e toque em “📄 Gerar PDF”. Sai uma página com reentregas por motivo, semana, cidade e motorista; divergências do mês por origem e por tipo; notas fora do romaneio por origem e motivo; e as cidades de MG mais atendidas (do Relatório Minas). Bom para apresentar à gerência.'],
@@ -8295,11 +8329,13 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; try{ ckSincronizar
   const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir2=irPara; irPara=function(t){ _ir2(t); const bt=document.querySelector('.nav [data-tela="checklist"]'); if(t==='checklist'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-checklist'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); ckRender(); } else if(bt) bt.removeAttribute('aria-current'); };
   document.querySelector('.nav [data-tela="checklist"]').addEventListener('click',()=>irPara('checklist'));
-  document.body.addEventListener('click',e=>{ const add=e.target.closest('#ck-add'); if(add){ if(!nvAdmin()) return; const novo={id:'ck'+Math.random().toString(36).slice(2),mot:'',placa:'',data:hojeISO(),ativo:true}; ckS().unshift(novo); ckSalvar();
+  document.body.addEventListener('click',async e=>{ const add=e.target.closest('#ck-add'); if(add){ if(!nvAdmin()) return; const novo={id:'ck'+Math.random().toString(36).slice(2),mot:'',placa:'',data:hojeISO(),ativo:true}; ckTudo().unshift(novo); ckSalvar();
       try{ const inp=document.querySelector(`[data-ck-row="${novo.id}"] [data-ck-f="mot"]`); if(inp){ inp.focus(); inp.scrollIntoView({block:'center',behavior:'smooth'}); } }catch(e2){}
       toast('Nova linha no topo: digite o motorista e a placa.'); return; }
     const del=e.target.closest('[data-ck-del]'); if(del){ if(!nvAdmin()) return;
        const alvo=ckTudo().find(x=>x.id===del.dataset.ckDel); const nome=alvo?String(alvo.mot||'').trim():'';
+       /* v9.26.0: apagar linha do Checklist é definitivo — pergunta antes */
+       if(!await confirmar('Excluir do Checklist',nome?`Tirar <b>${esc(nome.toUpperCase())}</b> da planilha?<br><br>Ele não volta sozinho pela sincronização nem pelo Cadastro Agregado. Para trazer de volta, use ＋ Adicionar e digite o nome.`:'Apagar esta linha da planilha?','Excluir')) return;
        if(nome&&!ckApagado(nome)) ckApagados().push({mot:nome.toUpperCase(),em:new Date().toISOString(),por:(NV.perfil&&NV.perfil.nome)||''});
        S.checklist=ckTudo().filter(x=>x.id!==del.dataset.ckDel); ckSalvar();
        if(nome) toast(`${nome.toUpperCase()} saiu da planilha. Não volta mais sozinho — para trazer de novo, use ＋ Adicionar.`);
@@ -9368,7 +9404,7 @@ function avRender(){ avBadge(); if(!$('#av-cards')) return; const L=avS(), F=win
 function avRenderLista(){ const el=$('#av-lista'); if(!el) return; const F=window.AVF||{filtro:'abertas'}; const q=N($('#av-filtro').value||'');
   const L=avS().filter(d=>F.filtro==='todas'||(F.filtro==='abertas'?d.st!=='resolvida':d.st===F.filtro)).filter(d=>!q||N([d.ped,d.nf,d.cli,d.cid,d.sub,d.obs,avNum(d)].join(' ')).includes(q)).sort((a,b)=>(b.st==='apareceu')-(a.st==='apareceu')||(b.n||0)-(a.n||0));
   $('#av-tit').textContent={abertas:'Avarias abertas',apareceu:'Voltaram no romaneio',resolvida:'Resolvidas',todas:'Todas as avarias'}[F.filtro];
-  el.innerHTML=L.length?`<table class="op-tab"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Vol.</th><th class="m-oc">Cliente</th><th>Observação</th><th></th></tr></thead><tbody>${L.map(d=>`<tr style="box-shadow:inset 4px 0 0 ${AV_COR}"><td><b>${avNum(d)}</b><div class="dv-hist">${fmtData(d.d)}${d.por?' · '+esc(d.por):''}</div></td><td class="dv-st" style="color:${DV_ST[d.st].c}">${DV_ST[d.st].t}${d.apareceu?`<div class="dv-hist">rom. ${esc(d.apareceu.rom)} em ${fmtData(d.apareceu.d)}</div>`:''}${d.res?`<div class="dv-hist">${fmtData(d.res.d)} · ${esc(d.res.sol||'')}${d.res.obs?' · '+esc(d.res.obs):''}</div>`:''}</td><td>${esc(d.sub||'')}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${d.qtd||''}${d.tot?`<span class="sub" style="margin:0"> de ${d.tot}</span>`:''}${(d.tot&&+d.qtd>+d.tot)?`<div class="dv-hist" style="color:var(--no)">⚠ falta mais que o total da nota</div>`:''}</td><td class="m-oc">${esc(d.cli||'')}${d.cid?`<div class="dv-hist">${esc(d.cid)}</div>`:''}</td><td>${esc(d.obs||'')}</td>
+  el.innerHTML=L.length?`<table class="op-tab"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Vol.</th><th class="m-oc">Cliente</th><th>Observação</th><th></th></tr></thead><tbody>${L.map(d=>`<tr style="box-shadow:inset 4px 0 0 ${AV_COR}"><td><b>${avNum(d)}</b><div class="dv-hist">${fmtData(d.d)}${d.por?' · '+esc(d.por):''}</div></td><td class="dv-st" style="color:${DV_ST[d.st].c}">${DV_ST[d.st].t}${d.apareceu?`<div class="dv-hist">rom. ${esc(d.apareceu.rom)} em ${fmtData(d.apareceu.d)}</div>`:''}${d.res?`<div class="dv-hist">${fmtData(d.res.d)} · ${esc(d.res.sol||'')}${d.res.obs?' · '+esc(d.res.obs):''}</div>`:''}</td><td>${esc(d.sub||'')}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${d.qtd||''}${d.tot?`<span class="sub" style="margin:0"> de ${d.tot}</span>`:''}${(d.falt&&d.falt.length&&d.tot)?`<div class="dv-hist" style="color:var(--no)">caixas ${esc(volLista(d.falt,d.tot))}</div>`:''}${(d.tot&&+d.qtd>+d.tot)?`<div class="dv-hist" style="color:var(--no)">⚠ falta mais que o total da nota</div>`:''}</td><td class="m-oc">${esc(d.cli||'')}${d.cid?`<div class="dv-hist">${esc(d.cid)}</div>`:''}</td><td>${esc(d.obs||'')}</td>
     <td><div class="dv-acoes">${d.foto?`<button class="btn mini" type="button" data-av="foto" data-id="${d.id}">📷 Foto</button>`:''}${d.st!=='resolvida'?`<button class="btn mini pri" type="button" data-av="resolver" data-id="${d.id}">Resolver</button>`:`<button class="btn mini" type="button" data-av="reabrir" data-id="${d.id}">Reabrir</button>`}${d.st!=='resolvida'?`<button class="btn mini" type="button" data-av="editar" data-id="${d.id}">Editar</button>`:''}${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar" data-av="apagar" data-id="${d.id}">✕</button>`:''}</div></td></tr>`).join('')}</tbody></table>`:'<div class="vazio-lista">Nenhuma avaria aqui.</div>'; }
 
 /* ---- Busca: quadrados "Divergência" e "Avaria" em cada nota encontrada ---- */
