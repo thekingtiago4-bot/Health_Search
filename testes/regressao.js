@@ -149,5 +149,26 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!g.pouco,'mapa: apagar 3 cidades à mão não pode contar como perda (é edição de verdade)');
     ok(g.muito,'mapa: 40 cidades a menos que o publicado deveria contar como perda');
     ok(g.botoes,'mapa: faltam os botões “Usar o mapa publicado” e “Diagnóstico”'); }
+  /* 9.22.2: apagar linha do Checklist é definitivo (não volta pela sincronização nem pelo cadastro) */
+  { const c=await p.evaluate(()=>{ cadInit();
+      S.cadMot=[{nome:'GUSMAO',alias:'',cpf:'',tipo:'agregado',rast:'sim'}];
+      S.checklist=[{id:'k1',mot:'GUSMAO',placa:'AAA-1A11',data:hojeISO(),ativo:true},{id:'k2',mot:'ANDRE',placa:'BBB-2B22',data:hojeISO(),ativo:true}];
+      S.ckApagados=[{mot:'GUSMAO',em:new Date().toISOString(),por:'teste'}];
+      S.checklist=ckTudo().filter(x=>x.id!=='k1');
+      const apagado=ckS().map(x=>x.mot).join(',');
+      S.checklist.push({id:'k1',mot:'GUSMAO',placa:'AAA-1A11',data:hojeISO(),ativo:true});
+      const nuvem=ckS().map(x=>x.mot).join(',');
+      ckSincronizar(); const cadastro=ckS().map(x=>x.mot).join(',');
+      S.ckApagados=[]; S.checklist=[]; return {apagado,nuvem,cadastro}; });
+    ok(c.apagado==='ANDRE','checklist: apagar a linha não tirou o motorista da planilha');
+    ok(c.nuvem==='ANDRE','checklist: a linha apagada voltou pela sincronização');
+    ok(c.cadastro==='ANDRE','checklist: a linha apagada foi recriada pelo Cadastro Agregado'); }
+  /* 9.22.2: os motivos da reentrega aparecem e salvam dentro da tela de Reentregas */
+  { const m=await p.evaluate(()=>{ S.cadMotivos=[]; irPara('reentregas'); reMotivosRender();
+      const temForm=!!document.querySelector('#re-motivos #cad-mtv-f');
+      S.cadMotivos=['FERIADO']; reMotivosRender();
+      return {temForm,naTela:document.getElementById('re-motivos').innerHTML.includes('FERIADO')}; });
+    ok(m.temForm,'reentregas: o quadro de motivos não montou (campo de cadastrar ausente)');
+    ok(m.naTela,'reentregas: o motivo cadastrado não aparece na lista'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

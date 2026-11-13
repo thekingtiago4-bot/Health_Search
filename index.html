@@ -2704,7 +2704,6 @@ function reBaseSel(i,l){ const {c,ids}=reBaseIds(l.cid,l.uf); const atual=l.base
 function reBase(cid,uf,ov){ if(ov){ if(!S.geo) return ''; const l=geoLista(ov); return l?l.nome:''; } try{ if(!cid||!uf) return ''; const r=resolverCidade(cid,uf); if(!r.o) return ''; const g=geoClass(r.o.c,'base'); return (g.ids||[]).map(id=>{ const l=geoLista(id); return l?(l.nome||id):id; }).join(' / '); }catch(e){ return ''; } }
 function reStatus(m,tipo){ const e=$('#re-status'); e.textContent=m||''; e.className='re-status'+(tipo?' '+tipo:''); }
 function reTela(novaIdx){
-  try{ reMotivosRender(); }catch(e){}
   const D=RE.ler(); const linhas=reDia();
   const dias=Object.keys(D.dias).sort().reverse();
   const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -3196,16 +3195,21 @@ function geoInit(){ if(!S.geo||!Array.isArray(S.geo.listas)){
     /* 9.19.13: registra quando o mapa de fábrica é recriado, para achar a causa */
     try{
       const havia=localStorage.getItem('healthSearch.geo'); // idb? S.geo pode não ter chegado ainda
+      let tamPrinc=0,chaves=0; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); chaves++; if(k==='healthSearch.v1') tamPrinc=(localStorage.getItem(k)||'').length; } }catch(e){}
       const reg={em:new Date().toISOString(),versao:typeof HS_VERSAO!=='undefined'?HS_VERSAO:'?',
         haviaCopiaLocal:!!havia,
         haviaSGeo:!!(window.S&&window.S.geo),
+        tamPrincipal:tamPrinc, chavesLocal:chaves, idbOk:!!(window.GIDB&&GIDB.db),
+        storeInitFeito:!!window.__storeInitFeito,
         url:location.pathname};
       const logs=JSON.parse(localStorage.getItem('healthSearch.geoInitLog')||'[]');
       logs.unshift(reg); if(logs.length>20) logs.length=20;
       localStorage.setItem('healthSearch.geoInitLog',JSON.stringify(logs));
       console.warn('[GEO] mapa de fábrica recriado',reg);
     }catch(e){}
-    S.geo={listas:geoOriginais(),aprend:{},em:'1970-01-01T00:00:00.000Z'};
+    /* v9.22.2 · PROVISÓRIO: este mapa não veio de lugar nenhum, é só para a tela não quebrar.
+       Enquanto estiver assim ele não pode ser publicado nem vencer o publicado — some assim que o de verdade chega. */
+    S.geo={listas:geoOriginais(),aprend:{},em:'1970-01-01T00:00:00.000Z',prov:true};
   } /* v9.15.0: mapa de fábrica nasce "velho" para nunca passar à frente do publicado */ S.geo.aprend=S.geo.aprend||{};
   for(const m of GEO_MATRIZ) if(!S.geo.listas.some(l=>l.id===m.id)) S.geo.listas.push(JSON.parse(JSON.stringify(m))); }
 /* 9.19.12: só uma edição feita por alguém na tela (clique/tecla) marca o mapa como "editado aqui". Sem essa marca, mapa diferente do publicado é cópia velha e não vale. */
@@ -4192,7 +4196,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.22.1', HS_DATA='13/11/2026';
+const HS_VERSAO='9.22.2', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7077,10 +7081,13 @@ function cadRender(){ const el=$('#cad-corpo'); if(!el) return; cadInit(); const
     ${(S.cadMot||[]).length?`<div style="text-align:right;margin:8px 0 0"><button class="btn mini" data-cad-limpa="1" type="button" title="Tira do cadastro os nomes sem nenhuma reentrega">Excluir os sem uso</button></div>`:''}
 </div>`; }
 /* v9.22.1 · os motivos saíram de Cadastros e moraram na tela de Reentregas, que é onde são usados */
-function cadMotivosHtml(){ return `<div class="cad-bx"><h3>📝 Motivos da reentrega</h3><p class="sub" style="margin:0">São as opções que aparecem quando você lança uma nota aqui em cima. Só os motivos que vocês usam; a ordem daqui é a ordem das sugestões.</p>
+function cadMotivosHtml(){ cadInit(); const {mtv}=cadUsados(); const motivoUso=m=>mtv.get(rpNz(m))||0;
+  return `<div class="cad-bx"><h3>📝 Motivos da reentrega</h3><p class="sub" style="margin:0">São as opções que aparecem quando você lança uma nota aqui em cima. Só os motivos que vocês usam; a ordem daqui é a ordem das sugestões.</p>
     <form class="cad-add" id="cad-mtv-f"><input class="bus" name="n" placeholder="Novo motivo (ex.: FERIADO)" required><button class="btn pri mini">Cadastrar</button></form><div style="text-align:right;margin:4px 0"><button class="btn mini" data-cad-limpa-mtv="1" type="button">Excluir os sem uso</button></div>
     ${(S.cadMotivos||[]).map((m,i)=>`<div class="cad-it"><div><input class="bus" data-cad-mtv="${i}" value="${esc(m)}"><small class="u">${motivoUso(m)} uso(s)</small></div><span><button class="btn mini" data-cad-sobe="${i}" type="button" title="Subir">▲</button> <button class="btn mini perigo" data-cad-mtv-del="${i}" type="button">Excluir</button></span></div>`).join('')||'<p class="sub">Nenhum motivo cadastrado ainda.</p>'}</div>`; }
 function reMotivosRender(){ const el=$('#re-motivos'); if(!el) return; el.innerHTML=cadMotivosHtml(); }
+/* v9.22.2: os motivos são desenhados DEPOIS que a tela de reentregas termina de montar, senão a lista some */
+{ const _rtm=reTela; reTela=function(){ const r=_rtm.apply(this,arguments); try{ reMotivosRender(); }catch(e){} return r; }; }
 function cadMudou(){ cadInit(); salvar(); cadDatalists(); cadRender(); try{ reMotivosRender(); if(!$('#t-reentregas').hidden) reTela(); }catch(e){} }
 document.addEventListener('submit',e=>{ const f=e.target; const tipoNovo=f.dataset&&f.dataset.cadAdd; if(f.id!=='cad-mot-f'&&f.id!=='cad-mtv-f'&&!tipoNovo) return; e.preventDefault(); const fd=new FormData(f); const v=String(fd.get('n')||'').trim().toUpperCase(); if(!v) return;
   if(tipoNovo){ if(S.cadMot.some(m=>cadApelidos(m).includes(rpNz(v)))){ toast('Esse nome já está no cadastro.'); return; }
@@ -8014,9 +8021,16 @@ function rgForm(edId){ const r0=edId?rgS().find(x=>x.id===edId):null; const ult=
   setInterval(()=>{ const q=$('#qt-rg'); if(q){ const n=rgS().filter(r=>(r.ent&&r.ent.em||'').slice(0,10)===hojeISO()).length; q.textContent=n; q.hidden=!n; } },5000); })();
 /* ================= v9.7.0 · Planejamento → Checklist Agregados: validade de 30 dias, avisos por cor e envio ao WhatsApp ================= */
 if(!NUV_CAMPOS.includes('checklist')) NUV_CAMPOS.push('checklist');
+/* v9.22.2 · apagar uma linha do Checklist é definitivo: o nome entra na lista de apagados, que também
+   sincroniza. Antes a linha voltava sozinha, porque a sincronização junta as listas e o apagar de um
+   aparelho não chegava nos outros. A linha em si não é destruída — ela só deixa de aparecer. */
+if(!NUV_CAMPOS.includes('ckApagados')) NUV_CAMPOS.push('ckApagados');
 const CK_SEED=[['ANDRÉ','RTR-2J84','2026-10-12'],['BETO','RFB-9J02','2026-10-24'],['CAMINHÃO BH','FPR-6B75','2026-10-15'],['CARLINHOS','QNI-6644','2026-10-24'],['CARLOS AMARAL','SJI-9J65','DESATIVADO'],['CARLOS AMARAL','SJI-9J65','2026-10-19'],['CAMINHÃO CASA','GCY-0380','2026-10-21'],['CAMINHÃO LKR','FSZ-2H63','2026-10-15'],['DIEGO JESUS','DEI-8F17','2026-11-02'],['GUSMÃO','EQF-3E99','2026-09-27'],['HENRIQUE','DGY-8F57','2026-10-15'],['JOÃO VAN BRANCA','EFV-8F65','2026-10-15'],['MARCELLO','RFR-0H89','2026-11-08'],['MATEUS HENRIQUE','QUF-8G64','2026-10-20'],['STANLEY','TMG-2E45','DESATIVADO'],['TARCÍSIO','RUE-5J27','2026-11-09']];
 function ckSeedRow(x){ const desat=x[2]==='DESATIVADO'; return {id:'ck'+Math.random().toString(36).slice(2),mot:x[0],placa:x[1],data:desat?'':x[2],ativo:!desat}; }
-function ckS(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); return S.checklist; }
+function ckApagados(){ if(!Array.isArray(S.ckApagados)) S.ckApagados=[]; return S.ckApagados; }
+function ckApagado(mot){ const k=rpNz(String(mot||'')); return !!k&&ckApagados().some(x=>rpNz(x.mot||x)===k); }
+function ckS(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); return S.checklist.filter(r=>!ckApagado(r.mot)); }
+function ckTudo(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); return S.checklist; }
 function ckSalvar(){ salvar(); ckRender(); }
 function ckVenc(reg){ if(!reg.data) return ''; const d=new Date(reg.data+'T00:00:00'); d.setDate(d.getDate()+30); return d.toISOString().slice(0,10); }
 /* v9.21.0 · o rastreador do Cadastro Agregado manda na planilha:
@@ -8028,8 +8042,8 @@ function ckLista(filtro){ const L=ckS().filter(r=>ckRast(r)!=='nao');
   if(filtro==='desativados') return L.filter(ckDesativado);
   return L; }
 /* cada agregado do cadastro (rastreador sim ou desativado) tem a sua linha na planilha */
-function ckSincronizar(){ try{ const L=ckS(); let mud=false;
-    for(const m of (S.cadMot||[])){ if(cadTipo(m)!=='agregado'||cadRastDe(m)==='nao') continue;
+function ckSincronizar(){ try{ const L=ckTudo(); let mud=false;
+    for(const m of (S.cadMot||[])){ if(cadTipo(m)!=='agregado'||cadRastDe(m)==='nao') continue; if(ckApagado(m.nome)) continue;
       if(L.some(r=>motCanon(r.mot)===m.nome||rpNz(r.mot)===rpNz(m.nome))) continue;
       L.push({id:'ck'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),mot:m.nome,placa:'',data:'',ativo:true}); mud=true; }
     if(mud) salvar(); return mud; }catch(e){ return false; } }
@@ -8164,11 +8178,18 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; try{ ckSincronizar
   document.body.addEventListener('click',e=>{ const add=e.target.closest('#ck-add'); if(add){ if(!nvAdmin()) return; const novo={id:'ck'+Math.random().toString(36).slice(2),mot:'',placa:'',data:hojeISO(),ativo:true}; ckS().unshift(novo); ckSalvar();
       try{ const inp=document.querySelector(`[data-ck-row="${novo.id}"] [data-ck-f="mot"]`); if(inp){ inp.focus(); inp.scrollIntoView({block:'center',behavior:'smooth'}); } }catch(e2){}
       toast('Nova linha no topo: digite o motorista e a placa.'); return; }
-    const del=e.target.closest('[data-ck-del]'); if(del){ if(!nvAdmin()) return; S.checklist=ckS().filter(x=>x.id!==del.dataset.ckDel); ckSalvar(); return; }
+    const del=e.target.closest('[data-ck-del]'); if(del){ if(!nvAdmin()) return;
+       const alvo=ckTudo().find(x=>x.id===del.dataset.ckDel); const nome=alvo?String(alvo.mot||'').trim():'';
+       if(nome&&!ckApagado(nome)) ckApagados().push({mot:nome.toUpperCase(),em:new Date().toISOString(),por:(NV.perfil&&NV.perfil.nome)||''});
+       S.checklist=ckTudo().filter(x=>x.id!==del.dataset.ckDel); ckSalvar();
+       if(nome) toast(`${nome.toUpperCase()} saiu da planilha. Não volta mais sozinho — para trazer de novo, use ＋ Adicionar.`);
+       return; }
     const wa=e.target.closest('#ck-wa'); if(wa){ ckEnviar(); return; }
     const bx=e.target.closest('#ck-baixar'); if(bx) ckBaixar(); });
   document.body.addEventListener('change',e=>{ const inp=e.target.closest('[data-ck-f]'); if(!inp) return; const tr=inp.closest('[data-ck-row]'); if(!tr) return; const r=ckS().find(x=>x.id===tr.dataset.ckRow); if(!r) return;
     const campo=inp.dataset.ckF;
+    if(campo==='mot'){ const novo=String(inp.value||'').trim(); /* digitou um nome que estava apagado: volta a valer */
+      if(novo&&ckApagado(novo)){ const k=rpNz(novo); S.ckApagados=ckApagados().filter(x=>rpNz(x.mot||x)!==k); } }
     if(campo==='rast'){ /* v9.21.0: o rastreador mora no Cadastro Agregado; a linha só reflete */
       const v=inp.value; r.ativo=v!=='desativado';
       try{ cadInit(); const canon=motCanon(r.mot); let m=(S.cadMot||[]).find(x=>x.nome===canon&&cadTipo(x)==='agregado');
@@ -9099,7 +9120,7 @@ setInterval(()=>{ try{ if(!GEO._vr||!GEO.view) return; const ga=$('#geo-auto'); 
 
 /* ---------- início ---------- */
 (async function(){
-  const salvo=await Store.init(); if(salvo) S=Object.assign(S,salvo); try{ atuFoto(); }catch(e){}
+  const salvo=await Store.init(); window.__storeInitFeito=true; if(salvo) S=Object.assign(S,salvo); try{ atuFoto(); }catch(e){}
   const pac=lerPacote(); const chegou=aplicarPacote(pac); if(chegou) salvar();
   montarDicionario(); aplicarTema(); geoInit(); aplicarRegraTodos();
   if(!Object.keys(S.cidAtend||{}).length && S.romaneios.length){ for(const r of S.romaneios) registrarCidades(r); FER_NOVAS=[]; salvar(); }
@@ -9381,6 +9402,8 @@ async function geoPublicar(){ if(!nvAdmin()){ toast('Só o administrador publica
     toast(`✔ Mapa publicado (${novo} cidades). Todos recebem esta versão.`); }
   catch(e){ toast('⚠ Não publiquei: '+(e.message||e)+' — as mudanças continuam neste aparelho.'); }
   finally{ NUV.publicarGeo=false; geoPubBarra(); } }
+/* v9.22.2 · trava: mapa provisório (o aparelho abriu sem mapa nenhum) nunca vai para o ar */
+{ const _gp=geoPublicar; geoPublicar=async function(){ if(geoProv()){ toast('⚠ Este aparelho ainda não baixou o mapa publicado — não vou publicar por cima. Espere alguns segundos ou toque em “Usar o mapa publicado”.'); return; } return _gp.apply(this,arguments); }; }
 function geoPubBarra(){ const t=document.getElementById('t-geo'); if(!t) return; let el=document.getElementById('geo-pub-bar');
   if(!nvAdmin()){ if(el) el.remove(); return; }
   if(!el){ t.querySelector('.sub').insertAdjacentHTML('afterend','<div id="geo-pub-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 10px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--linha)"><span id="geo-pub-txt"></span><button class="btn pri mini" type="button" id="geo-pub">📤 Publicar mapa</button></div>'); el=document.getElementById('geo-pub-bar'); $('#geo-pub').onclick=geoPublicar; }
@@ -9391,7 +9414,8 @@ function geoPubBarra(){ const t=document.getElementById('t-geo'); if(!t) return;
   if(b&&!document.getElementById('geo-voltar')) b.insertAdjacentHTML('afterend','<button class="btn mini" id="geo-voltar" type="button" title="Descarta o mapa deste aparelho e traz o publicado. Não publica nada.">↩ Usar o mapa publicado</button> <button class="btn mini" id="geo-diag" type="button" title="Mostra quantas cidades há aqui e no publicado, e quando o mapa de fábrica foi recriado">🔎 Diagnóstico</button>');
   /* aviso forte quando este aparelho tem menos cidades do que o publicado */
   const aqui=geoConta(S.geo), la=(geoPubLer()||{}).cid||0;
-  if(p&&la&&la-aqui>=25){ $('#geo-pub-txt').innerHTML=`<b style="color:#C92A2A">⚠ Este aparelho está com ${aqui} cidades e o publicado tem ${la}.</b> Não publique: toque em “Usar o mapa publicado”.`; if(b) b.disabled=true; } }
+  if(geoProv()){ $('#geo-pub-txt').innerHTML='<b style="color:#C92A2A">⚠ Este aparelho abriu sem o mapa.</b> Estou baixando o publicado — não publique nada agora.'; if(b) b.disabled=true; }
+  else if(p&&la&&la-aqui>=25){ $('#geo-pub-txt').innerHTML=`<b style="color:#C92A2A">⚠ Este aparelho está com ${aqui} cidades e o publicado tem ${la}.</b> Não publique: toque em “Usar o mapa publicado”.`; if(b) b.disabled=true; } }
 setInterval(()=>{ try{ geoPubBarra(); }catch(e){} },3000);
 /* v9.22.1 · perda de mapa: comparado com o publicado, o aparelho está com um buraco grande
    (25 cidades a menos no total, ou uma região inteira zerada que lá tem cidades).
@@ -9409,16 +9433,19 @@ async function geoConferir(forcar){ if(geoConferir.r||!opOnline()||NUV.rodando||
   /* com a marca de edição ainda vale conferir: lá embaixo, se o aparelho tiver perdido cidades, o publicado volta assim mesmo */
   if(!forcar&&!geoPendente()) return false; geoConferir.r=1;
   try{ const {data,error}=await NV.cli.from('hs_sync').select('valor,apagado').eq('chave','s:geo').maybeSingle(); if(error||!data||data.apagado) return false; const rem=data.valor; const n=geoConta(rem); if(!n||!Array.isArray(rem.listas)) return false;
-    const perdeu=geoPerdeu(S.geo,rem);
+    const perdeu=geoPerdeu(S.geo,rem)||geoProv();
     if((GEOE.ler()&&!forcar&&!perdeu)||NUV.publicarGeo) return false; const antes=geoConta(S.geo);
     GEOE.limpar();
-    await GIDB.gravar('geo',JSON.parse(JSON.stringify(rem))); S.geo=rem; GEO.idx={}; GEO.cls={}; NUV.h['s:geo']=nuvHash(rem); try{ nuvGuardar(); }catch(e){} try{ vsnBaseGravar('s:geo',JSON.parse(JSON.stringify(rem))); }catch(e){}
+    delete rem.prov; await GIDB.gravar('geo',JSON.parse(JSON.stringify(rem))); S.geo=rem; GEO.idx={}; GEO.cls={}; NUV.h['s:geo']=nuvHash(rem); try{ nuvGuardar(); }catch(e){} try{ vsnBaseGravar('s:geo',JSON.parse(JSON.stringify(rem))); }catch(e){}
     try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:(geoPubLer()||{}).em||new Date().toISOString(),cid:n})); }catch(e){}
     salvar(); try{ renderTudo(); }catch(e){} try{ desenharGeo(); }catch(e){} try{ geoPubBarra(); }catch(e){}
     toast(perdeu?`🗺 Este aparelho estava com ${antes} cidades e o mapa publicado tem ${n}. Trouxe o publicado de volta. Nada foi publicado por engano.`
       :`🗺 O mapa deste aparelho estava diferente do publicado (${antes} cidades) sem nenhuma edição sua. Voltei para o mapa publicado: ${n} cidades.`); return true; }
   catch(e){ console.error(e); return false; } finally{ geoConferir.r=0; } }
 setInterval(()=>{ geoConferir(); },20000); setTimeout(()=>{ geoConferir(); },9000); setTimeout(()=>{ geoConferir(); },2500);
+/* v9.22.2 · com mapa provisório o app insiste no publicado a cada 5 s até trazer */
+function geoProv(){ return !!(S.geo&&S.geo.prov); }
+setInterval(()=>{ if(geoProv()) geoConferir(true); },5000); setTimeout(()=>{ if(geoProv()) geoConferir(true); },1200);
 /* v9.22.1 · botão de socorro: joga fora o mapa deste aparelho e traz o publicado, sem publicar nada */
 async function geoVoltarPublicado(){ if(!nvAdmin()) return;
   const antes=geoConta(S.geo);
@@ -9432,10 +9459,10 @@ function geoDiagnostico(){ let logs=[]; try{ logs=JSON.parse(localStorage.getIte
   const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
   const marca=GEOE.ler();
   f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:560px"><h2 style="margin-top:0">🔎 Diagnóstico do mapa</h2>
-    <p class="sub">Neste aparelho: <b>${geoConta(S.geo)}</b> cidade(s). Publicado: <b>${(geoPubLer()||{}).cid||'?'}</b>. Marca de edição: <b>${marca?('sim · '+esc(new Date(marca.em||marca).toLocaleString('pt-BR'))):'não'}</b>.</p>
+    <p class="sub">Neste aparelho: <b>${geoConta(S.geo)}</b> cidade(s)${geoProv()?' — <b style="color:#C92A2A">mapa provisório (o aparelho abriu sem mapa)</b>':''}. Publicado: <b>${(geoPubLer()||{}).cid||'?'}</b>. Marca de edição: <b>${marca?('sim · '+esc(new Date(marca.em||marca).toLocaleString('pt-BR'))):'não'}</b>.</p>
     <p class="sub" style="margin-top:6px">Por região neste aparelho: ${Object.entries(geoPorLista(S.geo)).filter(([k,v])=>v).map(([k,v])=>esc(k)+' · '+v).join(' | ')||'—'}</p>
     <p class="sub" style="margin-top:10px"><b>Quando o mapa de fábrica foi recriado neste aparelho:</b></p>
-    ${logs.length?`<ul style="font-size:.86rem;line-height:1.5">${logs.slice(0,8).map(l=>`<li>${esc(new Date(l.em).toLocaleString('pt-BR'))} · versão ${esc(l.versao||'?')} · cópia no aparelho: <b>${l.haviaCopiaLocal?'sim':'não'}</b> · S.geo já existia: <b>${l.haviaSGeo?'sim':'não'}</b></li>`).join('')}</ul>`:'<p class="sub">Nenhum registro — o mapa de fábrica não foi recriado neste aparelho desde a versão 9.19.13.</p>'}
+    ${logs.length?`<ul style="font-size:.86rem;line-height:1.5">${logs.slice(0,8).map(l=>`<li>${esc(new Date(l.em).toLocaleString('pt-BR'))} · versão ${esc(l.versao||'?')} · S.geo já existia: <b>${l.haviaSGeo?'sim':'não'}</b> · leitura do armazenamento concluída: <b>${l.storeInitFeito===undefined?'—':(l.storeInitFeito?'sim':'NÃO')}</b> · tamanho do armazenamento: <b>${l.tamPrincipal===undefined?'—':Math.round((l.tamPrincipal||0)/1024)+' KB'}</b> · cópia à parte aberta: <b>${l.idbOk===undefined?'—':(l.idbOk?'sim':'não')}</b></li>`).join('')}</ul>`:'<p class="sub">Nenhum registro — o mapa de fábrica não foi recriado neste aparelho desde a versão 9.19.13.</p>'}
     <div class="botoes"><button class="btn" type="button" data-fechar="1">Fechar</button></div></div>`;
   document.body.appendChild(f); f.addEventListener('click',e=>{ if(e.target===f||e.target.closest('[data-fechar]')) f.remove(); }); }
 document.addEventListener('click',e=>{ const t=e.target.closest&&e.target.closest('#geo-voltar,#geo-diag'); if(!t) return;
