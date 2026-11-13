@@ -3,7 +3,8 @@
 // reentrega confirmada não volta, mesclagem entre aparelhos, atualização devolve o que sumiu, rotas, busca.
 const {chromium}=require('playwright'); const path=require('path');
 const URL='file://'+path.resolve(__dirname,'../index.html');
-(async()=>{ const b=await chromium.launch({args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']}); const falhas=[]; const ok=(c,m)=>{ if(!c) falhas.push(m); };
+(async()=>{
+  const opKi=v=>String(v||'').replace(/\D/g,'').replace(/^0+(?=\d)/,''); const b=await chromium.launch({args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']}); const falhas=[]; const ok=(c,m)=>{ if(!c) falhas.push(m); };
   const nova=async()=>{ const p=await b.newPage(); const er=[]; p.on('pageerror',e=>er.push(e.message)); await p.route(/^https?:\/\//,r=>r.abort()); await p.goto(URL); await p.waitForTimeout(1500); p._er=er; return p; };
   let p=await nova();
   const r=await p.evaluate(async()=>{ const out={}; const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
@@ -254,11 +255,13 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(/4 \/ 4/.test(v3.depois)&&/completo/.test(v3.depois),'faixa VOLUMES: depois do "sim, todos" deveria mostrar 4 / 4 ('+v3.depois.replace(/\n/g,' ')+')'); }
   /* 9.25.1: etiqueta de caixa da Health Log (sem QR Code) — cliente, cidade, volume e modelo */
   { const e4=await p.evaluate(()=>{ const t=['000151 VOL.: 1 DE 1 000000021','12/11/2026','SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE','R WENCESLAU BRAZ, 5','VILA EUCLIDES','ESTADO: SP CEP: 19014030','PESO: 0.0000 EMBALADOR:','CIDADE: PRESIDENTE PRUDENTE 000027 000219','TRANSP.: - HEALTH LOG'];
-      const r=etqInterpretar(t); return {dest:r.dest,cid:r.cid,vol:r.vol+'/'+r.tot,modelo:r.modelo,semCep:!r.nums.includes('19014030')}; });
+      const r=etqInterpretar(t); return {dest:r.dest,cid:r.cid,vol:r.vol+'/'+r.tot,modelo:r.modelo,semCep:!r.nums.includes('19014030'),nf:r.nfs[0]||'',cod:r.etqCod||''}; });
     ok(e4.dest==='SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE','etiqueta de caixa: não leu o cliente ('+e4.dest+')');
     ok(e4.cid==='PRESIDENTE PRUDENTE'&&e4.vol==='1/1','etiqueta de caixa: cidade ou volume errado ('+e4.cid+' '+e4.vol+')');
     ok(e4.modelo==='Caixa Health Log','etiqueta de caixa: não reconheceu o modelo ('+e4.modelo+')');
-    ok(e4.semCep,'etiqueta de caixa: o CEP não pode entrar como número de nota'); }
+    ok(e4.semCep,'etiqueta de caixa: o CEP não pode entrar como número de nota');
+    ok(e4.nf==='000000021','etiqueta de caixa: a NF é o número da DIREITA na linha do VOL. (esperado 000000021, veio "'+e4.nf+'")');
+    ok(e4.cod==='000151','etiqueta de caixa: o número da esquerda é o código da etiqueta, não a NF ('+e4.cod+')'); }
   /* 9.26.0: grade de caixas (1/6, 2/6…) na divergência, e o ＋ Adicionar do Checklist */
   { const g=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'a',numero:'0019486',arquivo:a,rows:[{nf:'731084',ped:'724486',vol:'6',dest:'DROGARIA TESTE',cid:'FRANCA',uf:'SP'}]}];
@@ -288,6 +291,16 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!/3 de 5/.test(v),'divergência: a coluna Vol. ainda está mostrando o que falta (3 de 5)');
     ok(/faltam 3/.test(v),'divergência: deveria dizer "faltam 3" embaixo');
     ok(/caixas 2\/5, 4\/5 e 5\/5/.test(v),'divergência: deveria listar as caixas que faltaram — '+v.slice(0,180)); }
+  /* 9.26.3: etiqueta de caixa Health Log bipando de verdade — a NF da direita acha a nota no romaneio */
+  { const bp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'hl',numero:'0019486',base:'CAJ',arquivo:a,rows:[{nf:'000021',ped:'555001',vol:'1',dest:'SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE',cid:'PRESIDENTE PRUDENTE',uf:'SP'}]}];
+      OP.dia=h; OP.releitura=false; OP.espera=false; OP.visto=new Map(); OP.ultLeitura=0; renderTudo(); irPara('operacao'); OP.bipes=[]; await w(100);
+      const t=['000151 VOL.: 1 DE 1 000000021','12/11/2026','SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE','R WENCESLAU BRAZ, 5','VILA EUCLIDES','ESTADO: SP CEP: 19014030','PESO: 0.0000 EMBALADOR:','CIDADE: PRESIDENTE PRUDENTE 000027 000219','TRANSP.: - HEALTH LOG'];
+      opLerEtiqueta(etqInterpretar(t)); await w(300);
+      const b=OP.bipes.find(x=>opK(x.nf)==='21')||OP.bipes[0]||{};
+      return {st:b.status,nf:b.nf,todos:OP.bipes.map(x=>x.nf+':'+x.status).join(' ')}; });
+    ok(bp.st==='ok','etiqueta de caixa Health Log: deveria bipar como conferida e veio "'+bp.st+'" ('+bp.todos+')');
+    ok(opKi(bp.nf)==='21','etiqueta de caixa Health Log: bipou a nota errada ('+bp.nf+' em vez de 21)'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();
@@ -298,10 +311,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       nexRetirar(S.romaneios[0],S.romaneios[0].rows[2],'teste');
       const L=opPorRom(); const comFiltro=L.reduce((s,x)=>s+x.tn,0), falt=L.reduce((s,x)=>s+x.fn,0);
       const cada=L.map(x=>x.r.numero+':'+x.tn+'/'+x.fn).join(' ');
-      S.nex=null; nexS(); return {bruto,comFiltro,falt,cada,ok:L.every(x=>x.fn<=x.tn)}; });
+      const pend=opPendentes().length;
+      S.nex=null; nexS(); return {bruto,comFiltro,falt,cada,pend,ok:L.every(x=>x.fn<=x.tn)}; });
     ok(c.bruto===4,'conferência: a NF repetida em dois romaneios deveria contar uma vez só (deu '+c.bruto+' de 4)');
     ok(c.comFiltro===3,'conferência: a nota retirada da operação não deveria entrar no total (deu '+c.comFiltro+' de 3)');
     ok(c.falt===3,'conferência: faltando deveria ser 3 ('+c.falt+') — '+c.cada);
-    ok(c.ok,'conferência: nenhuma origem pode ter mais faltando do que notas ('+c.cada+')'); }
+    ok(c.ok,'conferência: nenhuma origem pode ter mais faltando do que notas ('+c.cada+')');
+    ok(c.pend===3,'lista do que falta: deveria ter 3 notas (sem a repetida e sem a retirada), veio '+c.pend); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

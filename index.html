@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.26.2', HS_DATA='13/11/2026';
+const HS_VERSAO='9.26.3', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6108,8 +6108,8 @@ opIndice=function(){ const ped=new Map(), nf=new Map();
   for(const r of opRomsDoDia()) for(const x of r.rows||[]){ const it={r,x};
     const p=opK(x.ped), n=opK(x.nf); if(p){ if(!ped.has(p)) ped.set(p,[]); ped.get(p).push(it); } if(n){ if(!nf.has(n)) nf.set(n,[]); nf.get(n).push(it); } }
   return {ped,nf}; };
-opPendentes=function(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[], visto=new Set();
-  for(const r of opRomsDoDia()) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; if(r.numero==='XML'&&visto.has(nf)) continue; if(nf) visto.add(nf); const esp=volNum(x.vol); if(esp===0) continue; if(simFora(x)) continue;
+opPendentes=function(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[], visto=new Set(), vistoN=new Set();
+  for(const r of opRomsDoDia()) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; if(r.numero==='XML'&&visto.has(nf)) continue; if(nf) visto.add(nf); const esp=volNum(x.vol); if(esp===0) continue; if(opForaFiltro(x)) continue; const _nk=opNotaK(x); if(_nk){ if(vistoN.has(_nk)) continue; vistoN.add(_nk); }
     const lidos=new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size; const fa=opFaltaAnt(ped,nf); const espF=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
     if(lidos<espF) out.push({r,x,ped,nf,esp:espF,lidos,valor:opValor(ped,nf,x),falta:fa}); }
   return out.sort((a,b)=>b.valor-a.valor); };
@@ -6211,6 +6211,9 @@ function etqInterpretar(linhas){ const L=linhas.map(l=>l.toUpperCase().replace(/
      000151 VOL.: 1 DE 1 000000021 / data / destinatário / endereço / bairro / ESTADO / CEP / CIDADE / TRANSP. */
   if(/TRANSP/.test(T)&&/HEALTH\s*LOG/.test(T)&&/CIDADE\s*[:.]/.test(T)){
     if(!r.modelo) r.modelo='Caixa Health Log';
+    /* v9.26.3 · na linha do VOL. o número da DIREITA é a nota fiscal (o da esquerda é o código da etiqueta) */
+    { const lv=L.find(l=>/VOL\s*[:.]/.test(l)&&/\d{4,}/.test(l)); if(lv){ const ns=(lv.replace(/VOL\s*[:.]?\s*\d{1,3}\s*(?:DE|\/)\s*\d{1,3}/,' ').match(/\b[0-9OQIL]{4,12}\b/g)||[]).map(dig).filter(n=>n.length>=4);
+        const nf=ns.length?ns[ns.length-1]:''; if(nf){ r.nfs=[nf,...r.nfs.filter(x=>x!==nf)]; r.etqCod=ns.length>1?ns[0]:''; } } }
     const cep=(T.match(/CEP\s*[:.]?\s*(\d{8})/)||[])[1]; if(cep) r.nums=r.nums.filter(n=>n!==cep);
     if(!r.dest){ const ender=/^(R|RUA|AV|AVENIDA|TRAV|TRAVESSA|AL|ALAMEDA|ROD|RODOVIA|PCA|PRACA|ESTR)\b|^\d/;
       const pular=/VOL|CIDADE|ESTADO|CEP|PESO|EMBALADOR|TRANSP|HEALTH\s*LOG|^\d{2}\/\d{2}\/\d{2,4}$|^-+$/;
@@ -8470,7 +8473,7 @@ function evaListar(f,dia){ EVA.ultF=f; EVA.ultDia=dia; const rs=evaRomDoDia(dia)
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-conftotal'; sec.hidden=true;
   sec.innerHTML=`<h1>Conferência total</h1><p class="sub">Andamento da conferência do dia: quanto já foi bipado no total, por origem e por romaneio. Os bipes são feitos no <b>NexBip</b>.</p>
    <div id="ct-geral"></div><div id="ct-mover"></div>
-   <details class="ct-ferr" id="ct-ferr"><summary><b>Ferramentas</b> <span class="sub">— XML das notas e diagnóstico de reentrega</span></summary><div id="ct-ferr-c"></div></details>`;
+   <div id="ct-ferr-c" hidden></div>`;
   const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=nav.querySelector('[data-tela="conftotal"]'); if(t==='conftotal'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-conftotal'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); try{ opRender(); }catch(e){} ctMontar(); const ti=$('#mb-tit'); if(ti) ti.textContent='Conferência total'; } else if(bt) bt.removeAttribute('aria-current'); };
   ct.addEventListener('click',()=>irPara('conftotal'));
@@ -8480,15 +8483,14 @@ function evaListar(f,dia){ EVA.ultF=f; EVA.ultDia=dia; const rs=evaRomDoDia(dia)
   const st=document.createElement('style'); st.textContent=`.ct-big{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;padding:16px;border:1px solid var(--linha);border-radius:16px;background:var(--sup);margin:10px 0 14px}
    .ct-anel{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--ok,#2f9e44) calc(var(--p)*1%),var(--sup2,#2a3a40) 0)}.ct-anel b{width:90px;height:90px;border-radius:50%;background:var(--sup);display:grid;place-items:center;font-size:1.6em}
    .ct-origs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.ct-o{border:1px solid var(--linha);border-radius:12px;padding:8px 10px}.ct-o .bar{height:7px;border-radius:5px;background:var(--sup2);overflow:hidden;margin-top:6px}.ct-o .bar i{display:block;height:100%}
-   .ct-ferr{margin-top:16px;border:1px dashed var(--linha);border-radius:12px;padding:8px 12px}.ct-ferr summary{cursor:pointer}
+   
    @media(max-width:560px){.ct-big{grid-template-columns:1fr;justify-items:center;text-align:center}}`; document.head.appendChild(st);
 })();
 function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   /* BUG#1-FIX v9.11.0: só mover elementos DOM quando a tela estiver visível.
      Mover #op-cards para dentro da seção hidden causava renderização vazia no NexBip. */
-  if(!sec.hidden){ const mv=$('#ct-mover'), fe=$('#ct-ferr-c');
+  if(!sec.hidden){ const mv=$('#ct-mover');
     for(const id of ['op-romchips','op-cards','op-porrom']){ const el=document.getElementById(id); if(el&&el.parentNode!==mv) mv.appendChild(el); }
-    for(const id of ['op-xml','op-diag']){ const el=document.getElementById(id); if(el&&el.parentNode!==fe) fe.appendChild(el); }
     { const tu=document.getElementById('op-turno'), res=document.getElementById('op-res'); if(tu&&res&&res.nextElementSibling!==tu&&tu.parentNode!==res.parentNode||tu&&tu.closest('#t-conftotal')) res.insertAdjacentElement('afterend',tu); }
   }
   let L=[]; try{ L=opPorRom(); }catch(e){} const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0), ok=tn-fn, pct=tn?Math.round(100*ok/tn):0;
