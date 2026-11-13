@@ -231,5 +231,25 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       renderTudo(); irPara('divergencias');
       const t=document.querySelector('#t-divergencias #dv-lista').innerText; S.divergencias=[]; return t.includes('falta mais que o total'); });
     ok(w2,'divergência: faltando mais volumes que o total da nota deveria avisar'); }
+  /* 9.25.0: cidade na lista de divergências e faixa VOLUMES acompanhando a resposta */
+  { const c3=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'a',numero:'0019486',arquivo:a,rows:[{nf:'909958',ped:'537317',vol:'31',dest:'CARDOSO',cid:'FRANCA',uf:'SP'}]}];
+      S.divergencias=[{id:'d1',n:1,d:h,ped:'537317',nf:'909958',tipo:'Falta de volume',qtd:1,tot:31,cli:'CARDOSO',obs:'',st:'aberta',por:'t',em:new Date().toISOString(),hist:[]}];
+      renderTudo(); irPara('divergencias');
+      const t=document.querySelector('#dv-lista').innerText.replace(/\s+/g,' '); S.divergencias=[]; return t.includes('FRANCA/SP'); });
+    ok(c3,'divergências: a cidade da nota não apareceu na lista'); }
+  { const v3=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO();
+      irPara('operacao'); OP.dia=h; OP.bipes=[]; OP.espera=false; S.opPorVolume=false;
+      if(!document.querySelector('#op-cam')) await opCamAbrir();
+      const b={local_id:'t1',dia:h,status:'ok',ped:'724486',nf:'731084',vol:1,tot:4,usuario:'teste',criado_em:new Date().toISOString()};
+      OP.bipes=[b]; opMostrar({status:'ok',_b:b,_vt:4,_vk:1,titulo:'Pode seguir',linha:'volume 1 de 4'}); await w(200);
+      const antes=(document.querySelector('#op-cam .vtot')||{}).innerText||'';
+      const bt1=document.querySelector('#op-cam .op-conf .sim'); if(!bt1){ opCamFechar(); return {antes,depois:'(painel não abriu)'}; }
+      bt1.click(); await w(200);
+      const bt2=document.querySelector('#op-cam .op-qt [data-q="s"]'); if(!bt2){ opCamFechar(); return {antes,depois:'(pergunta não abriu)'}; }
+      bt2.click(); await w(300);
+      const depois=(document.querySelector('#op-cam .vtot')||{}).innerText||''; opCamFechar(); return {antes,depois}; });
+    ok(/1 \/ 4/.test(v3.antes),'faixa VOLUMES: deveria começar em 1 / 4 ('+v3.antes.replace(/\n/g,' ')+')');
+    ok(/4 \/ 4/.test(v3.depois)&&/completo/.test(v3.depois),'faixa VOLUMES: depois do "sim, todos" deveria mostrar 4 / 4 ('+v3.depois.replace(/\n/g,' ')+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

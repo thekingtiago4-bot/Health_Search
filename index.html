@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.24.2', HS_DATA='13/11/2026';
+const HS_VERSAO='9.25.0', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4939,6 +4939,11 @@ function opCamFechar(){ OP.destino=null; OP.espera=false; OP.confB=null; cancelA
 `; document.head.appendChild(st); })();
 /* quais situações não têm pergunta de volume: a caixa não vai seguir viagem, é só separar e continuar */
 const OP_CONF_SO_OK=['fora','pit','dup','reent','agend','div'];
+/* v9.25.0 · depois de responder a conferência, a faixa VOLUMES mostra o que foi contado (4/4) e dá o bipe */
+function opVolFaixa(k,t){ try{ const tb=document.querySelector('#op-cam .vtot'); if(!tb||!t) return;
+    tb.hidden=false; tb.style.background=k>=t?'var(--ok)':'#C2255C';
+    tb.innerHTML=`<span>VOLUMES</span><b>${fmtN(k)} / ${fmtN(t)}</b><small>${k>=t?'pedido completo ✓':'faltam '+fmtN(t-k)}</small>`;
+    try{ const m=document.querySelector('#op-cam .msg'); if(m){ const pos=()=>{ tb.style.bottom='auto'; tb.style.top=(m.offsetTop+m.offsetHeight+8)+'px'; }; pos(); requestAnimationFrame(pos); } }catch(e){} }catch(e){} }
 function opConfLimpar(){ const cam=document.querySelector('#op-cam'); if(cam) cam.querySelectorAll('.op-conf,.op-qt,.op-toque').forEach(e=>e.remove()); }
 /* libera a câmera: a etiqueta que acabou de ser lida não vale como bipe novo enquanto estiver na frente */
 function opConfFechar(){ opConfLimpar(); OP.espera=false; OP.confB=null;
@@ -4971,6 +4976,7 @@ function opDvQuantos(b,d,falta){ const cam=document.querySelector('#op-cam'); if
     opDvChegaram(b,d,Math.max(0,Math.min(falta,+v||0))); }); }
 function opDvChegaram(b,d,n){ const falta=Math.max(0,+d.qtd||0), chegou=Math.max(0,Math.min(falta,+n||0)), resta=falta-chegou;
   const eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
+  { const t=+d.tot||0; if(t) opVolFaixa(Math.max(0,t-resta),t); }
   d.qtd=resta; (d.hist=d.hist||[]).push({em:ag,por:eu,t:`Chegaram ${chegou} volume(s) na conferência do bipe — ${resta?('ainda faltam '+resta):'nada mais falta'}`});
   if(!resta){ d.st='resolvida'; d.res={d:hojeISO(),obs:`Os ${chegou} volume(s) que faltavam chegaram e foram bipados.`,por:eu}; try{ dvParaReentregas(d); }catch(e){} }
   salvar(); try{ dvRender(); }catch(e){} try{ dvBadge(); }catch(e){}
@@ -5010,7 +5016,7 @@ function opConfTodos(b,tot){ const cam=document.querySelector('#op-cam'); if(!ca
     <div class="pe"><button type="button" data-q="n" style="background:#dc2626;color:#fff">Não, faltou</button><button type="button" data-q="s" style="background:#16a34a;color:#fff">Sim, todos os ${tot}</button></div>`;
   cam.appendChild(d);
   d.addEventListener('click',e=>{ const bt=e.target.closest('[data-q]'); if(!bt) return; e.stopPropagation();
-    if(bt.dataset.q==='s'){ opConfCompletar(b,tot,tot); opConfMarcar(b,'ok',tot); try{ opSom('ok'); }catch(er){} opConfFechar(); }
+    if(bt.dataset.q==='s'){ opConfCompletar(b,tot,tot); opConfMarcar(b,'ok',tot); opVolFaixa(tot,tot); try{ opSom('ok'); }catch(er){} opConfFechar(); }
     else { try{ if(navigator.vibrate) navigator.vibrate([120,60,120]); }catch(er){} opConfQuantos(b,tot); } }); }
 /* v9.20.2 · guarda quem respondeu a conferência, quando e quantos volumes contou
    (colunas conferido_por / conferido_em / conferido_qt, criadas pela migração 2026-11-12-001) */
@@ -5045,8 +5051,8 @@ function opConfCompletar(b,tot,chegou){ try{ if(!opPorVol()) return 0; const n=M
 /* abre (ou atualiza) a divergência de Falta de volume com a quantidade que faltou */
 function opConfFalta(b,tot,chegou,obs){ const falta=Math.max(0,Math.max(1,+tot||1)-Math.max(0,+chegou||0));
   opConfCompletar(b,tot,chegou);
-  if(!falta){ opConfMarcar(b,'ok',chegou); try{ opSom('ok'); }catch(e){} toast('✔ Tudo certo: nenhuma divergência.'); opConfFechar(); return; }
-  opConfMarcar(b,'falta',chegou);
+  if(!falta){ opConfMarcar(b,'ok',chegou); opVolFaixa(tot,tot); try{ opSom('ok'); }catch(e){} toast('✔ Tudo certo: nenhuma divergência.'); opConfFechar(); return; }
+  opConfMarcar(b,'falta',chegou); opVolFaixa(chegou,tot);
   const L=dvS(), eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
   const texto=obs||`chegaram ${chegou} de ${tot} volume(s) — faltaram ${falta}`;
   let d=dvAcha(b.ped,b.nf);
@@ -5454,6 +5460,13 @@ const DV_TIPOS=['Falta de volume','Sobra de volume','Outro']; /* v9.1.0: avaria 
 const DV_ST={aberta:{t:'Aberta',c:'var(--no)'},apareceu:{t:'Apareceu no romaneio',c:'#E8590C'},resolvida:{t:'Resolvida',c:'var(--ok)'}};
 function dvS(){ return S.divergencias=S.divergencias||[]; }
 const dvNum=d=>'#'+String(d.n||0).padStart(3,'0');
+/* v9.25.0 · cidade da divergência: vem do romaneio quando a divergência é criada e, para as antigas,
+   é procurada uma vez nos romaneios carregados e no Banco de romaneios. */
+function dvCidade(d){ if(!d) return ''; if(d.cid) return d.cid+(d.uf?'/'+d.uf:'');
+  try{ const hit=todasLinhas().find(({row:x})=>(d.nf&&z(x.nf)===z(d.nf))||(d.ped&&z(x.ped)===z(d.ped)));
+    let row=hit&&hit.row; if(!row){ const bk=dvNoBanco(d.ped,d.nf); row=bk&&bk.row; }
+    if(row&&row.cid){ d.cid=String(row.cid).toUpperCase(); if(row.uf) d.uf=String(row.uf).toUpperCase(); dvCidade.mudou=true; return d.cid+(d.uf?'/'+d.uf:''); } }catch(e){}
+  return ''; }
 function dvAcha(ped,nf){ ped=z(ped); nf=z(nf); if(!ped&&!nf) return null; return dvS().find(d=>d.st!=='resolvida'&&((nf&&d.nf&&z(d.nf)===nf)||(ped&&d.ped&&z(d.ped)===ped)))||null; }
 const dvTexto=d=>`Pertence à divergência ${dvNum(d)}${d.tipo?' · '+d.tipo:''}${d.qtd?' · '+d.qtd+' vol.':''}${d.obs?' · '+d.obs:''} (aberta em ${fmtData(d.d)})`;
 /* romaneios carregados × divergências abertas: marca "apareceu" e devolve as que bateram */
@@ -5513,10 +5526,12 @@ function dvBadge(){ const q=$('#qt-dv'); if(!q) return; const n=dvS().filter(d=>
     if(id){ const d=L.find(x=>x.id===id); if(d){ Object.assign(d,{ped,nf,tipo:$('#dv-tipo').value,qtd:+$('#dv-qtd').value||null,tot:+($('#dv-tot')||{}).value||null,cli:$('#dv-cli').value.trim().toUpperCase(),rem:$('#dv-rem').value.trim().toUpperCase(),obs:$('#dv-obs').value.trim()}); (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Editada à mão'}); } }
     else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1; L.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped,nf,tipo:$('#dv-tipo').value,qtd:+$('#dv-qtd').value||null,tot:+($('#dv-tot')||{}).value||null,cli:$('#dv-cli').value.trim().toUpperCase(),rem:$('#dv-rem').value.trim().toUpperCase(),obs:$('#dv-obs').value.trim(),st:'aberta',por:eu,em:ag,hist:[{em:ag,por:eu,t:'Aberta'}]}); }
     salvar(); limpar(); dvVarrer(false); dvRender(); toast(id?'Divergência atualizada.':'Divergência registrada.'); };
+  { const _dr=dvRenderLista; dvRenderLista=function(){ dvCidade.mudou=false; const r=_dr.apply(this,arguments);
+      if(dvCidade.mudou){ dvCidade.mudou=false; try{ salvar(); }catch(e){} } return r; }; }
   $('#dv-filtro').oninput=dvRenderLista;
   $('#dv-cards').onclick=e=>{ const b=e.target.closest('[data-f]'); if(!b) return; DV.filtro=b.dataset.f; dvRender(); };
-  $('#dv-csv').onclick=()=>{ const linhas=[['Nº','Aberta em','Situação','Tipo','Pedido','NF','Volumes','Volumes da nota','Cliente','Remetente','Observação','Aberta por','Apareceu em','Romaneio','Resolvida em','Solução']];
-    for(const d of dvS()) linhas.push([dvNum(d),fmtData(d.d),DV_ST[d.st].t,d.tipo,d.ped,d.nf,d.qtd||'',d.tot||'',d.cli,d.rem,d.obs,d.por,d.apareceu?fmtData(d.apareceu.d):'',d.apareceu?d.apareceu.rom:'',d.res?fmtData(d.res.d):'',d.res?d.res.obs:'']);
+  $('#dv-csv').onclick=()=>{ const linhas=[['Nº','Aberta em','Situação','Tipo','Pedido','NF','Volumes','Volumes da nota','Cliente','Cidade','Remetente','Observação','Aberta por','Apareceu em','Romaneio','Resolvida em','Solução']];
+    for(const d of dvS()) linhas.push([dvNum(d),fmtData(d.d),DV_ST[d.st].t,d.tipo,d.ped,d.nf,d.qtd||'',d.tot||'',d.cli,dvCidade(d),d.rem,d.obs,d.por,d.apareceu?fmtData(d.apareceu.d):'',d.apareceu?d.apareceu.rom:'',d.res?fmtData(d.res.d):'',d.res?d.res.obs:'']);
     const csv='﻿'+linhas.map(l=>l.map(v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(';')).join('\r\n'); baixar(new Blob([csv],{type:'text/csv;charset=utf-8'}),`Divergencias_${hojeISO()}.csv`); };
   $('#dv-lista').onclick=async e=>{ const b=e.target.closest('[data-dv]'); if(!b) return; const d=dvS().find(x=>x.id===b.dataset.id); if(!d) return; const eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
     const a=b.dataset.dv;
@@ -5553,7 +5568,7 @@ function dvRender(){ if(!$('#dv-cards')) return; const L=dvSo(), F=window.DVF||{
 function dvRenderLista(){ const el=$('#dv-lista'); if(!el) return; const F=window.DVF||{filtro:'abertas'}; const q=N($('#dv-filtro').value||'');
   const L=dvSo().filter(d=>F.filtro==='todas'||(F.filtro==='abertas'?d.st!=='resolvida':d.st===F.filtro)).filter(d=>!q||N([d.ped,d.nf,d.cli,d.rem,d.tipo,d.obs,dvNum(d)].join(' ')).includes(q)).sort((a,b)=>(b.st==='apareceu')-(a.st==='apareceu')||(b.n||0)-(a.n||0));
   $('#dv-tit').textContent={abertas:'Divergências abertas',apareceu:'Apareceram no romaneio',resolvida:'Resolvidas',todas:'Todas as divergências'}[F.filtro];
-  el.innerHTML=L.length?`<table class="op-tab"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Vol.</th><th class="m-oc">Cliente</th><th>Observação</th><th></th></tr></thead><tbody>${L.map(d=>`<tr><td><b>${dvNum(d)}</b><div class="dv-hist">${fmtData(d.d)}${d.por?' · '+esc(d.por):''}</div></td><td class="dv-st" style="color:${DV_ST[d.st].c}">${DV_ST[d.st].t}${d.apareceu?`<div class="dv-hist">rom. ${esc(d.apareceu.rom)} em ${fmtData(d.apareceu.d)}</div>`:''}${d.res?`<div class="dv-hist">${fmtData(d.res.d)} · ${esc(d.res.obs||'')}</div>`:''}</td><td>${esc(d.tipo)}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${d.qtd||''}${d.tot?`<span class="sub" style="margin:0"> de ${d.tot}</span>`:''}${(d.tot&&+d.qtd>+d.tot)?`<div class="dv-hist" style="color:var(--no)">⚠ falta mais que o total da nota</div>`:''}</td><td class="m-oc">${esc(d.cli||'')}${d.rem?`<div class="dv-hist">${esc(d.rem)}</div>`:''}</td><td>${esc(d.obs||'')}</td>
+  el.innerHTML=L.length?`<table class="op-tab"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Vol.</th><th class="m-oc">Cliente</th><th>Observação</th><th></th></tr></thead><tbody>${L.map(d=>`<tr><td><b>${dvNum(d)}</b><div class="dv-hist">${fmtData(d.d)}${d.por?' · '+esc(d.por):''}</div></td><td class="dv-st" style="color:${DV_ST[d.st].c}">${DV_ST[d.st].t}${d.apareceu?`<div class="dv-hist">rom. ${esc(d.apareceu.rom)} em ${fmtData(d.apareceu.d)}</div>`:''}${d.res?`<div class="dv-hist">${fmtData(d.res.d)} · ${esc(d.res.obs||'')}</div>`:''}</td><td>${esc(d.tipo)}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${d.qtd||''}${d.tot?`<span class="sub" style="margin:0"> de ${d.tot}</span>`:''}${(d.tot&&+d.qtd>+d.tot)?`<div class="dv-hist" style="color:var(--no)">⚠ falta mais que o total da nota</div>`:''}</td><td class="m-oc">${esc(d.cli||'')}${dvCidade(d)?`<div class="dv-hist" style="color:var(--acento)">📍 ${esc(dvCidade(d))}</div>`:''}${d.rem?`<div class="dv-hist">${esc(d.rem)}</div>`:''}</td><td>${esc(d.obs||'')}</td>
     <td><div class="dv-acoes">${d.st!=='resolvida'?`<button class="btn mini pri" type="button" data-dv="resolver" data-id="${d.id}">Resolver</button>`:`<button class="btn mini" type="button" data-dv="reabrir" data-id="${d.id}">Reabrir</button>`}<button class="btn mini" type="button" data-dv="editar" data-id="${d.id}">Editar</button>${opAdmin()||!opOnline()?`<button class="op-x" type="button" title="Apagar" data-dv="apagar" data-id="${d.id}">✕</button>`:''}</div></td></tr>`).join('')}</tbody></table>`:'<div class="vazio-lista">Nenhuma divergência aqui.</div>'; }
 
 
@@ -5590,9 +5605,10 @@ async function dvBipar(textos){ const l=dvLeitura(textos); if(!l||(!l.ped&&!l.nf
   const obs=v.obs||(v.tipo==='Falta de volume'&&v.qtd?`faltavam ${v.qtd} volume(s)${volNum(row.vol)?' de '+volNum(row.vol):''}`:'');
   const totNota=volNum(row.vol)||l.tot||null; /* v9.23.1: guarda quantos volumes a nota tem */
   if(d){ Object.assign(d,{tipo:v.tipo,qtd:v.qtd,obs}); if(totNota&&!d.tot) d.tot=totNota;
-    if(!d.cli&&row.dest) d.cli=String(row.dest).toUpperCase(); if(!d.ped&&l.ped) d.ped=l.ped; if(!d.nf&&l.nf) d.nf=l.nf;
+    if(!d.cli&&row.dest) d.cli=String(row.dest).toUpperCase(); if(!d.cid&&row.cid) d.cid=String(row.cid).toUpperCase(); if(!d.uf&&row.uf) d.uf=String(row.uf).toUpperCase();
+    if(!d.ped&&l.ped) d.ped=l.ped; if(!d.nf&&l.nf) d.nf=l.nf;
     (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Atualizada pelo bipe'}); }
-  else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped:l.ped,nf:l.nf,tipo:v.tipo,qtd:v.qtd,tot:totNota,cli:String(row.dest||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pelo bipe'}]}; L.push(d); }
+  else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped:l.ped,nf:l.nf,tipo:v.tipo,qtd:v.qtd,tot:totNota,cli:String(row.dest||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),uf:String(row.uf||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pelo bipe'}]}; L.push(d); }
   salvar(); dvRender(); toast(`✔ Divergência ${dvNum(d)} salva: ${v.tipo}${v.qtd?' · '+v.qtd+' vol.':''}.`); setTimeout(()=>{ const c=$('#dv-bip'); if(c&&!TOQUE) c.focus(); },50); }
 (function(){ const c=$('#dv-bip'); if(!c) return; c.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=c.value.trim(); c.value=''; if(v) dvBipar(v); } });
   $('#dv-bt-cam').onclick=()=>{ OP.destino=dvBipar; opCamAbrir().then(()=>{ const m=document.querySelector('#op-cam .msg'); if(m) m.innerHTML='<b>Divergência</b>Aponte para a etiqueta ou a nota. Depois informe quantos volumes faltam.'; }); }; })();
