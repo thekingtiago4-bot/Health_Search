@@ -196,7 +196,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const f=document.getElementById('dv-form'), det=f.closest('details');
       const r={linha,aberto:!!(det&&det.open),qtd:document.getElementById('dv-qtd').value,tot:(document.getElementById('dv-tot')||{}).value,botao:document.getElementById('dv-ok').textContent};
       S.divergencias=[]; return r; });
-    ok(/1 de 31/.test(e2.linha),'divergência: a coluna Vol. deveria mostrar "1 de 31" ('+e2.linha.slice(0,90)+')');
+    ok(/30 de 31/.test(e2.linha)&&/faltam 1/.test(e2.linha),'divergência: a coluna Vol. deveria mostrar "30 de 31" (chegaram) e "faltam 1" ('+e2.linha.slice(0,90)+')');
     ok(e2.aberto,'divergência: o Editar não abriu o formulário "Ou preencher à mão"');
     ok(e2.qtd==='1'&&e2.tot==='31'&&e2.botao==='Salvar alterações','divergência: o Editar não trouxe os dados para o formulário ('+JSON.stringify(e2)+')'); }
   /* 9.23.2: os botões do quadro de motivos funcionam dentro da tela de Reentregas */
@@ -271,13 +271,23 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(g.chips==='1/6,2/6,3/6,4/6,5/6,6/6','divergência: a grade de caixas não apareceu ('+g.chips+')');
     ok(g.qtd===2&&g.falt==='2,6','divergência: marcar 2/6 e 6/6 deveria dar 2 volumes faltando ('+g.qtd+' / '+g.falt+')');
     ok(/faltaram as caixas 2\/6 e 6\/6/.test(g.obs||''),'divergência: a observação deveria dizer quais caixas faltaram ('+g.obs+')');
-    ok(/caixas 2\/6 e 6\/6/.test(g.lista),'divergência: a lista deveria mostrar quais caixas faltaram'); }
+    ok(/caixas 2\/6 e 6\/6/.test(g.lista),'divergência: a lista deveria mostrar quais caixas faltaram');
+}
   { const ad=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       S.ckApagados=[]; S.checklist=[{id:'k1',mot:'ANDRE',placa:'RTR-2J84',data:hojeISO(),ativo:true}]; irPara('checklist'); ckRender();
       const antes=ckTudo().length, linhasAntes=document.querySelectorAll('#ck-tbody tr').length;
       document.getElementById('ck-add').click(); await w(250);
       const r={d:ckTudo().length-antes,dl:document.querySelectorAll('#ck-tbody tr').length-linhasAntes,vazia:ckTudo().some(x=>!x.mot)}; S.checklist=[]; return r; });
     ok(ad.d===1&&ad.dl===1&&ad.vazia,'checklist: o ＋ Adicionar não criou a linha nova ('+JSON.stringify(ad)+')'); }
+  /* 9.26.2: na lista de divergências a coluna Vol. mostra quanto CHEGOU (2 de 5), não quanto falta */
+  { const v=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      S.divergencias=[{id:'t1',n:1,d:hojeISO(),tipo:'Falta de volume',ped:'724486',nf:'731084',qtd:3,tot:5,falt:[2,4,5],cli:'DROGARIA TESTE',st:'aberta'}];
+      irPara('divergencias'); dvRenderLista(); await w(150);
+      const t=document.querySelector('#dv-lista').innerText.replace(/\s+/g,' '); S.divergencias=[]; return t; });
+    ok(/2 de 5/.test(v),'divergência: a coluna Vol. deveria mostrar 2 de 5 (o que chegou) — '+v.slice(0,180));
+    ok(!/3 de 5/.test(v),'divergência: a coluna Vol. ainda está mostrando o que falta (3 de 5)');
+    ok(/faltam 3/.test(v),'divergência: deveria dizer "faltam 3" embaixo');
+    ok(/caixas 2\/5, 4\/5 e 5\/5/.test(v),'divergência: deveria listar as caixas que faltaram — '+v.slice(0,180)); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();
