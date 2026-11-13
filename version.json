@@ -1,1 +1,1 @@
-{"versao":"9.25.0","data":"2026-11-13","novidades":"Divergencias mostram a cidade da nota (e ela vai no Excel). Ao confirmar que todos os volumes vieram, a faixa VOLUMES vai para 4/4 com bipe."}
+{"versao":"9.25.1","data":"2026-11-13","novidades":"O app aprendeu a etiqueta de caixa da Health Log (sem QR Code): le cliente, cidade e VOL. 1 DE 2, e agora tenta ler tambem de cabeca para baixo."}

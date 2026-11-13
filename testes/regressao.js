@@ -251,5 +251,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const depois=(document.querySelector('#op-cam .vtot')||{}).innerText||''; opCamFechar(); return {antes,depois}; });
     ok(/1 \/ 4/.test(v3.antes),'faixa VOLUMES: deveria começar em 1 / 4 ('+v3.antes.replace(/\n/g,' ')+')');
     ok(/4 \/ 4/.test(v3.depois)&&/completo/.test(v3.depois),'faixa VOLUMES: depois do "sim, todos" deveria mostrar 4 / 4 ('+v3.depois.replace(/\n/g,' ')+')'); }
+  /* 9.25.1: etiqueta de caixa da Health Log (sem QR Code) — cliente, cidade, volume e modelo */
+  { const e4=await p.evaluate(()=>{ const t=['000151 VOL.: 1 DE 1 000000021','12/11/2026','SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE','R WENCESLAU BRAZ, 5','VILA EUCLIDES','ESTADO: SP CEP: 19014030','PESO: 0.0000 EMBALADOR:','CIDADE: PRESIDENTE PRUDENTE 000027 000219','TRANSP.: - HEALTH LOG'];
+      const r=etqInterpretar(t); return {dest:r.dest,cid:r.cid,vol:r.vol+'/'+r.tot,modelo:r.modelo,semCep:!r.nums.includes('19014030')}; });
+    ok(e4.dest==='SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE','etiqueta de caixa: não leu o cliente ('+e4.dest+')');
+    ok(e4.cid==='PRESIDENTE PRUDENTE'&&e4.vol==='1/1','etiqueta de caixa: cidade ou volume errado ('+e4.cid+' '+e4.vol+')');
+    ok(e4.modelo==='Caixa Health Log','etiqueta de caixa: não reconheceu o modelo ('+e4.modelo+')');
+    ok(e4.semCep,'etiqueta de caixa: o CEP não pode entrar como número de nota'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
