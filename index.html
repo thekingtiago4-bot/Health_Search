@@ -4197,7 +4197,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.26.3', HS_DATA='13/11/2026';
+const HS_VERSAO='9.26.4', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6209,16 +6209,22 @@ function etqInterpretar(linhas){ const L=linhas.map(l=>l.toUpperCase().replace(/
   r.nums=[...new Set((T.match(/\b\d{5,9}\b/g)||[]))];
   /* v9.25.1 · etiqueta de caixa da Health Log (sem QR Code, estilo "9 de Julho"):
      000151 VOL.: 1 DE 1 000000021 / data / destinatário / endereço / bairro / ESTADO / CEP / CIDADE / TRANSP. */
-  if(/TRANSP/.test(T)&&/HEALTH\s*LOG/.test(T)&&/CIDADE\s*[:.]/.test(T)){
-    if(!r.modelo) r.modelo='Caixa Health Log';
-    /* v9.26.3 · na linha do VOL. o número da DIREITA é a nota fiscal (o da esquerda é o código da etiqueta) */
-    { const lv=L.find(l=>/VOL\s*[:.]/.test(l)&&/\d{4,}/.test(l)); if(lv){ const ns=(lv.replace(/VOL\s*[:.]?\s*\d{1,3}\s*(?:DE|\/)\s*\d{1,3}/,' ').match(/\b[0-9OQIL]{4,12}\b/g)||[]).map(dig).filter(n=>n.length>=4);
-        const nf=ns.length?ns[ns.length-1]:''; if(nf){ r.nfs=[nf,...r.nfs.filter(x=>x!==nf)]; r.etqCod=ns.length>1?ns[0]:''; } } }
-    const cep=(T.match(/CEP\s*[:.]?\s*(\d{8})/)||[])[1]; if(cep) r.nums=r.nums.filter(n=>n!==cep);
+  /* v9.26.4 · etiqueta de caixa da Health Log — layout fixo, lido mesmo com o OCR errando letras:
+       000153   VOL.: 1 DE 2   000000025      <- esquerda = código da etiqueta · direita (9 díg.) = NOTA FISCAL
+       destinatário / endereço / bairro / ESTADO / CEP / CIDADE: ... / TRANSP.: - HEALTH LOG
+     Só este modelo: os números de 6 dígitos são códigos internos e nunca entram como nota ou pedido. */
+  if(/HEALTH\s*L[O0]G/.test(T)&&!r.modelo&&!r.nfs.length){
+    r.modelo='Caixa Health Log';
+    const cep=((T.match(/CEP\s*[:.]?\s*([0-9OQIL]{8})/)||[])[1]||'')&&dig((T.match(/CEP\s*[:.]?\s*([0-9OQIL]{8})/)||[])[1]);
+    const toks=(T.match(/\b[0-9OQIL]{5,12}\b/g)||[]).filter(t=>(t.match(/\d/g)||[]).length>=3).map(dig).filter(n=>n.length>=5);
+    const cand=toks.filter(n=>n.length>=7&&n.length<=12&&n!==cep);
+    const nf=cand.find(n=>n.length===9)||cand[0]||'';
+    if(nf){ r.nfs=[nf]; r.nums=[nf]; r.etqCod=toks.find(n=>n.length===6&&n!==nf)||''; }
+    else if(cep) r.nums=r.nums.filter(n=>n!==cep);
     if(!r.dest){ const ender=/^(R|RUA|AV|AVENIDA|TRAV|TRAVESSA|AL|ALAMEDA|ROD|RODOVIA|PCA|PRACA|ESTR)\b|^\d/;
-      const pular=/VOL|CIDADE|ESTADO|CEP|PESO|EMBALADOR|TRANSP|HEALTH\s*LOG|^\d{2}\/\d{2}\/\d{2,4}$|^-+$/;
-      const cand=L.find(l=>{ const t=l.replace(/\b\d{4,}\b/g,'').trim(); return t.length>8&&!pular.test(l)&&!ender.test(t)&&/[A-ZÀ-Ü]{3}/.test(t)&&(t.match(/[A-ZÀ-Ü ]/g)||[]).length>t.length*0.7; });
-      if(cand) r.dest=cand.replace(/\b\d{4,}\b/g,'').replace(/\s+/g,' ').trim(); } }
+      const pular=/VOL|CIDADE|ESTADO|CEP|PESO|EMBALADOR|TRANSP|HEALTH\s*L[O0]G|^\d{2}\/\d{2}\/\d{2,4}$|^-+$/;
+      const c2=L.find(l=>{ const t=l.replace(/\b\d{4,}\b/g,'').trim(); return t.length>8&&!pular.test(l)&&!ender.test(t)&&/[A-ZÀ-Ü]{3}/.test(t)&&(t.match(/[A-ZÀ-Ü ]/g)||[]).length>t.length*0.7; });
+      if(c2) r.dest=c2.replace(/\b\d{4,}\b/g,'').replace(/[_]+/g,' ').replace(/\s+/g,' ').trim(); } }
   m=T.match(/VOL(?:UME)?S?\.?\s*[:.]?\s*(\d{1,3})\s*(?:\/|DE)\s*(\d{1,3})/); if(!m){ const i=L.findIndex(l=>/VOLUME/.test(l)); if(i>=0&&L[i+1]) m=L[i+1].match(/(\d{1,3})\s*\/\s*(\d{1,3})\s*$/); }
   if(!m) m=T.match(/\b(\d{1,3})\s*\/\s*(\d{1,3})\b/); if(m){ r.vol=+m[1]; r.tot=+m[2]; }
   m=T.match(/CIDADE\s*[:.]?\s*([A-ZÀ-Ü' ]{3,40})/); if(m) r.cid=m[1].trim(); else { m=T.match(/([A-ZÀ-Ü' ]{3,40}?)\s*-\s*(SP|MG|RJ|GO|PR|DF|MS|MT|BA)\b/); if(m) r.cid=m[1].trim(); }
@@ -8619,6 +8625,8 @@ function etqAchouAlgo(p,idx){ if(!p) return false; const ns=[...(p.nfs||[]),...(
       const soltos=[...new Set(linhas.join(' ').match(/\b\d{5,9}\b/g)||[])]; const res=Object.assign({},q,base);
       res.nfs=[...new Set([...(base.nfs||[]),...(q.nfs||[])])]; res.nums=[...new Set([...(base.nums||[]),...(q.nums||[]),...soltos])];
       for(const k of ['dest','cid','tot','vol','uf']) if(!res[k]&&q[k]) res[k]=q[k]; if(!base.dest&&q.dest) res.dest=q.dest; if(!base.cid&&q.cid) res.cid=q.cid;
+      /* v9.26.4: na etiqueta de caixa da Health Log o número da direita é a NF e os de 6 dígitos são códigos — não deixa os "soltos" virarem nota/pedido */
+      if(q.modelo==='Caixa Health Log'&&q.nfs&&q.nfs[0]&&!(base.nfs||[]).length){ res.modelo='Caixa Health Log'; res.nfs=[q.nfs[0]]; res.nums=[q.nfs[0]]; res.etqCod=q.etqCod||''; }
       CERx.linhas=linhas.map(l=>String(l).toUpperCase().replace(/\s+/g,' ').trim()); return res; }catch(e){ console.error('eva ocr',e); return p; } }; }
 /* duas notas do mesmo cliente/cidade: desempata pelos últimos dígitos lidos (ex.: leu 24870 → pedido 044870) */
 { const _oo=opOcr; opOcr=async function(v){ const p=await _oo(v); try{ if(!p) return p; const idx=opIndice(); if(etqAchouAlgo(p,idx)) return p; const lidos=(p.nums||[]).concat(p.nfs||[]).map(x=>String(x).replace(/\D/g,'')).filter(x=>x.length>=4);

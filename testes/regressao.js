@@ -291,6 +291,14 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!/3 de 5/.test(v),'divergência: a coluna Vol. ainda está mostrando o que falta (3 de 5)');
     ok(/faltam 3/.test(v),'divergência: deveria dizer "faltam 3" embaixo');
     ok(/caixas 2\/5, 4\/5 e 5\/5/.test(v),'divergência: deveria listar as caixas que faltaram — '+v.slice(0,180)); }
+  /* 9.26.4: etiqueta de caixa Health Log lida do jeito que o OCR entrega de verdade (letras erradas) */
+  { const e5=await p.evaluate(()=>{ const t=['000153 VO oe 2 000000025','LABORSERV PASTEUR LTDA Epp','R VICTORIO SCAPIN, BOE','centro','OOP CEP: 1928\u00a2a00','TESO:_____0.0000 au: a Jie ee','tapas TEODORO mT rrewgp HEALTH Log'];
+      const r=etqInterpretar(t); return {m:r.modelo,nf:r.nfs.join(','),nums:r.nums.join(','),cod:r.etqCod||'',dest:r.dest}; });
+    ok(e5.m==='Caixa Health Log','etiqueta de caixa: com o OCR errando TRANSP e CIDADE ainda tem que reconhecer o modelo ('+e5.m+')');
+    ok(e5.nf==='000000025','etiqueta de caixa: a NF é o número de 9 dígitos da direita ('+e5.nf+')');
+    ok(e5.nums==='000000025','etiqueta de caixa: os códigos de 6 dígitos não podem virar nota nem pedido ('+e5.nums+')');
+    ok(e5.cod==='000153','etiqueta de caixa: o código da etiqueta é o da esquerda ('+e5.cod+')');
+    ok(/LABORSERV PASTEUR/.test(e5.dest||''),'etiqueta de caixa: não leu o destinatário ('+e5.dest+')'); }
   /* 9.26.3: etiqueta de caixa Health Log bipando de verdade — a NF da direita acha a nota no romaneio */
   { const bp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'hl',numero:'0019486',base:'CAJ',arquivo:a,rows:[{nf:'000021',ped:'555001',vol:'1',dest:'SANTA CASA DE MISERICORDIA DE PRESIDENTE PRUDENTE',cid:'PRESIDENTE PRUDENTE',uf:'SP'}]}];
@@ -301,6 +309,16 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       return {st:b.status,nf:b.nf,todos:OP.bipes.map(x=>x.nf+':'+x.status).join(' ')}; });
     ok(bp.st==='ok','etiqueta de caixa Health Log: deveria bipar como conferida e veio "'+bp.st+'" ('+bp.todos+')');
     ok(opKi(bp.nf)==='21','etiqueta de caixa Health Log: bipou a nota errada ('+bp.nf+' em vez de 21)'); }
+  /* 9.26.4: o mesmo bipe, mas com o texto sujo que o OCR entrega na foto real (NF 25) */
+  { const bp2=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'hl2',numero:'0019487',base:'CAJ',arquivo:a,rows:[{nf:'000025',ped:'555002',vol:'2',dest:'LABORSERV PASTEUR LTDA EPP',cid:'TEODORO SAMPAIO',uf:'SP'}]}];
+      OP.dia=h; OP.releitura=false; OP.espera=false; OP.visto=new Map(); OP.ultLeitura=0; renderTudo(); irPara('operacao'); OP.bipes=[];
+      const t=['000153 VO oe 2 000000025','LABORSERV PASTEUR LTDA Epp','R VICTORIO SCAPIN, BOE','centro','OOP CEP: 1928\u00a2a00','TESO:_____0.0000 au: a Jie ee','tapas TEODORO mT rrewgp HEALTH Log'];
+      opLerEtiqueta(etqInterpretar(t)); await w(300);
+      const b=OP.bipes.find(x=>opK(x.nf)==='25')||OP.bipes[0]||{};
+      return {st:b.status,nf:b.nf,todos:OP.bipes.map(x=>x.nf+':'+x.status).join(' ')}; });
+    ok(bp2.st==='ok','etiqueta de caixa (foto real): deveria bipar como conferida e veio "'+bp2.st+'" ('+bp2.todos+')');
+    ok(opKi(bp2.nf)==='25','etiqueta de caixa (foto real): bipou a nota errada ('+bp2.nf+' em vez de 25)'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();
