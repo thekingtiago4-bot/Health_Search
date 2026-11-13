@@ -225,5 +225,11 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(fm.subiu==='VEIO NO CARRO SEGUINTE','motivos da nota acrescentada: o ▲ não mudou a ordem');
     ok(fm.editou==='PRESA NA CAIXA','motivos da nota acrescentada: editar o texto não salvou');
     ok(fm.usaNoSelect,'motivos da nota acrescentada: a lista do pop-up não usa o cadastro'); }
+  /* 9.24.2: aviso quando o que falta é maior que o total da nota */
+  { const w2=await p.evaluate(()=>{ const h=hojeISO();
+      S.divergencias=[{id:'d1',n:1,d:h,ped:'1',nf:'909958',tipo:'Falta de volume',qtd:35,tot:31,cli:'X',obs:'',st:'aberta',por:'t',em:new Date().toISOString(),hist:[]}];
+      renderTudo(); irPara('divergencias');
+      const t=document.querySelector('#t-divergencias #dv-lista').innerText; S.divergencias=[]; return t.includes('falta mais que o total'); });
+    ok(w2,'divergência: faltando mais volumes que o total da nota deveria avisar'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
