@@ -49,13 +49,22 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       renderTudo(); irPara('operacao'); OP.dia=h; OP.bipes=[]; window.__cods=[]; OP.det=async()=>window.__cods.slice();
       await opCamAbrir(); const out={cam:!!document.querySelector('#op-cam')};
       window.__cods=['724486']; await w(2500);
+      /* 9.20.1: barra de baixo sem encavalar (Desfazer dentro da barra e 💾 Salvar escondido) */
+      out.barra=(()=>{ const d=document.querySelector('#op-cam #op-desf'), sv=document.getElementById('hs-salvar');
+        return {naBarra:!!(d&&d.closest('.bar')), salvarOculto:!sv||getComputedStyle(sv).display==='none'}; })();
       out.bipes1=OP.bipes.length; out.espera=!!OP.espera; out.bts=[...document.querySelectorAll('#op-cam .op-conf .bts button')].map(x=>x.className).join(',');
       await w(2500); out.fantasma=OP.bipes.length; /* etiqueta parada na frente não pode bipar sozinha de novo */
       document.querySelector('#op-cam .op-conf .no').click(); await w(200);
       out.qtd=[...document.querySelectorAll('#op-cam .op-qt .gr button')].map(x=>x.textContent).join(',');
       document.querySelector('#op-cam .op-qt .gr button[data-n="1"]').click(); await w(300);
       const d=S.divergencias[0]||{}; out.dv=d.tipo+'/'+d.qtd; out.esperaFim=!!OP.espera; out.vols=OP.bipes.filter(x=>x.ped==='724486').length;
+      /* 9.20.1: nota de um volume só não abre a tela de conferência (o parar é o sinal de "tem mais de uma caixa") */
+      S.romaneios[0].rows.push({nf:'731085',ped:'724487',vol:'1',dest:'UM VOLUME',cid:'LAVRAS',uf:'MG'}); renderTudo();
+      window.__cods=[]; await w(1700); window.__cods=['724487']; await w(2500);
+      out.um1={painel:!!document.querySelector('#op-cam .op-conf'),espera:!!OP.espera,bipado:OP.bipes.some(x=>x.ped==='724487')};
       opCamFechar(); S.divergencias=[]; S.opPorVolume=false; return out; });
+    ok(c.barra&&c.barra.naBarra,'câmera: "Desfazer último" saiu de dentro da barra e volta a encavalar na Lanterna');
+    ok(c.barra&&c.barra.salvarOculto,'câmera: o 💾 Salvar voltou a aparecer por cima do botão Fechar');
     ok(c.bipes1===1,'conferência do bipe: a câmera registrou '+c.bipes1+' bipe(s) em vez de 1');
     ok(c.espera===true,'conferência do bipe: a câmera não travou esperando a resposta');
     ok(c.bts==='no,sim','conferência do bipe: botões ✗ e ✓ não apareceram ('+c.bts+')');
@@ -63,6 +72,21 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(c.qtd==='0,1,2,3','conferência do bipe: faltou a escolha de quantos volumes chegaram ('+c.qtd+')');
     ok(c.dv==='Falta de volume/2','conferência do bipe: divergência errada ('+c.dv+')');
     ok(c.vols===1,'conferência do bipe: chegou 1 de 3 e o app marcou '+c.vols+' volume(s) conferido(s)');
-    ok(c.esperaFim===false,'conferência do bipe: a câmera não voltou a ler depois da resposta'); }
+    ok(c.esperaFim===false,'conferência do bipe: a câmera não voltou a ler depois da resposta');
+    ok(c.um1&&c.um1.bipado&&!c.um1.painel&&!c.um1.espera,'nota de 1 volume: abriu a tela de conferência em vez de seguir direto'); }
+  /* 9.20.1: caixa já bipada por outro conferente tem que dar duplicado e dizer quem bipou */
+  { const d=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'d',numero:'0019486',arquivo:a,rows:[{nf:'731084',ped:'724486',vol:'1',dest:'CLIENTE',cid:'LAVRAS',uf:'MG'}]}]; renderTudo(); irPara('operacao'); OP.dia=h;
+      OP.bipes=[opDoBanco({local_id:'zz1',dia:h,status:'ok',ped:'724486',nf:'731084',vol:1,tot:1,usuario:'Christian Souza',criado_em:new Date(Date.now()-20000).toISOString()})];
+      opLer(['724486'],'leitor'); const b=OP.bipes[0]; return {st:b.status,tit:(document.querySelector('#op-res')||{}).innerText||''}; });
+    ok(d.st==='dup','caixa já bipada por outro conferente passou como '+d.st+' em vez de duplicado');
+    ok(/Christian/.test(d.tit),'duplicado não disse quem já tinha bipado a caixa'); }
+  /* 9.20.1: com mais de um romaneio de Cajamar, a origem vira o nome do motorista */
+  { const o=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'c1',numero:'0235414',base:'CAJ',motorista:'ADRIEL DOS SANTOS',arquivo:a,rows:[{nf:'1',ped:'1',vol:'1',dest:'A',cid:'X'}]},
+                   {id:'c2',numero:'0235415',base:'CAJ',motorista:'REGINALDO PEREIRA',arquivo:a,rows:[{nf:'2',ped:'2',vol:'1',dest:'B',cid:'X'}]},
+                   {id:'d1',numero:'0019486',base:'DF',motorista:'JOAO',arquivo:a,rows:[{nf:'3',ped:'3',vol:'1',dest:'C',cid:'X'}]}];
+      OP.bipes=[]; opRender(); return [...document.querySelectorAll('#op-romchips [data-op-rf]')].map(x=>x.innerText.replace(/\s+/g,' ').trim()).join(' | '); });
+    ok(/Adriel/.test(o)&&/Reginaldo/.test(o)&&!/CAJ/.test(o),'origem com 2 romaneios de Cajamar não trocou CAJ pelo motorista ('+o+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
