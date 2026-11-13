@@ -57,7 +57,8 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       document.querySelector('#op-cam .op-conf .no').click(); await w(200);
       out.qtd=[...document.querySelectorAll('#op-cam .op-qt .gr button')].map(x=>x.textContent).join(',');
       document.querySelector('#op-cam .op-qt .gr button[data-n="1"]').click(); await w(300);
-      const d=S.divergencias[0]||{}; out.dv=d.tipo+'/'+d.qtd; out.esperaFim=!!OP.espera; out.vols=OP.bipes.filter(x=>x.ped==='724486').length;
+      const d=S.divergencias[0]||{}; out.dv=d.tipo+'/'+d.qtd;
+      { const bb=OP.bipes.find(x=>x.ped==='724486')||{}; out.conf={conferido_por:bb.conferido_por||'',conferido_qt:bb.conferido_qt}; } out.esperaFim=!!OP.espera; out.vols=OP.bipes.filter(x=>x.ped==='724486').length;
       /* 9.20.1: nota de um volume só não abre a tela de conferência (o parar é o sinal de "tem mais de uma caixa") */
       S.romaneios[0].rows.push({nf:'731085',ped:'724487',vol:'1',dest:'UM VOLUME',cid:'LAVRAS',uf:'MG'}); renderTudo();
       window.__cods=[]; await w(1700); window.__cods=['724487']; await w(2500);
@@ -71,6 +72,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(c.fantasma===1,'bipe fantasma: a etiqueta parada na frente foi bipada de novo ('+c.fantasma+' bipes)');
     ok(c.qtd==='0,1,2,3','conferência do bipe: faltou a escolha de quantos volumes chegaram ('+c.qtd+')');
     ok(c.dv==='Falta de volume/2','conferência do bipe: divergência errada ('+c.dv+')');
+    ok(c.conf&&c.conf.conferido_por&&c.conf.conferido_qt===1,'conferência do bipe: não gravou quem respondeu / quantos volumes contou ('+JSON.stringify(c.conf)+')');
     ok(c.vols===1,'conferência do bipe: chegou 1 de 3 e o app marcou '+c.vols+' volume(s) conferido(s)');
     ok(c.esperaFim===false,'conferência do bipe: a câmera não voltou a ler depois da resposta');
     ok(c.um1&&c.um1.bipado&&!c.um1.painel&&!c.um1.espera,'nota de 1 volume: abriu a tela de conferência em vez de seguir direto'); }
@@ -85,8 +87,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
   { const o=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'c1',numero:'0235414',base:'CAJ',motorista:'ADRIEL DOS SANTOS',arquivo:a,rows:[{nf:'1',ped:'1',vol:'1',dest:'A',cid:'X'}]},
                    {id:'c2',numero:'0235415',base:'CAJ',motorista:'REGINALDO PEREIRA',arquivo:a,rows:[{nf:'2',ped:'2',vol:'1',dest:'B',cid:'X'}]},
-                   {id:'d1',numero:'0019486',base:'DF',motorista:'JOAO',arquivo:a,rows:[{nf:'3',ped:'3',vol:'1',dest:'C',cid:'X'}]}];
+                   {id:'d1',numero:'0019486',base:'DF',motorista:'JOAO',arquivo:a,rows:[{nf:'3',ped:'3',vol:'1',dest:'C',cid:'X'}]},
+                   {id:'m1',numero:'0077001',base:'MESA',motorista:'CARLOS LIMA',arquivo:a,rows:[{nf:'4',ped:'4',vol:'1',dest:'D',cid:'X'}]},
+                   {id:'m2',numero:'0077002',base:'MESA',motorista:'PEDRO ALVES',arquivo:a,rows:[{nf:'5',ped:'5',vol:'1',dest:'E',cid:'X'}]}];
       OP.bipes=[]; opRender(); return [...document.querySelectorAll('#op-romchips [data-op-rf]')].map(x=>x.innerText.replace(/\s+/g,' ').trim()).join(' | '); });
-    ok(/Adriel/.test(o)&&/Reginaldo/.test(o)&&!/CAJ/.test(o),'origem com 2 romaneios de Cajamar não trocou CAJ pelo motorista ('+o+')'); }
+    ok(/Adriel/.test(o)&&/Reginaldo/.test(o)&&!/CAJ/.test(o),'origem com 2 romaneios de Cajamar não trocou CAJ pelo motorista ('+o+')');
+    ok(/Carlos/.test(o)&&/Pedro/.test(o)&&!/MESA/.test(o),'origem com 2 romaneios da MESA não trocou pelo motorista ('+o+')');
+    ok(/DF/.test(o)&&!/Joao/.test(o),'origem com 1 romaneio só deveria continuar sendo a sigla ('+o+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
