@@ -121,5 +121,21 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const mk=(mot,baseCod,obs)=>{ const r={id:'r'+mot,numero:'1',motorista:mot,baseCod,observacoes:obs||'',rows:[]}; aplicarRegraBase(r); return r.base; };
       return [mk('FELIPE','001'),mk('JULIANO','001'),mk('REGINALDO','001'),mk('GIOVANNI PEREIRA','001'),mk('ZEZINHO','004')].join(','); });
     ok(o==='VIA MINAS,DF,CAJ,VIA MINAS,DF','origem pelo motorista cadastrado saiu errada ('+o+')'); }
+  /* 9.22.0: motorista com duas origens (o código do romaneio desempata) e aviso de quem está fora do cadastro */
+  { const m=await p.evaluate(()=>{ cadInit();
+      S.cadMot=[{nome:'REGINALDO',alias:'',cpf:'',tipo:'transf',bases:['CAJ','DF'],base:'CAJ, DF'}];
+      const mk=(mot,baseCod)=>{ const r={id:'r'+mot+baseCod,numero:'1',motorista:mot,baseCod,observacoes:'',rows:[]}; aplicarRegraBase(r); return r.base; };
+      const duas=[mk('REGINALDO','001'),mk('REGINALDO','004')].join(',');
+      S.romaneios=[{id:'a',numero:'0235414',base:'CAJ',motorista:'ADRIEL DOS SANTOS',arquivo:'x 12-11.pdf',rows:[]}];
+      irPara('romaneios'); renderRomaneios(); const box=document.querySelector('#cad-faltam');
+      const banner=!!(box&&!box.hidden); const tinha=cadFaltam().map(x=>x.nome).join(',');
+      const bt=document.querySelector('[data-cad-add-mot]'); if(bt) bt.click();
+      const novo=(S.cadMot||[]).find(x=>x.nome==='ADRIEL DOS SANTOS');
+      const sumiu=!cadFaltam().some(x=>x.nome==='ADRIEL DOS SANTOS');
+      return {duas,banner,tinha,sumiu,cadastrado:novo?novo.tipo+'/'+(novo.base||''):''}; });
+    ok(m.duas==='CAJ,DF','motorista com duas origens: o código do romaneio não desempatou ('+m.duas+')');
+    ok(m.banner&&m.tinha==='ADRIEL DOS SANTOS','aviso de motorista fora do Cadastro Agregado não apareceu ('+m.tinha+')');
+    ok(m.cadastrado==='transf/CAJ','botão Cadastrar não cadastrou o motorista com a origem do romaneio ('+m.cadastrado+')');
+    ok(m.sumiu,'motorista cadastrado continuou na lista de quem está fora do cadastro'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
