@@ -501,6 +501,24 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(c2.campos===2,'correção: os dois casos sem motorista precisam de campo ('+c2.campos+')');
     ok(c2.sobrou===1,'correção: ao escrever o motorista a linha tem que sair ('+c2.sobrou+' sobrou de 2)');
     ok(c2.x===2,'correção: cada linha precisa do X de "não é reentrega" ('+c2.x+')'); }
+  /* 9.27.2: a janela de relatório (Ver todos) não pode sair cortada no PDF */
+  { await p.evaluate(async()=>{ const h=hojeISO(); const D=RE.ler(); D.dias=D.dias||{};
+      D.dias[h]=Array.from({length:40},(_,i)=>({nf:String(700000+i),ped:String(800000+i),cli:'CLIENTE COM NOME BEM COMPRIDO LTDA '+i,
+        cid:['SAO JOSE DO RIO PRETO','SAO CARLOS','POCOS DE CALDAS'][i%3],uf:i%3===2?'MG':'SP',qtd:1+i%4,val:1000+i*37,base:'AQA',
+        mot:['ALEXANDRE','M. HENRIQUE','DIEGO'][i%3],obs:'ERA DIVERGENCIA (CHEGARAM VOLUMES) - X'}));
+      RE.gravar(); irPara('reentregas'); try{ reSub('painel'); }catch(e){} await new Promise(r=>setTimeout(r,400));
+      rxAbrir('Todos · por motorista',RP._sel||[]); await new Promise(r=>setTimeout(r,300)); });
+    await p.emulateMedia({media:'print'});
+    const rx=await p.evaluate(()=>{ const cx=document.querySelector('#rx .cx'), co=document.querySelector('#rx .corpo');
+      return { larg:document.documentElement.scrollWidth, tela:document.documentElement.clientWidth,
+        cx:getComputedStyle(cx).overflow, corpo:getComputedStyle(co).overflow, alt:document.documentElement.scrollHeight }; });
+    const pdf=await p.pdf({format:'A4',landscape:true});
+    const folhas=(pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g)||[]).length;
+    await p.emulateMedia({media:'screen'});
+    await p.evaluate(()=>{ const f=document.getElementById('rx'); if(f) f.remove(); const h=hojeISO(); const D=RE.ler(); D.dias[h]=[]; RE.gravar(); });
+    ok(rx.larg<=rx.tela,'relatório: no papel não pode sobrar nada para o lado ('+rx.larg+' > '+rx.tela+')');
+    ok(rx.cx==='visible'&&rx.corpo==='visible','relatório: a caixa da janela não pode cortar o conteúdo no papel ('+rx.cx+'/'+rx.corpo+')');
+    ok(folhas>1,'relatório: o PDF tinha que sair com mais de uma folha ('+folhas+')'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();

@@ -4228,7 +4228,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='9.27.1', HS_DATA='13/11/2026';
+const HS_VERSAO='9.27.2', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6352,7 +6352,35 @@ async function opCamSemCodigo(v){ const ag=Date.now(); if(OP.espera) return; if(
 #rx td{padding:5px 6px;border-bottom:1px solid var(--linha);vertical-align:top}#rx td.r,#rx th.r{text-align:right;white-space:nowrap}
 #rx .bus{border:1.5px solid var(--linha);border-radius:8px;padding:6px 10px;background:var(--sup);color:var(--tinta);font:inherit;min-width:220px}
 #rx .mini-l{display:flex;justify-content:space-between;gap:8px;padding:3px 4px;border-radius:6px;cursor:pointer}#rx .mini-l:hover{background:color-mix(in srgb,var(--ag) 12%,transparent)}#rx .mini-l span:last-child{color:var(--mudo);white-space:nowrap}
-@media print{body:has(> #rx)>*:not(#rx){display:none!important}#rx{position:static;background:none;padding:0}#rx .cx{box-shadow:none;width:100%}#rx header button,#rx .bus{display:none}#rx .corpo{overflow:visible}}`; document.head.appendChild(st); })();
+@media print{
+ /* v9.27.2 · a janela de relatório saía cortada: ela é uma caixa do tamanho da tela (flex + overflow hidden)
+    e as colunas não cabiam na folha. No papel ela vira um documento normal, que quebra em quantas folhas precisar. */
+ body:has(#rx)>*:not(#rx){display:none!important}
+ #rx{position:static!important;inset:auto!important;display:block!important;background:none!important;padding:0!important;height:auto!important;max-height:none!important;overflow:visible!important}
+ #rx .cx{box-shadow:none!important;border-radius:0!important;width:100%!important;max-width:none!important;display:block!important;height:auto!important;max-height:none!important;overflow:visible!important;background:none!important;color:#000!important}
+ #rx header{padding:0 0 4mm!important;border-bottom:1px solid #999!important;display:block!important}
+ #rx header h2{font-size:14pt!important;margin:0!important;color:#000!important}
+ #rx header button,#rx .bus{display:none!important}
+ #rx .corpo{overflow:visible!important;height:auto!important;max-height:none!important;padding:4mm 0 0!important;display:block!important}
+ #rx .kp{gap:4mm!important;margin-bottom:4mm!important} #rx .kp div{border-color:#999!important;color:#333!important;padding:2mm 3mm!important}
+ #rx .kp b,#rx td,#rx th,#rx h4,#rx .mini-l span{color:#000!important}
+ #rx .gr{display:block!important;margin-bottom:4mm!important;column-count:3;column-gap:6mm}
+ #rx .gr>div{border:1px solid #999!important;border-radius:0!important;padding:2mm 3mm!important;margin:0 0 4mm!important;break-inside:avoid;page-break-inside:avoid;-webkit-column-break-inside:avoid}
+ #rx .mini-l{padding:0.6mm 0!important;font-size:8pt!important}
+ #rx .mini-l span:last-child{white-space:normal!important;color:#333!important}
+ #rx table{font-size:7.5pt!important;table-layout:fixed!important}
+ /* larguras por coluna (Data, NF, Pedido, Cliente, Cidade, UF, Região, Motorista, Motivo, Tipo, Vol., Valor) */
+ #rx th:nth-child(1),#rx td:nth-child(1){width:7%} #rx th:nth-child(2),#rx td:nth-child(2){width:6%}
+ #rx th:nth-child(3),#rx td:nth-child(3){width:6%} #rx th:nth-child(4),#rx td:nth-child(4){width:15%}
+ #rx th:nth-child(5),#rx td:nth-child(5){width:10%} #rx th:nth-child(6),#rx td:nth-child(6){width:3%}
+ #rx th:nth-child(7),#rx td:nth-child(7){width:7%} #rx th:nth-child(8),#rx td:nth-child(8){width:10%}
+ #rx th:nth-child(9),#rx td:nth-child(9){width:16%} #rx th:nth-child(10),#rx td:nth-child(10){width:8%}
+ #rx th:nth-child(11),#rx td:nth-child(11){width:4%} #rx th:nth-child(12),#rx td:nth-child(12){width:8%}
+ #rx td{padding:1mm 1.2mm!important;line-height:1.25!important}
+ #rx th{position:static!important;background:#eee!important;border-bottom:1px solid #666!important;white-space:normal!important}
+ #rx td,#rx th{word-break:break-word;overflow-wrap:anywhere;border-bottom:1px solid #bbb!important}
+ #rx thead{display:table-header-group} #rx tr{break-inside:avoid;page-break-inside:avoid}
+}`; document.head.appendChild(st); })();
 
 /* motorista da reentrega = motorista do romaneio em que a nota saiu antes (banco de romaneios) */
 let RPM=null;
