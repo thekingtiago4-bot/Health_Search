@@ -408,6 +408,28 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(bb.naOp.bal,'BIT: na aba NexBip não pode abrir balão de recado');
     ok(bb.naOp.esc===false&&+bb.naOp.qt>0,'BIT: o recado da aba NexBip tem que virar número na cabeça dele ('+bb.naOp.qt+')');
     ok(bb.fora,'BIT: fora da aba NexBip o balão continua aparecendo'); }
+  /* 9.26.7: nota com todos os volumes confirmados — as outras caixas têm que dar duplicidade */
+  { const du=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'du1',numero:'0236363',base:'CAJ',arquivo:a,rows:[{nf:'660055',ped:'770055',vol:'5',dest:'CLIENTE CINCO',cid:'FRANCA',uf:'SP'}]}];
+      OP.dia=h; renderTudo(); irPara('operacao'); OP.bipes=[];
+      OP.extra={tot:5}; opLer(['CX1@1@5@770055'],'texto'); await w(200);
+      const b=OP.bipes[0]; if(b){ b.tot=5; b.vol=1; opConfMarcar(b,'ok',5); }
+      const ja=opJaBipado(opK('770055'),opK('660055'),2);
+      OP.extra={tot:5}; opLer(['CX2@2@5@770055'],'texto'); await w(250);
+      const lista=OP.bipes.map(x=>(x.vol||'?')+':'+x.status).join(' ');
+      return {achou:!!ja,lista}; });
+    ok(du.achou,'duplicidade: depois de confirmar as 5 caixas, a caixa 2/5 tinha que ser vista como já bipada');
+    ok(/dup/.test(du.lista),'duplicidade: a segunda caixa tinha que entrar como duplicada ('+du.lista+')'); }
+  /* 9.26.7: aparelho sem os romaneios do dia avisa em vez de dar tudo "fora do romaneio" */
+  { const sr=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO();
+      const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[]; OP.dia=h; renderTudo(); irPara('operacao'); await w(150);
+      const com=(document.getElementById('op-sem-rom')||{}).innerHTML||'';
+      S.romaneios=[{id:'sr1',numero:'0236364',base:'CAJ',arquivo:a,rows:[{nf:'1',ped:'1',vol:'1',dest:'A',cid:'X'}]}]; renderTudo(); opRender(); await w(250);
+      const sem=!!document.getElementById('op-sem-rom');
+      return {com,sem}; });
+    ok(/sem os romaneios de hoje/.test(sr.com),'aviso: aparelho sem romaneios do dia tem que avisar na tela do NexBip');
+    ok(!sr.sem,'aviso: com os romaneios carregados o aviso tem que sumir'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();
