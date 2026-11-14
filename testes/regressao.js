@@ -4,6 +4,7 @@
 const {chromium}=require('playwright'); const path=require('path');
 const URL='file://'+path.resolve(__dirname,'../index.html');
 (async()=>{
+  const ch44=()=>'35261112345678000199550010000000251000000025';
   const opKi=v=>String(v||'').replace(/\D/g,'').replace(/^0+(?=\d)/,''); const b=await chromium.launch({args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']}); const falhas=[]; const ok=(c,m)=>{ if(!c) falhas.push(m); };
   const nova=async()=>{ const p=await b.newPage(); const er=[]; p.on('pageerror',e=>er.push(e.message)); await p.route(/^https?:\/\//,r=>r.abort()); await p.goto(URL); await p.waitForTimeout(1500); p._er=er; return p; };
   let p=await nova();
@@ -519,6 +520,73 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(rx.larg<=rx.tela,'relatório: no papel não pode sobrar nada para o lado ('+rx.larg+' > '+rx.tela+')');
     ok(rx.cx==='visible'&&rx.corpo==='visible','relatório: a caixa da janela não pode cortar o conteúdo no papel ('+rx.cx+'/'+rx.corpo+')');
     ok(folhas>1,'relatório: o PDF tinha que sair com mais de uma folha ('+folhas+')'); }
+  /* v10: o texto da faixa da câmera sai antes de entrar o novo, e o BIT não aparece no NexBip */
+  { const tr=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const el=document.createElement('div'); el.className='msg'; document.body.appendChild(el);
+      opMsgTrocar(el,'<b>primeiro</b>'); const vazio=el.innerHTML;
+      opMsgTrocar(el,'<b>segundo</b>'); const naTroca=el.className+'|'+el.innerHTML;
+      await w(260); const depois=el.innerHTML; el.remove();
+      irPara('operacao'); await w(120); const noBip=(document.getElementById('eva-bt')||{}).hidden;
+      irPara('conftotal'); await w(120); const fora=(document.getElementById('eva-bt')||{}).hidden;
+      irPara('operacao');
+      return {vazio,naTroca,depois,noBip,fora}; });
+    ok(/primeiro/.test(tr.vazio),'faixa: o primeiro texto entra na hora quando a faixa está vazia');
+    ok(/saindo/.test(tr.naTroca)&&/primeiro/.test(tr.naTroca),'faixa: o texto antigo tem que sair antes do novo entrar ('+tr.naTroca.slice(0,60)+')');
+    ok(/segundo/.test(tr.depois),'faixa: depois da saída o texto novo entra ('+tr.depois+')');
+    ok(tr.noBip===true,'BIT: o boneco não pode aparecer na tela do NexBip');
+    ok(tr.fora===false,'BIT: fora do NexBip o boneco continua no canto'); }
+  /* v10: chave da DANFE pela câmera — confere os dados e acrescenta a nota no romaneio */
+  { const cv=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      const ch='35261112345678000199550010000000251000000025';
+      const d1=chvDigitos('NFe'+ch), d2=chvDigitos('123'), d3=chvDigitos(ch.slice(0,43));
+      S.romaneios=[{id:'ch1',numero:'0236399',base:'CAJ',motorista:'REGINALDO',arquivo:a,rows:[{nf:'111',ped:'222',vol:'1',dest:'A',cid:'X'}]}];
+      OP.dia=h; renderTudo(); irPara('operacao'); await w(150);
+      const temBotao=!!document.getElementById('op-bt-chave');
+      const velho=window.redPelaChave;
+      window.redPelaChave=async()=>({nf:'900123',ped:'770001',dest:'DROGARIA TESTE LTDA',cid:'ARARAQUARA',uf:'SP',vol:'3',valor:'1.234,56',chave:ch});
+      await chvConfirmar(ch); await w(250);
+      const painel=(document.querySelector('.fundo .modal')||{}).innerText||'';
+      const temSelect=!!document.getElementById('chv-rom');
+      document.querySelector('.fundo [data-a="ok"]').click(); await w(250);
+      window.redPelaChave=velho;
+      const r=S.romaneios[0]; const nova=(r.rows||[]).find(x=>opK(x.nf)==='900123')||{};
+      [...document.querySelectorAll('.fundo')].forEach(x=>x.remove());
+      return {d1,d2,d3,temBotao,temSelect,painel:painel.replace(/\s+/g,' ').slice(0,220),nf:nova.nf,vol:nova.vol,cid:nova.cid,por:!!nova._por,linhas:(r.rows||[]).length}; });
+    ok(cv.d1===ch44(),'chave: tem que achar os 44 dígitos dentro do texto lido ('+cv.d1+')');
+    ok(cv.d2===''&&cv.d3==='','chave: código curto não pode passar por chave ('+cv.d2+'|'+cv.d3+')');
+    ok(cv.temBotao,'NexBip: falta o botão da chave da DANFE ao lado de abrir câmera');
+    ok(/DROGARIA TESTE/.test(cv.painel)&&/ARARAQUARA/.test(cv.painel),'chave: o painel tem que mostrar os dados do Meu Danfe para conferir ('+cv.painel.slice(0,100)+')');
+    ok(cv.temSelect,'chave: tem que dar para escolher em qual romaneio acrescentar');
+    ok(cv.nf==='900123'&&cv.vol==='3'&&cv.cid==='ARARAQUARA','chave: a nota tinha que entrar no romaneio com os dados certos ('+cv.nf+'/'+cv.vol+'/'+cv.cid+')');
+    ok(cv.por,'chave: a nota acrescentada tem que registrar quem acrescentou');
+    ok(cv.linhas===2,'chave: o romaneio tinha que ficar com 2 notas ('+cv.linhas+')'); }
+  /* v10: aba do BIT — boneco grande à esquerda, chat limpo, treino com arrastar e soltar */
+  { const bt=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      try{ NV.perfil={papel:'admin',ativo:true}; }catch(e){}
+      irPara('eva'); await w(500);
+      const bon=document.querySelector('#t-eva .evb'); const r=bon?bon.getBoundingClientRect():null;
+      const chat=document.getElementById('eva-painel'); const rc=chat?chat.getBoundingClientRect():null;
+      const zona=document.getElementById('fot-solta');
+      const antes=FOT.itens.length;
+      const cv=document.createElement('canvas'); cv.width=cv.height=40; cv.getContext('2d').fillRect(0,0,40,40);
+      const blob=await new Promise(res=>cv.toBlob(res,'image/png'));
+      const arq=new File([blob],'etiqueta-teste.png',{type:'image/png'});
+      fotEntrar([arq]); await w(300);
+      const cards=document.querySelectorAll('#eva-fotos .fot-it').length;
+      const d={texto:'Qual destes é a NF?',entendi:[{t:'Cliente',v:'DROGARIA X'},{t:'Cidade',v:'ASSIS'},{t:'Vazio',v:''}],opcoes:[{v:'1',t:'900123'},{v:'-',t:'Nenhum'}],id:'dz'};
+      const ent=evaEntendiHtml(d);
+      FOT.itens.length=antes; fotRender();
+      return {larg:r?Math.round(r.width):0, bonEsq:r?Math.round(r.left):0, chatEsq:rc?Math.round(rc.left):0,
+        zona:!!zona, cards, ent, nums:document.querySelectorAll('.bit-nums>div').length,
+        cartoes:document.querySelectorAll('#t-eva .bit-card').length }; });
+    ok(bt.larg>=300,'BIT: o boneco tem que ficar grande na aba dele ('+bt.larg+'px)');
+    ok(bt.bonEsq<bt.chatEsq,'BIT: o boneco fica à esquerda do chat ('+bt.bonEsq+' vs '+bt.chatEsq+')');
+    ok(bt.zona,'treino: falta a área de arrastar as fotos');
+    ok(bt.cards===1,'treino: soltar uma foto tem que criar o cartão de leitura ('+bt.cards+')');
+    ok(bt.nums===4,'treino: faltam os números do que ele já aprendeu ('+bt.nums+')');
+    ok(bt.cartoes>=2,'BIT: ensinar e treinar têm que estar no mesmo padrão de cartão ('+bt.cartoes+')');
+    ok(/DROGARIA X/.test(bt.ent)&&/ASSIS/.test(bt.ent),'dúvida: o BIT tem que mostrar tudo que entendeu');
+    ok(!/Vazio/.test(bt.ent),'dúvida: campo vazio não aparece no que ele entendeu'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();
