@@ -587,6 +587,32 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(bt.cartoes>=2,'BIT: ensinar e treinar têm que estar no mesmo padrão de cartão ('+bt.cartoes+')');
     ok(/DROGARIA X/.test(bt.ent)&&/ASSIS/.test(bt.ent),'dúvida: o BIT tem que mostrar tudo que entendeu');
     ok(!/Vazio/.test(bt.ent),'dúvida: campo vazio não aparece no que ele entendeu'); }
+  /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
+  { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const ont=new Date(Date.now()-864e5).toISOString().slice(0,10);
+      const bs=[]; for(let i=0;i<12;i++) bs.push({nf:String(900+i),status:'ok',usuario:'TIAGO SOUZA',criado_em:ont+'T1'+(i%2?'4':'0')+':00:00.000Z'});
+      bs.push({nf:'999',status:'ok',usuario:'CHRISTIAN L',criado_em:ont+'T15:00:00.000Z'});
+      localStorage.setItem(OP_LOCAL+ont,JSON.stringify(bs));
+      const guardaHoje=localStorage.getItem(OP_LOCAL+hojeISO());
+      localStorage.removeItem(OP_LOCAL+hojeISO()); OP.bipes=[]; OP.dia=hojeISO(); GS.dia='';
+      irPara('gestor'); await w(500);
+      const txt=(document.getElementById('gs-corpo')||{}).innerText||'';
+      const sel=document.getElementById('gs-dia');
+      const r={dia:gsDia(),ont,sel:!!sel,val:sel&&sel.value,pessoa:/CHRISTIAN/.test(txt),hora:/Bipes por hora/.test(txt),nBip:gsBipes(ont).length};
+      localStorage.removeItem(OP_LOCAL+ont); if(guardaHoje) localStorage.setItem(OP_LOCAL+hojeISO(),guardaHoje); GS.dia=''; return r; });
+    ok(gs.dia===gs.ont,'gestor: tinha que começar no último dia com bipe ('+gs.dia+' ≠ '+gs.ont+')');
+    ok(gs.sel&&gs.val===gs.ont,'gestor: falta o seletor de dia ('+gs.val+')');
+    ok(gs.nBip===13,'gestor: tinha que ler os 13 bipes gravados naquele dia ('+gs.nBip+')');
+    ok(gs.pessoa&&gs.hora,'gestor: bipes por hora e por pessoa precisam sair do dia escolhido'); }
+  /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
+  { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      irPara('operacao'); await w(200);
+      const g=id=>{ const e=document.getElementById(id); return e?getComputedStyle(e).display:'(sem elemento)'; };
+      return {rel:!!document.querySelector('[data-ir="relatorios"],#nav [data-ir="relatorios"]'),
+        relBtn:[...document.querySelectorAll('nav button,nav a')].some(b=>/^\s*Relatórios\s*$/.test(b.textContent||'')),
+        xml:g('op-xml'), diag:g('op-diag')}; });
+    ok(!lp.relBtn,'menu: a aba "Relatórios" tinha que sair');
+    ok(lp.xml==='none'&&lp.diag==='none','NexBip: XML das notas e diagnóstico de reentrega não podem aparecer ('+lp.xml+'/'+lp.diag+')'); }
   /* 9.26.1: o total da Conferência conta cada nota uma vez (repetida em dois romaneios) e ignora o que foi tirado da operação */
   { const c=await p.evaluate(()=>{ const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.nex=null; nexS();

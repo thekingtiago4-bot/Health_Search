@@ -4228,7 +4228,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.0.0', HS_DATA='13/11/2026';
+const HS_VERSAO='10.0.1', HS_DATA='13/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4939,7 +4939,6 @@ function chvLerCamera(){ return new Promise(async resolve=>{
     try{ stream=await navigator.mediaDevices.getUserMedia(c); break; }catch(e){ erro=e; if(e&&e.name==='NotAllowedError') break; } }
   if(!stream){ opCamErro(erro); return resolve(''); }
   let det=null; try{ det=await opDetector(); }catch(e){}
-  if(!det){ try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){} const ch=await chvDigitar(); return resolve(ch); }
   const f=document.createElement('div'); f.id='op-cam'; f.className='chv-cam';
   f.innerHTML='<video playsinline muted autoplay></video><div class="mira"></div>'+
     '<div class="msg"><b>🔑 Aponte para o código de barras da DANFE</b>Aquele comprido, de 44 dígitos, no alto do papel.</div>'+
@@ -4951,11 +4950,21 @@ function chvLerCamera(){ return new Promise(async resolve=>{
   f.addEventListener('click',async e=>{ const b=e.target.closest('[data-chv]'); if(!b) return;
     if(b.dataset.chv==='x') return fechar('');
     if(b.dataset.chv==='d'){ parado=true; try{ stream.getTracks().forEach(t=>t.stop()); }catch(er){} f.remove(); resolve(await chvDigitar()); } });
+  /* v10.0.1 · a câmera abre sempre. Se o aparelho não tiver leitor de código de barras
+     (Chrome no computador, por exemplo), ele lê os 44 dígitos pelo texto, igual faz com a etiqueta. */
+  if(!det) opMsgTrocar(msg,'<b>🔑 Aponte para a chave da DANFE</b>Este aparelho não lê código de barras: vou ler os números. Chegue perto e segure firme.');
+  let ocrOcupado=false, ultOcr=0;
+  const porTexto=async()=>{ if(ocrOcupado||Date.now()-ultOcr<1200||!v.videoWidth) return; ocrOcupado=true;
+    try{ const ws=await OCR.ler(opFrame(v)); const txt=(ws||[]).map(w=>String(w.text||'')).join(' ');
+      const ch=chvDigitos(txt)||chvDigitos(txt.replace(/\s+/g,''));
+      if(ch){ opSom('ok'); if(navigator.vibrate) navigator.vibrate(60); fechar(ch); } }
+    catch(e){}
+    finally{ ocrOcupado=false; ultOcr=Date.now(); } };
   const laco=async()=>{ if(parado) return;
-    try{ if(v.videoWidth){ const lidos=(await det(v)||[]).map(String);
+    try{ if(det&&v.videoWidth){ const lidos=(await det(v)||[]).map(String);
         for(const t of lidos){ const ch=chvDigitos(t); if(ch){ opSom('ok'); if(navigator.vibrate) navigator.vibrate(60); fechar(ch); return; } }
         if(lidos.length) opMsgTrocar(msg,'<b>Esse código não tem 44 dígitos</b>Procure o código de barras comprido da DANFE.'); } }catch(e){}
-    if(!parado) setTimeout(laco,120); };
+    if(!parado){ porTexto(); setTimeout(laco,120); } };
   v.onloadedmetadata=()=>{ v.play().catch(()=>{}); laco(); };
 }); }
 function chvDigitar(){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1700';
@@ -9588,6 +9597,22 @@ function perfilAplicar(){ const conf=perfilAcesso()==='conferente'; document.doc
     tab.querySelectorAll('tbody tr').forEach((tr,i)=>{ const u=NV.lista[i]; const adm=u.papel==='admin'; const v=(S.perfisAcesso||{})[u.id]||'completo'; tr.children[3].insertAdjacentHTML('afterend',`<td>${adm?'Tudo':`<select data-nv-ac="${u.id}" ${nvAdmin()?'':'disabled'}><option value="completo" ${v==='completo'?'selected':''}>Completo</option><option value="conferente" ${v==='conferente'?'selected':''}>Conferente (Buscar, Operação, Rotas e Manual)</option></select>`}</td>`); }); }catch(e){ console.error(e); } }; }
 document.addEventListener('change',e=>{ const c=e.target; if(!c.dataset||c.dataset.nvAc==null||!nvAdmin()) return; S.perfisAcesso=Object.assign({},S.perfisAcesso||{},{[c.dataset.nvAc]:c.value}); salvar(); nuvSinc(); toast('Acesso alterado para '+(c.value==='conferente'?'Conferente':'Completo')+'.'); });
 /* --- painel do gestor --- */
+/* v10.0.1 · dia do Painel do gestor */
+const GS={dia:''};
+function gsDias(){ const out=new Set(); try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||''; if(k.startsWith(OP_LOCAL)){ const d=k.slice(OP_LOCAL.length); if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&(opLocalLer(d)||[]).length) out.add(d); } } }catch(e){}
+  if((OP&&OP.bipes||[]).length) out.add(OP.dia||hojeISO());
+  return [...out].sort().reverse(); }
+function gsDia(){ if(GS.dia) return GS.dia; const h=hojeISO(); const temHoje=((OP&&OP.bipes)||[]).some(b=>diaLocal(new Date(b.criado_em||0).toISOString())===h);
+  if(temHoje) return h; const ds=gsDias(); return ds[0]||h; }
+function gsDiaNome(){ const d=gsDia(); return d===hojeISO()?'hoje':fmtData(d); }
+function gsBipes(dia){ const h=hojeISO();
+  if(dia===h) return ((OP&&OP.bipes)||[]).filter(b=>diaLocal(new Date(b.criado_em||0).toISOString())===h);
+  return (opLocalLer(dia)||[]); }
+function gsSeletor(){ const ds=gsDias(); const d=gsDia(); if(!ds.includes(d)) ds.unshift(d);
+  return `<div class="gs-box" style="grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <b>Dia da operação</b><select id="gs-dia" style="padding:8px 10px">${ds.map(x=>`<option value="${esc(x)}"${x===d?' selected':''}>${fmtData(x)}${x===hojeISO()?' (hoje)':''}</option>`).join('')}</select>
+    <span class="sub">os quadros de conferência e bipes mostram este dia</span></div>`; }
+document.addEventListener('change',e=>{ if(e.target&&e.target.id==='gs-dia'){ GS.dia=e.target.value; try{ gestorRender(); }catch(er){} } });
 function gestorDados(){ const D=RE.ler(); const lim=new Date(Date.now()-7*864e5).toISOString().slice(0,10); const mot=new Map(), mtr=new Map(), dia=new Map(); let tot=0;
   for(const [d,ls] of Object.entries(D.dias||{})){ if(d<lim) continue; for(const l of ls){ tot++; const p=rpObsPartes(l.obs); const m=p.m||'(SEM MOTIVO)'; mot.set(m,(mot.get(m)||0)+1); const t=motCanon(l.mot||p.mot)||'(SEM MOTORISTA)'; mtr.set(t,(mtr.get(t)||0)+1); dia.set(d,(dia.get(d)||0)+1); } }
   let pr=[]; try{ pr=opPorRom(); }catch(e){} const orig=new Map(); for(const x of pr){ const a=orig.get(x.base)||{t:0,f:0}; a.t+=x.tn; a.f+=x.fn; orig.set(x.base,a); }
@@ -9595,8 +9620,9 @@ function gestorDados(){ const D=RE.ler(); const lim=new Date(Date.now()-7*864e5)
 function gestorBarras(t,L,fmt,cor){ const mx=Math.max(1,...L.map(x=>x[1])); return `<div class="gs-box"><h3>${t}</h3>${L.length?L.slice(0,10).map(([k,v])=>`<div class="gs-l"><span title="${esc(k)}">${esc(k)}</span><i><b style="width:${Math.round(100*v/mx)}%;background:${cor}"></b></i><em>${fmt?fmt(v):fmtN(v)}</em></div>`).join(''):'<p class="sub">Sem dados.</p>'}</div>`; }
 function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestorDados();
   el.innerHTML=`<div class="rot-tot" style="margin:6px 0 14px;display:flex;gap:18px;color:var(--mudo)"><span><b style="color:var(--tinta);font-size:18px">${fmtN(d.tot)}</b> reentregas nos últimos 7 dias</span></div><div class="gs-grid">
+   ${gsSeletor()}
    ${gestorBarras('Reentregas por motivo (7 dias)',d.mot,null,'#B197FC')}${gestorBarras('Reentregas por motorista (7 dias)',d.mtr,null,'#74C0FC')}${gestorBarras('Reentregas por dia',d.dia.map(([k,v])=>[fmtData(k),v]),null,'#63E6BE')}
-   ${gestorBarras('Conferência de hoje por origem (%)',d.orig.map(([b,a])=>[b,a.t?Math.round(100*(a.t-a.f)/a.t):100]),v=>v+'%','#20C997')}</div>`; }
+   ${gestorBarras('Conferência por origem ('+gsDiaNome()+') (%)',d.orig.map(([b,a])=>[b,a.t?Math.round(100*(a.t-a.f)/a.t):100]),v=>v+'%','#20C997')}</div>`; }
 (function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return; ref.insertAdjacentHTML('beforebegin','<button data-tela="gestor"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span class="lbl">Painel do gestor</span></button>');
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-gestor'; sec.hidden=true; sec.innerHTML='<h1>Painel do gestor</h1><p class="sub">Reentregas da semana por motivo, motorista e dia, e o andamento da conferência de hoje por origem.</p><div id="gs-corpo"></div>'; const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
@@ -9648,6 +9674,97 @@ const dvCor=d=>avEh(d)?AV_COR:(DV_COR[d&&d.tipo]||'#C2255C');
 const avNum=d=>'AV-'+String(d.n||0).padStart(3,'0');
 const dvavNum=d=>avEh(d)?avNum(d):dvNum(d);
 function dvSo(){ return dvS().filter(d=>!avEh(d)); }
+/* ================= v10 · Parte 2 · Divergências e Avarias: duas colunas fixas + banco por dia =================
+   Pendentes = ainda faltam volumes. Solucionadas = já saíram, com o dia da baixa.
+   Ordem: mais velha embaixo, mais nova em cima (dá para inverter no botão). */
+const DU={ordem:'nova', dia:'', av:{ordem:'nova', dia:''}};
+function duCfg(av){ return av?DU.av:DU; }
+function duQuando(d){ return String((d&&(d.em||d.d))||'').slice(0,10)||String(d&&d.d||''); }
+function duHora(iso){ try{ const t=new Date(iso); if(isNaN(t)) return ''; return t.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function duDiaHora(d){ const dia=fmtData(d.d||duQuando(d)); const h=duHora(d.em); return dia+(h?' · '+h:''); }
+function duBaixa(d){ const r=d.res||{}; const dia=r.d?fmtData(r.d):''; const h=duHora(r.em); return (dia||'—')+(h?' · '+h:''); }
+function duPend(d){ return d.st!=='resolvida'; }
+function duOrdenar(L,cfg){ const s=L.slice().sort((a,b)=>String(a.d||'').localeCompare(String(b.d||''))||((a.n||0)-(b.n||0)));
+  return cfg.ordem==='nova'?s.reverse():s; }
+function duLinha(t,v){ return v?`<div class="du-l"><small>${t}</small><b>${esc(String(v))}</b></div>`:''; }
+function duCard(d,av){
+  const tot=+d.tot||0, falt=+d.qtd||0, chegou=Math.max(0,tot-falt);
+  const vols=tot?`${fmtN(chegou)} de ${fmtN(tot)}`:(falt?fmtN(falt)+' faltando':'');
+  const caixas=(d.falt&&d.falt.length&&tot)?volLista(d.falt,tot):'';
+  const st=av?(AV_ST[d.avst]||AV_ST.aguardando):(DV_ST[d.st]||DV_ST.aberta);
+  return `<article class="du-c${duPend(d)?'':' feita'}" data-du="${esc(d.id||'')}">
+    <header><b>${av?avNum(d):dvNum(d)}</b><span class="du-st" style="color:${st.c};border-color:${st.c}">${esc(st.t)}</span></header>
+    <div class="du-g">
+      ${duLinha('Cadastrada em',duDiaHora(d))}
+      ${duLinha('Quem cadastrou',d.por||'—')}
+      ${duLinha('Pedido',d.ped||'—')}
+      ${duLinha('NF',d.nf||'—')}
+      ${duLinha('Cliente',d.cli||'')}
+      ${duLinha('Cidade',dvCidade(d))}
+      ${duLinha(av?'Volumes avariados':'Volumes',av?(d.vols&&d.vols.length?volLista(d.vols,tot||d.vols.length):vols):vols)}
+      ${caixas&&!av?duLinha('Caixas que faltaram',caixas):''}
+      ${duLinha('Tipo',d.tipo||'')}
+      ${!duPend(d)?duLinha('Baixa em',duBaixa(d)):''}
+      ${!duPend(d)&&d.res&&d.res.por?duLinha('Quem deu baixa',d.res.por):''}
+      ${av&&d.avstPor?duLinha('Status por',d.avstPor+(d.avstEm?' · '+fmtData(String(d.avstEm).slice(0,10))+' '+duHora(d.avstEm):'')):''}
+    </div>
+    ${d.obs?`<p class="du-obs">${esc(d.obs)}</p>`:''}
+    ${d.apareceu?`<p class="du-obs">Apareceu no romaneio ${esc(d.apareceu.rom||'')} em ${fmtData(d.apareceu.d)}</p>`:''}
+    ${d.foto?`<img class="du-foto" src="${d.foto}" alt="Foto da avaria">`:''}
+    <div class="du-bts">
+      <button class="btn mini" type="button" data-du-dia="${esc(d.id||'')}">📅 Mudar o dia</button>
+      ${av?`<button class="btn mini" type="button" data-du-avst="${esc(d.id||'')}">🔁 Status</button>
+          ${d.foto?`<button class="btn mini" type="button" data-du-zap="${esc(d.id||'')}">📲 Mandar no WhatsApp</button>`:''}`:''}
+      <button class="btn mini" type="button" data-du-ed="${esc(d.id||'')}">✏️ Editar</button>
+    </div></article>`; }
+function duColunas(av){ const cfg=duCfg(av); const el=document.getElementById(av?'av-lista':'dv-lista'); if(!el) return;
+  const campo=document.getElementById(av?'av-filtro':'dv-filtro'); const q=N((campo&&campo.value)||'');
+  let L=(av?avS():dvSo());
+  if(cfg.dia) L=L.filter(d=>String(d.d||'')===cfg.dia);
+  if(q) L=L.filter(d=>N([d.ped,d.nf,d.cli,d.rem,d.tipo,d.obs,dvCidade(d),av?avNum(d):dvNum(d)].join(' ')).includes(q));
+  const pend=duOrdenar(L.filter(duPend),cfg), feit=duOrdenar(L.filter(d=>!duPend(d)),cfg);
+  const col=(t,ic,cor,arr,vazio)=>`<section class="du-col"><h3 style="color:${cor}">${ic} ${t} <span>(${fmtN(arr.length)})</span></h3>
+     <div class="du-ls">${arr.length?arr.map(d=>duCard(d,av)).join(''):`<p class="sub">${vazio}</p>`}</div></section>`;
+  const dias=[...new Set((av?avS():dvSo()).map(d=>String(d.d||'')).filter(Boolean))].sort().reverse();
+  el.innerHTML=`<div class="du-topo">
+      <button class="btn mini" type="button" data-du-banco="${av?'av':'dv'}">🗃️ Banco por dia</button>
+      ${cfg.dia?`<span class="du-chip">Só o dia ${fmtData(cfg.dia)} <button class="op-x" type="button" data-du-limpadia="${av?'av':'dv'}">✕</button></span>`:`<span class="sub">${fmtN(dias.length)} dia(s) com registro</span>`}
+      <button class="btn mini" type="button" data-du-ordem="${av?'av':'dv'}">⇅ ${cfg.ordem==='nova'?'mais nova em cima':'mais velha em cima'}</button>
+    </div>
+    <div class="du-duas">${col('Pendentes','⏳','#E8590C',pend,av?'Nenhuma avaria pendente. ✅':'Nenhuma pendente. ✅')}
+      ${col('Solucionadas','✅','var(--ok)',feit,'Nada solucionado ainda.')}</div>`; }
+function duBancoDia(av){ const L=(av?avS():dvSo()); const porDia={};
+  for(const d of L){ const k=String(d.d||''); if(!k) continue; (porDia[k]=porDia[k]||[]).push(d); }
+  const dias=Object.keys(porDia).sort().reverse();
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:620px;max-height:85vh;overflow:auto"><h2 style="margin-top:0">🗃️ ${av?'Avarias':'Divergências'} por dia</h2>
+    <p class="sub">Toque num dia para ver só o que foi cadastrado nele. Para mudar o dia de um registro, use o botão “Mudar o dia” no próprio cartão.</p>
+    ${dias.length?`<table class="op-tab"><thead><tr><th>Dia</th><th>Cadastradas</th><th>Pendentes</th><th>Solucionadas</th></tr></thead><tbody>
+      ${dias.map(k=>{ const a=porDia[k]; const p=a.filter(duPend).length; return `<tr class="du-dia" data-du-vai="${esc(k)}" style="cursor:pointer"><td><b>${fmtData(k)}</b></td><td>${fmtN(a.length)}</td><td style="color:#E8590C">${fmtN(p)}</td><td style="color:var(--ok)">${fmtN(a.length-p)}</td></tr>`; }).join('')}
+      </tbody></table>`:'<p class="sub">Nada cadastrado ainda.</p>'}
+    <div class="botoes" style="margin-top:12px"><button class="btn pri" type="button" data-a="x">Fechar</button></div></div>`;
+  document.body.appendChild(f);
+  f.addEventListener('click',e=>{ const l=e.target.closest('[data-du-vai]'); if(l){ duCfg(av).dia=l.dataset.duVai; f.remove(); av?avRender():dvRender(); return; }
+    if(e.target===f||e.target.closest('[data-a="x"]')) f.remove(); }); }
+function duMudarDia(id,av){ const d=dvS().find(x=>String(x.id)===String(id)); if(!d) return;
+  const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1700';
+  f.innerHTML=`<div class="modal" role="dialog" style="max-width:460px"><h2 style="margin-top:0">📅 Dia do registro</h2>
+    <p class="sub">${av?avNum(d):dvNum(d)} — hoje está no dia <b>${fmtData(d.d)}</b>. Mude para o dia a que ela pertence de verdade.</p>
+    <input type="date" id="du-data" value="${esc(String(d.d||'').slice(0,10))}" style="width:100%;padding:10px 12px">
+    <div class="botoes" style="margin-top:12px"><button class="btn" type="button" data-a="c">Cancelar</button><button class="btn pri" type="button" data-a="ok">Salvar</button></div></div>`;
+  document.body.appendChild(f);
+  f.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='c')){ f.remove(); return; }
+    if(b&&b.dataset.a==='ok'){ const v=f.querySelector('#du-data').value; if(!v){ toast('Escolha o dia.'); return; }
+      const ant=d.d; d.d=v; d.diaMudado={de:ant,para:v,por:(typeof opEu==='function'?opEu():''),em:new Date().toISOString()};
+      salvar(); try{ nuvSinc(); }catch(er){} f.remove(); av?avRender():dvRender();
+      toast((av?avNum(d):dvNum(d))+' passou para '+fmtData(v)+'.'); } }); }
+document.addEventListener('click',e=>{ const t=e.target; if(!t.closest) return; let b;
+  if((b=t.closest('[data-du-banco]'))){ duBancoDia(b.dataset.duBanco==='av'); return; }
+  if((b=t.closest('[data-du-limpadia]'))){ const av=b.dataset.duLimpadia==='av'; duCfg(av).dia=''; av?avRender():dvRender(); return; }
+  if((b=t.closest('[data-du-ordem]'))){ const av=b.dataset.duOrdem==='av'; const c=duCfg(av); c.ordem=c.ordem==='nova'?'velha':'nova'; av?avRender():dvRender(); return; }
+  if((b=t.closest('[data-du-dia]'))){ duMudarDia(b.dataset.duDia,!!t.closest('#av-lista')); return; }
+},true);
+
 function avS(){ return dvS().filter(avEh); }
 const dvavBate=(d,ped,nf)=>(nf&&d.nf&&z(d.nf)===nf)||(ped&&d.ped&&z(d.ped)===ped);
 /* divergência ≠ avaria: cada uma procura só no seu tipo */
@@ -10048,7 +10165,8 @@ setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&
   /* telas novas: Backups e Relatórios */
   const mk=(id,html)=>{ const b=document.createElement('button'); b.dataset.tela=id; b.innerHTML=html; return b; };
   if(!btn('backups')) nav.appendChild(mk('backups','<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg><span class="lbl">Backups</span>'));
-  if(!btn('relatorios')) nav.appendChild(mk('relatorios','<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 17v-3M12 17v-6M16 17v-2"/></svg><span class="lbl">Relatórios</span>'));
+  /* v10.0.1 · a aba "Relatórios" saiu: o que vale vai para o Painel do gestor (e o Relatório Minas continua). */
+  { const velho=btn('relatorios'); if(velho) velho.remove(); }
   const usados=new Set(GR.flatMap(g=>g[1]));
   const sobras=[...nav.querySelectorAll('[data-tela]')].filter(b=>!usados.has(b.dataset.tela));
   let fech={}; try{ fech=JSON.parse(localStorage.getItem('healthSearch.menu2')||'{}'); }catch(e){}
@@ -10339,7 +10457,9 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest) re
 
 /* ================= v9.5.2 · Painel do gestor ao vivo · Rotas com histórico por dia · BIT que aprende ================= */
 { const _g=gestorRender; gestorRender=function(){ _g.apply(this,arguments); try{ const g=$('#t-gestor .gs-grid'); if(!g) return;
-    const hoje=hojeISO(); const bip=((OP&&OP.bipes)||[]).filter(b=>{ const d=new Date(b.criado_em||0); return diaLocal(d.toISOString())===hoje; });
+    /* v10.0.1 · o painel passa a olhar o dia escolhido, e começa no último dia que teve bipe
+       (antes só mostrava "hoje" e, de manhã cedo, aparecia tudo vazio mesmo com o dia anterior cheio) */
+    const hoje=gsDia(); const bip=gsBipes(hoje);
     const hr=new Map(); for(const b of bip){ const h=String(new Date(b.criado_em).getHours()).padStart(2,'0')+'h'; hr.set(h,(hr.get(h)||0)+1); }
     /* v9.13.0 · Task #33 — só conta bipes válidos (exclui duplicados) */
     const pu=new Map(); for(const b of bip.filter(b=>b.status!=='dup')){ const u=(b.usuario||'?').split(' ')[0]; pu.set(u,(pu.get(u)||0)+1); }
@@ -10347,7 +10467,7 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest) re
     const avt=new Map(); for(const d of dvS().filter(avEh)) avt.set(d.sub||'Outro',(avt.get(d.sub||'Outro')||0)+1);
     const notasHoje=todasLinhas().length, confer=new Set(bip.map(b=>opK(b.nf||'')).filter(Boolean)).size;
     g.insertAdjacentHTML('afterbegin',`<div class="gs-box" style="grid-column:1/-1;display:flex;gap:22px;flex-wrap:wrap;align-items:center"><span class="gs-vivo">● ao vivo</span><span><b style="font-size:22px">${notasHoje?Math.round(100*Math.min(confer,notasHoje)/notasHoje):0}%</b> conferido hoje</span><span><b style="font-size:22px">${fmtN(bip.length)}</b> bipes hoje</span><span><b style="font-size:22px">${fmtN(L.length)}</b> ocorrências abertas</span><span><b style="font-size:22px">${fmtN((CH&&CH.lista||[]).filter(c=>['Aberto','Em análise'].includes(c.status)).length)}</b> chamados abertos</span></div>`);
-    g.insertAdjacentHTML('beforeend',gestorBarras('Bipes por hora (hoje)',[...hr].sort(),null,'#4DABF7')+gestorBarras('Bipes por pessoa (hoje)',[...pu].sort((a,b)=>b[1]-a[1]),null,'#FFA94D')+gestorBarras('Ocorrências abertas',oc,null,'#E8590C')+gestorBarras('Avarias por tipo (todas)',[...avt].sort((a,b)=>b[1]-a[1]),null,AV_COR));
+    g.insertAdjacentHTML('beforeend',gestorBarras('Bipes por hora ('+gsDiaNome()+')',[...hr].sort(),null,'#4DABF7')+gestorBarras('Bipes por pessoa ('+gsDiaNome()+')',[...pu].sort((a,b)=>b[1]-a[1]),null,'#FFA94D')+gestorBarras('Ocorrências abertas',oc,null,'#E8590C')+gestorBarras('Avarias por tipo (todas)',[...avt].sort((a,b)=>b[1]-a[1]),null,AV_COR));
   }catch(e){ console.error(e); } }; }
 setInterval(()=>{ try{ if(!document.hidden&&!$('#t-gestor').hidden) gestorRender(); }catch(e){} },30000);
 (function(){ const st=document.createElement('style'); st.textContent='.gs-vivo{color:#2f9e44;font-weight:700;animation:gsP 2s infinite}@keyframes gsP{50%{opacity:.4}}'; document.head.appendChild(st); })();
@@ -10437,6 +10557,8 @@ const EVA_BIG='<svg class="evb"></svg>';
 .bit-chip.at{border-color:#FFD43B;color:#FFD43B}
 .bit-chip.fo{border-color:#E8590C;color:#E8590C}
 .bit-bts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+/* v10.0.1 · a tela do NexBip não mostra mais o XML das notas nem o diagnóstico de reentrega */
+#op-xml,#op-diag{display:none!important}
 .bit-s{font-size:.82rem;margin:18px 0 8px;color:var(--mudo);text-transform:uppercase;letter-spacing:.05em}
 .bit-card input,.bit-card textarea,.bit-card select{border:1.5px solid var(--linha);border-radius:10px;padding:9px 12px;background:transparent;color:var(--tinta);font:inherit}
 .bit-card input:focus,.bit-card textarea:focus{border-color:var(--ag);outline:none}
