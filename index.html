@@ -4284,7 +4284,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.1.4', HS_DATA='16/11/2026';
+const HS_VERSAO='10.1.5', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -10039,6 +10039,54 @@ document.addEventListener('click',e=>{ const x=e.target.closest&&e.target.closes
   return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir^="dvaviso:"]'); if(!b) return;
   dvAvisoVisto(String(b.dataset.nxIr).slice(8)); try{ irPara('divergencias'); }catch(e2){} });
+
+/* ================= v10.1.5 · Gravação que falha não passa mais batida =================
+   Antes, quando o navegador recusava gravar (espaço cheio), saía um toast de 3 segundos e o
+   app seguia como se tivesse salvado — foi assim que agendamento e divergência sumiram.
+   Agora o app: 1) libera espaço sozinho e tenta de novo; 2) se ainda não der, manda tudo
+   para a nuvem na hora; 3) põe uma faixa vermelha fixa na tela até gravar de verdade. */
+let GRAV_FALHOU=false;
+function gravFaixa(on){ try{ let f=document.getElementById('grav-falha');
+  if(!on){ GRAV_FALHOU=false; if(f) f.remove(); return; }
+  GRAV_FALHOU=true; if(f) return;
+  f=document.createElement('div'); f.id='grav-falha';
+  f.innerHTML=`<b>⚠ Este aparelho não está conseguindo gravar.</b> <span>O que você fizer agora pode se perder. Mandei para a nuvem e preciso liberar espaço aqui.</span>
+    <button class="btn mini pri" type="button" data-grav-esp="1">Liberar espaço</button>`;
+  document.body.appendChild(f); }catch(e){} }
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-grav-esp]')){ try{ espPainel(); }catch(e2){} } });
+(function(){ const st=document.createElement('style'); st.textContent='#grav-falha{position:fixed;left:0;right:0;top:0;z-index:4000;background:#C2255C;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;box-shadow:0 4px 18px rgba(0,0,0,.35)}#grav-falha span{flex:1;min-width:220px}'; document.head.appendChild(st); })();
+Store.salvar=async function(obj){ const s=JSON.stringify(obj);
+  if(this.modo==='exe'){ try{ const r=await fetch('/__hr/estado',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},HDR),body:s}); if(!r.ok) throw 0; }catch(e){ toast('Não consegui gravar os dados na pasta do programa.'); } return; }
+  try{ localStorage.setItem(this.chave,s); if(GRAV_FALHOU) gravFaixa(false); return; }catch(e){}
+  let liberou=false;
+  try{ const r=await gsEnxugarBipes(false); liberou=!!(r&&r.dias); }catch(e){}
+  try{ localStorage.setItem(this.chave,s); if(GRAV_FALHOU) gravFaixa(false);
+    toast('O aparelho estava cheio: liberei espaço e consegui gravar.'); return; }catch(e){}
+  gravFaixa(true);
+  try{ if(typeof nuvSinc==='function') nuvSinc(); }catch(e){}
+};
+
+/* ================= v10.1.5 · Nada sai do aparelho sem subir =================
+   Regra do Tiago: o que foi cadastrado não pode se perder. Então o app passa a saber
+   quando existe mudança que ainda não subiu para a nuvem: manda na hora quando a aba é
+   escondida, avisa na tela se demorar, e segura o fechamento da aba enquanto não subiu. */
+function nuvSujo(v){ try{ NUV.sujo=!!v; if(!v) NUV.sujoDesde=0; else if(!NUV.sujoDesde) NUV.sujoDesde=Date.now(); }catch(e){} }
+{ const _ag=nuvAgendar; nuvAgendar=function(){ if(!(window.NUV&&NUV.aplicando)) nuvSujo(true); return _ag.apply(this,arguments); }; }
+{ const _si=nuvSinc; nuvSinc=async function(){ const r=await _si.apply(this,arguments);
+    try{ if(!NUV.erro) nuvSujo(false); }catch(e){} try{ pendFaixa(); }catch(e){} return r; }; }
+function pendFaixa(){ try{ const atrasado=NUV.sujo&&NUV.sujoDesde&&(Date.now()-NUV.sujoDesde>90000);
+  let f=document.getElementById('pend-aviso');
+  if(!atrasado){ if(f) f.remove(); return; }
+  if(!f){ f=document.createElement('div'); f.id='pend-aviso'; document.body.appendChild(f); }
+  f.innerHTML=`<b>⏳ Tem cadastro que ainda não subiu para a nuvem.</b> <span>${opOnline()?'Estou tentando de novo.':'Este aparelho está sem internet — não feche o app até voltar.'}</span>
+    <button class="btn mini pri" type="button" data-pend-agora="1">Subir agora</button>`;
+}catch(e){} }
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-pend-agora]')){ try{ nuvSinc(); }catch(e2){} } });
+(function(){ const st=document.createElement('style'); st.textContent='#pend-aviso{position:fixed;left:0;right:0;bottom:0;z-index:3900;background:#8a6d00;color:#fff;padding:9px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}#pend-aviso span{flex:1;min-width:200px}'; document.head.appendChild(st); })();
+setInterval(()=>{ try{ pendFaixa(); if(NUV.sujo&&opOnline()&&!NUV.rodando) nuvSinc(); }catch(e){} },30000);
+document.addEventListener('visibilitychange',()=>{ try{ if(document.visibilityState==='hidden'&&NUV.sujo&&opOnline()) nuvSinc(); }catch(e){} });
+window.addEventListener('pagehide',()=>{ try{ if(NUV.sujo&&opOnline()) nuvSinc(); }catch(e){} });
+window.addEventListener('beforeunload',e=>{ try{ if(NUV.sujo||GRAV_FALHOU){ e.preventDefault(); e.returnValue=''; return ''; } }catch(er){} });
 
 /* ================= v10.1.1 · Conferência por origem de QUALQUER dia =================
    Antes o quadro só sabia calcular o dia de hoje (opPorRom lê os romaneios carregados),

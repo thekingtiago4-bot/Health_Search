@@ -544,10 +544,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const temBotao=!!document.getElementById('op-bt-chave');
       const velho=window.redPelaChave;
       window.redPelaChave=async()=>({nf:'900123',ped:'770001',dest:'DROGARIA TESTE LTDA',cid:'ARARAQUARA',uf:'SP',vol:'3',valor:'1.234,56',chave:ch});
+      [...document.querySelectorAll('.fundo')].forEach(x=>x.remove()); /* tira pergunta do BIT que tenha aberto no meio */
       await chvConfirmar(ch); await w(250);
-      const painel=(document.querySelector('.fundo .modal')||{}).innerText||'';
+      const mods=[...document.querySelectorAll('.fundo .modal')];
+      const painel=((mods.find(m=>m.querySelector('#chv-rom'))||mods[mods.length-1]||{}).innerText)||'';
       const temSelect=!!document.getElementById('chv-rom');
-      document.querySelector('.fundo [data-a="ok"]').click(); await w(250);
+      const okb=[...document.querySelectorAll('.fundo [data-a="ok"]')].pop(); if(okb) okb.click(); await w(250);
       window.redPelaChave=velho;
       const r=S.romaneios[0]; const nova=(r.rows||[]).find(x=>opK(x.nf)==='900123')||{};
       [...document.querySelectorAll('.fundo')].forEach(x=>x.remove());
@@ -837,6 +839,32 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(nb.st==='resolvida'&&/faltou chegou/i.test(nb.obs),'bipe: o botão tinha que dar baixa na divergência ('+nb.st+')');
     ok(nb.avisos===1&&/MARIA/.test(nb.para),'bipe: quem abriu a divergência tem que ser avisado ('+nb.para+')');
     ok(nb.sumiu,'bipe: depois da baixa o aviso sai da tela'); }
+  /* v10.1.5: gravação que falha não passa batida e nada fica só no aparelho */
+  { const gv=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const orig=localStorage.setItem.bind(localStorage); let tentou=0;
+      localStorage.setItem=function(k,v){ if(k===Store.chave){ tentou++; const er=new Error('QuotaExceededError'); er.name='QuotaExceededError'; throw er; } return orig(k,v); };
+      await Store.salvar({teste:1}); await w(300);
+      const faixa=document.getElementById('grav-falha');
+      const r={tentou,faixa:!!faixa,txt:faixa?faixa.innerText.replace(/\s+/g,' ').slice(0,90):''};
+      localStorage.setItem=orig;
+      await Store.salvar(S); await w(100);
+      r.sumiu=!document.getElementById('grav-falha');
+      return r; });
+    ok(gv.tentou>=2,'gravação: quando o aparelho recusa, o app tem que liberar espaço e tentar de novo ('+gv.tentou+')');
+    ok(gv.faixa&&/não está conseguindo gravar/i.test(gv.txt),'gravação: falha tem que virar faixa fixa na tela, não um toast que some');
+    ok(gv.sumiu,'gravação: quando volta a gravar, a faixa tem que sair'); }
+  { const pd=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const g=NUV.sujo, gd=NUV.sujoDesde;
+      nuvAgendar(); const sujo=!!NUV.sujo;
+      NUV.sujoDesde=Date.now()-120000; pendFaixa(); await w(50);
+      const faixa=!!document.getElementById('pend-aviso');
+      nuvSujo(false); pendFaixa();
+      const sumiu=!document.getElementById('pend-aviso');
+      NUV.sujo=g; NUV.sujoDesde=gd;
+      return {sujo,faixa,sumiu}; });
+    ok(pd.sujo,'nuvem: mudança local tem que marcar que há coisa para subir');
+    ok(pd.faixa,'nuvem: se demorar para subir, tem que avisar na tela');
+    ok(pd.sumiu,'nuvem: depois que sobe, o aviso sai'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
