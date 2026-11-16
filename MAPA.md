@@ -117,3 +117,14 @@ Reforma v10 em **4 partes**, publicando uma por vez:
 
 **Regra de negócio dita por ele:** nota marcada como divergência que aparece no romaneio **não é
 reentrega** — só avisa.
+
+## v10.1.0 (publicado 15/11/2026)
+- **Máscara de carregamento**: o splash só sai quando o Mural do Dia está na frente (rede de segurança de 12s; em modo restrito sai sozinho). Não existe mais o `hsSplash()` no primeiro `irPara`.
+- **Mural do Dia**: passe pós-render `murArrumar()` (prefixo `mur`), tira cards pelo `<h3>`, põe Operação primeiro com `grid-column:1/-1`, Backup só Admin/Supervisor, `#eva-bt` oculto, editar layout só do Admin e salvo em `S.muralLay` (sincronizado) em vez do `muChave()` por aparelho.
+- **Cargos (Anexo I)**: `CARGOS`, `cargoDe`, `cargoMeu`, `cargoPodeVer`, `cargoTelaInicial`, `cargoAplicar`, `cargoLogado`. Guardados em `S.cargos[userId]` (sincronizado); o papel `admin` continua no `perfis.papel` do Supabase. Sem login nada é escondido.
+- **Aba do BIT (`eva`)**: só Admin — está em `CARGO_SO_ADM` e bloqueada no `irPara`.
+- **Painel de Gestão** (era "Painel do gestor"): `gsFotoMontar/gsFotoGravar/gsFotoAgendar/gsFotoLer`, foto diária em `S.gsSnap[dia]` (máx. 120 dias, 300 notas faltantes), `gsCartao` no topo do painel, `gsPdfProjetor(dia)` em A4 paisagem com fontes de projetor. A foto é gravada sozinha 8s depois de cada bipe (wrapper de `opLer`).
+- **Armadilha nova**: `N()` devolve MAIÚSCULAS sem acento — normalizar título com `.toLowerCase()` depois, nunca com `[^a-z0-9]`.
+- **Armadilha nova**: wrapper tem que ser inserido DEPOIS da definição da função. O bloco `gs*` precisou ser movido para depois do IIFE que cria `#t-gestor`.
+- **Armadilha nova**: `muAplicar` escreve `grid-column` inline — classe CSS não vence; setar no `style`.
+- **Teste**: o cálculo de "ontem" no `regressao.js` passou a usar `diaLocal()`; em UTC ele quebrava sozinho depois das 21h.
