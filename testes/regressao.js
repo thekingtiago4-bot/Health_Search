@@ -193,12 +193,16 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
   /* 9.23.1: Editar abre o formulário (ele vive dentro de "Ou preencher à mão") e traz o total da nota */
   { const e2=await p.evaluate(()=>{ S.divergencias=[{id:'d1',n:1,d:hojeISO(),ped:'',nf:'909958',tipo:'Falta de volume',qtd:1,tot:31,cli:'',obs:'faltavam 1 volume(s)',st:'aberta',por:'t',em:new Date().toISOString(),hist:[]}];
       renderTudo(); irPara('divergencias');
-      const linha=document.querySelector('#t-divergencias .op-tab tbody tr').innerText.replace(/\s+/g,' ');
-      document.querySelector('[data-dv="editar"]').click();
+      const card=document.querySelector('#t-divergencias .du-c');
+      const linha=(card?card.innerHTML:'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ');
+      const colunas=[...document.querySelectorAll('#t-divergencias .du-col h3')].map(h=>h.textContent.replace(/\s+/g,' ').trim());
+      document.querySelector('#t-divergencias [data-dv="editar"]').click();
       const f=document.getElementById('dv-form'), det=f.closest('details');
-      const r={linha,aberto:!!(det&&det.open),qtd:document.getElementById('dv-qtd').value,tot:(document.getElementById('dv-tot')||{}).value,botao:document.getElementById('dv-ok').textContent};
+      const r={linha,colunas,aberto:!!(det&&det.open),qtd:document.getElementById('dv-qtd').value,tot:(document.getElementById('dv-tot')||{}).value,botao:document.getElementById('dv-ok').textContent};
       S.divergencias=[]; return r; });
-    ok(/30 de 31/.test(e2.linha)&&/faltam 1/.test(e2.linha),'divergência: a coluna Vol. deveria mostrar "30 de 31" (chegaram) e "faltam 1" ('+e2.linha.slice(0,90)+')');
+    ok(/30 de 31/.test(e2.linha)&&/faltavam 1/.test(e2.linha),'divergência: o cartão deveria mostrar "30 de 31" (chegaram) e a observação ('+e2.linha.slice(0,120)+')');
+    /* 10.2.4: a visão normal passou a ser duas colunas (Pendentes / Solucionadas) */
+    ok(e2.colunas.length===2&&/Pendentes/.test(e2.colunas[0])&&/Solucionadas/.test(e2.colunas[1]),'divergências: as duas colunas não apareceram ('+e2.colunas.join(' | ')+')');
     ok(e2.aberto,'divergência: o Editar não abriu o formulário "Ou preencher à mão"');
     ok(e2.qtd==='1'&&e2.tot==='31'&&e2.botao==='Salvar alterações','divergência: o Editar não trouxe os dados para o formulário ('+JSON.stringify(e2)+')'); }
   /* 9.23.2: os botões do quadro de motivos funcionam dentro da tela de Reentregas */
@@ -291,7 +295,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(/2 de 5/.test(v),'divergência: a coluna Vol. deveria mostrar 2 de 5 (o que chegou) — '+v.slice(0,180));
     ok(!/3 de 5/.test(v),'divergência: a coluna Vol. ainda está mostrando o que falta (3 de 5)');
     ok(/faltam 3/.test(v),'divergência: deveria dizer "faltam 3" embaixo');
-    ok(/caixas 2\/5, 4\/5 e 5\/5/.test(v),'divergência: deveria listar as caixas que faltaram — '+v.slice(0,180)); }
+    ok(/2\/5, 4\/5 e 5\/5/.test(v),'divergência: deveria listar as caixas que faltaram — '+v.slice(0,180)); }
   /* 9.26.4: etiqueta de caixa Health Log lida do jeito que o OCR entrega de verdade (letras erradas) */
   { const e5=await p.evaluate(()=>{ const t=['000153 VO oe 2 000000025','LABORSERV PASTEUR LTDA Epp','R VICTORIO SCAPIN, BOE','centro','OOP CEP: 1928\u00a2a00','TESO:_____0.0000 au: a Jie ee','tapas TEODORO mT rrewgp HEALTH Log'];
       const r=etqInterpretar(t); return {m:r.modelo,nf:r.nfs.join(','),nums:r.nums.join(','),cod:r.etqCod||'',dest:r.dest}; });
@@ -1073,5 +1077,47 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(c.falt===3,'conferência: faltando deveria ser 3 ('+c.falt+') — '+c.cada);
     ok(c.ok,'conferência: nenhuma origem pode ter mais faltando do que notas ('+c.cada+')');
     ok(c.pend===3,'lista do que falta: deveria ter 3 notas (sem a repetida e sem a retirada), veio '+c.pend); }
+  /* 10.2.4 · Parte 2: duas colunas nas Avarias, 3 status, volumes avariados e troca do dia */
+  { const a2=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO();
+      S.divergencias=[
+        {id:'a1',n:1,cat:'av',d:h,ped:'724486',nf:'731084',tipo:'Avaria',sub:'Caixa molhada',qtd:2,tot:5,vols:[2,4],cli:'DROGARIA TESTE',st:'aberta',por:'Teste',em:new Date().toISOString(),hist:[]},
+        {id:'a2',n:2,cat:'av',d:h,ped:'9',nf:'8',tipo:'Avaria',sub:'Outro',qtd:1,st:'resolvida',res:{d:h,sol:'Descartada',por:'Teste',em:new Date().toISOString()},por:'Teste',em:new Date().toISOString(),hist:[]}];
+      irPara('avarias'); avRender(); await w(200);
+      const colunas=[...document.querySelectorAll('#av-lista .du-col h3')].map(x=>x.textContent.replace(/\s+/g,' ').trim());
+      const txt=document.getElementById('av-lista').innerText.replace(/\s+/g,' ');
+      document.querySelector('#av-lista [data-du-avst="a1"]').click(); await w(120);
+      const modal=[...document.querySelectorAll('.fundo')].pop();
+      const botoes=[...modal.querySelectorAll('[data-st]')].map(b=>b.dataset.st).join(',');
+      modal.querySelector('[data-st="tratativa"]').click(); await w(200);
+      const d1=dvS().find(x=>x.id==='a1');
+      document.querySelector('#av-lista [data-du-dia="a1"]').click(); await w(120);
+      const m2=[...document.querySelectorAll('.fundo')].pop(); m2.querySelector('#du-data').value='2026-11-10';
+      m2.querySelector('[data-a="ok"]').click(); await w(200);
+      const dia=dvS().find(x=>x.id==='a1').d;
+      document.querySelector('#av-lista [data-du-banco]').click(); await w(150);
+      const m3=[...document.querySelectorAll('.fundo')].pop();
+      const dias=m3.querySelectorAll('[data-du-vai]').length; m3.querySelector('[data-a="x"]').click(); await w(80);
+      const r={colunas,txt,botoes,st:d1.avst,por:!!d1.avstPor,quando:!!d1.avstEm,dia,dias};
+      S.divergencias=[]; avRender(); return r; });
+    ok(a2.colunas.length===2&&/Pendentes \(1\)/.test(a2.colunas[0])&&/Solucionadas \(1\)/.test(a2.colunas[1]),'avarias: as duas colunas não separaram pendente e solucionada ('+a2.colunas.join(' | ')+')');
+    ok(/2\/5 e 4\/5/.test(a2.txt),'avarias: o cartão não mostrou QUAIS volumes estão avariados — '+a2.txt.slice(0,200));
+    ok(/quem deu baixa/i.test(a2.txt)&&/baixa em/i.test(a2.txt),'avarias: a solucionada deveria mostrar a baixa e quem deu');
+    ok(a2.botoes==='aguardando,tratativa,resolvido,x','avarias: os 3 status não apareceram ('+a2.botoes+')');
+    ok(a2.st==='tratativa'&&a2.por&&a2.quando,'avarias: trocar o status não gravou situação, autor e hora ('+a2.st+')');
+    ok(a2.dia==='2026-11-10','avarias: Mudar o dia não trocou o dia do registro ('+a2.dia+')');
+    ok(a2.dias===2,'avarias: o banco por dia deveria listar 2 dias ('+a2.dias+')'); }
+  /* 10.2.4 · segurança: foto gravada no banco não pode virar script na tela (XSS armazenado) */
+  { const seg=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO();
+      window.__xss=0;
+      S.divergencias=[{id:'x1',n:9,cat:'av',d:h,ped:'1',nf:'2',tipo:'Avaria',sub:'Outro',qtd:1,
+        foto:'x" onerror="window.__xss=1" data-x="',st:'aberta',por:'t',em:new Date().toISOString(),hist:[]}];
+      irPara('avarias'); avRender(); await w(400);
+      const img=document.querySelector('#av-lista .du-foto');
+      const r={executou:window.__xss,src:img?img.getAttribute('src'):'(sem img)',
+               boa:fotoSegura('data:image/jpeg;base64,/9j/4AAQ')!=='', ruim:fotoSegura('javascript:alert(1)')===''};
+      S.divergencias=[]; avRender(); return r; });
+    ok(!seg.executou,'segurança: foto gravada no banco executou script no cartão (XSS armazenado)');
+    ok(seg.src==='','segurança: o src da foto inválida deveria sair vazio ('+seg.src+')');
+    ok(seg.boa&&seg.ruim,'segurança: fotoSegura está barrando foto boa ou deixando passar endereço perigoso'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

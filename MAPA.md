@@ -122,7 +122,7 @@ Reforma v10 em **4 partes**, publicando uma por vez:
 1. **BIT e leitor — feito** (10.0.0/10.0.1): BIT fora do NexBip; aviso que não escreve por cima;
    leitor 1D/2D/OCR + ZXing; melhor câmera; chave da DANFE; aba do BIT remodelada; treino com
    arrastar e soltar.
-2. **Divergências e Avarias — em andamento**: duas colunas (Pendentes/Solucionadas), banco por dia,
+2. **Divergências e Avarias — feito (10.2.4)**: duas colunas (Pendentes/Solucionadas), banco por dia,
    trocar o dia do registro, avaria com volumes, 3 status coloridos, foto → WhatsApp (mesmo esquema
    do Expedição e recebimento), autoria com hora. *Código das colunas já existe (`du*`), falta ligar.*
 3. **Relatórios, Painel do gestor e Reentregas**: padrão com logo do Health Search, cores e
@@ -201,3 +201,37 @@ O print do dia 13/11 às 07:59 mostrava **288 de 288 (100%)** com a faixa "Simul
 - **`GS_REGRA`** carimba a regra de contagem dentro da foto (`v`). O painel detecta foto feita com regra antiga e **refaz sozinho** ao abrir o dia (`gsRefeitas` evita laço). Mudou a regra de contagem? Suba o `GS_REGRA`.
 - **`gsFecharDia(dia,bt)`**: botão "✔ Fechar o dia em 100%" no cartão. Marca o que sobrou como `m:'fora'` (sai da conta), com `por`/`em`, e remonta. É o equivalente registrado do que a Simulação fazia na hora.
 - **`nexLimparReent(romId)`** + chip virou botão `[data-nx-limpare]`: desmarca todas as reentregas detectadas daquele romaneio, tira do `RE` as linhas lançadas pelo app (`origem` nex/automatica — a lançada à mão fica) e **baixa a planilha antes** de apagar. Só Admin/Líder/Supervisor.
+
+## v10.2.4 (16/11/2026) — Parte 2 no ar: Divergências e Avarias em duas colunas
+O bloco `du*` existia desde a v10 mas **ninguém chamava**: as abas seguiam na tabela antiga, `AV_ST`
+não estava definido (o cartão quebrava), não havia CSS `.du-*` e o cartão não tinha como resolver.
+Tudo entrou num bloco único no fim do `index.html` (depois de todas as definições, pela armadilha do wrapper).
+- **Ligação**: `dvRenderLista`/`avRenderLista` viraram wrappers que chamam `duColunas(false/true)`; se der
+  erro caem na tabela antiga (`try/catch`) — por isso a tabela **não** foi apagada. `#dv-filtro`/`#av-filtro`
+  tiveram o `oninput` **reamarrado** (guardavam a referência da função antiga, feita no init) e agora com
+  espera de 180 ms: antes redesenhavam os dois lados inteiros, com `<img>` em base64, a cada tecla.
+- **`duColunas` reescrito** para respeitar os quadrados de cima: `abertas` → só Pendentes, `resolvida` →
+  só Solucionadas, `apareceu` → só as que voltaram, `todas` → as duas. Os filtros nascem em `todas`.
+- **`AV_ST`**: `aguardando` (vermelho), `tratativa` (#F59F00), `resolvido` (verde). Gravados em
+  `d.avst`/`d.avstPor`/`d.avstEm` pelo botão 🔁 Status, com linha no `hist`.
+- **Cartão** (wrapper de `duCard`): ✅ Dar baixa / ↩️ Reabrir e 📲 WhatsApp; o ✏️ Editar passou a usar
+  `data-dv="editar"`/`data-av="editar"`, que o handler do container já tratava. Voltaram o "quanto
+  falta/sobrou" e o aviso de **falta maior que o total**. Na avaria o Tipo mostra o subtipo (`d.sub`).
+- **Volumes avariados**: grade `volGradeHtml(tot,sel,'acx')`; grava `d.vols` e `d.tot`. A janela e o
+  `avRegistrar` conversam por um objeto `grade` que o registrar **consome e limpa** no ato.
+- **WhatsApp** (`textoDaOcorrencia`/`enviarNoZap`): o `window.open` acontece **antes de qualquer await** —
+  depois de um `await` o navegador não reconhece mais o toque e o bloqueador de pop-up barra a janela.
+- **Segurança — `fotoSegura()`** (definida antes do `const DV_COR`): `src="${d.foto}"` entrava cru em 4
+  pontos. Como qualquer usuário ativo pode dar `update` no `hs_sync`, uma foto gravada como
+  `x" onerror="..."` virava script rodando na tela de todo mundo (e a sessão mora no localStorage).
+  Agora só passa `data:image/...;base64` ou `https://`. Tem teste que tenta injetar de verdade.
+- **Armadilha nova**: `innerText` respeita `text-transform` — `.du-l small` é uppercase, então teste que
+  procura rótulo de cartão precisa de `/i` ou procurar só o valor.
+- **Armadilha nova**: testes antigos liam `#dv-lista .op-tab tbody tr`; com cartão isso é `null`.
+- **Pendências apontadas na auditoria e não mexidas** (precisam do "pode" dele):
+  1. foto de avaria em base64 dentro do `S` → `localStorage`; ~70–120 KB cada, mesma cota que estourou
+     em 16/11. Mandar para `hs_fotos`/Storage e guardar só o ponteiro.
+  2. `S.cargos` viaja pelo `hs_sync`, onde qualquer usuário ativo pode dar update → cargo é controle de
+     tela, não de segurança. O que protege de verdade é `hs_eh_admin()` no banco.
+  3. última gravação vence, sem aviso, em `duStatus`/`duMudarDia`/`dvRegistrar`.
+  4. `dvCidade()` é função de leitura que grava (`dvCidade.mudou` → `salvar()`).

@@ -4319,7 +4319,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.2.3', HS_DATA='16/11/2026';
+const HS_VERSAO='10.2.4', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -10358,6 +10358,10 @@ setInterval(()=>{ try{ if(!GEO._vr||!GEO.view) return; const ga=$('#geo-auto'); 
     window.addEventListener('focus',async()=>{ try{ const r=await fetch('/__hr/estado',{cache:'no-store',headers:HDR}); const j=await r.json(); if(j&&j.dados&&JSON.stringify(j.dados)!==JSON.stringify(S)){ S=Object.assign(S,j.dados); montarDicionario(); renderTudo(); } }catch(e){} }); }
 })();
 /* ================= v9.1.0 · Divergência/Avaria direto na Busca + aba Avarias + reentrega colorida ================= */
+/* v10.2.4 · a foto vem do banco: só entra num src se for mesmo uma foto. Sem isto, um valor
+   gravado como  x" onerror="...  vira script rodando na tela de todo mundo. */
+function fotoSegura(u){ u=String(u||'');
+  return /^(data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+|https:\/\/[^"'<>\s]+)$/.test(u)?u:''; }
 const DV_COR={'Falta de volume':'#E8590C','Sobra de volume':'#8B5A2B','Avaria':'#7048E8','Outro':'#868E96'};
 const AV_COR='#7048E8';
 const AV_TIPOS=['Caixa amassada','Caixa molhada','Caixa violada/aberta','Produto quebrado','Gelo derretido/temperatura','Outro'];
@@ -10403,7 +10407,7 @@ function duCard(d,av){
     </div>
     ${d.obs?`<p class="du-obs">${esc(d.obs)}</p>`:''}
     ${d.apareceu?`<p class="du-obs">Apareceu no romaneio ${esc(d.apareceu.rom||'')} em ${fmtData(d.apareceu.d)}</p>`:''}
-    ${d.foto?`<img class="du-foto" src="${d.foto}" alt="Foto da avaria">`:''}
+    ${d.foto?`<img class="du-foto" src="${fotoSegura(d.foto)}" alt="Foto da avaria">`:''}
     <div class="du-bts">
       <button class="btn mini" type="button" data-du-dia="${esc(d.id||'')}">📅 Mudar o dia</button>
       ${av?`<button class="btn mini" type="button" data-du-avst="${esc(d.id||'')}">🔁 Status</button>
@@ -10490,10 +10494,10 @@ function avJanela(l){ return new Promise(res=>{ const ja=avAcha(l.ped,l.nf); con
     <label class="av-l">Quantos volumes avariados?<input type="number" min="1" inputmode="numeric" id="avj-q" value="${ja&&ja.qtd?ja.qtd:''}" style="font-size:1.6rem;padding:10px;border:2px solid ${AV_COR};border-radius:10px;background:var(--sup);color:inherit"></label>
     <label class="av-l">Tipo de avaria<select id="avj-t">${AV_TIPOS.map(t=>`<option ${(ja&&ja.sub)===t?'selected':''}>${t}</option>`).join('')}</select></label>
     <label class="av-l">Observação (opcional)<input id="avj-o" value="${esc(ja&&ja.obs||'')}" placeholder="Ex.: 2 caixas amassadas na lateral"></label>
-    <label class="av-l">Foto (opcional)<input type="file" accept="image/*" capture="environment" id="avj-f"></label><div id="avj-pv">${foto?`<img src="${foto}" alt="Foto da avaria" style="max-width:100%;max-height:160px;border-radius:8px;margin-top:6px">`:''}</div>
+    <label class="av-l">Foto (opcional)<input type="file" accept="image/*" capture="environment" id="avj-f"></label><div id="avj-pv">${foto?`<img src="${fotoSegura(foto)}" alt="Foto da avaria" style="max-width:100%;max-height:160px;border-radius:8px;margin-top:6px">`:''}</div>
     <div class="botoes"><button class="btn" data-r="0" type="button">Cancelar</button><button class="btn pri" data-r="1" type="button" style="background:${AV_COR};border-color:${AV_COR}">Salvar avaria</button></div></div>`;
   document.body.appendChild(f); const q=f.querySelector('#avj-q'); setTimeout(()=>q.focus(),30);
-  f.querySelector('#avj-f').onchange=async e=>{ foto=await avFoto(e.target.files[0]); f.querySelector('#avj-pv').innerHTML=foto?`<img src="${foto}" alt="Foto da avaria" style="max-width:100%;max-height:160px;border-radius:8px;margin-top:6px">`:''; };
+  f.querySelector('#avj-f').onchange=async e=>{ foto=await avFoto(e.target.files[0]); f.querySelector('#avj-pv').innerHTML=foto?`<img src="${fotoSegura(foto)}" alt="Foto da avaria" style="max-width:100%;max-height:160px;border-radius:8px;margin-top:6px">`:''; };
   const fim=ok=>{ const v={qtd:+q.value||null,sub:f.querySelector('#avj-t').value,obs:f.querySelector('#avj-o').value.trim(),foto}; f.remove(); res(ok?v:null); };
   f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(b) fim(b.dataset.r==='1'); };
   f.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id!=='avj-f'){ e.preventDefault(); fim(true); } if(e.key==='Escape') fim(false); }); }); }
@@ -10537,7 +10541,7 @@ async function avBipar(textos){ const l=dvLeitura(textos); if(!l||(!l.ped&&!l.nf
     for(const d of avS()) linhas.push([avNum(d),fmtData(d.d),DV_ST[d.st].t,d.sub,d.ped,d.nf,d.qtd||'',d.cli,d.cid||'',d.obs,d.por,d.res?d.res.sol||'':'',d.res?fmtData(d.res.d):'']);
     const csv='﻿'+linhas.map(l=>l.map(v=>{ v=String(v??''); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(';')).join('\r\n'); baixar(new Blob([csv],{type:'text/csv;charset=utf-8'}),`Avarias_${hojeISO()}.csv`); };
   $('#av-lista').onclick=async e=>{ const b=e.target.closest('[data-av]'); if(!b) return; const d=dvS().find(x=>x.id===b.dataset.id); if(!d) return; const eu=dvEu(), ag=new Date().toISOString(), a=b.dataset.av;
-    if(a==='foto'){ const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>Foto da avaria ${esc(avNum(d))}</h2><img src="${d.foto}" alt="Foto da avaria" style="max-width:100%;border-radius:8px"><div class="botoes"><button class="btn pri" type="button">Fechar</button></div></div>`; document.body.appendChild(f); f.onclick=ev=>{ if(ev.target===f||ev.target.closest('button')) f.remove(); }; return; }
+    if(a==='foto'){ const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>Foto da avaria ${esc(avNum(d))}</h2><img src="${fotoSegura(d.foto)}" alt="Foto da avaria" style="max-width:100%;border-radius:8px"><div class="botoes"><button class="btn pri" type="button">Fechar</button></div></div>`; document.body.appendChild(f); f.onclick=ev=>{ if(ev.target===f||ev.target.closest('button')) f.remove(); }; return; }
     if(a==='editar'){ await avRegistrar({ped:d.ped,nf:d.nf,row:{dest:d.cli,cid:d.cid}}); return; }
     if(a==='resolver'){ const sol=await avSolucao(d); if(!sol) return; d.st='resolvida'; d.res={d:hojeISO(),obs:sol.obs,sol:sol.sol,por:eu}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Resolvida: '+sol.sol+(sol.obs?' · '+sol.obs:'')}); if(sol.sol==='Volta como reentrega') dvParaReentregas(Object.assign({},d,{tipo:'Avaria · '+(d.sub||''),res:{d:hojeISO(),obs:sol.obs||sol.sol}})); }
     if(a==='reabrir'){ d.st='aberta'; delete d.res; delete d.apareceu; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Reaberta'}); }
@@ -11939,6 +11943,215 @@ setInterval(()=>{ try{ simAvisos(); }catch(e){} },5000);
 
 (function(){ try{ const s=MAN.find(x=>x.id==='sistema'); if(s&&s.passos) s.passos.push(['App aberto em mais de uma aba (v9.19.3)','Se o app estiver aberto em duas abas ou janelas no mesmo aparelho (ou no app instalado e no navegador ao mesmo tempo), quando uma salva a outra recarrega os dados na hora. Assim uma aba desatualizada não grava por cima de clientes fixos, agendamentos, mapa ou simulação cadastrados na outra. A simulação ligada numa aba aparece também na outra. O mapa guardado à parte no aparelho nunca é trocado por um mais velho.']); }catch(e){} })();
 (function(){ try{ const s=MAN.find(x=>x.id==='sistema'); if(s&&s.passos) s.passos.push(['Salvar sem pesar o banco (v9.19.2)','O 💾 Salvar envia o que mudou e faz a cópia completa dentro do próprio banco, sem baixar nada para o aparelho. Se nada mudou desde a última cópia, ou se já existe uma de menos de 15 minutos, ele não duplica e avisa que tudo já estava guardado. A cópia antiga de segurança (tabela hs_estado) agora é feita só pelo aparelho do administrador, no máximo a cada 6 horas.']); }catch(e){} })();
+/* ================= v10.2.4 · Parte 2 · Divergências e Avarias: duas colunas no ar =================
+   O bloco du* (v10) existia mas ninguém chamava: as abas seguiam na tabela antiga, AV_ST não existia
+   (quebrava o cartão), não havia CSS e o cartão não tinha como resolver/reabrir. Aqui ele entra no ar.
+   Este bloco fica no FIM do arquivo de propósito: wrapper só vale depois da definição da função. */
+(function(){
+  if(window.__du2) return; window.__du2=true;
+
+  const COR_PENDENTE='#E8590C', COR_FEITA='var(--ok)', COR_ALERTA='var(--no)';
+
+  /* --- utilitários ------------------------------------------------------------------------ */
+
+  /* o filtro redesenhava todos os cartões a cada tecla; no celular com muito registro isso trava */
+  const aposDigitar=(fn,ms=180)=>{ let t=0; return()=>{ clearTimeout(t); t=setTimeout(fn,ms); }; };
+
+  const ehPendente=d=>d.st!=='resolvida';
+  const filtroDe=ehAvaria=>(((ehAvaria?window.AVF:window.DVF)||{}).filtro)||'todas';
+
+  /* --- 1. estilo das duas colunas ---------------------------------------------------------- */
+  document.head.insertAdjacentHTML('beforeend',`<style>
+  .du-topo{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 12px}
+  .du-chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--linha);border-radius:999px;padding:2px 6px 2px 10px;font-weight:600;font-size:.85rem}
+  .du-duas{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  @media(max-width:860px){.du-duas{grid-template-columns:1fr}}
+  .du-col h3{margin:0 0 8px;font-size:1rem;display:flex;gap:6px;align-items:center}
+  .du-col h3 span{font-weight:600;opacity:.7}
+  .du-ls{display:flex;flex-direction:column;gap:10px}
+  .du-c{border:1.5px solid var(--linha);border-left:6px solid ${COR_PENDENTE};border-radius:10px;padding:10px 12px;background:var(--sup)}
+  .du-c.feita{border-left-color:${COR_FEITA}}
+  .du-c>header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+  .du-c>header b{font-size:1.05rem}
+  .du-st{font-size:.76rem;font-weight:800;border:1.5px solid;border-radius:999px;padding:1px 8px;white-space:nowrap}
+  .du-g{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
+  .du-l{display:flex;flex-direction:column;line-height:1.2}
+  .du-l small{opacity:.7;font-size:.7rem;text-transform:uppercase;letter-spacing:.02em}
+  .du-l b{font-size:.92rem;word-break:break-word}
+  .du-obs{margin:8px 0 0;font-size:.9rem;border-left:3px solid var(--linha);padding:3px 8px}
+  .du-foto{max-width:170px;max-height:130px;border-radius:8px;margin-top:8px;display:block}
+  .du-bts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  tr.du-dia:hover{background:rgba(127,127,127,.14)}
+  </style>`);
+
+  /* --- 2. os 3 status da avaria (a constante faltava — o cartão quebrava ao abrir) ---------- */
+  window.AV_ST={aguardando:{t:'Aguardando tratativa',c:COR_ALERTA},
+                tratativa:{t:'Em tratativa',c:'#F59F00'},
+                resolvido:{t:'Resolvida com o cliente',c:COR_FEITA}};
+
+  /* --- 3. o cartão ganha ação, e volta a mostrar o que a tabela antiga mostrava ------------- */
+  function acoesDoCartao(d,ehAvaria){ const alvo=ehAvaria?'av':'dv', id=esc(String(d.id||''));
+    const principal=ehPendente(d)
+      ? `<button class="btn mini pri" type="button" data-${alvo}="resolver" data-id="${id}">✅ ${ehAvaria?'Resolver':'Dar baixa'}</button>`
+      : `<button class="btn mini" type="button" data-${alvo}="reabrir" data-id="${id}">↩️ Reabrir</button>`;
+    /* na avaria com foto o botão do WhatsApp já vem do duCard original */
+    const zap=(ehAvaria&&d.foto)?'':`<button class="btn mini" type="button" data-du-zap="${id}">📲 WhatsApp</button>`;
+    return principal+zap; }
+
+  function linhasQueFaltavam(d){ const total=+d.tot||0, quanto=+d.qtd||0, ehSobra=/sobra/i.test(d.tipo||'');
+    let extra = quanto ? duLinha(ehSobra?'Quanto sobrou':'Quanto falta',(ehSobra?'sobraram ':'faltam ')+fmtN(quanto)+' volume(s)') : '';
+    if(total&&quanto>total&&!ehSobra)
+      extra+=`<div class="du-l" style="grid-column:1/-1;color:${COR_ALERTA}"><small>Atenção</small><b>falta mais que o total da nota: ${fmtN(quanto)} volume(s) numa nota de ${fmtN(total)}</b></div>`;
+    return extra; }
+
+  { const original=duCard;
+    duCard=function(d,ehAvaria){ let html=original(d,ehAvaria);
+      /* o Editar passa a usar o caminho que o container já tratava, em vez de um handler novo */
+      html=html.split('data-du-ed=').join(ehAvaria?'data-av="editar" data-id=':'data-dv="editar" data-id=');
+      /* a foto vem do banco: só entra no src se for mesmo uma foto */
+      if(d.foto) html=html.split(`src="${d.foto}"`).join(`src="${fotoSegura(d.foto)}"`);
+      if(ehAvaria){ /* na avaria o tipo útil é o subtipo (Caixa molhada), não a palavra "Avaria" */
+        const de=duLinha('Tipo',d.tipo||''), para=duLinha('Tipo',d.sub||d.tipo||'');
+        if(de&&para&&de!==para) html=html.replace(de,para); }
+      else { const extra=linhasQueFaltavam(d); if(extra) html=html.replace('<div class="du-g">','<div class="du-g">'+extra); }
+      return html.replace('<div class="du-bts">','<div class="du-bts">'+acoesDoCartao(d,ehAvaria)); }; }
+
+  /* uma passada só, em vez de ordenar crescente e depois inverter */
+  duOrdenar=function(L,cfg){ const sentido=cfg.ordem==='nova'?-1:1;
+    return L.slice().sort((a,b)=>sentido*(String(a.d||'').localeCompare(String(b.d||''))||((a.n||0)-(b.n||0)))); };
+
+  /* --- 4. as colunas respeitam os quadrados de cima ----------------------------------------- */
+  duColunas=function(ehAvaria){ const cfg=duCfg(ehAvaria);
+    const el=document.getElementById(ehAvaria?'av-lista':'dv-lista'); if(!el) return;
+    const campo=document.getElementById(ehAvaria?'av-filtro':'dv-filtro'), busca=N((campo&&campo.value)||'');
+    const todos=(ehAvaria?avS():dvSo()); let L=todos;
+    if(cfg.dia) L=L.filter(d=>String(d.d||'')===cfg.dia);
+    if(busca) L=L.filter(d=>N([d.ped,d.nf,d.cli,d.rem,d.tipo,d.sub,d.obs,dvCidade(d),ehAvaria?avNum(d):dvNum(d)].join(' ')).includes(busca));
+    const filtro=filtroDe(ehAvaria); if(filtro==='apareceu') L=L.filter(d=>d.st==='apareceu');
+    const pendentes=duOrdenar(L.filter(ehPendente),cfg), feitas=duOrdenar(L.filter(d=>!ehPendente(d)),cfg);
+    const vePendentes=filtro!=='resolvida', veFeitas=(filtro!=='abertas'&&filtro!=='apareceu');
+    const coluna=(titulo,icone,cor,itens,vazio)=>`<section class="du-col"><h3 style="color:${cor}">${icone} ${titulo} <span>(${fmtN(itens.length)})</span></h3>
+       <div class="du-ls">${itens.length?itens.map(d=>duCard(d,ehAvaria)).join(''):`<p class="sub">${vazio}</p>`}</div></section>`;
+    const dias=[...new Set(todos.map(d=>String(d.d||'')).filter(Boolean))].sort().reverse();
+    el.innerHTML=`<div class="du-topo">
+        <button class="btn mini" type="button" data-du-banco="${ehAvaria?'av':'dv'}">🗃️ Banco por dia</button>
+        ${cfg.dia?`<span class="du-chip">Só o dia ${fmtData(cfg.dia)} <button class="op-x" type="button" data-du-limpadia="${ehAvaria?'av':'dv'}">✕</button></span>`:`<span class="sub">${fmtN(dias.length)} dia(s) com registro</span>`}
+        <button class="btn mini" type="button" data-du-ordem="${ehAvaria?'av':'dv'}">⇅ ${cfg.ordem==='nova'?'mais nova em cima':'mais velha em cima'}</button>
+      </div>
+      <div class="du-duas"${(vePendentes&&veFeitas)?'':' style="grid-template-columns:1fr"'}>${vePendentes?coluna('Pendentes','⏳',COR_PENDENTE,pendentes,ehAvaria?'Nenhuma avaria pendente. ✅':'Nenhuma divergência pendente. ✅'):''}
+        ${veFeitas?coluna('Solucionadas','✅',COR_FEITA,feitas,'Nada solucionado ainda.'):''}</div>`; };
+
+  /* --- 5. ligar: as abas passam a desenhar as colunas em vez da tabela ---------------------- */
+  /* a tabela antiga continua de pé como rede de segurança: se o cartão quebrar, a tela não some */
+  { const tabelaAntiga=dvRenderLista; dvRenderLista=function(){ if(!document.getElementById('dv-lista')) return;
+      try{ duColunas(false); const t=document.getElementById('dv-tit'); if(t) t.textContent='Divergências · pendentes e solucionadas'; }
+      catch(e){ console.error(e); try{ tabelaAntiga(); }catch(x){} } }; }
+  { const tabelaAntiga=avRenderLista; avRenderLista=function(){ if(!document.getElementById('av-lista')) return;
+      try{ duColunas(true); const t=document.getElementById('av-tit'); if(t) t.textContent='Avarias · pendentes e solucionadas'; }
+      catch(e){ console.error(e); try{ tabelaAntiga(); }catch(x){} } }; }
+  /* os campos de busca guardavam a referência da função antiga, amarrada lá no início */
+  try{ const dv=document.getElementById('dv-filtro'); if(dv) dv.oninput=aposDigitar(()=>dvRenderLista());
+       const av=document.getElementById('av-filtro'); if(av) av.oninput=aposDigitar(()=>avRenderLista()); }catch(e){}
+  /* duas colunas é a visão normal */
+  try{ if(window.DVF) window.DVF.filtro='todas'; if(window.AVF) window.AVF.filtro='todas'; }catch(e){}
+
+  /* --- 6. status da avaria ------------------------------------------------------------------ */
+  function abrirStatus(id){ const d=dvS().find(x=>String(x.id)===String(id)); if(!d) return;
+    const atual=d.avst||'aguardando';
+    const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1700';
+    f.innerHTML=`<div class="modal" role="dialog" style="max-width:420px"><h2 style="margin-top:0">🔁 Status da avaria ${esc(avNum(d))}</h2>
+      <p class="sub">Em que ponto está a tratativa. Fica gravado quem mudou e a hora.</p>
+      <div class="botoes" style="flex-direction:column;align-items:stretch;gap:8px">
+      ${Object.keys(AV_ST).map(k=>`<button class="btn${k===atual?' pri':''}" type="button" data-st="${k}" style="border-color:${AV_ST[k].c}">${esc(AV_ST[k].t)}${k===atual?' (atual)':''}</button>`).join('')}
+      <button class="btn" type="button" data-st="x">Cancelar</button></div></div>`;
+    document.body.appendChild(f);
+    f.addEventListener('click',e=>{ if(e.target===f){ f.remove(); return; }
+      const b=e.target.closest('[data-st]'); if(!b) return; f.remove();
+      if(b.dataset.st==='x'||b.dataset.st===atual) return;
+      d.avst=b.dataset.st; d.avstPor=dvEu(); d.avstEm=new Date().toISOString();
+      (d.hist=d.hist||[]).push({em:d.avstEm,por:d.avstPor,t:'Status: '+AV_ST[d.avst].t});
+      salvar(); try{ nuvSinc(); }catch(x){} try{ avRender(); }catch(x){}
+      toast(avNum(d)+': '+AV_ST[d.avst].t+'.'); }); }
+
+  /* --- 7. mandar no WhatsApp (mesmo caminho do Expedição e recebimento) --------------------- */
+  function textoDaOcorrencia(d){ const ehAvaria=avEh(d), total=+d.tot||0;
+    const L=[`*${ehAvaria?'AVARIA':'DIVERGÊNCIA'} ${ehAvaria?avNum(d):dvNum(d)}*`,''];
+    L.push(`*Dia:* ${fmtData(d.d)}${duHora(d.em)?' · '+duHora(d.em):''}`);
+    L.push(`*Pedido:* ${d.ped||'-'}`,`*NF:* ${d.nf||'-'}`);
+    if(d.cli) L.push(`*Cliente:* ${d.cli}`);
+    const cidade=dvCidade(d); if(cidade) L.push(`*Cidade:* ${cidade}`);
+    L.push(`*Tipo:* ${(ehAvaria?d.sub:d.tipo)||'-'}`);
+    if(ehAvaria) L.push(`*Volumes avariados:* ${(d.vols&&d.vols.length)?volLista(d.vols,total||d.vols.length)+' ('+d.vols.length+')':(d.qtd||'-')}`);
+    else L.push(`*Volumes que faltaram:* ${(d.falt&&d.falt.length&&total)?volLista(d.falt,total)+' ('+d.falt.length+' de '+total+')':(d.qtd||'-')}`);
+    if(d.rom) L.push(`*Romaneio:* ${d.rom}`);
+    L.push(`*Quem registrou:* ${d.por||'-'}`);
+    L.push(`*Situação:* ${ehAvaria?(AV_ST[d.avst]||AV_ST.aguardando).t:(DV_ST[d.st]||DV_ST.aberta).t}`);
+    if(!ehPendente(d)) L.push(`*Baixa:* ${duBaixa(d)}${d.res&&d.res.por?' · '+d.res.por:''}`);
+    if(d.obs) L.push(`*Obs:* ${d.obs}`);
+    L.push('','_Health Search · Health Log — uso interno_');
+    return L.join('\n'); }
+
+  /* o WhatsApp é aberto ANTES de qualquer espera: depois de um await o navegador já não reconhece
+     o toque e o bloqueador de pop-up barra a janela. Com foto, usa o compartilhar do aparelho. */
+  function enviarNoZap(id){ const d=dvS().find(x=>String(x.id)===String(id)); if(!d) return;
+    const txt=textoDaOcorrencia(d), foto=fotoSegura(d.foto);
+    try{ navigator.clipboard.writeText(txt); }catch(e){}
+    if(!foto){ window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener');
+      toast('Texto no WhatsApp. (Também ficou copiado.)'); return; }
+    const abrirSoTexto=()=>{ window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener'); };
+    (async()=>{ let arquivo=null;
+      try{ const b=await (await fetch(foto)).blob();
+        arquivo=new File([b],(avEh(d)?avNum(d):dvNum(d))+'.jpg',{type:b.type||'image/jpeg'}); }catch(e){}
+      try{ if(arquivo&&navigator.canShare&&navigator.canShare({files:[arquivo]})){
+          await navigator.share({files:[arquivo],text:txt});
+          toast('Escolha a conversa no WhatsApp e toque em enviar. (O texto também foi copiado.)'); return; } }
+      catch(e){ if(e&&e.name==='AbortError') return; }
+      if(arquivo){ try{ baixar(arquivo,arquivo.name); }catch(e){} }
+      abrirSoTexto();
+      toast(arquivo?'A foto foi baixada: anexe na conversa. O texto já vai no WhatsApp.':'Texto no WhatsApp.'); })(); }
+
+  document.addEventListener('click',e=>{ const alvo=e.target; if(!alvo||!alvo.closest) return; let b;
+    if((b=alvo.closest('[data-du-avst]'))){ abrirStatus(b.dataset.duAvst); return; }
+    if((b=alvo.closest('[data-du-zap]'))){ enviarNoZap(b.dataset.duZap); return; }
+  },true);
+
+  /* --- 8. avaria: marcar QUAIS volumes estão avariados -------------------------------------- */
+  /* combinado entre avJanela e avRegistrar: a janela deixa aqui o que foi marcado na grade e o
+     avRegistrar consome e limpa na mesma ação. Só avRegistrar chama avJanela. */
+  const grade={vols:null,total:0};
+  const modalDaAvaria=()=>[...document.querySelectorAll('.fundo')].reverse().find(f=>f.querySelector('#avj-q'))||null;
+
+  { const original=avJanela;
+    avJanela=function(l){ const promessa=original.call(this,l); grade.vols=null; grade.total=0;
+      try{ const f=modalDaAvaria(); const linha=(l&&l.row)||{};
+        const total=volNum(linha.vol)||(l&&l.tot)||0; grade.total=total||0;
+        const campoQtd=f&&f.querySelector('#avj-q');
+        if(campoQtd&&total>1&&total<=VOL_GRADE_MAX){
+          const ja=avAcha(l.ped,l.nf), marcados=new Set((((ja&&ja.vols)||[]).map(Number)));
+          campoQtd.closest('label').insertAdjacentHTML('beforebegin',
+            `<div style="font-weight:600;margin-bottom:4px">Quais volumes estão <u>avariados</u>? <span class="sub" style="margin:0;font-weight:400">a nota tem ${total} — marque os danificados</span></div>`
+            +volGradeHtml(total,[...marcados],'acx')+`<p class="sub" id="avj-r" style="margin:2px 0 8px"></p>`);
+          const resumir=()=>{ const el=f.querySelector('#avj-r');
+            if(el) el.innerHTML=marcados.size?`Avariados: <b>${esc(volLista([...marcados],total))}</b>`:'Nenhum volume marcado — dá para só informar a quantidade.';
+            if(marcados.size) campoQtd.value=marcados.size;
+            grade.vols=[...marcados].sort((a,b)=>a-b); };
+          resumir();
+          f.addEventListener('click',ev=>{ const cx=ev.target.closest&&ev.target.closest('[data-acx]'); if(!cx) return;
+            const n=+cx.dataset.acx; marcados.has(n)?marcados.delete(n):marcados.add(n);
+            cx.classList.toggle('on',marcados.has(n)); resumir(); },true);
+        } }catch(e){ console.error(e); }
+      return promessa; }; }
+
+  { const original=avRegistrar;
+    avRegistrar=async function(l){ const d=await original.call(this,l);
+      const vols=grade.vols, total=grade.total; grade.vols=null; grade.total=0;
+      try{ if(d){ let mudou=false;
+        if(vols&&vols.length){ d.vols=vols.slice(); if(!d.qtd||d.qtd<d.vols.length) d.qtd=d.vols.length; mudou=true; }
+        if(!d.tot&&total){ d.tot=total; mudou=true; }
+        if(mudou){ salvar(); try{ nuvSinc(); }catch(e){} try{ avRender(); }catch(e){} } } }
+      catch(e){ console.error(e); }
+      return d; }; }
+})();
 </script>
 
 <!-- Leitor de fotos (OCR) embutido para funcionar sem internet:
