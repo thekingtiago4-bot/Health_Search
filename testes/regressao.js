@@ -690,6 +690,45 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!ig.f.includes('dv:abc'),'integridade: não pode pedir de volta o que já está aqui');
     ok(!ig.f.includes('dv:def'),'integridade: o que foi apagado de propósito não volta');
     ok(ig.f.includes('re:2026-10-01'),'integridade: reentrega que existe na nuvem e sumiu daqui tem que voltar'); }
+  /* v10.1.2: escolher o que sai no relatório antes de gerar o PDF */
+  { const es=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const ant='2026-10-21';
+      S.gsSnap=S.gsSnap||{}; S.gsSnap[ant]={dia:ant,tn:10,fn:1,tv:12,fv:1,pct:90,pctVol:92,roms:2,dv:0,bipes:9,
+        orig:[{base:'CAJ',mot:'REGINALDO SOUZA',tn:6,fn:0,tv:7,fv:0},{base:'DF',mot:'',tn:4,fn:1,tv:5,fv:1}],
+        falta:[{nf:'900001',ped:'P9',cli:'CLI Z',cid:'BAURU',base:'DF',vol:1,lidos:0}]};
+      gsPdfEscolher(ant); await w(200);
+      const m=document.querySelector('.fundo .modal');
+      const cx=[...document.querySelectorAll('[data-gsr]')].map(c=>c.dataset.gsr);
+      const obs=!!document.getElementById('gsr-obs');
+      const r={cx,obs,tem:!!m,tit:m?(m.querySelector('h2')||{}).textContent:''};
+      document.querySelector('[data-gsr-x]').click(); await w(100);
+      r.fechou=!document.querySelector('.fundo .modal [data-gsr]');
+      delete S.gsSnap[ant]; return r; });
+    ok(es.tem&&/21\/10\/2026/.test(es.tit),'relatório: falta a janela de escolher o que sai ('+es.tit+')');
+    ok(es.cx.length===6&&es.cx.includes('falta')&&es.cx.includes('pessoa'),'relatório: faltam opções para marcar ('+es.cx.join(',')+')');
+    ok(es.obs,'relatório: falta o campo de observação para a diretoria');
+    ok(es.fechou,'relatório: a janela tem que fechar no Cancelar'); }
+  { const pdf=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const ant='2026-10-22';
+      S.gsSnap=S.gsSnap||{}; S.gsSnap[ant]={dia:ant,tn:10,fn:2,tv:12,fv:2,pct:80,pctVol:83,roms:1,dv:0,bipes:8,
+        orig:[{base:'CAJ',mot:'REGINALDO SOUZA',tn:10,fn:2,tv:12,fv:2}],
+        falta:[{nf:'900002',ped:'P8',cli:'CLI Y',cid:'MARILIA',base:'CAJ',vol:1,lidos:0}]};
+      let html=''; const _open=window.open;
+      window.open=()=>({document:{write:t=>{html+=t;},close(){}},focus(){},print(){}});
+      gsPdfProjetor(ant,{pct:true,orig:true,falta:false,dv:false,pessoa:false,hora:false,obs:'Fechamos 100% com 3 conferentes'});
+      await w(50);
+      const semFalta=html;
+      html=''; gsPdfProjetor(ant,{pct:false,orig:false,falta:true,dv:false,pessoa:false,hora:false,obs:''});
+      await w(50);
+      const soFalta=html; window.open=_open; delete S.gsSnap[ant];
+      return {semFaltaTemLista:/O que não entrou/.test(semFalta),semFaltaTemPct:/class="pct"/.test(semFalta),
+        semFaltaObs:/3 conferentes/.test(semFalta), semFaltaOrig:/Por origem/.test(semFalta),
+        soFaltaTemLista:/O que não entrou/.test(soFalta), soFaltaTemPct:/class="pct"/.test(soFalta),
+        soFaltaOrig:/Por origem/.test(soFalta), rodape:/uso interno/.test(semFalta)}; });
+    ok(!pdf.semFaltaTemLista&&pdf.semFaltaTemPct&&pdf.semFaltaOrig,'relatório: desmarcar "o que não entrou" tem que tirar a lista e manter o resto');
+    ok(pdf.semFaltaObs,'relatório: a observação digitada tem que sair no PDF');
+    ok(pdf.soFaltaTemLista&&!pdf.soFaltaTemPct&&!pdf.soFaltaOrig,'relatório: marcar só a lista tem que tirar a porcentagem e a origem');
+    ok(pdf.rodape,'relatório: o rodapé de uso interno tem que sair sempre'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);

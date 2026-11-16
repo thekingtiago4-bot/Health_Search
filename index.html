@@ -4242,7 +4242,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.1.1', HS_DATA='16/11/2026';
+const HS_VERSAO='10.1.2', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9845,7 +9845,32 @@ function gsCartao(f){ if(!f) return '<div class="gs-box"><h3>Conferência do dia
     <p class="sub"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> nota(s) conferida(s) · ${fmtN(f.tv-f.fv)} de ${fmtN(f.tv)} volume(s) (${f.pctVol}%) · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</p>
     ${f.fn?`<details><summary><b>${fmtN(f.fn)}</b> nota(s) que não entraram</summary><div class="gs-falta"><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${f.falta.map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>${f.fn>f.falta.length?`<p class="sub">Mostrando as primeiras ${f.falta.length}.</p>`:''}</div></details>`:'<p class="ok"><b>Operação 100% conferida.</b></p>'}
     <div style="margin-top:10px"><button class="btn mini pri" data-gs-pdf="${f.dia}">📄 PDF para projetor</button></div></div>`; }
-function gsPdfProjetor(dia){ const f=gsFotoLer(dia); if(!f){ toast('Sem foto desse dia.'); return; }
+/* v10.1.2 · escolher o que sai no relatório antes de gerar o PDF */
+const GSR={pct:true,orig:true,falta:true,dv:true,pessoa:false,hora:false,obs:''};
+function gsPdfEscolher(dia){ const f=gsFotoLer(dia); if(!f){ toast('Sem foto desse dia.'); return; }
+  const it=[['pct','Porcentagem do dia (número grande)'],['orig','Conferência por origem'],
+    ['falta','O que não entrou (lista de notas)'],['dv','Divergências do dia'],
+    ['pessoa','Bipes por pessoa'],['hora','Bipes por hora']];
+  const fu=document.createElement('div'); fu.className='fundo'; fu.style.zIndex='1600';
+  fu.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:470px">
+    <h2 style="margin-top:0">Relatório de ${dia===hojeISO()?'hoje':fmtData(dia)}</h2>
+    <p class="sub">Marque o que vai sair no PDF.</p>
+    <div style="display:grid;gap:8px;margin:10px 0">${it.map(([k,t])=>`<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-gsr="${k}" ${GSR[k]?'checked':''}> ${t}</label>`).join('')}</div>
+    <label style="display:block;margin-bottom:10px">Observação para a diretoria (opcional)
+      <textarea id="gsr-obs" rows="2" style="width:100%" placeholder="Ex.: operação fechada 100% com 3 conferentes"></textarea></label>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" data-gsr-x="1">Cancelar</button><button class="btn pri" data-gsr-ok="1">📄 Gerar PDF</button></div></div>`;
+  fu.addEventListener('click',e=>{ if(e.target===fu||e.target.closest('[data-gsr-x]')){ fu.remove(); return; }
+    const c=e.target.closest('[data-gsr]'); if(c){ GSR[c.dataset.gsr]=c.checked; return; }
+    if(e.target.closest('[data-gsr-ok]')){ GSR.obs=(fu.querySelector('#gsr-obs').value||'').trim(); fu.remove();
+      if(!it.some(([k])=>GSR[k])){ toast('Marque pelo menos um item.'); return; } gsPdfProjetor(dia,GSR); } });
+  document.body.appendChild(fu); setTimeout(()=>{ const b=fu.querySelector('[data-gsr-ok]'); if(b) b.focus(); },30); }
+function gsPorPessoa(dia){ const m=new Map(); for(const b of (gsBipes(dia)||[])){ if(!b||b.status==='fora') continue; const k=(b.usuario||'—'); m.set(k,(m.get(k)||0)+1); }
+  return [...m].sort((a,b)=>b[1]-a[1]); }
+function gsPorHora(dia){ const m=new Map(); for(const b of (gsBipes(dia)||[])){ if(!b||b.status==='fora') continue;
+    const t=new Date(b.criado_em||0); if(isNaN(t)) continue; const h=String(t.getHours()).padStart(2,'0')+'h'; m.set(h,(m.get(h)||0)+1); }
+  return [...m].sort((a,b)=>a[0].localeCompare(b[0])); }
+function gsTab(tit,L,c1,c2){ if(!L.length) return ''; return `<h2>${tit}</h2><table><thead><tr><th>${c1}</th><th>${c2}</th></tr></thead><tbody>${L.map(([k,v])=>`<tr><td>${esc(String(k))}</td><td>${fmtN(v)}</td></tr>`).join('')}</tbody></table>`; }
+function gsPdfProjetor(dia,op){ op=op||{pct:1,orig:1,falta:1,dv:1}; const f=gsFotoLer(dia); if(!f){ toast('Sem foto desse dia.'); return; }
   const cor=f.pct>=100?'#099268':(f.pct>=90?'#E8A33D':'#C92A2A');
   const w=window.open('','_blank'); if(!w){ toast('Libere as janelas (pop-up) para gerar o PDF.'); return; }
   w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Conferência ${f.dia}</title>
@@ -9861,17 +9886,21 @@ function gsPdfProjetor(dia){ const f=gsFotoLer(dia); if(!f){ toast('Sem foto des
   footer{margin-top:18px;color:#666;font-size:11pt;border-top:1px solid #ccc;padding-top:8px}
   tr{break-inside:avoid}</style></head><body>
   <header><b>Health Search · Conferência da operação</b><span>${f.dia===hojeISO()?'Hoje':''} ${fmtData(f.dia)}</span></header>
-  <div class="pct">${f.pct}%</div>
+  ${op.pct?`<div class="pct">${f.pct}%</div>`:''}
   <div class="lin"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> notas conferidas · <b>${fmtN(f.tv-f.fv)}</b> de <b>${fmtN(f.tv)}</b> volumes · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</div>
-  <h2>Por origem</h2>
+  ${op.orig?`<h2>Por origem</h2>
   <table><thead><tr><th>Origem</th><th>Motorista</th><th>Notas</th><th>Conferidas</th><th>%</th><th>Volumes</th><th>%</th></tr></thead><tbody>
   ${(f.orig||[]).map(o=>`<tr><td>${esc(o.base)}</td><td>${esc(o.mot||'')}</td><td>${fmtN(o.tn)}</td><td>${fmtN(o.tn-o.fn)}</td><td><b>${o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100}%</b></td><td>${fmtN(o.tv)}</td><td>${o.tv?Math.round(100*(o.tv-o.fv)/o.tv):100}%</td></tr>`).join('')}
-  </tbody></table>
-  ${f.fn?`<h2>O que não entrou (${fmtN(f.fn)})</h2><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${(f.falta||[]).map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>`:'<h2>Operação 100% conferida</h2>'}
+  </tbody></table>`:''}
+  ${op.falta&&f.fn?`<h2>O que não entrou (${fmtN(f.fn)})</h2><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${(f.falta||[]).map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>`:(op.falta?'<h2>Operação 100% conferida</h2>':'')}
+  ${op.dv?gsTab('Divergências do dia ('+fmtN(f.dv||0)+')',((typeof dvSo==='function'?dvSo():[])||[]).filter(d=>String(d.d||'').slice(0,10)===dia).map(d=>[(d.tipo||'—')+' · NF '+(d.nf||'—')+' · '+(d.cli||d.dest||''),d.vol||1]),'Divergência','Vol.'):''}
+  ${op.pessoa?gsTab('Bipes por pessoa',gsPorPessoa(dia),'Pessoa','Bipes'):''}
+  ${op.hora?gsTab('Bipes por hora',gsPorHora(dia),'Hora','Bipes'):''}
+  ${op.obs?`<h2>Observação</h2><p style="font-size:15pt">${esc(op.obs)}</p>`:''}
   <footer>Gerado em ${new Date().toLocaleString('pt-BR')} · © 2026 Health Log · Grupo VIVEO — uso interno</footer>
   </body></html>`);
   w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },400); }
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-pdf]'); if(b){ e.preventDefault(); gsPdfProjetor(b.dataset.gsPdf); } });
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-pdf]'); if(b){ e.preventDefault(); gsPdfEscolher(b.dataset.gsPdf); } });
 /* ================= v10.1.1 · Conferência por origem de QUALQUER dia =================
    Antes o quadro só sabia calcular o dia de hoje (opPorRom lê os romaneios carregados),
    então todo dia passado aparecia 0%. Agora, para um dia anterior, o app remonta a conta
@@ -9898,7 +9927,12 @@ async function gsBipesDia(dia){ let bs=[]; try{ bs=opLocalLer(dia)||[]; }catch(e
   return bs; }
 async function gsFotoDeDiaPassado(dia){
   const roms=await gsRomsDia(dia); if(!roms.length) return null;
-  const bs=(await gsBipesDia(dia)).filter(b=>b&&(b.status==='ok'||b.status==='semnota'||b.status==='dup'));
+  let bs=(await gsBipesDia(dia)).filter(b=>b&&(b.status==='ok'||b.status==='semnota'||b.status==='dup'));
+  /* turno que vira a noite: bipe feito depois da meia-noite, até as 6h, ainda é daquele romaneio */
+  try{ const prox=new Date(dia+'T12:00:00'); prox.setDate(prox.getDate()+1); const dp=prox.toISOString().slice(0,10);
+    const madr=(await gsBipesDia(dp)).filter(b=>{ if(!b||!(b.status==='ok'||b.status==='semnota'||b.status==='dup')) return false;
+      const t=new Date(b.criado_em||0); return !isNaN(t)&&t.getHours()<6; });
+    if(madr.length) bs=bs.concat(madr); }catch(e){}
   const porPed=new Map(), porNf=new Map();
   const marca=(m,k,b)=>{ if(!k) return; if(!m.has(k)) m.set(k,new Set()); m.get(k).add(b.vol?('v'+b.vol):(b.local_id||Math.random())); };
   for(const b of bs){ marca(porPed,b.ped,b); marca(porNf,b.nf,b); }
@@ -9942,7 +9976,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
    Antes o título dizia o dia escolhido mas os números eram sempre os de hoje. */
 function gsOrigemBox(f,dia){ const nome=dia===hojeISO()?'hoje':fmtData(dia);
   if(!f||!(f.orig||[]).length) return `<div class="gs-box"><h3>Conferência por origem (${nome}) (%)</h3><p class="sub">Não achei romaneios desse dia no banco para remontar a conta.</p><button class="btn mini" data-gs-remontar="1">📊 Remontar o histórico</button></div>`;
-  const L=(f.orig||[]).map(o=>[o.base+(o.mot?' · '+opNomeMot(o.mot):''),o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100]);
+  const L=(f.orig||[]).map(o=>[o.base+(o.mot?' · '+opNomeMot(o.mot):'')+' ('+fmtN(o.tn-o.fn)+' de '+fmtN(o.tn)+')',o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100]);
   return gestorBarras(`Conferência por origem (${nome}) (%)`,L,v=>v+'%','#20C997')
     +(f.remontado?'':'');
 }
