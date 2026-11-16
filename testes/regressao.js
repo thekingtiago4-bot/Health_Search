@@ -991,6 +991,35 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(fo.tn3===2&&fo.p3===100,'fora da conta: a foto guardada lembra quais notas estavam fora ('+fo.tn3+' notas)');
     ok(fo.txt,'fora da conta: o cartão tem que dizer quantas notas saíram da conta');
     ok(fo.bt,'fora da conta: falta o botão "não conta" na lista do que não entrou'); }
+  /* v10.2.2: foto feita com regra antiga se refaz sozinha, e fechar o dia num clique */
+  { const fc=await p.evaluate(async()=>{ const ant='2026-10-28';
+      const gRB=localStorage.getItem(RB.local), gBip=localStorage.getItem(OP_LOCAL+ant);
+      const gDv=JSON.stringify(S.divergencias||[]), gSnap=JSON.stringify(S.gsSnap||{}), gAj=JSON.stringify(S.gsAjuste||{});
+      const L={}; L[ant]={}; L[ant][ant+'|R1']={id:ant+'|R1',dia:ant,base:'CAJ',motorista:'REGINALDO',rows:[
+        {nf:'860001',ped:'F1',dest:'A',cid:'FRANCA',vol:'1'},{nf:'860002',ped:'F2',dest:'B',cid:'BAURU',vol:'1'},
+        {nf:'860003',ped:'F3',dest:'C',cid:'ASSIS',vol:'1'},{nf:'860004',ped:'F4',dest:'D',cid:'MARILIA',vol:'1'}]};
+      localStorage.setItem(RB.local,JSON.stringify(L));
+      localStorage.setItem(OP_LOCAL+ant,JSON.stringify([{nf:opK('860001'),ped:opK('F1'),status:'ok',dia:ant,local_id:'g1',criado_em:ant+'T10:00:00.000Z'}]));
+      S.divergencias=[]; S.gsAjuste={};
+      const f1=await gsFotoDeDiaPassado(ant); S.gsSnap=S.gsSnap||{}; S.gsSnap[ant]=f1;
+      const carimbo=f1&&f1.v;
+      /* simula foto velha, feita com regra antiga */
+      S.gsSnap[ant]=Object.assign({},f1,{v:'antiga',pct:11});
+      const velha=(S.gsSnap[ant]||{}).v!==GS_REGRA;
+      /* fechar o dia num clique: as 3 que faltam saem da conta */
+      const gC=window.confirmar; window.confirmar=async()=>true;
+      const gCg=window.cargoMeu; window.cargoMeu=()=>'admin';
+      await gsFecharDia(ant,null);
+      window.confirmar=gC; window.cargoMeu=gCg;
+      const f2=gsFotoLer(ant);
+      const reg=((S.gsAjuste||{})[ant]||{})['N860003']||{};
+      localStorage.setItem(RB.local,gRB||'{}'); if(gBip) localStorage.setItem(OP_LOCAL+ant,gBip); else localStorage.removeItem(OP_LOCAL+ant);
+      S.divergencias=JSON.parse(gDv); S.gsSnap=JSON.parse(gSnap); S.gsAjuste=JSON.parse(gAj);
+      return {carimbo,velha,p1:f1&&f1.pct,p2:f2&&f2.pct,tn2:f2&&f2.tn,fora2:(f2&&f2.fora||[]).length,por:reg.por||'',em:!!reg.em}; });
+    ok(fc.velha,'carimbo: foto com regra antiga tem que ser reconhecida como velha');
+    ok(fc.p1===25,'fechar o dia: antes, 1 de 4 conferidas = 25% ('+fc.p1+'%)');
+    ok(fc.p2===100&&fc.tn2===1&&fc.fora2===3,'fechar o dia: num clique, as 3 que faltavam saem da conta e o dia fecha 100% ('+fc.p2+'%, '+fc.tn2+' notas, '+fc.fora2+' fora)');
+    ok(fc.por&&fc.em,'fechar o dia: tem que gravar quem fechou e quando ('+fc.por+')'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);

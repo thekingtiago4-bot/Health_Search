@@ -4284,7 +4284,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.2.1', HS_DATA='16/11/2026';
+const HS_VERSAO='10.2.2', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9868,7 +9868,7 @@ function gsFotoMontar(){ try{
   return {dia,ts:Date.now(),tn:c.tn,fn:c.fn,tv:c.tv,fv:c.fv,dn:c.dn,dvv:c.dv,
     pct:gsPctConf(c),pctOk:gsPctOk(c),pctDv:gsPctDv(c),
     pctVol:c.tv?Math.round(100*(c.tv-c.fv)/c.tv):100,
-    bipes:((OP&&OP.bipes)||[]).filter(b=>b.dia===dia).length,dv:dvs,orig:c.orig,falta:c.falta,fora:c.fora,
+    bipes:((OP&&OP.bipes)||[]).filter(b=>b.dia===dia).length,dv:dvs,v:GS_REGRA,orig:c.orig,falta:c.falta,fora:c.fora,
     roms:c.orig.length,quem:((NV&&NV.perfil&&NV.perfil.nome)||'')};
 }catch(e){ return null; } }
 function gsFotoGravar(){ const f=gsFotoMontar(); if(!f) return null;
@@ -9887,7 +9887,7 @@ function gsCartao(f){ if(!f) return '<div class="gs-box"><h3>Conferência do dia
     <p class="sub"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> nota(s) conferida(s) · ${fmtN(f.tv-f.fv)} de ${fmtN(f.tv)} volume(s) (${f.pctVol}%) · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)${(f.fora||[]).length?` · <b>${fmtN(f.fora.length)}</b> nota(s) tirada(s) da conta`:''}</p>
     ${(f.fn&&!(f.dv||0)&&f.dia<hojeISO())?`<p class="gs-semdv">⚠ Este aparelho está <b>sem as divergências deste dia</b>. Se as notas abaixo foram apontadas como falta, elas contam como conferidas (em laranja) assim que as divergências voltarem. <button class="btn mini pri" type="button" data-gs-puxardv="${f.dia}">Baixar divergências e refazer a conta</button></p>`:''}
     ${f.fn?`<details><summary><b>${fmtN(f.fn)}</b> nota(s) que não entraram</summary><div class="gs-falta"><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th><th>Fechar</th></tr></thead><tbody>${f.falta.map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td><td class="gs-aj"><button class="btn mini" type="button" data-gs-aj="${f.dia}|ok" data-nf="${esc(x.nf)}" data-ped="${esc(x.ped)}" title="Esta nota foi conferida">✔ conferida</button><button class="btn mini" type="button" data-gs-aj="${f.dia}|dv" data-nf="${esc(x.nf)}" data-ped="${esc(x.ped)}" title="Esta nota teve falta apontada">⚠ divergência</button><button class="btn mini" type="button" data-gs-aj="${f.dia}|fora" data-nf="${esc(x.nf)}" data-ped="${esc(x.ped)}" title="Esta nota foi tirada da operação: não conta no total do dia">✖ não conta</button></td></tr>`).join('')}</tbody></table><p class="sub">Marcando aqui, fica gravado quem marcou e quando — e a conta do dia passa a contar isso.</p>${f.fn>f.falta.length?`<p class="sub">Mostrando as primeiras ${f.falta.length}.</p>`:''}</div></details>`:'<p class="ok"><b>Operação 100% conferida.</b></p>'}
-    <div style="margin-top:10px"><button class="btn mini pri" data-gs-pdf="${f.dia}">📄 PDF para projetor</button></div></div>`; }
+    <div style="margin-top:10px"><button class="btn mini pri" data-gs-pdf="${f.dia}">📄 PDF para projetor</button>${(f.fn&&f.dia<hojeISO())?`<button class="btn mini" data-gs-fechar="${f.dia}" title="As notas que sobraram saem da conta do dia, com o seu nome e a hora">✔ Fechar o dia em 100%</button>`:''}</div></div>`; }
 /* v10.1.2 · escolher o que sai no relatório antes de gerar o PDF */
 const GSR={pct:true,orig:true,falta:true,dv:true,pessoa:false,hora:false,obs:''};
 function gsPdfEscolher(dia){ const f=gsFotoLer(dia); if(!f){ toast('Sem foto desse dia.'); return; }
@@ -9959,6 +9959,8 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
    DIVERGÊNCIA também vale como conferida (alguém olhou e viu que faltava), só que
    o pedaço que ela representa na operação sai em LARANJA na barra do romaneio.
    Então o dia pode fechar 100% conferido e ainda mostrar quanto disso foi divergência. */
+const gsRefeitas=new Set();
+const GS_REGRA='10.2.2'; /* muda quando a regra de contagem muda: foto velha se refaz sozinha */
 function gsDvDoDia(dia){ const m={nf:new Set(),ped:new Set()};
   /* v10.2.0 · vale QUALQUER divergência daquela nota, não só a aberta no mesmo dia:
      a falta costuma ser registrada depois, e a nota continua sendo "conferida em divergência". */
@@ -10138,6 +10140,22 @@ document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.
        :modo==='fora'?`✖ NF ${nf||ped}: tirada da conta do dia. O dia está em ${f?f.pct:'—'}%.`
                    :`✔ NF ${nf||ped}: marcada como conferida. O dia está em ${f?f.pct:'—'}%.`); });
 
+/* v10.2.2 · fechar o dia num clique: as notas que sobraram saem da conta, com autoria.
+   É o que a Simulação fazia na hora ("12 notas tiradas da conta"), só que registrado. */
+async function gsFecharDia(dia,bt){ try{
+  if(!(typeof cargoCompleto==='function'&&cargoCompleto(cargoMeu()))){ toast('Só Admin, Líder ou Supervisor fecha o dia.'); return; }
+  const f=gsFotoLer(dia); if(!f||!f.fn){ toast('Esse dia já está fechado.'); return; }
+  const n=(f.falta||[]).length;
+  if(!(await confirmar('Fechar o dia em 100%',`As <b>${fmtN(n)}</b> nota(s) que sobraram saem da conta de ${fmtData(dia)} — como as notas que a Simulação tirava na hora. Fica gravado que foi você e quando, e o relatório mostra quantas saíram.`,'Fechar o dia'))) return;
+  if(bt){ bt.disabled=true; bt.textContent='Fechando…'; }
+  for(const x of (f.falta||[])) gsAjMarcar(dia,x.nf,x.ped,'fora');
+  await gsGarantirFoto(dia,true);
+  try{ gestorRender(); }catch(e){}
+  const g=gsFotoLer(dia);
+  toast(`✔ ${fmtData(dia)} fechado em ${g?g.pct:100}% · ${fmtN(n)} nota(s) fora da conta.`);
+}catch(e){ toast('Não consegui fechar: '+(e&&e.message||e)); } }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-fechar]'); if(b){ e.preventDefault(); gsFecharDia(b.dataset.gsFechar,b); } });
+
 /* ================= v10.1.1 · Conferência por origem de QUALQUER dia =================
    Antes o quadro só sabia calcular o dia de hoje (opPorRom lê os romaneios carregados),
    então todo dia passado aparecia 0%. Agora, para um dia anterior, o app remonta a conta
@@ -10177,7 +10195,7 @@ async function gsFotoDeDiaPassado(dia){
   return {dia,ts:Date.now(),tn:c.tn,fn:c.fn,tv:c.tv,fv:c.fv,dn:c.dn,dvv:c.dv,
     pct:gsPctConf(c),pctOk:gsPctOk(c),pctDv:gsPctDv(c),
     pctVol:c.tv?Math.round(100*(c.tv-c.fv)/c.tv):100,
-    bipes:bs.length,dv:dvs,orig:c.orig,falta:c.falta,fora:c.fora,roms:c.orig.length,quem:'',remontado:true}; }
+    bipes:bs.length,dv:dvs,v:GS_REGRA,orig:c.orig,falta:c.falta,fora:c.fora,roms:c.orig.length,quem:'',remontado:true}; }
 async function gsGarantirFoto(dia){ try{
   if(!dia||dia===hojeISO()) return null;
   const j=(S.gsSnap||{})[dia]; if(j&&j.tn) return j;
@@ -10252,7 +10270,10 @@ function gsTrocarOrigem(f,dia){ try{ const el=$('#gs-corpo'); if(!el) return;
   try{ const el=$('#gs-corpo'); if(!el) return r; const dia=gsDia(); const f=gsFotoLer(dia);
     el.insertAdjacentHTML('afterbegin',gsCartao(f));
     if(dia!==hojeISO()) gsTrocarOrigem(f,dia);
-    if(dia!==hojeISO()&&!(f&&f.tn)){ gsGarantirFoto(dia).then(f2=>{ if(f2&&gsDia()===dia){ try{ gestorRender(); }catch(e){} } }); }
+    if(dia!==hojeISO()&&(!(f&&f.tn)||f.v!==GS_REGRA)){
+      const velha=!!(f&&f.tn&&f.v!==GS_REGRA);
+      if(!velha||!gsRefeitas.has(dia)){ if(velha) gsRefeitas.add(dia);
+        gsGarantirFoto(dia,velha).then(f2=>{ if(f2&&gsDia()===dia){ try{ gestorRender(); }catch(e){} } }); } }
   }catch(e){}
   return r; }; }
 /* a cada bipe o app guarda a foto do dia, sem o conferente precisar fazer nada */
