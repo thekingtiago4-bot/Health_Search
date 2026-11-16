@@ -235,3 +235,7 @@ Tudo entrou num bloco único no fim do `index.html` (depois de todas as definiç
      tela, não de segurança. O que protege de verdade é `hs_eh_admin()` no banco.
   3. última gravação vence, sem aviso, em `duStatus`/`duMudarDia`/`dvRegistrar`.
   4. `dvCidade()` é função de leitura que grava (`dvCidade.mudou` → `salvar()`).
+
+## v10.2.5 (16/11/2026) — publicada juntando duas conversas
+Duas conversas publicaram no mesmo dia: uma com a Parte 2 (duas colunas) e outra com o relatório. O push foi recusado, o merge juntou as duas (só `version.json` conflitou), a sintaxe foi checada e a suíte passou. **A partir daqui ficou combinado: uma conversa só mexe no app.**
+- **`gsTabDv(dia)`**: as divergências do dia saem detalhadas no PDF do Painel de Gestão, com as mesmas colunas do Excel da aba Divergências — Nº, situação, tipo, pedido, NF, cliente, cidade, volumes (`qtd` de `tot`), caixas que faltaram (`volLista(d.falt,d.tot)`), remetente, observação, quem registrou, onde apareceu (`d.apareceu.rom`) e a baixa (`d.res`). Tabela com `class="dvt"` e fonte 9,5pt para caber na folha deitada.
