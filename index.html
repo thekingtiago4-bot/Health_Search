@@ -4284,7 +4284,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.1.8', HS_DATA='16/11/2026';
+const HS_VERSAO='10.1.9', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -11381,7 +11381,7 @@ const HS_LOGO_ANIM=`<svg class="hsl" viewBox="0 0 120 120" aria-hidden="true">
   };
   const s=MAN.find(x=>x.id==='menu2026'); if(s) s.passos.push(['☁ Seus dados na nuvem','Toque no ☁ do topo: ele mostra se está tudo salvo e oferece Salvar agora, Ver versões salvas, Cópias de segurança e Baixar tudo de novo (só se o aparelho estiver com dados errados).']); })();
 
-/* ================= v9.6.1 · Abertura animada de 5,5 s antes do login (toque para pular) ================= */
+/* ================= v9.6.1 · Abertura animada de 5,5 s antes do login (v10.1.9: não se pula) ================= */
 (function(){ const st=document.createElement('style'); st.textContent=`
 #hs-cine{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vmin;background:radial-gradient(120vmax 80vmax at 50% 40%,#17656a 0%,#0f4c4c 35%,#062427 100%);overflow:hidden;cursor:pointer}
 #hs-cine.fim{animation:hcSai .7s ease-in forwards}
@@ -11393,7 +11393,7 @@ const HS_LOGO_ANIM=`<svg class="hsl" viewBox="0 0 120 120" aria-hidden="true">
 #hs-cine .hc-sub{color:#9af5ea;letter-spacing:.5em;text-transform:uppercase;font-size:clamp(.7rem,1.9vmin,1rem);opacity:0;animation:hcSub .9s 4.1s ease-out forwards;padding-left:.5em}
 #hs-cine .hc-barra{width:min(46vmin,300px);height:3px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:2vmin}
 #hs-cine .hc-barra b{display:block;height:100%;width:100%;background:linear-gradient(90deg,#4fd1c5,#d9fffa);transform-origin:left;animation:hcBarra 5.3s cubic-bezier(.4,0,.2,1) forwards}
-#hs-cine .hc-pular{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));color:rgba(255,255,255,.45);font-size:.78rem;letter-spacing:.08em}
+
 #hs-cine .pt{position:absolute;bottom:-12px;width:5px;height:5px;border-radius:50%;background:#9af5ea;opacity:0;animation:hcPt linear infinite}
 #hs-cine .vb{transform-box:view-box;transform-origin:200px 200px}
 .hc-onda{fill:none;stroke:#6fe3d6;stroke-width:1.2;opacity:0;animation:hcOnda 3s ease-out infinite}
@@ -11449,12 +11449,13 @@ function hsCineHtml(){ let ticks=''; for(let i=0;i<60;i++){ const g=i%5===0; tic
   <g class="hc-agulha vb" filter="url(#hcGlow)"><path d="M200 108 L226 200 L200 292 L174 200 Z" fill="url(#hcA)"/><path d="M200 108 L226 200 L200 200 Z" fill="#fff"/><path d="M200 292 L174 200 L200 200 Z" fill="#2c9c92"/>
    <path d="M132 200 L200 182 L268 200 L200 218 Z" fill="#6fe3d6" opacity=".85"/><circle cx="200" cy="200" r="13" fill="#062427" stroke="#d9fffa" stroke-width="4"/></g>
   <g class="hc-orb vb"><circle cx="200" cy="200" r="112" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" pathLength="100" stroke-dasharray="9 91" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="88" r="5.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orb hc-o2 vb"><circle cx="200" cy="200" r="112" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" pathLength="100" stroke-dasharray="6 94" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="88" r="4.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbr vb"><circle cx="200" cy="200" r="92" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" pathLength="100" stroke-dasharray="7 93" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="108" r="3.7" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbr hc-o2 vb"><circle cx="200" cy="200" r="92" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="5 95" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="108" r="3.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbl vb"><circle cx="200" cy="200" r="168" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" pathLength="100" stroke-dasharray="4 96" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="32" r="3.5" fill="#fff" filter="url(#hcGlow)"/></g><g class="hc-orbl hc-o3 vb"><circle cx="200" cy="200" r="186" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" pathLength="100" stroke-dasharray="3 97" transform="rotate(-90 200 200)" opacity=".85" filter="url(#hcGlow)"/><circle cx="200" cy="14" r="3.1" fill="#fff" filter="url(#hcGlow)"/></g>
- </svg><div class="hc-nome">${nome}</div><div class="hc-sub">Relatórios Precisos</div><div class="hc-barra"><b></b></div><div class="hc-pular">toque para pular</div>`; }
+ </svg><div class="hc-nome">${nome}</div><div class="hc-sub">Relatórios Precisos</div><div class="hc-barra"><b></b></div>`; }
 /* v9.6.5: a abertura toca sempre que o app abre (logado ou não), por cima da tela de carregamento */
 (function(){ try{ if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
   const c=document.createElement('div'); c.id='hs-cine'; c.style.zIndex='2100'; c.innerHTML=hsCineHtml(); document.body.appendChild(c);
   let fim=false; const sair=()=>{ if(fim) return; fim=true; c.classList.add('fim'); setTimeout(()=>c.remove(),700); };
-  c.addEventListener('click',sair); document.addEventListener('keydown',function k(){ document.removeEventListener('keydown',k); sair(); }); setTimeout(sair,5600); }catch(e){ console.error(e); } })();
+  /* v10.1.9 · a abertura não se pula: roda inteira, para ninguém entrar na tela antes da hora */
+  setTimeout(sair,5600); }catch(e){ console.error(e); } })();
 /* ================= v9.6.3 · BIT com mais expressões (piscadinha, comemora, emburrada, estrelas, amor, coração partido, curativo, surpresa) ================= */
 /* v9.17.1: rosto e corpo do panda removidos (substituídos pelo BIT) */
 const EVB_EXPR=[['piscadinha','😉','Pode deixar comigo! 😉',1800],['comemora','🎉','Uhuuul! 🎉',2400],['estrelas','🤩','Uau, que incrível! ✨',2400],['amor','💖','Adoro trabalhar com vocês! 💖',2800],['surpresa','😮','Oh! 😮',1400],['emburrada','😤','Hunf! Não gostei disso. 😤',2600],['partido','💔','Ai… isso me deixa triste. 💔',2800],['curativo','🩹','Pronto, já passou! 🩹',2800]];

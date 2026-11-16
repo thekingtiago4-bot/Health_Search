@@ -923,6 +923,11 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(vl.dn===1,'volumes: a nota apontada como falta tem que entrar como divergência ('+vl.dn+')');
     ok(vl.pct2===67,'volumes: sem as divergências no aparelho, a conta cai (2 de 3 = 67%) ('+vl.pct2+'%)');
     ok(vl.aviso&&vl.bt,'volumes: quando falta divergência no aparelho, o cartão tem que avisar e oferecer baixar'); }
+  /* v10.1.9: a abertura não se pula */
+  { const ab=await p.evaluate(()=>{
+      const fonte=String((window.hsCineHtml||function(){return ''})());
+      return {dica:/pular/i.test(fonte)}; });
+    ok(!ab.dica,'abertura: não pode mais aparecer "toque para pular"'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
