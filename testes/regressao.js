@@ -764,6 +764,79 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(dvr.st==='resolvida','divergência: ao confirmar, a divergência tinha que receber baixa ('+dvr.st+')');
     ok(/chegou no romaneio/i.test(dvr.res)&&dvr.hist>=1,'divergência: a baixa tem que registrar o romaneio que trouxe o volume ('+dvr.res+')');
     ok(dvr.reDoDia===0,'divergência: a nota não pode entrar como reentrega do dia'); }
+  /* v10.1.4: conta fiel — marcação à mão conta, divergência conta como conferida e sai em laranja */
+  { const fi=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const ant='2026-10-23';
+      const gRB=localStorage.getItem(RB.local), gBip=localStorage.getItem(OP_LOCAL+ant), gDv=JSON.stringify(S.divergencias||[]), gSnap=JSON.stringify(S.gsSnap||{});
+      const L={}; L[ant]={}; L[ant][ant+'|R1']={id:ant+'|R1',dia:ant,base:'CAJ',motorista:'REGINALDO SOUZA',rows:[
+        {nf:'810001',ped:'A1',dest:'C1',cid:'FRANCA',vol:'1'},{nf:'810002',ped:'A2',dest:'C2',cid:'BAURU',vol:'1'},
+        {nf:'810003',ped:'A3',dest:'C3',cid:'MARILIA',vol:'1'},{nf:'810004',ped:'A4',dest:'C4',cid:'ASSIS',vol:'1'}]};
+      localStorage.setItem(RB.local,JSON.stringify(L));
+      /* 2 bipes normais, 1 bipe "à mão" (mesma gravação), 1 nota só com divergência */
+      localStorage.setItem(OP_LOCAL+ant,JSON.stringify([
+        {nf:opK('810001'),ped:opK('A1'),status:'ok',dia:ant,local_id:'b1',criado_em:ant+'T10:00:00.000Z'},
+        {nf:opK('810002'),ped:opK('A2'),status:'ok',dia:ant,local_id:'b2',criado_em:ant+'T10:05:00.000Z'},
+        {nf:opK('810003'),ped:opK('A3'),status:'ok',dia:ant,local_id:'b3',origem:'mão',criado_em:ant+'T10:09:00.000Z'}]));
+      S.divergencias=[{id:'dvx',n:9,cat:'dv',st:'aberta',tipo:'Falta de volume',d:ant,nf:'810004',ped:'A4',qtd:1,por:'OUTRA PESSOA'}];
+      delete (S.gsSnap||{})[ant];
+      const f=await gsFotoDeDiaPassado(ant);
+      S.gsSnap=S.gsSnap||{}; S.gsSnap[ant]=f; GS.dia=ant; irPara('gestor'); await w(400); gestorRender(); await w(300);
+      const box=[...document.querySelectorAll('#gs-corpo .gs-box')].find(b=>/por origem/i.test((b.querySelector('h3')||{}).textContent||''));
+      const barras=box?box.querySelector('.gs-b2'):null;
+      const cores=barras?[...barras.querySelectorAll('b')].map(x=>x.getAttribute('style')||''):[];
+      const cartao=(document.getElementById('gs-corpo')||{}).innerText||'';
+      const r={pct:f&&f.pct,pctOk:f&&f.pctOk,pctDv:f&&f.pctDv,dn:f&&f.dn,fn:f&&f.fn,
+        duas:cores.length===2,laranja:cores.some(c=>/F59F00/i.test(c)),
+        legenda:/em divergência/i.test(box?box.innerText:''),cartaoDv:/em divergência/i.test(cartao)};
+      localStorage.setItem(RB.local,gRB||'{}'); if(gBip) localStorage.setItem(OP_LOCAL+ant,gBip); else localStorage.removeItem(OP_LOCAL+ant);
+      S.divergencias=JSON.parse(gDv); S.gsSnap=JSON.parse(gSnap); GS.dia=''; return r; });
+    ok(fi.pct===100&&fi.fn===0,'conta fiel: o dia tinha que fechar 100% (nota em divergência conta como conferida) ('+fi.pct+'%, faltando '+fi.fn+')');
+    ok(fi.pctDv===25&&fi.dn===1,'conta fiel: 1 das 4 notas é divergência, tinha que marcar 25% ('+fi.pctDv+'%)');
+    ok(fi.pctOk===75,'conta fiel: o verde tinha que ser 75% ('+fi.pctOk+'%)');
+    ok(fi.duas&&fi.laranja,'conta fiel: a barra tem que ter o pedaço laranja da divergência');
+    ok(fi.legenda&&fi.cartaoDv,'conta fiel: falta dizer na tela quanto foi conferido em divergência'); }
+  /* v10.1.4: bipes de dia já fotografado saem do aparelho; limpeza das reentregas que eram divergência */
+  { const ex=await p.evaluate(async()=>{ const velho='2026-09-15';
+      const gSnap=JSON.stringify(S.gsSnap||{});
+      localStorage.setItem(OP_LOCAL+velho,JSON.stringify([{nf:'1',status:'ok',dia:velho,local_id:'z1'}]));
+      S.gsSnap=S.gsSnap||{}; S.gsSnap[velho]={dia:velho,tn:5,fn:0,pct:100,orig:[],falta:[]};
+      const antes=!!localStorage.getItem(OP_LOCAL+velho);
+      const r1=await gsEnxugarBipes(false);
+      const depois=!!localStorage.getItem(OP_LOCAL+velho);
+      /* dia sem foto não pode ser apagado sem remontar */
+      const semFoto='2026-09-16'; localStorage.setItem(OP_LOCAL+semFoto,JSON.stringify([{nf:'2',status:'ok',dia:semFoto,local_id:'z2'}]));
+      await gsEnxugarBipes(false);
+      const ficou=!!localStorage.getItem(OP_LOCAL+semFoto);
+      localStorage.removeItem(OP_LOCAL+semFoto); S.gsSnap=JSON.parse(gSnap);
+      return {antes,depois,dias:r1.dias,ficou}; });
+    ok(ex.antes&&!ex.depois&&ex.dias>=1,'espaço: bipe de dia com foto tinha que sair do aparelho');
+    ok(ex.ficou,'espaço: dia sem foto não pode perder os bipes'); }
+  { const cd=await p.evaluate(()=>{ const D=RE.ler(); const g=JSON.stringify(D.dias||{});
+      D.dias['2026-11-13']=[{nf:'742414',cli:'SANTA CASA',motivo:'ERA DIVERGENCIA (CHEGARAM OS VOLUMES)'},
+        {nf:'742499',cli:'OUTRO',motivo:'DIVERGENCIA #003 · FALTA DE VOLUME'},
+        {nf:'742500',cli:'NORMAL',motivo:'FERIADO NA CIDADE'}];
+      const achou=corEraDv().length; const csv=corEraDvCsv(corEraDv());
+      D.dias=JSON.parse(g); RE.gravar();
+      return {achou,csv:csv.slice(0,80),temBom:/FERIADO/.test(csv)}; });
+    ok(cd.achou===2,'limpeza: tinha que achar as 2 reentregas que eram divergência ('+cd.achou+')');
+    ok(!cd.temBom,'limpeza: reentrega de verdade não pode entrar na planilha de exclusão');
+    ok(/Dia;|"Dia"/.test(cd.csv),'limpeza: a planilha precisa sair com cabeçalho ('+cd.csv+')'); }
+  { const nb=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const gDv=JSON.stringify(S.divergencias||[]), gAv=JSON.stringify(S.dvAvisos||[]);
+      S.divergencias=[{id:'dvb',n:11,cat:'dv',st:'aberta',tipo:'Falta de volume',d:hojeISO(),nf:'820001',ped:'B1',qtd:2,por:'MARIA DA SILVA'}];
+      irPara('operacao'); await w(200);
+      opMostrar({titulo:'NF 820001',linha:'teste',status:'ok',_ped:opK('B1'),_nf:opK('820001')}); await w(150);
+      const bar=document.getElementById('op-dvacao');
+      const tem=!!(bar&&bar.querySelector('[data-dvbaixa]'));
+      if(tem) bar.querySelector('[data-dvbaixa]').click(); await w(300);
+      const d=(S.divergencias||[])[0];
+      const r={tem,st:d&&d.st,obs:(d&&d.res&&d.res.obs)||'',avisos:(S.dvAvisos||[]).length,
+        para:((S.dvAvisos||[])[0]||{}).para||'',sumiu:!document.getElementById('op-dvacao')};
+      S.divergencias=JSON.parse(gDv); S.dvAvisos=JSON.parse(gAv); return r; });
+    ok(nb.tem,'bipe: falta o botão "dar baixa agora" quando a nota é de uma divergência');
+    ok(nb.st==='resolvida'&&/faltou chegou/i.test(nb.obs),'bipe: o botão tinha que dar baixa na divergência ('+nb.st+')');
+    ok(nb.avisos===1&&/MARIA/.test(nb.para),'bipe: quem abriu a divergência tem que ser avisado ('+nb.para+')');
+    ok(nb.sumiu,'bipe: depois da baixa o aviso sai da tela'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);

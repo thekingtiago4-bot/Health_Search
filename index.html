@@ -3813,6 +3813,7 @@ async function nexAbrirSuspeitas(){ const n=nexS(); const l=nexSuspeitas(); if(!
         if(dj&&dar){ const eu=(typeof opEu==='function'?opEu():''), ag=new Date().toISOString();
           dj.st='resolvida'; dj.res={d:hojeISO(),em:ag,obs:'O volume que faltou chegou no romaneio '+(r.num||'')+'.',por:eu};
           (dj.hist=dj.hist||[]).push({em:ag,por:eu,t:'Resolvida: o volume que faltou chegou no romaneio '+(r.num||'')+'.'});
+          try{ dvAvisarDono(dj,`📦 O volume que você apontou na divergência ${dvNum(dj)} (NF ${dj.nf||'—'}) chegou no romaneio ${r.num||''}.`); }catch(e2){}
           try{ (NUV.apagar=NUV.apagar||new Set()).delete('dv:'+dj.id); }catch(e2){}
           bx++; }
         continue; }
@@ -4188,14 +4189,43 @@ function corItens(){ const out={geo:[],fora:[],nrec:[],reMot:[],reSemMot:[],reBa
     else { try{ if(rpSemMot(rpMot({l,cli:l.cli,tipo:l.tipo}))) out.reSemMot.push({d,i,l}); }catch(e){} }
     if(!l.base&&!reBase(l.cid,l.uf)) out.reBase.push({d,i,l}); });
   try{ out.ret=Object.values(nexS().fora).filter(o=>!o.motivo); out.sus=nexSuspeitas().length; }catch(e){}
+  try{ out.eradv=corEraDv(); }catch(e){ out.eradv=[]; }
   return out; }
-const corTotal=o=>(o.inval||[]).length+o.geo.length+o.fora.length+o.nrec.length+o.reMot.length+(o.reSemMot||[]).length+o.reBase.length+o.ret.length+o.sus;
+const corTotal=o=>(o.eradv||[]).length+(o.inval||[]).length+o.geo.length+o.fora.length+o.nrec.length+o.reMot.length+(o.reSemMot||[]).length+o.reBase.length+o.ret.length+o.sus;
 function corBadge(){ const q=$('#qt-cor'); if(!q) return; if(!nvAdmin()){ q.hidden=true; return; } const n=corTotal(corItens()); q.textContent=n; q.hidden=!n; }
 function corSelLista(tipo,c,atual){ return `<select data-cor-ens="${c}" data-tipo="${tipo}"><option value="">Escolher ${tipo==='base'?'base':'região'}…</option>${S.geo.listas.filter(l=>l.tipo===tipo).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(l=>`<option value="${esc(l.id)}"${l.id===atual?' selected':''}>${esc(l.nome)}</option>`).join('')}<option value="-">Nenhuma (não atendemos)</option></select>`; }
+/* ================= v10.1.4 · Limpar as reentregas que eram divergência =================
+   Antes da 10.1.3 a nota que estava em divergência e voltou no romaneio virava reentrega
+   ("ERA DIVERGENCIA (CHEGARAM OS VOLUMES)", "DIVERGENCIA #003 · FALTA…"). Isso suja o
+   relatório de motivos da diretoria. Aqui o administrador baixa a planilha e tira do histórico. */
+const COR_ERADV=/ERA DIVERG|DIVERGENCIA +[0-9]|DIVERGENCIA +N[0-9 ]/; /* N() tira o #, por isso casa com o número direto */
+function corEraDv(){ const out=[]; try{ const D=RE.ler();
+  for(const d of Object.keys(D.dias||{})) (D.dias[d]||[]).forEach((l,i)=>{
+    if(COR_ERADV.test(N(l&&l.motivo||''))) out.push({d,i,l}); }); }catch(e){}
+  return out; }
+function corEraDvCsv(L){ const cab=['Dia','NF','Pedido','Cliente','Cidade','UF','Volumes','Motivo','Motorista','Base'];
+  const esq=x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"';
+  const li=L.map(({d,l})=>[fmtData(d),l.nf||'',l.ped||'',l.cli||'',l.cid||'',l.uf||'',l.vol||'',l.motivo||'',l.motorista||'',l.base||''].map(esq).join(';'));
+  return '﻿'+[cab.map(esq).join(';'),...li].join('\r\n'); }
+async function corTirarEraDv(){ const L=corEraDv(); if(!L.length){ toast('Não achei reentregas desse tipo.'); return; }
+  if(!nvAdmin()){ toast('Só o administrador apaga do histórico.'); return; }
+  if(!(await confirmar('Tirar do histórico',`São <b>${L.length}</b> reentrega(s) que na verdade eram divergência que chegou. Vou baixar a planilha com todas elas e depois tirar do histórico de reentregas. <b>Isso não tem volta</b> — a planilha é a sua cópia.`,'Baixar e tirar'))) return;
+  try{ nexBaixar(corEraDvCsv(L),'Reentregas que eram divergencia '+hojeISO()+'.csv','text/csv;charset=utf-8'); }
+  catch(e){ toast('Não consegui baixar a planilha, não vou apagar nada.'); return; }
+  const D=RE.ler(); const porDia={}; for(const x of L){ (porDia[x.d]=porDia[x.d]||[]).push(x.i); }
+  let n=0; for(const d of Object.keys(porDia)){ const idx=porDia[d].sort((a,b)=>b-a);
+    for(const i of idx){ if(D.dias[d]&&D.dias[d][i]){ D.dias[d].splice(i,1); n++; } }
+    if(D.dias[d]&&!D.dias[d].length) delete D.dias[d]; }
+  RE.gravar(); salvar(); try{ nuvSinc(); }catch(e){}
+  try{ renderTudo(); }catch(e){} try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} try{ gestorRender(); }catch(e){}
+  toast(`✔ ${n} reentrega(s) tirada(s) do histórico. A planilha foi baixada.`); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#cor-eradv'); if(b){ e.preventDefault(); corTirarEraDv(); } });
 function renderCorrecao(){ const el=$('#cor-corpo'); if(!el) return; if(!nvAdmin()){ el.innerHTML='<div class="vazio-lista">Somente o administrador acessa a Correção.</div>'; return; }
   const o=corItens(), tot=corTotal(o); const cid=c=>{ const m=geoMun(c); return m?`${esc(m.n)}/${m.u}`:c; };
   const bloco=(tit,n,sub,corpo,extra='')=>n?`<section class="cor-bloco"><header><h2>${tit} <span class="cor-n">${n}</span></h2>${extra}</header><p class="sub">${sub}</p>${corpo}</section>`:'';
   el.innerHTML=(tot?'':'<div class="cor-ok">Tudo em dia: nada para confirmar, ensinar ou completar.</div>')
+   +bloco('Reentregas que eram divergência',(o.eradv||[]).length,'Notas que estavam em divergência e voltaram no romaneio: viraram reentrega por engano (regra antiga) e sujam o relatório de motivos. Baixo a planilha com todas e tiro do histórico.',
+     `<div class="rolagem"><table class="nx-tab"><thead><tr><th>Dia</th><th>NF</th><th>Cliente</th><th>Motivo</th></tr></thead><tbody>${(o.eradv||[]).slice(0,40).map(({d,l})=>`<tr><td>${esc(fmtData(d))}</td><td>${esc(l.nf||'—')}</td><td>${esc(l.cli||'')}</td><td>${esc(l.motivo||'')}</td></tr>`).join('')}</tbody></table></div><button class="btn pri" type="button" id="cor-eradv" style="margin-top:8px">⭳ Baixar planilha e tirar do histórico</button>`)
    +bloco('Reentregas detectadas sem motivo',o.sus,'Notas que voltaram a ser roteirizadas e esperam o motivo.','<button class="btn pri" type="button" id="cor-sus">Abrir e digitar motivos</button>')
    +bloco('Etiquetas automáticas para confirmar',o.geo.length,'O programa deduziu pela área no mapa. Confirme ou corrija: ele aprende.',`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Cidade</th><th>Tipo</th><th>Sugestão</th><th class="num">Certeza</th><th>Ação</th></tr></thead><tbody>${o.geo.map(x=>`<tr><td class="forte">${cid(x.c)}</td><td>${x.tipo==='base'?'Base':'Região'}</td><td><span class="geo-cor" style="background:${esc(geoCor(x.r.ids[0]))}"></span> ${esc(geoNome(x.r.ids[0]))}</td><td class="num">${x.r.conf}%</td><td class="nx-acoes"><button class="btn mini pri" type="button" data-cor-ok="${x.c}" data-tipo="${x.tipo}" data-id="${esc(x.r.ids[0])}">Confirmar</button>${corSelLista(x.tipo,x.c,'')}</td></tr>`).join('')}</tbody></table></div>`,'<button class="btn mini" type="button" id="cor-conf-todas">Confirmar todas</button>')
    +bloco('Cidades sem região ou base',o.fora.length,'Apareceram nos romaneios, mas estão longe de qualquer lista. Ensine qual atende, ou use o Editor de regiões.',`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Cidade</th><th>Falta</th><th>Mais perto</th><th>Ensinar</th></tr></thead><tbody>${o.fora.map(x=>`<tr><td class="forte">${cid(x.c)}</td><td>${x.tipo==='base'?'Base':'Região'}</td><td>${x.r.sug?esc(geoNome(x.r.sug))+` <small class="sec">${x.r.dn||''} km</small>`:'—'}</td><td>${x.r.sug?`<button class="btn mini pri" type="button" data-cor-aceita="${esc(x.r.sug)}" style="margin-right:6px">✓ ${esc(geoNome(x.r.sug))}</button>`:''}${corSelLista(x.tipo,x.c,'')}</td></tr>`).join('')}</tbody></table></div>`)
@@ -4254,7 +4284,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.1.3', HS_DATA='16/11/2026';
+const HS_VERSAO='10.1.4', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9715,6 +9745,7 @@ function cargoAplicar(){ try{ if(!cargoLogado()) return; const c=cargoMeu(); doc
     return _ip.apply(this,arguments); }; }
 { const _nc=nvCarregar; nvCarregar=async function(){ const r=await _nc.apply(this,arguments);
     setTimeout(()=>{ try{ integConferir(); }catch(e){} },6000);
+    setTimeout(()=>{ try{ gsEnxugarBipes(false); }catch(e){} },20000);
     try{ cargoAplicar();
       const at=document.querySelector('.nav button[data-tela].on,.nav button[data-tela][aria-current="page"]');
       const alvo=cargoTelaInicial(), atual=at&&at.dataset.tela;
@@ -9815,7 +9846,7 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
    ${gsSeletor()}
    ${gestorBarras('Reentregas por motivo (7 dias)',d.mot,null,'#B197FC')}${gestorBarras('Reentregas por motorista (7 dias)',d.mtr,null,'#74C0FC')}${gestorBarras('Reentregas por dia',d.dia.map(([k,v])=>[fmtData(k),v]),null,'#63E6BE')}
    ${gestorBarras('Conferência por origem ('+gsDiaNome()+') (%)',d.orig.map(([b,a])=>[b,a.t?Math.round(100*(a.t-a.f)/a.t):100]),v=>v+'%','#20C997')}</div>`; }
-(function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
+(function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l i.gs-b2{display:flex}#t-gestor .gs-l i.gs-b2 b{height:100%}#t-gestor .gs-l em.ok{color:var(--ok)}#t-gestor .gs-leg{margin:8px 0 0;font-size:12px;color:var(--mudo)}#t-gestor .gs-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px}.gs-dvp{margin:2px 0 6px;color:#F59F00;font-size:var(--fs-sm)}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return; ref.insertAdjacentHTML('beforebegin','<button data-tela="gestor"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span class="lbl">Painel de Gestão</span></button>');
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-gestor'; sec.hidden=true; sec.innerHTML='<h1>Painel de Gestão</h1><p class="sub">Reentregas da semana por motivo, motorista e dia, e o andamento da conferência de hoje por origem.</p><div id="gs-corpo"></div>'; const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=document.querySelector('.nav [data-tela="gestor"]'); if(t==='gestor'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-gestor'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); gestorRender(); } else if(bt) bt.removeAttribute('aria-current'); };
@@ -9827,21 +9858,18 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
    É essa foto que prova, depois, que a operação conferiu tudo. O PDF sai em tamanho de
    projetor, para a reunião da diretoria. */
 function gsFotoMontar(){ try{
-  const dia=hojeISO(); let L=[]; try{ L=opPorRom(); }catch(e){ L=[]; }
-  if(!L.length) return null;
-  let tn=0,fn=0,tv=0,fv=0; const orig=[];
-  for(const x of L){ tn+=x.tn; fn+=x.fn; tv+=x.tv; fv+=x.fv;
-    orig.push({base:x.base,mot:(x.r&&x.r.motorista)||'',tn:x.tn,fn:x.fn,tv:x.tv,fv:x.fv}); }
-  let falta=[]; try{ OP._semFiltro=true; const p=opPendentes(); OP._semFiltro=false;
-    const vis=new Set();
-    for(const it of p){ const x=it.x||{}; const k=opNotaK(x)||''; if(k&&vis.has(k)) continue; if(k) vis.add(k);
-      falta.push({nf:x.nf||'',ped:x.ped||'',cli:x.cli||x.cliente||'',cid:x.cid||x.cidade||'',base:x.base||'',vol:(it.esp||1),lidos:(it.lidos||0)});
-      if(falta.length>=300) break; } }catch(e){ try{ OP._semFiltro=false; }catch(e2){} }
-  const bs=((OP&&OP.bipes)||[]).filter(b=>b.dia===dia);
-  const dvs=(typeof dvLer==='function')?(()=>{ try{ return (dvLer().dias||{})[dia]||[]; }catch(e){ return []; } })():[];
-  return {dia,ts:Date.now(),tn,fn,tv,fv,pct:tn?Math.round(100*(tn-fn)/tn):100,
-    pctVol:tv?Math.round(100*(tv-fv)/tv):100,bipes:bs.length,dv:dvs.length,orig,falta,
-    roms:L.length,quem:((NV&&NV.perfil&&NV.perfil.nome)||'')};
+  const dia=hojeISO(); const roms=(typeof opRomsDoDia==='function')?opRomsDoDia():((S.romaneios||[]).filter(r=>opDiaRom(r)===dia));
+  if(!roms.length) return null;
+  const bs=((OP&&OP.bipes)||[]).filter(b=>b&&(b.status==='ok'||b.status==='semnota'||b.status==='dup'));
+  const lidosDe=(ped,nf)=>new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
+  const c=gsContar(roms,lidosDe,gsDvDoDia(dia));
+  if(!c.tn) return null;
+  let dvs=0; try{ dvs=(dvSo()||[]).filter(d=>String(d.d||'').slice(0,10)===dia).length; }catch(e){}
+  return {dia,ts:Date.now(),tn:c.tn,fn:c.fn,tv:c.tv,fv:c.fv,dn:c.dn,dvv:c.dv,
+    pct:gsPctConf(c),pctOk:gsPctOk(c),pctDv:gsPctDv(c),
+    pctVol:c.tv?Math.round(100*(c.tv-c.fv)/c.tv):100,
+    bipes:((OP&&OP.bipes)||[]).filter(b=>b.dia===dia).length,dv:dvs,orig:c.orig,falta:c.falta,
+    roms:c.orig.length,quem:((NV&&NV.perfil&&NV.perfil.nome)||'')};
 }catch(e){ return null; } }
 function gsFotoGravar(){ const f=gsFotoMontar(); if(!f) return null;
   try{ S.gsSnap=S.gsSnap||{}; S.gsSnap[f.dia]=f;
@@ -9852,8 +9880,10 @@ function gsFotoLer(dia){ try{ if(dia===hojeISO()){ const f=gsFotoMontar(); if(f)
 let gsDiasFoto=function(){ return []; };
 function gsCartao(f){ if(!f) return '<div class="gs-box"><h3>Conferência do dia</h3><p class="sub">Sem foto deste dia. A partir de agora o app guarda sozinho, a cada bipe.</p></div>';
   const cor=f.pct>=100?'var(--ok)':(f.pct>=90?'var(--ag)':'var(--ruim)');
+  const pdv=(typeof f.pctDv==='number')?f.pctDv:0;
   return `<div class="gs-box gs-dia"><h3>Conferência de ${f.dia===hojeISO()?'hoje':fmtData(f.dia)}</h3>
     <div class="gs-pct" style="color:${cor}">${f.pct}%</div>
+    ${pdv?`<p class="gs-dvp">Desse total, <b>${pdv}%</b> foi conferido <b>em divergência</b> (${fmtN(f.dn||0)} nota(s) com falta apontada).</p>`:''}
     <p class="sub"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> nota(s) conferida(s) · ${fmtN(f.tv-f.fv)} de ${fmtN(f.tv)} volume(s) (${f.pctVol}%) · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</p>
     ${f.fn?`<details><summary><b>${fmtN(f.fn)}</b> nota(s) que não entraram</summary><div class="gs-falta"><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${f.falta.map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>${f.fn>f.falta.length?`<p class="sub">Mostrando as primeiras ${f.falta.length}.</p>`:''}</div></details>`:'<p class="ok"><b>Operação 100% conferida.</b></p>'}
     <div style="margin-top:10px"><button class="btn mini pri" data-gs-pdf="${f.dia}">📄 PDF para projetor</button></div></div>`; }
@@ -9899,10 +9929,10 @@ function gsPdfProjetor(dia,op){ op=op||{pct:1,orig:1,falta:1,dv:1}; const f=gsFo
   tr{break-inside:avoid}</style></head><body>
   <header><b>Health Search · Conferência da operação</b><span>${f.dia===hojeISO()?'Hoje':''} ${fmtData(f.dia)}</span></header>
   ${op.pct?`<div class="pct">${f.pct}%</div>`:''}
-  <div class="lin"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> notas conferidas · <b>${fmtN(f.tv-f.fv)}</b> de <b>${fmtN(f.tv)}</b> volumes · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</div>
+  <div class="lin"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> notas conferidas${(f.dn||0)?` <span style="color:#B26A00">(${f.pctDv||0}% em divergência)</span>`:''} · <b>${fmtN(f.tv-f.fv)}</b> de <b>${fmtN(f.tv)}</b> volumes · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</div>
   ${op.orig?`<h2>Por origem</h2>
-  <table><thead><tr><th>Origem</th><th>Motorista</th><th>Notas</th><th>Conferidas</th><th>%</th><th>Volumes</th><th>%</th></tr></thead><tbody>
-  ${(f.orig||[]).map(o=>`<tr><td>${esc(o.base)}</td><td>${esc(o.mot||'')}</td><td>${fmtN(o.tn)}</td><td>${fmtN(o.tn-o.fn)}</td><td><b>${o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100}%</b></td><td>${fmtN(o.tv)}</td><td>${o.tv?Math.round(100*(o.tv-o.fv)/o.tv):100}%</td></tr>`).join('')}
+  <table><thead><tr><th>Origem</th><th>Motorista</th><th>Notas</th><th>Conferidas</th><th>%</th><th>Em divergência</th><th>Volumes</th><th>%</th></tr></thead><tbody>
+  ${(f.orig||[]).map(o=>`<tr><td>${esc(o.base)}</td><td>${esc(o.mot||'')}</td><td>${fmtN(o.tn)}</td><td>${fmtN(o.tn-o.fn)}</td><td><b>${o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100}%</b></td><td>${(o.dn||0)?`<b style="color:#B26A00">${fmtN(o.dn)} (${Math.round(100*o.dn/o.tn)}%)</b>`:'—'}</td><td>${fmtN(o.tv)}</td><td>${o.tv?Math.round(100*(o.tv-o.fv)/o.tv):100}%</td></tr>`).join('')}
   </tbody></table>`:''}
   ${op.falta&&f.fn?`<h2>O que não entrou (${fmtN(f.fn)})</h2><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${(f.falta||[]).map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>`:(op.falta?'<h2>Operação 100% conferida</h2>':'')}
   ${op.dv?gsTab('Divergências do dia ('+fmtN(f.dv||0)+')',((typeof dvSo==='function'?dvSo():[])||[]).filter(d=>String(d.d||'').slice(0,10)===dia).map(d=>[(d.tipo||'—')+' · NF '+(d.nf||'—')+' · '+(d.cli||d.dest||''),d.vol||1]),'Divergência','Vol.'):''}
@@ -9913,6 +9943,103 @@ function gsPdfProjetor(dia,op){ op=op||{pct:1,orig:1,falta:1,dv:1}; const f=gsFo
   </body></html>`);
   w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },400); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-pdf]'); if(b){ e.preventDefault(); gsPdfEscolher(b.dataset.gsPdf); } });
+/* ================= v10.1.4 · Conta fiel do dia =================
+   Regra do Tiago: nota marcada à mão vale como conferida; nota marcada como
+   DIVERGÊNCIA também vale como conferida (alguém olhou e viu que faltava), só que
+   o pedaço que ela representa na operação sai em LARANJA na barra do romaneio.
+   Então o dia pode fechar 100% conferido e ainda mostrar quanto disso foi divergência. */
+function gsDvDoDia(dia){ const m={nf:new Set(),ped:new Set()};
+  try{ for(const d of (dvS()||[])){ if(String(d.d||'').slice(0,10)!==dia) continue;
+    if(d.nf) m.nf.add(z(d.nf)); if(d.ped) m.ped.add(z(d.ped)); } }catch(e){}
+  return m; }
+const gsTemDv=(m,ped,nf)=>!!((nf&&m.nf.has(z(nf)))||(ped&&m.ped.has(z(ped))));
+/* conta um dia inteiro: recebe os romaneios e uma função que diz quantos volumes foram lidos */
+function gsContar(roms,lidosDe,dvm){
+  const vis=new Set(), visNf=new Set(); let tn=0,fn=0,tv=0,fv=0,dn=0,dv=0; const orig=[], falta=[];
+  for(const r of roms){ let rtn=0,rfn=0,rtv=0,rfv=0,rdn=0,rdv=0;
+    for(const x of (r.rows||[])){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue;
+      if(String(r.numero||'')==='XML'&&nf&&visNf.has(nf)) continue; if(nf) visNf.add(nf);
+      const esp=volNum(x.vol); if(esp===0) continue;
+      try{ if(opForaFiltro(x)) continue; }catch(e){}
+      const k=(typeof opNotaK==='function')?opNotaK(x):(nf||ped); if(k){ if(vis.has(k)) continue; vis.add(k); }
+      const espV=esp||1, lidos=Math.max(0,lidosDe(ped,nf)), temDv=gsTemDv(dvm,ped,nf);
+      rtn++; rtv+=espV;
+      if(temDv){ rdn++; rdv+=espV; }                     /* conferida, mas em divergência (laranja) */
+      else if(lidos<=0){ rfn++; rfv+=espV;               /* não entrou */
+        if(falta.length<300) falta.push({nf:x.nf||'',ped:x.ped||'',cli:x.dest||x.cli||'',cid:x.cid||'',base:r.base||'',vol:espV,lidos:0}); }
+      else if(lidos<espV){ rfv+=(espV-lidos);
+        if(falta.length<300) falta.push({nf:x.nf||'',ped:x.ped||'',cli:x.dest||x.cli||'',cid:x.cid||'',base:r.base||'',vol:espV,lidos}); } }
+    if(rtn){ tn+=rtn; fn+=rfn; tv+=rtv; fv+=rfv; dn+=rdn; dv+=rdv;
+      orig.push({base:r.base||'?',mot:r.motorista||'',tn:rtn,fn:rfn,tv:rtv,fv:rfv,dn:rdn,dv:rdv}); } }
+  return {tn,fn,tv,fv,dn,dv,orig,falta}; }
+const gsPctOk=o=>o.tn?Math.round(100*(o.tn-o.fn-(o.dn||0))/o.tn):100;
+const gsPctDv=o=>o.tn?Math.round(100*(o.dn||0)/o.tn):0;
+const gsPctConf=o=>o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100;
+/* barra de duas cores: verde o que foi conferido limpo, laranja o que foi conferido em divergência */
+function gsBarras2(t,L,rodape){ return `<div class="gs-box"><h3>${t}</h3>${L.length?L.map(o=>{
+    const ok=gsPctOk(o), dvp=gsPctDv(o), tot=Math.min(100,ok+dvp);
+    return `<div class="gs-l"><span title="${esc(o.rot)}">${esc(o.rot)}</span><i class="gs-b2"><b style="width:${ok}%;background:var(--ok)"></b><b style="width:${dvp}%;background:#F59F00"></b></i><em${tot>=100?' class="ok"':''}>${tot}%</em></div>`;
+  }).join(''):'<p class="sub">Sem dados.</p>'}${rodape||''}</div>`; }
+
+/* ================= v10.1.4 · Bipes antigos não ficam ocupando o aparelho =================
+   O que interessa de um dia fechado é a FOTO (porcentagem, por origem, divergências e o que
+   não entrou), não o bipe cru. Então, para todo dia que já tem foto e já passou, o app apaga
+   os bipes daquele dia do aparelho. Eles continuam no banco online (hs_bipagens) e voltam
+   sozinhos se alguém abrir aquele dia. Isso era metade do espaço ocupado. */
+function gsBipesAntigos(){ const out=[]; try{ const h=hojeISO();
+  for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(!k||k.indexOf(OP_LOCAL)!==0) continue;
+    const d=k.slice(OP_LOCAL.length); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||d>=h) continue;
+    out.push({dia:d,chave:k,bytes:(localStorage.getItem(k)||'').length}); } }catch(e){}
+  return out.sort((a,b)=>a.dia.localeCompare(b.dia)); }
+async function gsEnxugarBipes(forcar){ let n=0,b=0;
+  for(const x of gsBipesAntigos()){
+    let f=(S.gsSnap||{})[x.dia];
+    if(!f||!f.tn){ if(!forcar) continue; try{ f=await gsGarantirFoto(x.dia); }catch(e){} if(!f||!f.tn) continue; }
+    try{ localStorage.removeItem(x.chave); n++; b+=x.bytes; }catch(e){} }
+  return {dias:n,bytes:b}; }
+
+/* ================= v10.1.4 · Baixa da divergência na hora do bipe + aviso para quem abriu =================
+   O conferente bipa a caixa, o app diz que aquela nota pertence à divergência #007 e já
+   oferece "dar baixa agora". E quem registrou a falta recebe o aviso de que o volume chegou. */
+function dvAvisarDono(d,txt){ try{ const quem=String(d&&d.por||'').trim(); const eu=(typeof opEu==='function'?opEu():'');
+  if(!quem||N(quem)===N(eu)) return;
+  S.dvAvisos=(S.dvAvisos||[]).filter(a=>a&&a.em>Date.now()-20*864e5);
+  S.dvAvisos.push({id:d.id,para:quem,txt,em:Date.now()}); salvar(); }catch(e){} }
+try{ if(!NUV_CAMPOS.includes('dvAvisos')) NUV_CAMPOS.push('dvAvisos'); }catch(e){}
+const DVAV_VIS='healthSearch.dvAvisosVistos';
+function dvAvisosVistos(){ try{ return JSON.parse(localStorage.getItem(DVAV_VIS)||'{}'); }catch(e){ return {}; } }
+function dvAvisoVisto(id){ try{ const v=dvAvisosVistos(); v[id]=1; localStorage.setItem(DVAV_VIS,JSON.stringify(v)); }catch(e){} }
+function dvMeusAvisos(){ try{ const eu=N(typeof opEu==='function'?opEu():''), v=dvAvisosVistos();
+  return (S.dvAvisos||[]).filter(a=>a&&N(a.para)===eu&&!v[a.id+'|'+a.em]); }catch(e){ return []; } }
+function dvBaixaPeloBipe(d,ondeTxt){ if(!d) return false;
+  const eu=(typeof opEu==='function'?opEu():''), ag=new Date().toISOString();
+  d.st='resolvida'; d.res={d:hojeISO(),em:ag,obs:'O volume que faltou chegou'+(ondeTxt?' '+ondeTxt:'')+'.',por:eu};
+  (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Resolvida no bipe: o volume que faltou chegou'+(ondeTxt?' '+ondeTxt:'')+'.'});
+  dvAvisarDono(d,`📦 O volume que você apontou na divergência ${dvNum(d)} (NF ${d.nf||'—'}) chegou${ondeTxt?' '+ondeTxt:''}.`);
+  salvar(); try{ nuvSinc(); }catch(e){} try{ dvRender(); }catch(e){} try{ opRender(); }catch(e){}
+  toast(`✔ Divergência ${dvNum(d)} baixada: o volume que faltou chegou.`); return true; }
+function dvBotaoBaixa(d){ try{ const res=$('#op-res'); if(!res) return;
+  let bar=document.getElementById('op-dvacao');
+  if(!d){ if(bar) bar.remove(); return; }
+  if(!bar){ bar=document.createElement('div'); bar.id='op-dvacao'; res.insertAdjacentElement('afterend',bar); }
+  bar.innerHTML=`<span>⚠ Essa nota pertence à divergência <b>${dvNum(d)}</b>${d.qtd?` (faltavam ${d.qtd} vol.)`:''}.</span>
+    <button class="btn mini pri" type="button" data-dvbaixa="${esc(d.id)}">📦 Dar baixa agora</button>
+    <button class="btn mini" type="button" data-dvbaixa-x="1">Depois</button>`;
+}catch(e){} }
+document.addEventListener('click',e=>{ const x=e.target.closest&&e.target.closest('[data-dvbaixa-x]'); if(x){ dvBotaoBaixa(null); return; }
+  const b=e.target.closest&&e.target.closest('[data-dvbaixa]'); if(!b) return; e.preventDefault();
+  const d=dvS().find(y=>y.id===b.dataset.dvbaixa); if(!d){ dvBotaoBaixa(null); return; }
+  const r=(S.romaneios||[]).find(r2=>(r2.rows||[]).some(x2=>opK(x2.nf)===opK(d.nf)||opK(x2.ped)===opK(d.ped)));
+  dvBaixaPeloBipe(d,r&&r.numero?('no romaneio '+r.numero):'na conferência de hoje'); dvBotaoBaixa(null); });
+{ const _ml3=opMostrar; opMostrar=function(r){ _ml3(r);
+  try{ const d=(r&&r._ped!==undefined)?dvAcha(r._ped,r._nf):null; dvBotaoBaixa(d&&d.st!=='resolvida'?d:null); }catch(e){} }; }
+(function(){ const st=document.createElement('style'); st.textContent='#op-dvacao{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(194,37,92,.12);border:1px solid #C2255C;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:var(--fs-sm)}#op-dvacao span{flex:1;min-width:200px}'; document.head.appendChild(st); })();
+{ const _na2=nexAvisos; nexAvisos=function(){ const a=_na2();
+  try{ for(const m of dvMeusAvisos()) a.unshift({cor:'#F59F00',txt:esc(m.txt),acao:'dvaviso:'+m.id+'|'+m.em}); }catch(e){}
+  return a; }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir^="dvaviso:"]'); if(!b) return;
+  dvAvisoVisto(String(b.dataset.nxIr).slice(8)); try{ irPara('divergencias'); }catch(e2){} });
+
 /* ================= v10.1.1 · Conferência por origem de QUALQUER dia =================
    Antes o quadro só sabia calcular o dia de hoje (opPorRom lê os romaneios carregados),
    então todo dia passado aparecia 0%. Agora, para um dia anterior, o app remonta a conta
@@ -9945,24 +10072,14 @@ async function gsFotoDeDiaPassado(dia){
     const madr=(await gsBipesDia(dp)).filter(b=>{ if(!b||!(b.status==='ok'||b.status==='semnota'||b.status==='dup')) return false;
       const t=new Date(b.criado_em||0); return !isNaN(t)&&t.getHours()<6; });
     if(madr.length) bs=bs.concat(madr); }catch(e){}
-  const porPed=new Map(), porNf=new Map();
-  const marca=(m,k,b)=>{ if(!k) return; if(!m.has(k)) m.set(k,new Set()); m.get(k).add(b.vol?('v'+b.vol):(b.local_id||Math.random())); };
-  for(const b of bs){ marca(porPed,b.ped,b); marca(porNf,b.nf,b); }
-  const vis=new Set(); let tn=0,fn=0,tv=0,fv=0; const orig=[]; const falta=[];
-  for(const r of roms){ let rtn=0,rfn=0,rtv=0,rfv=0;
-    for(const x of (r.rows||[])){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue;
-      const esp=volNum(x.vol); if(esp===0) continue;
-      try{ if(opForaFiltro(x)) continue; }catch(e){}
-      const k=(typeof opNotaK==='function')?opNotaK(x):(nf||ped); if(k){ if(vis.has(k)) continue; vis.add(k); }
-      const lidos=Math.max((porPed.get(ped)||new Set()).size,(porNf.get(nf)||new Set()).size);
-      const espV=esp||1; rtn++; rtv+=espV;
-      if(lidos<=0){ rfn++; rfv+=espV; if(falta.length<300) falta.push({nf:x.nf||'',ped:x.ped||'',cli:x.dest||x.cli||'',cid:x.cid||'',base:r.base||'',vol:espV,lidos:0}); }
-      else if(lidos<espV){ rfv+=(espV-lidos); if(falta.length<300) falta.push({nf:x.nf||'',ped:x.ped||'',cli:x.dest||x.cli||'',cid:x.cid||'',base:r.base||'',vol:espV,lidos}); } }
-    if(rtn){ tn+=rtn; fn+=rfn; tv+=rtv; fv+=rfv; orig.push({base:r.base||'?',mot:r.motorista||'',tn:rtn,fn:rfn,tv:rtv,fv:rfv}); } }
-  if(!tn) return null;
-  let dv=0; try{ dv=(dvSo()||[]).filter(d=>String(d.d||'').slice(0,10)===dia).length; }catch(e){}
-  return {dia,ts:Date.now(),tn,fn,tv,fv,pct:Math.round(100*(tn-fn)/tn),pctVol:tv?Math.round(100*(tv-fv)/tv):100,
-    bipes:bs.length,dv,orig,falta,roms:orig.length,quem:'',remontado:true}; }
+  const lidosDe=(ped,nf)=>new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):(b.local_id||b.id||Math.random()))).size;
+  const c=gsContar(roms,lidosDe,gsDvDoDia(dia));
+  if(!c.tn) return null;
+  let dvs=0; try{ dvs=(dvSo()||[]).filter(d=>String(d.d||'').slice(0,10)===dia).length; }catch(e){}
+  return {dia,ts:Date.now(),tn:c.tn,fn:c.fn,tv:c.tv,fv:c.fv,dn:c.dn,dvv:c.dv,
+    pct:gsPctConf(c),pctOk:gsPctOk(c),pctDv:gsPctDv(c),
+    pctVol:c.tv?Math.round(100*(c.tv-c.fv)/c.tv):100,
+    bipes:bs.length,dv:dvs,orig:c.orig,falta:c.falta,roms:c.orig.length,quem:'',remontado:true}; }
 async function gsGarantirFoto(dia){ try{
   if(!dia||dia===hojeISO()) return null;
   const j=(S.gsSnap||{})[dia]; if(j&&j.tn) return j;
@@ -9988,9 +10105,10 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
    Antes o título dizia o dia escolhido mas os números eram sempre os de hoje. */
 function gsOrigemBox(f,dia){ const nome=dia===hojeISO()?'hoje':fmtData(dia);
   if(!f||!(f.orig||[]).length) return `<div class="gs-box"><h3>Conferência por origem (${nome}) (%)</h3><p class="sub">Não achei romaneios desse dia no banco para remontar a conta.</p><button class="btn mini" data-gs-remontar="1">📊 Remontar o histórico</button></div>`;
-  const L=(f.orig||[]).map(o=>[o.base+(o.mot?' · '+opNomeMot(o.mot):'')+' ('+fmtN(o.tn-o.fn)+' de '+fmtN(o.tn)+')',o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100]);
-  return gestorBarras(`Conferência por origem (${nome}) (%)`,L,v=>v+'%','#20C997')
-    +(f.remontado?'':'');
+  const L=(f.orig||[]).map(o=>Object.assign({rot:o.base+(o.mot?' · '+opNomeMot(o.mot):'')+' ('+fmtN(o.tn-o.fn)+' de '+fmtN(o.tn)+')'},o));
+  const temDv=L.some(o=>(o.dn||0)>0);
+  return gsBarras2(`Conferência por origem (${nome}) (%)`,L,
+    temDv?'<p class="gs-leg"><i style="background:var(--ok)"></i> conferido · <i style="background:#F59F00"></i> conferido em divergência</p>':'');
 }
 function gsTrocarOrigem(f,dia){ try{ const el=$('#gs-corpo'); if(!el) return;
   for(const b of el.querySelectorAll('.gs-box')){ const h=b.querySelector('h3');
@@ -11327,8 +11445,11 @@ function espPainel(){ const m=espMedir(); const f=document.createElement('div');
    <p style="margin:0 0 10px"><b>${m.pct}%</b> usado · ${espMB(m.tot)} de ~${espMB(ESP.lim)}. O navegador para de gravar quando chega a 100%: por isso o aviso a partir de 75%.</p>
    <div style="max-height:260px;overflow:auto">${m.det.slice(0,10).map(([n,t])=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--linha)"><span>${esc(n)}</span><b>${espMB(t)} · ${Math.round(t/m.tot*100)}%</b></div>`).join('')}</div>
    <p class="sub" style="margin-top:10px">XMLs: o aparelho guarda só os dos últimos ${XMLA.dias} dias; os mais antigos ficam na nuvem (${fmtN(nArq)} já guardados lá) e voltam sozinhos quando você abre um dia antigo no NexBip.${velhos?` Há <b>${fmtN(velhos)}</b> XML(s) antigos aqui agora.`:''}</p>
-   <div class="botoes"><button class="btn" data-r="0">Fechar</button><button class="btn pri" data-r="x">Tirar XMLs antigos do aparelho</button></div></div>`;
-  document.body.appendChild(f); f.addEventListener('click',e=>{ const b=e.target.closest('[data-r]'); if(b&&b.dataset.r==='x'){ xmlArquivar(true); f.remove(); espChip(); return; } if(b||e.target===f) f.remove(); }); f.addEventListener('keydown',e=>{ if(e.key==='Escape') f.remove(); }); }
+   <p class="sub" style="margin-top:6px">Bipes: de todo dia que já tem a foto no Painel de Gestão (porcentagem, origem, divergências e o que não entrou) o aparelho não precisa guardar o bipe cru — ele fica no banco online e volta sozinho se você abrir aquele dia.</p>
+   <div class="botoes"><button class="btn" data-r="0">Fechar</button><button class="btn" data-r="b">Tirar bipes antigos do aparelho</button><button class="btn pri" data-r="x">Tirar XMLs antigos do aparelho</button></div></div>`;
+  document.body.appendChild(f); f.addEventListener('click',e=>{ const b=e.target.closest('[data-r]'); if(b&&b.dataset.r==='x'){ xmlArquivar(true); f.remove(); espChip(); return; }
+    if(b&&b.dataset.r==='b'){ b.disabled=true; b.textContent='Tirando…'; gsEnxugarBipes(true).then(r=>{ f.remove(); espChip();
+      toast(r.dias?`✔ Tirei os bipes de ${r.dias} dia(s) do aparelho (${espMB(r.bytes)}). A conta desses dias continua no Painel de Gestão.`:'Nada para tirar: os bipes guardados ainda são de dias sem foto.'); }); return; } if(b||e.target===f) f.remove(); }); f.addEventListener('keydown',e=>{ if(e.key==='Escape') f.remove(); }); }
 setTimeout(espChip,6000); setInterval(espChip,60000);
 { const _na=nexAvisos; nexAvisos=function(){ const a=_na(); try{ if(nvAdmin()){ const m=espMedir(); if(m.pct>=75) a.unshift({cor:espCor(m.pct),txt:`<b>Aparelho com ${m.pct}% do espaço ocupado</b> — clique em 💾 no topo para liberar`,acao:'esp'}); } }catch(e){} return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="esp"]'); if(b) setTimeout(espPainel,50); });
