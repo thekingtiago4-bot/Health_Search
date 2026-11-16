@@ -17,6 +17,23 @@ roteirizar, e gerar relatório para a diretoria.
 - Toda alteração entra na lista de tarefas (painel da direita), somando — nunca apagando o histórico.
 - Nunca apagar dado do usuário sem backup e sem o "pode" dele.
 
+## 1b. Começando uma conversa nova (leia isto primeiro)
+
+1. `cat CLAUDE.md` e este `MAPA.md` → terreno, regras e autonomia.
+2. `grep -n '^- \`nome\`' MAPA-FUNCOES.md` → linha da função; `sed -n 'A,Bp' index.html | cut -c1-400` → só o trecho.
+3. Nunca ler o `index.html` inteiro.
+4. Antes de publicar: `node testes/regressao.js`.
+5. Publicar = `HS_VERSAO` no index + cache no `sw.js` + `version.json` + commit + push. O app avisa sozinho a nova versão em todos os aparelhos.
+6. Precisa mexer no banco? Criar arquivo em `sql/migracoes/` — o robô do GitHub aplica. Nunca SQL à mão.
+7. Terminar dizendo o que foi testado e o que não deu para testar, e com sugestões de melhoria.
+
+**Autonomia (dada por ele em 16/11/2026):** pode editar, testar e publicar sozinho; pode criar migração.
+Continua pedindo o "pode" para apagar dado, para qualquer coisa irreversível e para ideia minha que ele não pediu.
+
+**Onde as coisas vivem:** GitHub `thekingtiago4-bot/Health_Search` (app) e `Health_Search_Backups` (cópias do robô,
+privado); Supabase Pro com `hs_sync`, `hs_bipagens`, `hs_rom_banco`, `hs_versoes`, `hs_fotos`, `hs_auditoria`, `perfis`.
+Nenhuma senha ou chave fica guardada aqui — o banco só é acessado pelo app, no navegador dele.
+
 ## 2. Arquivos
 
 | arquivo | o que é |
