@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.2', HS_DATA='16/11/2026';
+const HS_VERSAO='10.5.3', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9674,7 +9674,7 @@ function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) re
    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px"><button class="btn" data-a="f">Filtrar a Operação por este romaneio</button><button class="btn pri" data-a="x">Fechar</button></div></div>`;
   const refaz=async(i,modo,el)=>{ const it=pend[i]; if(!it) return; if(el) el.disabled=true;
     const rolagem=(f.querySelector('.modal div[style*="grid-template-columns"]')||{}).scrollTop||0;
-    const fez=await opMarcarMao(it.x,modo);
+    const fez=await opMarcarMao(it.x,modo,modo==='ok');
     if(!fez){ if(el) el.disabled=false; return; }
     f.remove(); opRomLista(id); const novo=document.querySelector('.fundo .modal div[style*="grid-template-columns"]'); if(novo) novo.scrollTop=rolagem; };
   f.addEventListener('click',e=>{ const c=e.target.closest('[data-rl-mk]'); if(c){ e.preventDefault(); refaz(+c.dataset.rlMk,'ok',c); } },true);

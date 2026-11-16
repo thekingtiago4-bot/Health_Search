@@ -340,7 +340,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       {text:'000153',x0:10,x1:60,y0:10,y1:30},{text:'VOL.:',x0:70,x1:100,y0:10,y1:30},
       {text:'000000025',x0:200,x1:300,y0:8,y1:34},{text:'19280000',x0:200,x1:280,y0:200,y1:220}]));
     ok(tp==='000000025','NF do topo à direita: esperado 000000025, veio "'+tp+'"'); }
-  /* 9.26.5: quadradinho na lista do romaneio marca a nota como bipada (e pergunta os volumes se tiver mais de 1) */
+  /* 9.26.5: botão verde na lista do romaneio dá baixa total (sem perguntar volumes, igual conferência total) */
   { const mk=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'mk1',numero:'0236360',base:'CAJ',motorista:'REGINALDO',arquivo:a,rows:[
         {nf:'741351',ped:'734641',vol:'1',dest:'CLINICA VERA CRUZ LTDA',cid:'PATOS DE MINAS',uf:'MG'},
@@ -352,23 +352,21 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       cx[0].click(); await w(400);
       const depois1=document.querySelectorAll('.fundo [data-rl-mk]').length;
       const aberta1=!!document.querySelector('.fundo [data-rl-mk]');
-      /* 4 volumes: tem que perguntar */
-      document.querySelector('.fundo [data-rl-mk]').click(); await w(300);
-      const perguntou=!!document.querySelector('[data-mcx]');
-      const grade=[...document.querySelectorAll('[data-mcx]')].map(x=>x.textContent).join(',');
-      document.querySelector('[data-mcx="3"]').click();
-      [...document.querySelectorAll('.fundo [data-a="ok"]')].pop().click(); await w(450);
-      const d=S.divergencias[0]||{}; const aberta2=!!document.querySelector('.fundo [data-rl-mk]')||!!document.querySelector('.fundo .modal');
+      /* 4 volumes: verde também dá baixa direta, sem dialog de volumes */
+      document.querySelector('.fundo [data-rl-mk]').click(); await w(400);
+      const naoAbriuDialog=!document.querySelector('[data-mcx]');
+      const depois2=document.querySelectorAll('.fundo [data-rl-mk]').length;
+      const aberta2=!!document.querySelector('.fundo [data-rl-mk]')||!!document.querySelector('.fundo .modal');
       const bip=OP.bipes.map(x=>x.nf+':'+x.status).join(' ');
       [...document.querySelectorAll('.fundo')].forEach(x=>x.remove()); S.divergencias=[];
-      return {antes,depois1,aberta1,perguntou,grade,qtd:d.qtd,tot:d.tot,falt:(d.falt||[]).join(','),bip,aberta2}; });
+      return {antes,depois1,aberta1,naoAbriuDialog,depois2,bip,aberta2}; });
     ok(mk.antes===2,'romaneio: cada nota faltando precisa de um botão verde ('+mk.antes+')');
     ok(mk.depois1===1&&mk.aberta1,'romaneio: ao marcar, a nota sai de Faltando e a janela continua aberta ('+mk.depois1+')');
-    ok(mk.perguntou,'romaneio: nota com 4 volumes tem que perguntar quais chegaram');
-    ok(mk.grade==='1/4,2/4,3/4,4/4','romaneio: a grade de caixas veio errada ('+mk.grade+')');
-    ok(mk.qtd===1&&mk.tot===4&&mk.falt==='3','romaneio: faltando a caixa 3/4 tem que virar divergência ('+mk.qtd+'/'+mk.tot+' falt='+mk.falt+')');
+    ok(mk.naoAbriuDialog,'romaneio: botão verde nunca deve abrir dialog de volumes (semDialogo)');
+    ok(mk.depois2===0,'romaneio: após marcar as 2 notas, nenhuma deve sobrar em Faltando ('+mk.depois2+')');
     ok(/741351:ok/.test(mk.bip),'romaneio: a nota de 1 volume tinha que ficar conferida ('+mk.bip+')');
-    ok(mk.aberta2,'romaneio: depois de confirmar os volumes a janela tem que continuar aberta'); }
+    ok(/741828:ok/.test(mk.bip),'romaneio: a nota de 4 volumes também tem que ficar conferida ('+mk.bip+')');
+    ok(mk.aberta2,'romaneio: depois de marcar a janela tem que continuar aberta'); }
   /* 9.26.6: marcar como divergência na lista do romaneio (fica laranja do lado das bipadas) */
   { const dvm=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'dv1',numero:'0236361',base:'CAJ',arquivo:a,rows:[{nf:'770001',ped:'880001',vol:'1',dest:'CLIENTE DV',cid:'FRANCA',uf:'SP'}]}];
