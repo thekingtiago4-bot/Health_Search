@@ -4242,7 +4242,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.1.0', HS_DATA='15/11/2026';
+const HS_VERSAO='10.1.1', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7719,8 +7719,45 @@ async function nuvPuxarTudo(){ if(!opOnline()){ toast('Sem internet agora.'); re
   nuvGuardar(); reIrHoje(); try{ renderTudo(); }catch(e){} try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} try{ rpRender(); }catch(e){} toast('✔ Aparelho igual à nuvem ('+q+' itens).'); }
 (function(){ const el=$('#nuv-st'); if(!el) return; el.onclick=()=>{ const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
   f.innerHTML=`<div class="modal" role="dialog" style="max-width:420px"><h2 style="margin-top:0">Banco online</h2><p class="sub">${esc(NUV.erro||('Último envio: '+(NUV.ult?NUV.ult.toLocaleTimeString('pt-BR'):'—')))}</p>
-   <div style="display:grid;gap:8px;margin-top:10px"><button class="btn pri" data-n="s">🔄 Sincronizar agora</button><button class="btn" data-n="p">⬇ Puxar tudo da nuvem (aparelho com dados errados)</button><button class="btn" data-n="x">Fechar</button></div></div>`;
-  f.addEventListener('click',e=>{ const b=e.target.closest('[data-n]'); if(e.target===f||(b&&b.dataset.n==='x')){ f.remove(); return; } if(!b) return; f.remove(); if(b.dataset.n==='s') nuvSinc(); else nuvPuxarTudo(); }); document.body.appendChild(f); }; })();
+   <div style="display:grid;gap:8px;margin-top:10px"><button class="btn pri" data-n="s">🔄 Sincronizar agora</button><button class="btn" data-n="p">⬇ Puxar tudo da nuvem (aparelho com dados errados)</button><button class="btn" data-n="c">🔎 Conferir se falta algo neste aparelho</button><button class="btn" data-n="x">Fechar</button></div></div>`;
+  f.addEventListener('click',e=>{ const b=e.target.closest('[data-n]'); if(e.target===f||(b&&b.dataset.n==='x')){ f.remove(); return; } if(!b) return; f.remove(); if(b.dataset.n==='s') nuvSinc(); else if(b.dataset.n==='c') integConferir().then(n=>{ if(!n) toast('Nada faltando: este aparelho está igual à nuvem.'); }); else nuvPuxarTudo(); }); document.body.appendChild(f); }; })();
+
+/* ================= v10.1.1 · Conferência de integridade ao entrar =================
+   A sincronização só reaplica a chave que MUDOU na nuvem. Se a cópia deste aparelho
+   perder alguma coisa (memória do navegador cheia, aba fechada no meio da gravação,
+   troca de aparelho), a nuvem continua igual e o dado nunca volta sozinho: some da
+   tela e parece perda de dado. Aqui, ao entrar, o app compara o que ele JÁ SABE que
+   existe na nuvem com o que tem na mão e baixa de volta só o que falta. */
+function integFalta(){ const out=[]; try{
+  const h=(window.NUV&&NUV.h)||{};
+  const dvIds=new Set((S.divergencias||[]).map(x=>x&&x.id).filter(Boolean));
+  let reD={}; try{ reD=(RE.ler().dias)||{}; }catch(e){}
+  for(const k of Object.keys(h)){ const v=h[k]; if(v==='x') continue;
+    if(k.startsWith('dv:')){ if(!dvIds.has(k.slice(3))) out.push(k); }
+    else if(k.startsWith('re:')){ const d=k.slice(3); if(!Array.isArray(reD[d])||!reD[d].length) out.push(k); }
+    else if(k.startsWith('s:')){ const c=k.slice(2); if(nuvVazio(S[c])) out.push(k); }
+  } }catch(e){}
+  return out; }
+async function integConferir(aviso){ try{
+  if(!opOnline()||!(window.NUV&&NUV.h)) return 0;
+  const faltam=integFalta(); if(!faltam.length) return 0;
+  let voltou=0;
+  NUV.aplicando=true;
+  try{ for(let i=0;i<faltam.length;i+=100){ const lote=faltam.slice(i,i+100);
+      const {data,error}=await NV.cli.from('hs_sync').select('chave,tipo,valor,apagado').in('chave',lote);
+      if(error) throw error;
+      for(const r of (data||[])){ if(!r||!r.chave) continue;
+        if(r.apagado){ NUV.h[r.chave]='x'; continue; }
+        if(nuvVazio(r.valor)) continue;
+        nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=nuvHash(r.valor); voltou++; } }
+  }catch(e){ console.error('integridade',e); }
+  finally{ NUV.aplicando=false; }
+  if(voltou){ try{ nuvGuardar(); salvar(); }catch(e){}
+    try{ renderTudo(); }catch(e){}
+    try{ if(typeof dvRender==='function') dvRender(); }catch(e){}
+    try{ if(typeof rpRender==='function') rpRender(); }catch(e){}
+    if(aviso!==false) toast('✔ Este aparelho estava sem '+voltou+' registro(s) que existem na nuvem. Já baixei de volta.'); }
+  return voltou; }catch(e){ return 0; } }
 
 /* ================= v7.9.6 · Proteção contra aparelho desatualizado + backup na nuvem ao entrar em outro aparelho ================= */
 function nuvBases(){ try{ return JSON.parse(localStorage.getItem('healthSearch.nuvBase')||'{}'); }catch(e){ return {}; } }
@@ -9665,6 +9702,7 @@ function cargoAplicar(){ try{ if(!cargoLogado()) return; const c=cargoMeu(); doc
     try{ if(t==='eva'&&cargoLogado()&&!nvAdmin()){ toast('A aba do BIT é só do administrador.'); return; } }catch(e){}
     return _ip.apply(this,arguments); }; }
 { const _nc=nvCarregar; nvCarregar=async function(){ const r=await _nc.apply(this,arguments);
+    setTimeout(()=>{ try{ integConferir(); }catch(e){} },6000);
     try{ cargoAplicar();
       const at=document.querySelector('.nav button[data-tela].on,.nav button[data-tela][aria-current="page"]');
       const alvo=cargoTelaInicial(), atual=at&&at.dataset.tela;
@@ -9752,7 +9790,8 @@ function gsBipes(dia){ const h=hojeISO();
 function gsSeletor(){ const ds=gsDias(); const d=gsDia(); if(!ds.includes(d)) ds.unshift(d);
   return `<div class="gs-box" style="grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
     <b>Dia da operação</b><select id="gs-dia" style="padding:8px 10px">${ds.map(x=>`<option value="${esc(x)}"${x===d?' selected':''}>${fmtData(x)}${x===hojeISO()?' (hoje)':''}</option>`).join('')}</select>
-    <span class="sub">os quadros de conferência e bipes mostram este dia</span></div>`; }
+    <span class="sub">os quadros de conferência e bipes mostram este dia</span>
+    <button class="btn mini" type="button" data-gs-remontar="1" title="Remonta a conferência de todos os dias que existem no banco de romaneios">📊 Remontar o histórico</button></div>`; }
 document.addEventListener('change',e=>{ if(e.target&&e.target.id==='gs-dia'){ GS.dia=e.target.value; try{ gestorRender(); }catch(er){} } });
 function gestorDados(){ const D=RE.ler(); const lim=new Date(Date.now()-7*864e5).toISOString().slice(0,10); const mot=new Map(), mtr=new Map(), dia=new Map(); let tot=0;
   for(const [d,ls] of Object.entries(D.dias||{})){ if(d<lim) continue; for(const l of ls){ tot++; const p=rpObsPartes(l.obs); const m=p.m||'(SEM MOTIVO)'; mot.set(m,(mot.get(m)||0)+1); const t=motCanon(l.mot||p.mot)||'(SEM MOTORISTA)'; mtr.set(t,(mtr.get(t)||0)+1); dia.set(d,(dia.get(d)||0)+1); } }
@@ -9833,9 +9872,90 @@ function gsPdfProjetor(dia){ const f=gsFotoLer(dia); if(!f){ toast('Sem foto des
   </body></html>`);
   w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },400); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-pdf]'); if(b){ e.preventDefault(); gsPdfProjetor(b.dataset.gsPdf); } });
+/* ================= v10.1.1 · Conferência por origem de QUALQUER dia =================
+   Antes o quadro só sabia calcular o dia de hoje (opPorRom lê os romaneios carregados),
+   então todo dia passado aparecia 0%. Agora, para um dia anterior, o app remonta a conta
+   do banco de romaneios daquele dia + os bipes daquele dia, e guarda o resultado como
+   foto — assim o histórico fica pronto desde o primeiro dia que existe no banco. */
+async function gsRomsDia(dia){ const out=[];
+  try{ const L=rbLocalLer()[dia]||{}; for(const id of Object.keys(L)){ const r=L[id]||{}; out.push({id,base:r.base||'?',motorista:r.motorista||'',rows:Array.isArray(r.rows)?r.rows:null}); } }catch(e){}
+  const semRows=out.filter(r=>!r.rows);
+  if(semRows.length&&opOnline()){
+    try{ const {data}=await NV.cli.from('hs_rom_banco').select('id,base,motorista,rows').eq('dia',dia);
+      const m=new Map((data||[]).map(x=>[x.id,x]));
+      for(const r of out){ const d=m.get(r.id); if(d){ r.rows=Array.isArray(d.rows)?d.rows:[]; r.base=r.base||d.base||'?'; r.motorista=r.motorista||d.motorista||''; } }
+      for(const d of (data||[])) if(!out.some(r=>r.id===d.id)) out.push({id:d.id,base:d.base||'?',motorista:d.motorista||'',rows:Array.isArray(d.rows)?d.rows:[]});
+    }catch(e){}
+  }
+  return out.filter(r=>Array.isArray(r.rows)&&r.rows.length); }
+async function gsBipesDia(dia){ let bs=[]; try{ bs=opLocalLer(dia)||[]; }catch(e){}
+  if(bs.length||!opOnline()) return bs;
+  try{ let todos=[], de=0; for(;;){ const {data,error}=await NV.cli.from('hs_bipagens').select('*').eq('dia',dia).range(de,de+999);
+      if(error) throw error; todos=todos.concat(data||[]); if(!data||data.length<1000) break; de+=1000; }
+    bs=todos.map(opDoBanco);
+    try{ localStorage.setItem(OP_LOCAL+dia,JSON.stringify(bs)); }catch(e){}
+  }catch(e){}
+  return bs; }
+async function gsFotoDeDiaPassado(dia){
+  const roms=await gsRomsDia(dia); if(!roms.length) return null;
+  const bs=(await gsBipesDia(dia)).filter(b=>b&&(b.status==='ok'||b.status==='semnota'||b.status==='dup'));
+  const porPed=new Map(), porNf=new Map();
+  const marca=(m,k,b)=>{ if(!k) return; if(!m.has(k)) m.set(k,new Set()); m.get(k).add(b.vol?('v'+b.vol):(b.local_id||Math.random())); };
+  for(const b of bs){ marca(porPed,b.ped,b); marca(porNf,b.nf,b); }
+  const vis=new Set(); let tn=0,fn=0,tv=0,fv=0; const orig=[]; const falta=[];
+  for(const r of roms){ let rtn=0,rfn=0,rtv=0,rfv=0;
+    for(const x of (r.rows||[])){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue;
+      const esp=volNum(x.vol); if(esp===0) continue;
+      try{ if(opForaFiltro(x)) continue; }catch(e){}
+      const k=(typeof opNotaK==='function')?opNotaK(x):(nf||ped); if(k){ if(vis.has(k)) continue; vis.add(k); }
+      const lidos=Math.max((porPed.get(ped)||new Set()).size,(porNf.get(nf)||new Set()).size);
+      const espV=esp||1; rtn++; rtv+=espV;
+      if(lidos<=0){ rfn++; rfv+=espV; if(falta.length<300) falta.push({nf:x.nf||'',ped:x.ped||'',cli:x.dest||x.cli||'',cid:x.cid||'',base:r.base||'',vol:espV,lidos:0}); }
+      else if(lidos<espV){ rfv+=(espV-lidos); if(falta.length<300) falta.push({nf:x.nf||'',ped:x.ped||'',cli:x.dest||x.cli||'',cid:x.cid||'',base:r.base||'',vol:espV,lidos}); } }
+    if(rtn){ tn+=rtn; fn+=rfn; tv+=rtv; fv+=rfv; orig.push({base:r.base||'?',mot:r.motorista||'',tn:rtn,fn:rfn,tv:rtv,fv:rfv}); } }
+  if(!tn) return null;
+  let dv=0; try{ dv=(dvSo()||[]).filter(d=>String(d.d||'').slice(0,10)===dia).length; }catch(e){}
+  return {dia,ts:Date.now(),tn,fn,tv,fv,pct:Math.round(100*(tn-fn)/tn),pctVol:tv?Math.round(100*(tv-fv)/tv):100,
+    bipes:bs.length,dv,orig,falta,roms:orig.length,quem:'',remontado:true}; }
+async function gsGarantirFoto(dia){ try{
+  if(!dia||dia===hojeISO()) return null;
+  const j=(S.gsSnap||{})[dia]; if(j&&j.tn) return j;
+  const f=await gsFotoDeDiaPassado(dia); if(!f) return null;
+  S.gsSnap=S.gsSnap||{}; S.gsSnap[dia]=f; salvar(); try{ nuvSinc(); }catch(e){}
+  return f; }catch(e){ return null; } }
+async function gsRemontarTudo(bt){ try{
+  const dias=new Set(); try{ for(const d of Object.keys(rbLocalLer())) dias.add(d); }catch(e){}
+  try{ for(const d of gsDias()) dias.add(d); }catch(e){}
+  if(opOnline()){ try{ const {data}=await NV.cli.from('hs_rom_banco').select('dia'); for(const x of (data||[])) if(x&&x.dia) dias.add(x.dia); }catch(e){} }
+  const lista=[...dias].filter(d=>d&&d<hojeISO()).sort(); let feitos=0;
+  if(bt) bt.disabled=true;
+  for(let i=0;i<lista.length;i++){ const d=lista[i];
+    if(bt) bt.textContent=`Remontando… ${i+1}/${lista.length}`;
+    const f=await gsGarantirFoto(d); if(f) feitos++; }
+  if(bt){ bt.disabled=false; bt.textContent='📊 Remontar o histórico'; }
+  toast(feitos?`✔ Histórico remontado: ${feitos} dia(s) com conferência.`:'Não achei romaneios antigos no banco para remontar.');
+  try{ gestorRender(); }catch(e){} }catch(e){ toast('Não consegui remontar: '+(e&&e.message||e)); } }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-remontar]'); if(b){ e.preventDefault(); gsRemontarTudo(b); } });
+
 /* v10.1.0 · o cartão da conferência do dia abre o Painel de Gestão */
+/* v10.1.1 · o quadro "Conferência por origem" passa a mostrar o DIA ESCOLHIDO.
+   Antes o título dizia o dia escolhido mas os números eram sempre os de hoje. */
+function gsOrigemBox(f,dia){ const nome=dia===hojeISO()?'hoje':fmtData(dia);
+  if(!f||!(f.orig||[]).length) return `<div class="gs-box"><h3>Conferência por origem (${nome}) (%)</h3><p class="sub">Não achei romaneios desse dia no banco para remontar a conta.</p><button class="btn mini" data-gs-remontar="1">📊 Remontar o histórico</button></div>`;
+  const L=(f.orig||[]).map(o=>[o.base+(o.mot?' · '+opNomeMot(o.mot):''),o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100]);
+  return gestorBarras(`Conferência por origem (${nome}) (%)`,L,v=>v+'%','#20C997')
+    +(f.remontado?'':'');
+}
+function gsTrocarOrigem(f,dia){ try{ const el=$('#gs-corpo'); if(!el) return;
+  for(const b of el.querySelectorAll('.gs-box')){ const h=b.querySelector('h3');
+    if(h&&/^Confer(ê|e)ncia por origem/i.test(h.textContent)){ b.outerHTML=gsOrigemBox(f,dia); return; } }
+}catch(e){} }
 { const _gr10=gestorRender; gestorRender=function(){ const r=_gr10.apply(this,arguments);
-  try{ const el=$('#gs-corpo'); if(el){ const f=gsFotoLer(gsDia()); el.insertAdjacentHTML('afterbegin',gsCartao(f)); } }catch(e){}
+  try{ const el=$('#gs-corpo'); if(!el) return r; const dia=gsDia(); const f=gsFotoLer(dia);
+    el.insertAdjacentHTML('afterbegin',gsCartao(f));
+    if(dia!==hojeISO()) gsTrocarOrigem(f,dia);
+    if(dia!==hojeISO()&&!(f&&f.tn)){ gsGarantirFoto(dia).then(f2=>{ if(f2&&gsDia()===dia){ try{ gestorRender(); }catch(e){} } }); }
+  }catch(e){}
   return r; }; }
 /* a cada bipe o app guarda a foto do dia, sem o conferente precisar fazer nada */
 { const _ol10=opLer; opLer=function(){ const r=_ol10.apply(this,arguments); try{ gsFotoAgendar(); }catch(e){} return r; }; }

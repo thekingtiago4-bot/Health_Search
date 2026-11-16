@@ -650,6 +650,46 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(gp.temCartao,'painel: falta o cartão com a porcentagem real do dia');
     ok(gp.pdf,'painel: falta o botão do PDF para projetor');
     ok(!gp.foto||(typeof gp.foto.pct==='number'&&gp.foto.falta),'painel: a foto do dia precisa ter porcentagem e a lista do que não entrou'); }
+  /* v10.1.1: a conferência por origem tem que ser do DIA ESCOLHIDO, remontada do banco de romaneios */
+  { const px=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const ant='2026-10-20';
+      const guardaRB=localStorage.getItem(RB.local), guardaBip=localStorage.getItem(OP_LOCAL+ant), guardaSnap=JSON.stringify(S.gsSnap||{});
+      const L={}; L[ant]={};
+      L[ant][ant+'|CAJ1']={id:ant+'|CAJ1',dia:ant,base:'CAJ',motorista:'JOAO',rows:[
+        {nf:'800001',ped:'P1',dest:'CLI A',cid:'ARARAQUARA',vol:'1'},
+        {nf:'800002',ped:'P2',dest:'CLI B',cid:'BAURU',vol:'1'}]};
+      L[ant][ant+'|DF1']={id:ant+'|DF1',dia:ant,base:'DF',motorista:'PEDRO',rows:[
+        {nf:'800003',ped:'P3',dest:'CLI C',cid:'MARILIA',vol:'1'},
+        {nf:'800004',ped:'P4',dest:'CLI D',cid:'BOTUCATU',vol:'1'}]};
+      localStorage.setItem(RB.local,JSON.stringify(L));
+      localStorage.setItem(OP_LOCAL+ant,JSON.stringify([
+        {nf:opK('800001'),ped:opK('P1'),status:'ok',dia:ant,local_id:'x1',criado_em:ant+'T12:00:00.000Z'}]));
+      delete (S.gsSnap||{})[ant];
+      const f=await gsFotoDeDiaPassado(ant);
+      GS.dia=ant; irPara('gestor'); await w(300); gestorRender(); await w(1200);
+      const txt=(document.getElementById('gs-corpo')||{}).innerText||'';
+      const box=[...document.querySelectorAll('#gs-corpo .gs-box')].find(b=>/por origem/i.test((b.querySelector('h3')||{}).textContent||''));
+      const r={foto:f?{tn:f.tn,fn:f.fn,pct:f.pct,orig:(f.orig||[]).map(o=>o.base+':'+o.tn+'/'+o.fn).sort().join(' ')}:null,
+        boxTxt:box?box.innerText.replace(/\s+/g,' '):'', tit:box?(box.querySelector('h3')||{}).textContent:'',
+        remontar:!!document.querySelector('[data-gs-remontar]')};
+      localStorage.setItem(RB.local,guardaRB||'{}'); if(guardaBip) localStorage.setItem(OP_LOCAL+ant,guardaBip); else localStorage.removeItem(OP_LOCAL+ant);
+      S.gsSnap=JSON.parse(guardaSnap); GS.dia=''; return r; });
+    ok(px.foto&&px.foto.tn===4&&px.foto.fn===3,'dia passado: tinha que contar 4 notas, 3 sem conferir ('+JSON.stringify(px.foto)+')');
+    ok(px.foto&&px.foto.pct===25,'dia passado: a porcentagem do dia tinha que ser 25% ('+(px.foto&&px.foto.pct)+')');
+    ok(/CAJ:2\/1 DF:2\/2/.test(px.foto&&px.foto.orig||''),'dia passado: origem errada ('+(px.foto&&px.foto.orig)+')');
+    ok(/20\/10\/2026/.test(px.tit),'dia passado: o título da origem tem que ser do dia escolhido ('+px.tit+')');
+    ok(/50%/.test(px.boxTxt)&&/0%/.test(px.boxTxt),'dia passado: o quadro por origem tem que mostrar CAJ 50% e DF 0% ('+px.boxTxt+')');
+    ok(px.remontar,'painel: falta o botão de remontar o histórico'); }
+  /* v10.1.1: conferência de integridade — o que existe na nuvem e sumiu daqui volta sozinho */
+  { const ig=await p.evaluate(()=>{ const h={'dv:abc':'h1','dv:def':'x','re:2026-10-01':'h2','s:cadMot':'h3'};
+      const guarda=JSON.stringify((window.NUV&&NUV.h)||{}); window.NUV=window.NUV||{}; NUV.h=h;
+      const antes=S.divergencias; S.divergencias=[{id:'abc',cat:'dv',st:'aberta'}];
+      const f=integFalta(); S.divergencias=antes; NUV.h=JSON.parse(guarda);
+      return {f,tem:typeof integConferir==='function'}; });
+    ok(ig.tem,'integridade: falta a função de conferir o aparelho contra a nuvem');
+    ok(!ig.f.includes('dv:abc'),'integridade: não pode pedir de volta o que já está aqui');
+    ok(!ig.f.includes('dv:def'),'integridade: o que foi apagado de propósito não volta');
+    ok(ig.f.includes('re:2026-10-01'),'integridade: reentrega que existe na nuvem e sumiu daqui tem que voltar'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
