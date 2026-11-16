@@ -4319,7 +4319,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.2.6', HS_DATA='16/11/2026';
+const HS_VERSAO='10.2.7', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8894,9 +8894,53 @@ setInterval(()=>{ try{ opFila(); }catch(e){} try{ opPuxarDia(); }catch(e){} },45
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState!=='visible') return;
   try{ opFila(); }catch(e){} try{ opPuxarDia(); }catch(e){} });
 window.addEventListener('online',()=>{ try{ opFila(); }catch(e){} try{ opPuxarDia(); }catch(e){} });
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-op-puxar]'); if(b){ e.preventDefault();
+document.addEventListener('click',e=>{ const en=e.target.closest&&e.target.closest('[data-op-enviar]');
+  if(en){ e.preventDefault(); en.disabled=true; const t0=en.textContent; en.textContent='Enviando…';
+    opFila().then(()=>{ en.disabled=false; en.textContent=t0; try{ ctMontar(); }catch(er){} }); return; }
+  const b=e.target.closest&&e.target.closest('[data-op-puxar]'); if(b){ e.preventDefault();
   b.disabled=true; const t=b.textContent; b.textContent='Atualizando…';
   opPuxarDia(true).then(()=>{ b.disabled=false; b.textContent=t; }); } });
+/* ================= v10.2.7 · Fila de bipes que não sobe =================
+   Antes a fila inteira subia numa tacada só: 1.319 bipes num único envio. Bastava UM campo
+   estranho, uma linha fora da regra ou o pacote grande demais para TUDO ser recusado e nada
+   sair do aparelho — calado, com um aviso de uma vez só. Agora vai em lotes, lote que falha é
+   partido ao meio até achar a linha ruim, e o que presta sobe. A linha ruim fica separada e
+   avisada, nunca jogada fora. */
+const OP_COLS=['local_id','dia','codigo','tipo','ped','nf','vol','tot','pallet','romaneio','dest','cid','conteudo','valor','status','usuario','usuario_id','criado_em'];
+const OP_RUINS='healthSearch.op.fila.ruins';
+function opLinhaBanco(b){ const o={}; for(const c of OP_COLS){ if(b[c]!==undefined&&b[c]!==null&&b[c]!=='') o[c]=b[c]; }
+  try{ o.usuario_id=NV.user.id; }catch(e){}
+  if(!o.codigo) o.codigo=String(b.nf||b.ped||b.local_id||'');
+  if(!['ok','semnota','fora','dup'].includes(o.status)) o.status='ok';
+  if(o.vol!=null) o.vol=parseInt(o.vol,10)||null;
+  if(o.tot!=null) o.tot=parseInt(o.tot,10)||null;
+  if(o.valor!=null){ const v=Number(String(o.valor).replace(',','.')); o.valor=isFinite(v)?v:null; }
+  return o; }
+function opRuinsLer(){ try{ return JSON.parse(localStorage.getItem(OP_RUINS)||'[]'); }catch(e){ return []; } }
+function opRuinsGravar(L){ try{ localStorage.setItem(OP_RUINS,JSON.stringify(L.slice(-500))); }catch(e){} }
+async function opSubirLote(lote){ /* devolve {ok:[local_id], ruins:[{b,erro}]} */
+  if(!lote.length) return {ok:[],ruins:[]};
+  const {error}=await NV.cli.from('hs_bipagens').upsert(lote.map(opLinhaBanco),{onConflict:'local_id',ignoreDuplicates:true});
+  if(!error) return {ok:lote.map(b=>b.local_id),ruins:[]};
+  if(lote.length===1) return {ok:[],ruins:[{b:lote[0],erro:(error.message||'')+''}]};
+  const meio=Math.ceil(lote.length/2);
+  const a=await opSubirLote(lote.slice(0,meio)), b=await opSubirLote(lote.slice(meio));
+  return {ok:a.ok.concat(b.ok),ruins:a.ruins.concat(b.ruins)}; }
+opFila=async function(){ if(!opOnline()||opEnviando) return; let fila=opFilaLer(); if(!fila.length){ opSinc(); return; }
+  opEnviando=true; let subiram=0; const ruins=[];
+  try{
+    for(let i=0;i<fila.length;i+=200){
+      const lote=fila.slice(i,i+200);
+      let r; try{ r=await opSubirLote(lote); }catch(e){ r={ok:[],ruins:[]}; break; }
+      subiram+=r.ok.length; if(r.ruins.length) ruins.push(...r.ruins);
+      const feitos=new Set(r.ok.concat(r.ruins.map(x=>x.b.local_id)));
+      if(feitos.size){ const rest=opFilaLer().filter(b=>!feitos.has(b.local_id)); opFilaGravar(rest); }
+    }
+  }catch(e){}
+  if(ruins.length){ const L=opRuinsLer(); for(const x of ruins) L.push({b:x.b,erro:x.erro,em:new Date().toISOString()}); opRuinsGravar(L);
+    toast(`⚠ ${fmtN(ruins.length)} bipe(s) o banco recusou: ${nvTraduz(ruins[0].erro).slice(0,90)}. Guardei separado, nada foi perdido.`); }
+  if(subiram){ toast(`✔ ${fmtN(subiram)} bipe(s) deste aparelho subiram.`); try{ await opPuxarDia(); }catch(e){} }
+  opEnviando=false; opSinc(); };
 function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   /* BUG#1-FIX v9.11.0: só mover elementos DOM quando a tela estiver visível.
      Mover #op-cards para dentro da seção hidden causava renderização vazia no NexBip. */
@@ -8912,7 +8956,7 @@ function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   const q=$('#qt-ct'); if(q){ q.textContent=pct+'%'; q.hidden=!tn; }
   /* v10.2.6 · a conta é de todo mundo: botão para repuxar e aviso de bipe que não subiu */
   try{ if(g&&tn){ const fila=opFilaLer().filter(b=>b.dia===OP.dia).length;
-    g.insertAdjacentHTML('beforeend',`<div class="ct-juntar"><button class="btn mini" type="button" data-op-puxar="1" title="Traz os bipes das outras pessoas agora">🔄 Atualizar a conta</button>${fila?`<span class="ct-fila">⚠ <b>${fmtN(fila)}</b> bipe(s) deste aparelho ainda não subiram${opOnline()?' — estou tentando':' (sem internet)'}</span>`:'<span class="sub">a conta soma os bipes de todas as pessoas</span>'}</div>`); } }catch(e){}
+    g.insertAdjacentHTML('beforeend',`<div class="ct-juntar"><button class="btn mini" type="button" data-op-puxar="1" title="Traz os bipes das outras pessoas agora">🔄 Atualizar a conta</button>${fila?`<span class="ct-fila">⚠ <b>${fmtN(fila)}</b> bipe(s) deste aparelho ainda não subiram${opOnline()?'':' (sem internet)'}</span><button class="btn mini pri" type="button" data-op-enviar="1">⬆ Enviar agora</button>`:'<span class="sub">a conta soma os bipes de todas as pessoas</span>'}${(typeof opRuinsLer==='function'&&opRuinsLer().length)?`<span class="ct-fila">⚠ ${fmtN(opRuinsLer().length)} bipe(s) o banco recusou (guardados aqui)</span>`:''}</div>`); } }catch(e){}
   try{ ctBuscaRender(); }catch(e){} }
 /* v9.26.7 · aparelho sem os romaneios de hoje: sem isso todo bipe cai como "fora do romaneio" sem explicação */
 function opSemRomaneios(){ try{ return OP.dia===hojeISO()&&opRomsDoDia().length===0; }catch(e){ return false; } }

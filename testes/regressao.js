@@ -1100,6 +1100,38 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const g=document.getElementById('ct-geral');
       return {bt:!!document.querySelector('[data-op-puxar]'),txt:g?g.innerText:''}; });
     ok(bt.bt||!/[0-9]%/.test(bt.txt),'juntar: falta o botão "Atualizar a conta" na Conferência total'); }
+  /* v10.2.7: fila grande sobe em lotes e linha recusada não trava o resto */
+  { const fl=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const dia=hojeISO();
+      const gFila=localStorage.getItem('healthSearch.op.fila'), gCli=NV.cli, gUser=NV.user, gBip=(OP.bipes||[]).slice();
+      localStorage.removeItem('healthSearch.op.fila.ruins');
+      const fila=[]; for(let i=0;i<450;i++) fila.push({local_id:'f'+i,dia,codigo:'C'+i,nf:'92'+i,ped:'P'+i,status:'ok',usuario:'TIAGO',criado_em:dia+'T05:00:00.000Z',chave:'x'});
+      fila[300].status='INVALIDO'; fila[301].campoEstranho='quebra'; /* uma com status fora da regra, outra com campo que não existe */
+      localStorage.setItem('healthSearch.op.fila',JSON.stringify(fila));
+      NV.user=NV.user||{id:'u1'};
+      let envios=0, linhas=0;
+      NV.cli={from(){ return {upsert:(L)=>{ envios++; linhas+=L.length;
+          const ruim=L.find(x=>x.local_id==='f300'); /* o banco recusa essa linha, aconteça o que acontecer */
+          if(ruim) return Promise.resolve({error:{message:'violates check constraint hs_bipagens_status_check'}});
+          return Promise.resolve({error:null}); },
+        select:()=>({eq:()=>({order:()=>({range:()=>Promise.resolve({data:[],error:null})})})})}; },
+        channel(){ return {on(){return this;},subscribe(){return this;}}; }, removeChannel(){}};
+      OP.dia=dia;
+      await opFila();
+      const resto=JSON.parse(localStorage.getItem('healthSearch.op.fila')||'[]');
+      const ruins=JSON.parse(localStorage.getItem('healthSearch.op.fila.ruins')||'[]');
+      const mandouChave=linhas>0;
+      localStorage.setItem('healthSearch.op.fila',gFila||'[]'); localStorage.removeItem('healthSearch.op.fila.ruins');
+      NV.cli=gCli; NV.user=gUser; OP.bipes=gBip;
+      return {envios,resto:resto.length,ruins:ruins.length,ruim:(ruins[0]||{}).b&&ruins[0].b.local_id,erro:(ruins[0]||{}).erro||''}; });
+    ok(fl.envios>1,'fila: 450 bipes não podem ir num envio só ('+fl.envios+' envio(s))');
+    ok(fl.resto===0,'fila: depois de subir, a fila tem que esvaziar ('+fl.resto+' sobrando)');
+    ok(fl.ruins===1&&fl.ruim==='f300','fila: a linha recusada tem que ser isolada, não travar o resto ('+fl.ruins+', '+fl.ruim+')');
+    ok(/constraint/.test(fl.erro),'fila: o motivo da recusa tem que ser guardado ('+fl.erro.slice(0,40)+')'); }
+  { const lb=await p.evaluate(()=>{ const o=opLinhaBanco({local_id:'z1',dia:hojeISO(),nf:'1',ped:'2',status:'zzz',vol:'3',tot:'4',valor:'12,50',chave:'X',campoEstranho:'y',usuario:'T'});
+      return {temEstranho:'campoEstranho' in o, temChave:'chave' in o, status:o.status, vol:o.vol, valor:o.valor, codigo:o.codigo}; });
+    ok(!lb.temEstranho&&!lb.temChave,'fila: campo que não existe na tabela não pode ser enviado');
+    ok(lb.status==='ok'&&lb.vol===3&&lb.valor===12.5&&lb.codigo==='1','fila: a linha tem que ser arrumada antes de subir ('+JSON.stringify(lb)+')'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
