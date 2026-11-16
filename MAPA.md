@@ -355,3 +355,9 @@ conexão, que o `Store.init` já trouxe). Vigia de 45s religa se o estado for `c
 **Não dá para testar daqui:** o comportamento ao vivo precisa de dois aparelhos com Supabase real (daqui a
 nuvem é cortada). O que foi testado: sintaxe, regressão (lógica intacta) e idb. O poll de 5 min continua de
 rede de segurança, então o pior caso de um bug aqui é voltar ao atraso de antes, nunca perder dado.
+
+## v10.5.0 (16/11/2026) — Prioridade 3: um status de sync, 3 cores
+`nuvStatus()` reescrito: uma bolinha ● em 3 estados — vermelho (erro/algo não gravou, toque),
+amarelo (salvando / falta subir / sem internet, o app resolve), verde (salvo; ⚡ quando ao vivo).
+Clique = `nuvSinc()` na hora. Não mexi nos handlers do painel (7991/8064/8155 montam um painel só em
+camadas) nem no chip 💾 (espaço, outra coisa). Só o indicador ficou direto.

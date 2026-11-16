@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.4.0', HS_DATA='16/11/2026';
+const HS_VERSAO='10.5.0', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6873,7 +6873,18 @@ function nuvJuntar(chave,local,remoto){ if(chave.startsWith('re:')){ const vis=n
   return t(local)>t(remoto)?local:remoto; }
 function nuvApTab(){ return apId()+'.'+NUV.tab; }
 function nuvPing(){ try{ if(NUV.canal&&NUV.aoVivo) NUV.canal.send({type:'broadcast',event:'mudou',payload:{t:Date.now()}}); }catch(e){} }
-function nuvStatus(){ const el=$('#nuv-st'); if(!el) return; el.hidden=Store.modo!=='nuvem'; const on=opOnline(); el.textContent=!on?'☁ offline':NUV.erro?'☁ erro':NUV.rodando?'☁ sincronizando…':NUV.ult?'☁ salvo online '+NUV.ult.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'☁ online'; el.title=NUV.erro||'Tudo fica no banco online: romaneios, reentregas, divergências, agendamentos, regiões e XMLs.'; el.style.color=NUV.erro?'var(--no)':on?'var(--ok)':'var(--mudo)'; }
+/* v10.5.0: um status só, em 3 cores. Vermelho = tem erro/algo não gravou (precisa de atenção);
+   Amarelo = salvando ou falta subir / sem internet (o app cuida sozinho, é só esperar);
+   Verde = tudo salvo (⚡ quando está recebendo ao vivo de outros aparelhos). Clique = sincronizar agora. */
+function nuvStatus(){ const el=$('#nuv-st'); if(!el) return; el.hidden=Store.modo!=='nuvem'; const on=opOnline();
+  let cor,txt;
+  if(NUV.erro){ cor='var(--no)'; txt='● erro — toque'; }
+  else if(!on){ cor='#E8590C'; txt='● sem internet'; }
+  else if(NUV.rodando){ cor='#F59F00'; txt='● salvando…'; }
+  else if(NUV.sujo){ cor='#F59F00'; txt='● falta subir'; }
+  else { cor='var(--ok)'; txt=NUV.aoVivo?'● salvo ⚡ ao vivo':'● salvo'; }
+  el.textContent=txt; el.style.color=cor;
+  el.title=NUV.erro||(on?'Tudo salvo no banco online. Toque para sincronizar agora.':'Sem internet: o que você faz fica guardado no aparelho e sobe sozinho quando voltar.'); }
 async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } NUV.rodando=true; nuvStatus(); let mudou=false;
   try{
     /* 1) baixa o que mudou no banco */
