@@ -896,6 +896,33 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!sx.depois,'cópia da semana: depois de baixar, não pode continuar cobrando');
     ok(/^\d{4}-\d{2}-\d{2}$/.test(sx.segunda),'cópia da semana: a semana tem que começar na segunda ('+sx.segunda+')');
     ok(sx.alto===75,'espaço da equipe: o aviso tem que começar em 75% ('+sx.alto+')'); }
+  /* v10.1.8: um bipe confere a nota inteira — volume não pode derrubar a porcentagem */
+  { const vl=await p.evaluate(async()=>{ const ant='2026-10-25';
+      const gRB=localStorage.getItem(RB.local), gBip=localStorage.getItem(OP_LOCAL+ant), gDv=JSON.stringify(S.divergencias||[]), gSnap=JSON.stringify(S.gsSnap||{}), gPv=S.opPorVolume;
+      const L={}; L[ant]={}; L[ant][ant+'|R1']={id:ant+'|R1',dia:ant,base:'CAJ',motorista:'REGINALDO',rows:[
+        {nf:'830001',ped:'C1',dest:'A',cid:'FRANCA',vol:'20'},{nf:'830002',ped:'C2',dest:'B',cid:'BAURU',vol:'30'},
+        {nf:'830003',ped:'C3',dest:'C',cid:'ASSIS',vol:'10'}]};
+      localStorage.setItem(RB.local,JSON.stringify(L));
+      localStorage.setItem(OP_LOCAL+ant,JSON.stringify([
+        {nf:opK('830001'),ped:opK('C1'),status:'ok',dia:ant,local_id:'v1',criado_em:ant+'T10:00:00.000Z'},
+        {nf:opK('830002'),ped:opK('C2'),status:'ok',dia:ant,local_id:'v2',criado_em:ant+'T10:01:00.000Z'}]));
+      S.opPorVolume=false;
+      S.divergencias=[{id:'dvv',n:12,cat:'dv',st:'aberta',tipo:'Falta de volume',d:ant,nf:'830003',ped:'C3',qtd:2}];
+      delete (S.gsSnap||{})[ant];
+      const f=await gsFotoDeDiaPassado(ant);
+      /* sem as divergências no aparelho, a nota não conferida tem que aparecer com o aviso */
+      S.divergencias=[]; delete (S.gsSnap||{})[ant];
+      const f2=await gsFotoDeDiaPassado(ant);
+      const cart=gsCartao(f2);
+      localStorage.setItem(RB.local,gRB||'{}'); if(gBip) localStorage.setItem(OP_LOCAL+ant,gBip); else localStorage.removeItem(OP_LOCAL+ant);
+      S.divergencias=JSON.parse(gDv); S.gsSnap=JSON.parse(gSnap); S.opPorVolume=gPv;
+      return {pct:f&&f.pct,pctVol:f&&f.pctVol,tv:f&&f.tv,fv:f&&f.fv,dn:f&&f.dn,
+        pct2:f2&&f2.pct,aviso:/sem as divergências deste dia/i.test(cart),bt:/data-gs-puxardv/.test(cart)}; });
+    ok(vl.pct===100,'volumes: com as divergências no lugar, o dia tinha que fechar 100% ('+vl.pct+'%)');
+    ok(vl.pctVol===100&&vl.fv===0,'volumes: um bipe confere a nota inteira — 60 volumes, nenhum faltando ('+vl.pctVol+'%, faltando '+vl.fv+')');
+    ok(vl.dn===1,'volumes: a nota apontada como falta tem que entrar como divergência ('+vl.dn+')');
+    ok(vl.pct2===67,'volumes: sem as divergências no aparelho, a conta cai (2 de 3 = 67%) ('+vl.pct2+'%)');
+    ok(vl.aviso&&vl.bt,'volumes: quando falta divergência no aparelho, o cartão tem que avisar e oferecer baixar'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
