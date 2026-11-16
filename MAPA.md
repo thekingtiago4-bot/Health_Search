@@ -239,3 +239,10 @@ Tudo entrou num bloco único no fim do `index.html` (depois de todas as definiç
 ## v10.2.5 (16/11/2026) — publicada juntando duas conversas
 Duas conversas publicaram no mesmo dia: uma com a Parte 2 (duas colunas) e outra com o relatório. O push foi recusado, o merge juntou as duas (só `version.json` conflitou), a sintaxe foi checada e a suíte passou. **A partir daqui ficou combinado: uma conversa só mexe no app.**
 - **`gsTabDv(dia)`**: as divergências do dia saem detalhadas no PDF do Painel de Gestão, com as mesmas colunas do Excel da aba Divergências — Nº, situação, tipo, pedido, NF, cliente, cidade, volumes (`qtd` de `tot`), caixas que faltaram (`volLista(d.falt,d.tot)`), remetente, observação, quem registrou, onde apareceu (`d.apareceu.rom`) e a baixa (`d.res`). Tabela com `class="dvt"` e fonte 9,5pt para caber na folha deitada.
+
+## v10.2.6 (16/11/2026, urgente) — a conta era de um só
+Dois conferentes bipando: os bipes do Tiago entravam na porcentagem e os do Christian não.
+**Causa:** os bipes dos outros só chegavam pelo canal ao vivo (`opAoVivo`). Se o canal caísse — tela bloqueada, internet oscilando, app aberto há horas — ninguém repuxava o dia, e a conta daquele aparelho ficava só com o que ele mesmo bipou. RLS não era o problema: `hs_bip_ler` libera para qualquer usuário ativo.
+- **`opPuxarDia(aviso)`**: repuxa `hs_bipagens` do dia inteiro, junta com a fila local que ainda não subiu, regrava e redesenha (`opRender`, `ctMontar`, `gestorRender`, `gsFotoAgendar`). Roda a cada 45 s, no `visibilitychange`, no evento `online` e no botão **🔄 Atualizar a conta** (`[data-op-puxar]`, na Conferência total).
+- **`opAoVivo` com status**: em `CLOSED`/`CHANNEL_ERROR`/`TIMED_OUT` remove o canal, zera `OP.canal`, religa e repuxa. O insert ao vivo agora também atualiza a Conferência total e agenda a foto do dia.
+- A Conferência total mostra **quantos bipes daquele aparelho ainda não subiram** (fila local), em laranja.
