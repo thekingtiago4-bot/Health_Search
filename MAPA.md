@@ -196,3 +196,8 @@ O print do dia 13/11 às 07:59 mostrava **288 de 288 (100%)** com a faixa "Simul
 - `gsContar(roms,lidosDe,dvm,aj,foraAntes)`: nota fora da conta (Simulação, `nexS().fora`, ou marcada à mão com `m:'fora'`) **não entra em `tn`**, e as chaves saem em `c.fora`.
 - A foto grava `fora:[...]`; a remontagem seguinte recebe essa lista, então **o número de um dia fechado não muda depois**, mesmo que a simulação mude.
 - Terceiro botão na lista "o que não entrou": **✖ não conta** (além de ✔ conferida e ⚠ divergência). Cartão e PDF dizem quantas notas saíram da conta.
+
+## v10.2.2 / v10.2.3 (16/11/2026)
+- **`GS_REGRA`** carimba a regra de contagem dentro da foto (`v`). O painel detecta foto feita com regra antiga e **refaz sozinho** ao abrir o dia (`gsRefeitas` evita laço). Mudou a regra de contagem? Suba o `GS_REGRA`.
+- **`gsFecharDia(dia,bt)`**: botão "✔ Fechar o dia em 100%" no cartão. Marca o que sobrou como `m:'fora'` (sai da conta), com `por`/`em`, e remonta. É o equivalente registrado do que a Simulação fazia na hora.
+- **`nexLimparReent(romId)`** + chip virou botão `[data-nx-limpare]`: desmarca todas as reentregas detectadas daquele romaneio, tira do `RE` as linhas lançadas pelo app (`origem` nex/automatica — a lançada à mão fica) e **baixa a planilha antes** de apagar. Só Admin/Líder/Supervisor.
