@@ -128,3 +128,9 @@ reentrega** — só avisa.
 - **Armadilha nova**: wrapper tem que ser inserido DEPOIS da definição da função. O bloco `gs*` precisou ser movido para depois do IIFE que cria `#t-gestor`.
 - **Armadilha nova**: `muAplicar` escreve `grid-column` inline — classe CSS não vence; setar no `style`.
 - **Teste**: o cálculo de "ontem" no `regressao.js` passou a usar `diaLocal()`; em UTC ele quebrava sozinho depois das 21h.
+
+## v10.1.1 (publicado 16/11/2026)
+- **Conferência de integridade** (`integFalta`, `integConferir`): a sincronização só reaplica a chave que MUDOU na nuvem (hash em `NUV.h`), então o que se perde na cópia local nunca volta sozinho. Ao entrar (6s depois do `nvCarregar`) o app compara `NUV.h` com o que existe em `S` e re-baixa as chaves faltantes (`dv:`, `re:`, `s:*`). Botão manual no modal do banco online.
+- **Conferência por origem de qualquer dia** (`gsRomsDia`, `gsBipesDia`, `gsFotoDeDiaPassado`, `gsGarantirFoto`, `gsRemontarTudo`, `gsOrigemBox`, `gsTrocarOrigem`): remonta a conta de um dia passado do banco de romaneios (`rbLocalLer` / `hs_rom_banco`) + bipes do dia (`OP_LOCAL+dia` / `hs_bipagens`) e grava como foto em `S.gsSnap`. Botão "📊 Remontar o histórico" faz todos os dias do banco de uma vez.
+- **Bug corrigido**: o quadro "Conferência por origem (dd/mm)" mostrava o título do dia escolhido com os números de HOJE — por isso aparecia 0% num dia que foi 100%.
+- **Fato apurado em 16/11**: as 13 divergências de 13/11 estavam intactas na nuvem (conferido no backup do robô de 15/11: 27 chaves `dv:`, 13 do dia 13, 14 tombstones antigos). Era a cópia do aparelho que estava vazia.
