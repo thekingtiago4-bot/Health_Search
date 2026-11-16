@@ -146,3 +146,12 @@ reentrega** — só avisa.
 - **Espaço** (`gsBipesAntigos`, `gsEnxugarBipes`): dia com foto perde os bipes crus do aparelho (ficam em `hs_bipagens`). Botão no painel 💾 e faxina automática 20s depois de entrar. O aparelho dele estava com 85% de 9,5 MB, metade só de bipes — é a causa provável do sumiço das divergências.
 - **Baixa no bipe** (`dvBotaoBaixa`, `dvBaixaPeloBipe`, `#op-dvacao`) e **aviso para quem abriu** (`dvAvisarDono`, `dvMeusAvisos`, campo sincronizado `dvAvisos`, entra no sino por `nexAvisos`).
 - **Limpeza do histórico** (`corEraDv`, `corEraDvCsv`, `corTirarEraDv`, bloco na Correção): tira as reentregas com motivo "ERA DIVERGENCIA…"/"DIVERGENCIA #…", baixando a planilha antes. Atenção: `N()` remove o `#`, então o regex casa com o número direto.
+
+## v10.1.5 / v10.1.6 (16/11/2026) — perda de dados, causa e trava
+**Apuração (backup do robô de 15/11):** divergências de 13/11 estavam íntegras na nuvem (13 chaves `dv:`), era a cópia do aparelho que estava vazia. `s:agendamentos` tinha 4 itens com última gravação em 11/11 — o que foi cadastrado depois **nunca chegou à nuvem**. Aparelho dele estava com 85% de 9,5 MB.
+**Causa raiz:** `Store.salvar` engolia o erro de cota com um toast de 3s e o app seguia como se tivesse gravado; a sincronização esperava 6s e podia nunca acontecer.
+**Travas novas:**
+- `Store.salvar` (reescrito): falhou → `gsEnxugarBipes` libera espaço → tenta de novo → se ainda falhar, `nuvSinc()` na hora e faixa fixa `#grav-falha` até gravar. Nunca chamar UI interativa nesse caminho (um `xmlArquivar` ali quebrou o teste da DANFE).
+- `nuvSujo`/`pendFaixa`/`#pend-aviso`: o app sabe que há coisa para subir; tenta a cada 30s, sobe em `visibilitychange`/`pagehide` e trava o `beforeunload`.
+- `nuvJa()` em `salvarAg`, `dvRegistrar` e `RE.gravar`: cadastro crítico sobe na hora. Debounce de `nuvAgendar` caiu de 6s para 2,5s.
+**Armadilha de teste:** `reDupVarrer` abre a pergunta "NF com dois motivos" assim que não há outro `.fundo`; ela rouba o `.fundo .modal` de outros testes. Nos testes, limpar `.fundo` antes e escolher o modal pelo conteúdo.
