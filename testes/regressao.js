@@ -865,6 +865,37 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(pd.sujo,'nuvem: mudança local tem que marcar que há coisa para subir');
     ok(pd.faixa,'nuvem: se demorar para subir, tem que avisar na tela');
     ok(pd.sumiu,'nuvem: depois que sobe, o aviso sai'); }
+  /* v10.1.7: foto do dia em tabela própria, cobrança da cópia da semana e aviso de espaço da equipe */
+  { const ft=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const dia='2026-10-24'; let up=null, pediu=null;
+      const velho=NV.cli; NV.cli={from(t){ return {
+        upsert:(o)=>{ up={t,o}; return Promise.resolve({error:null}); },
+        select:()=>({eq:()=>({maybeSingle:()=>{ pediu=t; return Promise.resolve({data:{dados:{dia,tn:9,fn:0,pct:100,orig:[],falta:[]}},error:null}); }}),
+                     order:()=>({limit:()=>Promise.resolve({data:[{dia}],error:null})})}) }; }};
+      const gUser=NV.user; NV.user=NV.user||{id:'teste'}; /* opOnline() = NV.cli && NV.user */
+      const gSnap=JSON.stringify(S.gsSnap||{}); delete (S.gsSnap||{})[dia];
+      const ok1=await gsFotoNuvemGravar({dia,tn:5,fn:0,pct:100},true);
+      const f=await gsGarantirFoto(dia);
+      S.gsSnap=JSON.parse(gSnap); NV.cli=velho; NV.user=gUser;
+      return {ok1,tabela:up&&up.t,temDia:!!(up&&up.o&&up.o.dia),pediu,achou:!!(f&&f.tn===9)}; });
+    ok(ft.ok1&&ft.tabela==='hs_fotos'&&ft.temDia,'foto: a foto do dia tem que ser gravada na tabela própria ('+ft.tabela+')');
+    ok(ft.pediu==='hs_fotos'&&ft.achou,'foto: dia sem foto no aparelho tem que vir da tabela antes de remontar'); }
+  { const sx=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const g=localStorage.getItem('healthSearch.bkSemana'); const gAdm=window.nvAdmin;
+      window.nvAdmin=()=>true;
+      localStorage.removeItem('healthSearch.bkSemana');
+      const hj=new Date(), dow=(hj.getDay()+6)%7;
+      const faltaHoje=semBkFalta();
+      localStorage.setItem('healthSearch.bkSemana',hojeISO());
+      const depois=semBkFalta();
+      const segunda=semSegunda(hojeISO());
+      if(g) localStorage.setItem('healthSearch.bkSemana',g); else localStorage.removeItem('healthSearch.bkSemana');
+      window.nvAdmin=gAdm;
+      return {dow,faltaHoje,depois,segunda,alto:ESPE.alto}; });
+    ok(sx.dow<4||sx.faltaHoje,'cópia da semana: de sexta em diante, sem cópia na semana, tem que cobrar');
+    ok(!sx.depois,'cópia da semana: depois de baixar, não pode continuar cobrando');
+    ok(/^\d{4}-\d{2}-\d{2}$/.test(sx.segunda),'cópia da semana: a semana tem que começar na segunda ('+sx.segunda+')');
+    ok(sx.alto===75,'espaço da equipe: o aviso tem que começar em 75% ('+sx.alto+')'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
