@@ -961,6 +961,36 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(aj.por&&aj.em,'fechar à mão: tem que gravar quem marcou e quando ('+aj.por+')');
     ok(aj.p3===100&&aj.dn3===2,'fechar à mão: marcando "divergência", conta 100% com 2 laranjas ('+aj.p3+'%, '+aj.dn3+')');
     ok(aj.semBotao,'fechar à mão: com o dia 100% não sobra lista de notas para marcar'); }
+  /* v10.2.1: nota tirada da conta (Simulação) não entra no total — nem hoje nem no histórico */
+  { const fo=await p.evaluate(async()=>{ const ant='2026-10-27';
+      const gRB=localStorage.getItem(RB.local), gBip=localStorage.getItem(OP_LOCAL+ant);
+      const gDv=JSON.stringify(S.divergencias||[]), gSnap=JSON.stringify(S.gsSnap||{}), gAj=JSON.stringify(S.gsAjuste||{});
+      const L={}; L[ant]={}; L[ant][ant+'|R1']={id:ant+'|R1',dia:ant,base:'CAJ',motorista:'REGINALDO',rows:[
+        {nf:'850001',ped:'E1',dest:'A',cid:'FRANCA',vol:'1'},
+        {nf:'850002',ped:'E2',dest:'B',cid:'BAURU',vol:'1'},
+        {nf:'850003',ped:'E3',dest:'C',cid:'ASSIS',vol:'1'}]};
+      localStorage.setItem(RB.local,JSON.stringify(L));
+      localStorage.setItem(OP_LOCAL+ant,JSON.stringify([
+        {nf:opK('850001'),ped:opK('E1'),status:'ok',dia:ant,local_id:'f1',criado_em:ant+'T10:00:00.000Z'},
+        {nf:opK('850002'),ped:opK('E2'),status:'ok',dia:ant,local_id:'f2',criado_em:ant+'T10:01:00.000Z'}]));
+      S.divergencias=[]; S.gsAjuste={}; delete (S.gsSnap||{})[ant];
+      const f1=await gsFotoDeDiaPassado(ant);
+      gsAjMarcar(ant,'850003','E3','fora'); delete (S.gsSnap||{})[ant];
+      const f2=await gsFotoDeDiaPassado(ant);
+      S.gsSnap=S.gsSnap||{}; S.gsSnap[ant]=f2;
+      /* mesmo tirando a marcação, a foto guardada lembra que aquela nota estava fora */
+      S.gsAjuste={};
+      const f3=await gsFotoDeDiaPassado(ant);
+      const cart=gsCartao(f2);
+      localStorage.setItem(RB.local,gRB||'{}'); if(gBip) localStorage.setItem(OP_LOCAL+ant,gBip); else localStorage.removeItem(OP_LOCAL+ant);
+      S.divergencias=JSON.parse(gDv); S.gsSnap=JSON.parse(gSnap); S.gsAjuste=JSON.parse(gAj);
+      return {p1:f1&&f1.pct,tn1:f1&&f1.tn,p2:f2&&f2.pct,tn2:f2&&f2.tn,fora2:(f2&&f2.fora||[]).length,
+        tn3:f3&&f3.tn,p3:f3&&f3.pct,txt:/tirada\(s\) da conta/.test(cart),bt:/\|fora"/.test(gsCartao(f1))}; });
+    ok(fo.p1===67&&fo.tn1===3,'fora da conta: antes de tirar, o dia é 2 de 3 ('+fo.p1+'%, '+fo.tn1+' notas)');
+    ok(fo.p2===100&&fo.tn2===2&&fo.fora2===1,'fora da conta: tirando a nota, o dia fecha 100% com 2 notas ('+fo.p2+'%, '+fo.tn2+', fora '+fo.fora2+')');
+    ok(fo.tn3===2&&fo.p3===100,'fora da conta: a foto guardada lembra quais notas estavam fora ('+fo.tn3+' notas)');
+    ok(fo.txt,'fora da conta: o cartão tem que dizer quantas notas saíram da conta');
+    ok(fo.bt,'fora da conta: falta o botão "não conta" na lista do que não entrou'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
