@@ -177,3 +177,8 @@ reentrega** — só avisa.
 - **`hs_fotos`** (migração `sql/migracoes/2026-11-16-001-fotos-do-dia.sql`): uma linha por dia com a foto da conferência; update permitido, delete bloqueado por trigger, RLS por `hs_eh_ativo()`. App: `gsFotoNuvemGravar` (debounce de 60s por dia), `gsFotoNuvemLer`, `gsFotoNuvemDias`; `gsGarantirFoto` tenta aparelho → tabela → remontar do banco de romaneios.
 - **Espaço da equipe**: `ESPE.alto` de 85 para 75 (85 já era tarde — nessa altura o aparelho perde gravação) e quadro no Mural, só admin, listando quem está acima.
 - **Cópia da semana**: `semBkFalta()` cobra a partir de sexta até alguém baixar; `semSegunda()` define a semana; `bkBaixar` marca. Aparece no Mural e no sino.
+
+## v10.1.8 (16/11/2026)
+- **Volume não derruba mais a porcentagem**: em `gsContar`, volume lido a menos só conta como falta quando `opPorVol()` está ligado (conferência caixa a caixa). A regra do Tiago é "um bipe confere a nota inteira" — era por isso que um dia 100% aparecia como "350 de 1.801 volumes (19%)".
+- `gsGarantirFoto(dia, refazer)`: com `refazer`, remonta e sobrescreve a foto (o "Remontar o histórico" passa `true`), e antes de tudo roda `integConferir(false)` para trazer as divergências que faltam no aparelho.
+- Cartão do dia avisa quando o aparelho está **sem as divergências daquele dia** (`.gs-semdv`) e oferece `[data-gs-puxardv]` para baixar e refazer a conta na hora. Sem as divergências carregadas, nota apontada como falta aparece como "não entrou" e a conta cai.
