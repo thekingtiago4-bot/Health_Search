@@ -332,3 +332,26 @@ intacta, falha de gravação virando erro (e recuperação), apagar-tudo. **Os d
   com índice — mas aí perde a API síncrona do localStorage. Fica anotado como melhoria futura.
 - Config pequena (nuvem, perfilCache) ficou de propósito no localStorage: se o navegador limpar o IndexedDB,
   o app ainda acha o banco e baixa tudo de novo depois do login.
+
+## v10.4.0 (16/11/2026) — Prioridade 2: o canal do ping religa sozinho (tempo real de verdade)
+**Quem mexe no app:** `session_01Gof5gngXKVm7DYTZnqnNpL`. Segunda das 4 prioridades.
+
+Investigação primeiro (a maior parte da Prioridade 2 já existia): bipe chega ao vivo pelo canal
+`hs-bipagens` (+`opPuxarDia` de 45s, v10.2.6); divergência/reentrega/ajuste sobem pelo `hs_sync` e o
+`nuvSinc` dispara `nuvPing()` (broadcast `mudou` no canal `hs-sync-ping`) quando sobe algo — os outros
+aparelhos puxam em ~300ms. O `online`/`nuvJa` já mandam na hora quando a internet volta.
+
+**O buraco real:** o canal `hs-sync-ping` (`NUV.canal`) **não tinha reconexão** — ao contrário do
+`OP.canal`, que ganhou religação na v10.2.6. Se caísse (tela bloqueada, internet oscilando, app aberto
+há horas), `NUV.aoVivo` virava falso e nunca voltava: o aparelho parava de avisar e de receber avisos ao
+vivo, caindo no poll de 5 min, calado.
+
+**Conserto (espelha o `opAoVivo` da v10.2.6):** `nuvAoVivo()` virou função reconectável (antes era um IIFE):
+no `subscribe`, em `CLOSED`/`CHANNEL_ERROR`/`TIMED_OUT` remove o canal e religa em 2s; ao voltar a
+`SUBSCRIBED` (reconexão), puxa com `nuvSinc()` o que ficou para trás (`NUV.jaLigou` evita puxar na 1ª
+conexão, que o `Store.init` já trouxe). Vigia de 45s religa se o estado for `closed`/`errored`; `online` e
+`visibilitychange` também religam. O guard no topo (`state==='joined'||'joining'` → sai) evita canal dobrado.
+
+**Não dá para testar daqui:** o comportamento ao vivo precisa de dois aparelhos com Supabase real (daqui a
+nuvem é cortada). O que foi testado: sintaxe, regressão (lógica intacta) e idb. O poll de 5 min continua de
+rede de segurança, então o pior caso de um bug aqui é voltar ao atraso de antes, nunca perder dado.
