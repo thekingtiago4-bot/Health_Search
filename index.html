@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.3', HS_DATA='16/11/2026';
+const HS_VERSAO='10.5.4', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9657,7 +9657,7 @@ async function opMarcarMao(x,modo,semDialogo){ const dv=modo==='dv'; const tot=M
   if(chegou<tot){ try{ opConfFalta(b,tot,chegou,'',faltaram); }catch(e){ console.error(e); }
     try{ const d2=dvAcha(b.ped,b.nf); if(d2) d2.conferida=true; }catch(e){}
     toast('⚠ NF '+cod+': '+chegou+' de '+tot+' — conferida e em divergência.'); }
-  else { try{ opConfMarcar(b,'ok',chegou); }catch(e){} toast('✔ NF '+cod+' marcada como conferida.'); }
+  else { try{ opConfCompletar(b,tot,chegou); opConfMarcar(b,'ok',chegou); }catch(e){} toast('✔ NF '+cod+' marcada como conferida.'); }
   try{ opRender(); }catch(e){} return true; }
 function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) return; OP._semFiltro=true; let pend; try{ pend=opPendentes().filter(it=>it.r.id===id); }finally{ OP._semFiltro=false; }
   const falta=new Set(pend.map(it=>it.x)); const bs=OP.bipes.filter(b=>b.status!=='fora');
