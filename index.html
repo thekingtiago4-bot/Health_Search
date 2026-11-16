@@ -738,6 +738,7 @@ body.so-mapa .app{grid-template-columns:1fr}
 .mural-in{max-width:1100px;margin:0 auto}.mural header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .mural-k{font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.08em;color:var(--acento);font-weight:700}.mural h1{margin:2px 0}
 .gs-dia .gs-pct{font-size:64px;font-weight:800;line-height:1;margin:6px 0}.gs-falta{max-height:300px;overflow:auto}.gs-falta table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}.gs-falta th,.gs-falta td{border-bottom:1px solid var(--linha);padding:4px 6px;text-align:left}
+.nx-dv{background:rgba(174,62,201,.10)}.nx-dvtxt{color:var(--ag);font-size:var(--fs-sm)}
 .mural-topo{grid-column:1/-1}.mural-topo h3{font-size:var(--fs-md)}.mural-topo .big{font-size:46px;font-weight:800}
 .mural-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}.mural-c{border:1px solid var(--linha);border-radius:12px;padding:14px;background:var(--sup);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .mural-c h3{margin:0;font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.06em;color:var(--tinta2)}.mural-c .big{font-size:28px;line-height:1}.mural-c ul{margin:4px 0;padding-left:18px}.mural-c.fer b{color:#C92A2A}
@@ -3799,18 +3800,29 @@ async function nexAbrirSuspeitas(){ const n=nexS(); const l=nexSuspeitas(); if(!
   f.innerHTML=`<div class="modal largo" role="dialog" aria-modal="true"><h2>Reentregas detectadas</h2><p>Estas notas entraram hoje mas <b>já tinham sido roteirizadas</b> antes. Digite o motivo e confirme: a nota ganha a etiqueta Reentrega e entra na relação do dia em Reentregas. Se foi só o mesmo romaneio importado de novo, marque “Não é reentrega”.</p>
     <datalist id="nx-mots">${NEX_MOTIVOS.map(m=>`<option value="${esc(m)}">`).join('')}</datalist><datalist id="nx-motoristas">${[...new Set([...(S.reMotoristas||[]),...(S.romaneios||[]).map(r=>String(r.motorista||'').trim().toUpperCase()).filter(Boolean)])].map(m=>`<option value="${esc(m)}">`).join('')}</datalist>
     <div class="rolagem" style="max-height:55vh;overflow:auto"><table class="nx-tab"><thead><tr><th>NF</th><th>Destinatário</th><th>Cidade</th><th>Antes</th><th>Agora</th><th>Motivo</th><th>Motorista</th><th></th></tr></thead><tbody>${
-    l.map(([k,r])=>{ const row=linha(k,r); return `<tr data-k="${esc(k)}"><td class="forte">${esc(z(row.nf)||'—')}${row.ped?`<small class="sec"> ped. ${esc(z(row.ped))}</small>`:''}</td><td>${esc(row.dest||'')}</td><td>${esc(row.cid||'')}${row.uf?'/'+esc(row.uf):''}</td><td>${esc(fmtData(r.anterior))}<small class="sec"> ${esc(r.romAnt)}</small></td><td>${esc(fmtData(r.d))}<small class="sec"> ${esc(r.num)}</small></td>
-      <td><input list="nx-mots" data-mot placeholder="Motivo" autocomplete="off"></td><td><input list="nx-motoristas" data-mot2 placeholder="Motorista" autocomplete="off" style="max-width:150px"></td><td><label class="nx-ign"><input type="checkbox" data-ign> Não é reentrega</label></td></tr>`; }).join('')}</tbody></table></div>
+    l.map(([k,r])=>{ const row=linha(k,r); const dj=(typeof dvAcha==='function')?dvAcha(row.ped,row.nf):null; return `<tr data-k="${esc(k)}"${dj?` data-dvid="${esc(dj.id)}" class="nx-dv"`:''}><td class="forte">${esc(z(row.nf)||'—')}${row.ped?`<small class="sec"> ped. ${esc(z(row.ped))}</small>`:''}</td><td>${esc(row.dest||'')}</td><td>${esc(row.cid||'')}${row.uf?'/'+esc(row.uf):''}</td><td>${esc(fmtData(r.anterior))}<small class="sec"> ${esc(r.romAnt)}</small></td><td>${esc(fmtData(r.d))}<small class="sec"> ${esc(r.num)}</small></td>
+      ${dj?`<td colspan="2" class="nx-dvtxt">📦 <b>Volume que faltou chegou</b> · divergência ${dvNum(dj)}${dj.qtd?` (faltavam ${dj.qtd} vol.)`:''} — não é reentrega, vou dar baixa nela.</td><td><label class="nx-ign"><input type="checkbox" data-baixa checked> Dar baixa</label></td>`:`<td><input list="nx-mots" data-mot placeholder="Motivo" autocomplete="off"></td><td><input list="nx-motoristas" data-mot2 placeholder="Motorista" autocomplete="off" style="max-width:150px"></td><td><label class="nx-ign"><input type="checkbox" data-ign> Não é reentrega</label></td>`}</tr>`; }).join('')}</tbody></table></div>
     <div class="botoes"><button class="btn" data-a="x">Depois</button><button class="btn pri" data-a="ok">Confirmar</button></div></div>`;
   document.body.appendChild(f);
   f.addEventListener('click',e=>{ const a=e.target.closest('[data-a]'); if(!a) return; if(a.dataset.a!=='ok'){ f.remove(); return; }
-    let c=0,i=0,sem=0; for(const tr of f.querySelectorAll('tr[data-k]')){ const k=tr.dataset.k, r=n.reent[k]; const ign=tr.querySelector('[data-ign]').checked, m=tr.querySelector('[data-mot]').value.trim();
+    let c=0,i=0,sem=0,bx=0; for(const tr of f.querySelectorAll('tr[data-k]')){ const k=tr.dataset.k, r=n.reent[k];
+      if(tr.dataset.dvid){ /* nota que estava em divergência: o volume que faltou chegou */
+        const dj=dvS().find(x=>x.id===tr.dataset.dvid);
+        const cb=tr.querySelector('[data-baixa]'); const dar=!cb||cb.checked;
+        r.status='ignorada'; (S.reFeito=S.reFeito||{})[k]=r.d;
+        if(dj&&dar){ const eu=(typeof opEu==='function'?opEu():''), ag=new Date().toISOString();
+          dj.st='resolvida'; dj.res={d:hojeISO(),em:ag,obs:'O volume que faltou chegou no romaneio '+(r.num||'')+'.',por:eu};
+          (dj.hist=dj.hist||[]).push({em:ag,por:eu,t:'Resolvida: o volume que faltou chegou no romaneio '+(r.num||'')+'.'});
+          try{ (NUV.apagar=NUV.apagar||new Set()).delete('dv:'+dj.id); }catch(e2){}
+          bx++; }
+        continue; }
+      const ign=tr.querySelector('[data-ign]').checked, m=tr.querySelector('[data-mot]').value.trim();
       if(ign){ r.status='ignorada'; (S.reFeito=S.reFeito||{})[k]=r.d; i++; continue; } if(!m){ sem++; continue; }
       const mot=(tr.querySelector('[data-mot2]')||{}).value?.trim().toUpperCase()||''; if(mot){ S.reMotoristas=[...new Set([mot,...(S.reMotoristas||[])])].slice(0,60); } const mFinal=mot?`${m} - ${mot}`:m;
       const row=linha(k,r); (S.reFeito=S.reFeito||{})[k]=r.d; r.status='confirmada'; r.motivo=mFinal; r.motorista=mot; nexSetTag(k,'Reentrega',true); nexParaReentrega({nf:row.nf,ped:row.ped,dest:row.dest,cid:row.cid,uf:row.uf,vol:row.vol,peso:row.peso,valor:row.valor,motivo:mFinal},r.d,'automatica'); c++; }
-    if(c||i){ nexLog(`Reentregas: ${c} confirmada(s), ${i} descartada(s).`); salvar(); }
+    if(c||i||bx){ nexLog(`Reentregas: ${c} confirmada(s), ${i} descartada(s)${bx?`, ${bx} divergência(s) baixada(s)`:''}.`); salvar(); try{ if(bx){ nuvSinc(); dvRender(); } }catch(e){} }
     if(c){ try{ const D=RE.ler(); const dias=[...f.querySelectorAll('tr[data-k]')].map(tr=>(n.reent[tr.dataset.k]||{}).d).filter(Boolean).sort(); const dia=dias.pop()||reHoje(); D.dias[dia]=D.dias[dia]||[]; D.atual=dia; RE.gravar(); setTimeout(()=>{ try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} toast(`${c} reentrega(s) lançada(s) em Reentregas no dia ${fmtData(dia)}. Abra Reentregas para ver.`); },300); }catch(e){} }
-    f.remove(); renderTudo(); toast(`${c} reentrega(s) confirmada(s)${i?`, ${i} descartada(s)`:''}${sem?`. ${sem} ficaram sem motivo e continuam pendentes`:''}.`); }); }
+    f.remove(); renderTudo(); toast(`${c} reentrega(s) confirmada(s)${bx?`, ${bx} divergência(s) baixada(s) — o volume que faltou chegou`:''}${i?`, ${i} descartada(s)`:''}${sem?`. ${sem} ficaram sem motivo e continuam pendentes`:''}.`); }); }
 
 /* ---- memória de agendamentos (fica na aba Agendamentos) ---- */
 function renderNexRegras(){ const el=$('#nx-regras'); if(!el) return; const n=nexS();
@@ -4242,7 +4254,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.1.2', HS_DATA='16/11/2026';
+const HS_VERSAO='10.1.3', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -10274,8 +10286,11 @@ function dvavDaNota(k,re){ const ped=z(re&&re.ped||(String(k).startsWith('P')?St
       const m=tr.querySelector('[data-mot]'); if(m&&!m.value) m.value=avEh(d)?`AVARIA ${avNum(d)} - ${d.sub||''}${d.qtd?' ('+d.qtd+' vol.)':''}`:`DIVERGÊNCIA ${dvNum(d)} - ${d.tipo}${d.qtd?' ('+d.qtd+' vol.)':''}`; }
     if(tem){ const p=f.querySelector('p'); p.insertAdjacentHTML('afterend',`<div class="dvav-leg"><b style="font-size:.85rem;margin-right:4px">${tem} nota(s) com ocorrência registrada:</b>${Object.entries(DV_COR).filter(([t])=>t!=='Outro').map(([t,c])=>`<span><i style="background:${c}"></i>${t}</span>`).join('')}<span><i style="background:${DV_COR['Outro']}"></i>Outro</span></div>`); }
     const ok=f.querySelector('[data-a="ok"]'); if(ok) ok.addEventListener('click',()=>{ const eu=dvEu(), ag=new Date().toISOString(); let mud=false;
-      for(const tr of f.querySelectorAll('tr[data-dvav-id]')){ if(tr.querySelector('[data-ign]').checked||!tr.querySelector('[data-mot]').value.trim()) continue;
-        for(const id of tr.dataset.dvavId.split(',')){ const d=dvS().find(x=>x.id===id); if(!d) continue; d.reent={d:hojeISO(),motivo:tr.querySelector('[data-mot]').value.trim()}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Voltou como reentrega'}); mud=true; } }
+      for(const tr of f.querySelectorAll('tr[data-dvav-id]')){
+        if(tr.dataset.dvid) continue; /* v10.1.3: divergência que recebeu o volume que faltou não volta como reentrega */
+        const ig=tr.querySelector('[data-ign]'), mo=tr.querySelector('[data-mot]');
+        if(!ig||!mo||ig.checked||!mo.value.trim()) continue;
+        for(const id of tr.dataset.dvavId.split(',')){ const d=dvS().find(x=>x.id===id); if(!d) continue; d.reent={d:hojeISO(),motivo:mo.value.trim()}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Voltou como reentrega'}); mud=true; } }
       if(mud) salvar(); },{capture:true}); }catch(e){ console.error(e); }
   return r; }; }
 

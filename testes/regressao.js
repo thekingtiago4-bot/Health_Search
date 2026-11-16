@@ -729,6 +729,41 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(pdf.semFaltaObs,'relatório: a observação digitada tem que sair no PDF');
     ok(pdf.soFaltaTemLista&&!pdf.soFaltaTemPct&&!pdf.soFaltaOrig,'relatório: marcar só a lista tem que tirar a porcentagem e a origem');
     ok(pdf.rodape,'relatório: o rodapé de uso interno tem que sair sempre'); }
+  /* v10.1.3: nota que estava em divergência não volta como reentrega — é o volume que faltou chegando */
+  { const dvr=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const hoje=hojeISO(), ont='2026-11-13';
+      const guardaRom=JSON.stringify(S.romaneios||[]), guardaDv=JSON.stringify(S.divergencias||[]);
+      const guardaNex=JSON.stringify(nexS()), guardaFeito=JSON.stringify(S.reFeito||{});
+      const rid='T-DVRE-1';
+      S.romaneios=[{id:rid,numero:'900',base:'CAJ',motorista:'REGINALDO',dia:hoje,rows:[
+        {nf:'742414',ped:'735678',dest:'SANTA CASA FRANCA',cid:'FRANCA',uf:'SP',vol:'1'},
+        {nf:'742415',ped:'735679',dest:'CLIENTE COMUM',cid:'BAURU',uf:'SP',vol:'1'}]}];
+      S.divergencias=[{id:'dv-teste-1',n:7,cat:'dv',st:'aberta',tipo:'Falta de volume',d:ont,
+        nf:'742414',ped:'735678',cli:'SANTA CASA FRANCA',qtd:1,obs:'faltou 1 volume'}];
+      const n=nexS(); n.reent={};
+      n.reent['742414']={status:'suspeita',rom:rid,d:hoje,anterior:ont,romAnt:'0236361',num:'EXTRA I',nf:'742414',ped:'735678'};
+      n.reent['742415']={status:'suspeita',rom:rid,d:hoje,anterior:ont,romAnt:'0236361',num:'EXTRA I',nf:'742415',ped:'735679'};
+      S.reFeito={};
+      await nexAbrirSuspeitas(); await w(300);
+      const trs=[...document.querySelectorAll('.modal.largo tr[data-k]')];
+      const comDv=trs.filter(t=>t.dataset.dvid).map(t=>t.dataset.k);
+      const txtDv=trs.find(t=>t.dataset.dvid), txt=txtDv?txtDv.innerText.replace(/\s+/g,' '):'';
+      const temMotivo=txtDv?!!txtDv.querySelector('[data-mot]'):true;
+      /* confirma: a divergência tem que receber baixa e NÃO virar reentrega */
+      const outra=trs.find(t=>!t.dataset.dvid); if(outra) outra.querySelector('[data-ign]').checked=true;
+      document.querySelector('.modal.largo [data-a="ok"]').click(); await w(500);
+      const d=(S.divergencias||[])[0];
+      const reDoDia=((RE.ler().dias||{})[hoje]||[]).filter(x=>String(x.nf||'')==='742414').length;
+      const r={comDv,txt,temMotivo,st:d&&d.st,res:d&&d.res&&d.res.obs||'',hist:(d&&d.hist||[]).length,reDoDia};
+      S.romaneios=JSON.parse(guardaRom); S.divergencias=JSON.parse(guardaDv); S.reFeito=JSON.parse(guardaFeito);
+      try{ const nn=nexS(); const g=JSON.parse(guardaNex); nn.reent=g.reent||{}; }catch(e){}
+      document.querySelectorAll('.fundo').forEach(x=>x.remove()); return r; });
+    ok(dvr.comDv.length===1&&dvr.comDv[0]==='742414','divergência: só a nota que estava em divergência pode ser marcada ('+dvr.comDv.join(',')+')');
+    ok(/faltou chegou/i.test(dvr.txt)&&/#007/.test(dvr.txt),'divergência: a linha tem que dizer que é o volume que faltou e o número da divergência ('+dvr.txt+')');
+    ok(!dvr.temMotivo,'divergência: essa linha não pode pedir motivo nem motorista de reentrega');
+    ok(dvr.st==='resolvida','divergência: ao confirmar, a divergência tinha que receber baixa ('+dvr.st+')');
+    ok(/chegou no romaneio/i.test(dvr.res)&&dvr.hist>=1,'divergência: a baixa tem que registrar o romaneio que trouxe o volume ('+dvr.res+')');
+    ok(dvr.reDoDia===0,'divergência: a nota não pode entrar como reentrega do dia'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
