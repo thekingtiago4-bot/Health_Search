@@ -1365,7 +1365,7 @@ function depois(){ pronto=true; diag.modo=modo; uniao=null;
           lerAlgumas(db,ks.filter(k=>k!==META)).then(m=>{ for(const k of ks){ if(k===META||sujo.has(k)) continue; const velho=mem.has(k)?mem.get(k):null, novo=m.has(k)?m.get(k):null; if(velho===novo) continue;
               if(novo==null) mem.delete(k); else mem.set(k,novo); uniao=null;
               try{ root.dispatchEvent(new StorageEvent('storage',{key:k,oldValue:velho,newValue:novo,url:location.href})); }catch(e){} } }).catch(()=>{}); }; } }catch(e){}
-    LS.cota(); setInterval(()=>LS.cota(),5*60e3);
+    LS.cota(); setInterval(()=>LS.cota(),5*60e3); LS.proteger(); /* pede ao navegador para NÃO apagar o IndexedDB quando o aparelho ficar apertado */
   } else if(modo==='ls'){ for(const [k,v] of pre){ try{ real.setItem(k,v); }catch(e){} } pre.clear(); }
 }
 LS.pronto=iniciar().catch(e=>{ diag.erro='início: '+(e&&e.message||e); if(modo!=='idb'){ modo=temMarca?'idb':'ls'; } }).then(depois);
@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.3.0', HS_DATA='16/11/2026';
+const HS_VERSAO='10.3.1', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
