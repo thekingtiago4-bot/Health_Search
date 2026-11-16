@@ -140,3 +140,9 @@ reentrega** — só avisa.
 - **Bipe de madrugada** (até as 6h do dia seguinte) conta no romaneio do dia anterior — turno que vira a noite não derruba mais a porcentagem.
 - **Por origem mostra a conta** ("CAJ · Reginaldo (12 de 13)").
 - **Divergência que chegou ≠ reentrega** (`nexAbrirSuspeitas`): linha com `data-dvid` quando `dvAcha(ped,nf)` encontra divergência aberta; sem motivo/motorista, com checkbox "Dar baixa"; ao confirmar, `st='resolvida'` + `res.obs` com o romaneio que trouxe o volume. O handler antigo `tr[data-dvav-id]` (linha ~10289) pulava direto para "Voltou como reentrega" e quebrava com null — agora ignora `data-dvid` e tem guarda de null.
+
+## v10.1.4 (16/11/2026)
+- **Conta fiel do dia** (`gsContar`, `gsDvDoDia`, `gsPctOk/gsPctDv/gsPctConf`, `gsBarras2`): regra do Tiago — nota marcada à mão conta (gera bipe) e **nota com divergência daquele dia conta como conferida**, saindo em **laranja** (`#F59F00`) na barra do romaneio. `gsFotoMontar` (hoje) e `gsFotoDeDiaPassado` usam o mesmo contador, então painel e histórico não divergem. Campos novos da foto: `dn`, `dvv`, `pctOk`, `pctDv`.
+- **Espaço** (`gsBipesAntigos`, `gsEnxugarBipes`): dia com foto perde os bipes crus do aparelho (ficam em `hs_bipagens`). Botão no painel 💾 e faxina automática 20s depois de entrar. O aparelho dele estava com 85% de 9,5 MB, metade só de bipes — é a causa provável do sumiço das divergências.
+- **Baixa no bipe** (`dvBotaoBaixa`, `dvBaixaPeloBipe`, `#op-dvacao`) e **aviso para quem abriu** (`dvAvisarDono`, `dvMeusAvisos`, campo sincronizado `dvAvisos`, entra no sino por `nexAvisos`).
+- **Limpeza do histórico** (`corEraDv`, `corEraDvCsv`, `corTirarEraDv`, bloco na Correção): tira as reentregas com motivo "ERA DIVERGENCIA…"/"DIVERGENCIA #…", baixando a planilha antes. Atenção: `N()` remove o `#`, então o regex casa com o número direto.
