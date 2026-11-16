@@ -155,3 +155,8 @@ reentrega** — só avisa.
 - `nuvSujo`/`pendFaixa`/`#pend-aviso`: o app sabe que há coisa para subir; tenta a cada 30s, sobe em `visibilitychange`/`pagehide` e trava o `beforeunload`.
 - `nuvJa()` em `salvarAg`, `dvRegistrar` e `RE.gravar`: cadastro crítico sobe na hora. Debounce de `nuvAgendar` caiu de 6s para 2,5s.
 **Armadilha de teste:** `reDupVarrer` abre a pergunta "NF com dois motivos" assim que não há outro `.fundo`; ela rouba o `.fundo .modal` de outros testes. Nos testes, limpar `.fundo` antes e escolher o modal pelo conteúdo.
+
+## v10.1.7 (16/11/2026)
+- **`hs_fotos`** (migração `sql/migracoes/2026-11-16-001-fotos-do-dia.sql`): uma linha por dia com a foto da conferência; update permitido, delete bloqueado por trigger, RLS por `hs_eh_ativo()`. App: `gsFotoNuvemGravar` (debounce de 60s por dia), `gsFotoNuvemLer`, `gsFotoNuvemDias`; `gsGarantirFoto` tenta aparelho → tabela → remontar do banco de romaneios.
+- **Espaço da equipe**: `ESPE.alto` de 85 para 75 (85 já era tarde — nessa altura o aparelho perde gravação) e quadro no Mural, só admin, listando quem está acima.
+- **Cópia da semana**: `semBkFalta()` cobra a partir de sexta até alguém baixar; `semSegunda()` define a semana; `bkBaixar` marca. Aparece no Mural e no sino.
