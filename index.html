@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.1', HS_DATA='16/11/2026';
+const HS_VERSAO='10.5.2', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9663,7 +9663,7 @@ function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) re
   const falta=new Set(pend.map(it=>it.x)); const bs=OP.bipes.filter(b=>b.status!=='fora');
   const temDv=x=>{ try{ const d=dvAcha(opK(x.ped),opK(x.nf)); return d&&d.st!=='resolvida'?d:null; }catch(e){ return null; } };
   const lin=(x,extra,mk)=>{ const d=temDv(x); const lar=d&&mk==null;
-    return `<div style="padding:6px 0;border-bottom:1px solid var(--linha)${lar?';box-shadow:inset 3px 0 0 #E8590C;padding-left:8px':''}">${mk!=null?`<input type="checkbox" class="rl-mk" data-rl-mk="${mk}" title="Marcar como bipada (chegou tudo)" style="width:18px;height:18px;vertical-align:-3px;margin-right:6px;accent-color:var(--ok)"><button type="button" class="rl-dv" data-rl-dv="${mk}" title="Marcar como divergência" style="border:0;background:transparent;color:#E8590C;font-size:16px;cursor:pointer;padding:0 6px 0 0;vertical-align:-2px">⚠</button>`:''}<b${lar?' style="color:#E8590C"':''}>NF ${esc(opK(x.nf)||'—')}</b>${x.ped?` <small class="sub">ped. ${esc(opK(x.ped))}</small>`:''} <small style="float:right">${extra}</small><br><small class="sub" style="margin-left:${mk!=null?'46px':'0'}">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}${lar?` · <b style="color:#E8590C">⚠ divergência ${esc(dvNum(d))}${d.qtd?' · faltam '+d.qtd:''}</b>`:''}</small></div>`; };
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--linha)${lar?';box-shadow:inset 3px 0 0 #E8590C;padding-left:8px':''}"><div style="display:flex;align-items:flex-start;gap:6px">${mk!=null?`<span style="display:flex;gap:4px;flex-shrink:0;margin-top:1px"><button type="button" class="btn mini rl-mk" data-rl-mk="${mk}" style="background:#16a34a;color:#fff;border-color:#16a34a;padding:2px 6px;font-size:.75em">✔</button><button type="button" class="btn mini rl-dv" data-rl-dv="${mk}" style="background:#f97316;color:#fff;border-color:#f97316;padding:2px 6px;font-size:.75em">⚠</button></span>`:''}<div style="flex:1;min-width:0"><b${lar?' style="color:#E8590C"':''}>NF ${esc(opK(x.nf)||'—')}</b>${x.ped?` <small class="sub">ped. ${esc(opK(x.ped))}</small>`:''} <small style="float:right">${extra}</small><br><small class="sub">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}${lar?` · <b style="color:#E8590C">⚠ divergência ${esc(dvNum(d))}${d.qtd?' · faltam '+d.qtd:''}</b>`:''}</small></div></div></div>`; };
   const rows=(r.rows||[]).filter(x=>(opK(x.ped)||opK(x.nf))&&volNum(x.vol)!==0);
   const feitas=rows.filter(x=>!falta.has(x)).map(x=>{ const quem=bs.filter(b=>(opK(x.nf)&&b.nf===opK(x.nf))||(opK(x.ped)&&b.ped===opK(x.ped))); return lin(x,`${fmtN(volNum(x.vol)||1)} vol. · ${esc([...new Set(quem.map(b=>(b.usuario||'').split(' ')[0]))].join(', '))}`); });
   const falt=pend.map((it,i)=>lin(it.x,`${opPorVol()?fmtN(it.lidos)+' de '+fmtN(it.esp):fmtN(volNum(it.x.vol)||1)+' vol.'}${volNum(it.x.vol)>=10?' · <b style="color:#7950F2">alta</b>':''}`,i));
@@ -9675,9 +9675,9 @@ function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) re
   const refaz=async(i,modo,el)=>{ const it=pend[i]; if(!it) return; if(el) el.disabled=true;
     const rolagem=(f.querySelector('.modal div[style*="grid-template-columns"]')||{}).scrollTop||0;
     const fez=await opMarcarMao(it.x,modo);
-    if(!fez){ if(el){ el.disabled=false; if(el.type==='checkbox') el.checked=false; } return; }
+    if(!fez){ if(el) el.disabled=false; return; }
     f.remove(); opRomLista(id); const novo=document.querySelector('.fundo .modal div[style*="grid-template-columns"]'); if(novo) novo.scrollTop=rolagem; };
-  f.addEventListener('change',e=>{ const c=e.target.closest('[data-rl-mk]'); if(c) refaz(+c.dataset.rlMk,'ok',c); });
+  f.addEventListener('click',e=>{ const c=e.target.closest('[data-rl-mk]'); if(c){ e.preventDefault(); refaz(+c.dataset.rlMk,'ok',c); } },true);
   f.addEventListener('click',e=>{ const c=e.target.closest('[data-rl-dv]'); if(c){ e.preventDefault(); refaz(+c.dataset.rlDv,'dv',c); } },true);
   f.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='x')){ f.remove(); return; } if(b&&b.dataset.a==='f'){ f.remove(); OP.romFiltro=id; opRender(); } });
   document.body.appendChild(f); }

@@ -349,12 +349,11 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       opRomLista('mk1'); await w(200);
       const cx=[...document.querySelectorAll('.fundo [data-rl-mk]')]; const antes=cx.length;
       /* 1 volume: marca e pronto */
-      cx[0].checked=true; cx[0].dispatchEvent(new Event('change',{bubbles:true})); await w(400);
+      cx[0].click(); await w(400);
       const depois1=document.querySelectorAll('.fundo [data-rl-mk]').length;
       const aberta1=!!document.querySelector('.fundo [data-rl-mk]');
       /* 4 volumes: tem que perguntar */
-      document.querySelector('.fundo [data-rl-mk]').checked=true;
-      document.querySelector('.fundo [data-rl-mk]').dispatchEvent(new Event('change',{bubbles:true})); await w(300);
+      document.querySelector('.fundo [data-rl-mk]').click(); await w(300);
       const perguntou=!!document.querySelector('[data-mcx]');
       const grade=[...document.querySelectorAll('[data-mcx]')].map(x=>x.textContent).join(',');
       document.querySelector('[data-mcx="3"]').click();
@@ -363,7 +362,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const bip=OP.bipes.map(x=>x.nf+':'+x.status).join(' ');
       [...document.querySelectorAll('.fundo')].forEach(x=>x.remove()); S.divergencias=[];
       return {antes,depois1,aberta1,perguntou,grade,qtd:d.qtd,tot:d.tot,falt:(d.falt||[]).join(','),bip,aberta2}; });
-    ok(mk.antes===2,'romaneio: cada nota faltando precisa de um quadradinho ('+mk.antes+')');
+    ok(mk.antes===2,'romaneio: cada nota faltando precisa de um botão verde ('+mk.antes+')');
     ok(mk.depois1===1&&mk.aberta1,'romaneio: ao marcar, a nota sai de Faltando e a janela continua aberta ('+mk.depois1+')');
     ok(mk.perguntou,'romaneio: nota com 4 volumes tem que perguntar quais chegaram');
     ok(mk.grade==='1/4,2/4,3/4,4/4','romaneio: a grade de caixas veio errada ('+mk.grade+')');
