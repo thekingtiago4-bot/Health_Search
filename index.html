@@ -4284,7 +4284,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.1.5', HS_DATA='16/11/2026';
+const HS_VERSAO='10.1.6', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6692,7 +6692,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     if(NUV.falhas===3&&typeof nvAdmin==='function'&&nvAdmin()) toast('⚠ Banco lento ou sem resposta há 3 tentativas. Veja o e-mail do Supabase (Disk IO) e feche abas sobrando.');
     console.error('nuv',e); }
   finally{ NUV.rodando=false; nuvStatus(); } }
-function nuvAgendar(){ if(NUV.aplicando) return; clearTimeout(NUV.timer); NUV.timer=setTimeout(nuvSinc,6000); } /* v9.1.1: junta várias mudanças numa gravação só */
+function nuvAgendar(){ if(NUV.aplicando) return; clearTimeout(NUV.timer); NUV.timer=setTimeout(nuvSinc,2500); } /* v10.1.5: 6s era tempo demais para um cadastro ficar só no aparelho */ /* v9.1.1: junta várias mudanças numa gravação só */
 { const _g=RE.gravar.bind(RE); RE.gravar=function(){ _g(); nuvAgendar(); }; }
 { const _s=Store.salvar.bind(Store); Store.salvar=function(...a){ const r=_s(...a); nuvAgendar(); return r; }; }
 /* v9.19.3: app aberto em mais de uma aba/janela no mesmo aparelho — a aba velha não grava por cima da nova: quando outra aba salva, esta recarrega os dados na hora */
@@ -10087,6 +10087,12 @@ setInterval(()=>{ try{ pendFaixa(); if(NUV.sujo&&opOnline()&&!NUV.rodando) nuvSi
 document.addEventListener('visibilitychange',()=>{ try{ if(document.visibilityState==='hidden'&&NUV.sujo&&opOnline()) nuvSinc(); }catch(e){} });
 window.addEventListener('pagehide',()=>{ try{ if(NUV.sujo&&opOnline()) nuvSinc(); }catch(e){} });
 window.addEventListener('beforeunload',e=>{ try{ if(NUV.sujo||GRAV_FALHOU){ e.preventDefault(); e.returnValue=''; return ''; } }catch(er){} });
+
+/* v10.1.5 · cadastro que não pode esperar: sobe na hora, sem esperar o agrupamento */
+function nuvJa(){ try{ nuvSujo(true); clearTimeout(NUV.timer); if(opOnline()&&!NUV.rodando) nuvSinc(); else nuvAgendar(); }catch(e){} }
+try{ const _sa=salvarAg; salvarAg=function(){ const r=_sa.apply(this,arguments); nuvJa(); return r; }; }catch(e){}
+try{ const _dr=dvRegistrar; dvRegistrar=function(){ const r=_dr.apply(this,arguments); nuvJa(); return r; }; }catch(e){}
+try{ const _rg=RE.gravar.bind(RE); RE.gravar=function(){ const r=_rg(); nuvJa(); return r; }; }catch(e){}
 
 /* ================= v10.1.1 · Conferência por origem de QUALQUER dia =================
    Antes o quadro só sabia calcular o dia de hoje (opPorRom lê os romaneios carregados),
