@@ -134,3 +134,9 @@ reentrega** — só avisa.
 - **Conferência por origem de qualquer dia** (`gsRomsDia`, `gsBipesDia`, `gsFotoDeDiaPassado`, `gsGarantirFoto`, `gsRemontarTudo`, `gsOrigemBox`, `gsTrocarOrigem`): remonta a conta de um dia passado do banco de romaneios (`rbLocalLer` / `hs_rom_banco`) + bipes do dia (`OP_LOCAL+dia` / `hs_bipagens`) e grava como foto em `S.gsSnap`. Botão "📊 Remontar o histórico" faz todos os dias do banco de uma vez.
 - **Bug corrigido**: o quadro "Conferência por origem (dd/mm)" mostrava o título do dia escolhido com os números de HOJE — por isso aparecia 0% num dia que foi 100%.
 - **Fato apurado em 16/11**: as 13 divergências de 13/11 estavam intactas na nuvem (conferido no backup do robô de 15/11: 27 chaves `dv:`, 13 do dia 13, 14 tombstones antigos). Era a cópia do aparelho que estava vazia.
+
+## v10.1.2 / v10.1.3 (16/11/2026)
+- **Relatório sob medida** (`gsPdfEscolher`, `GSR`, `gsPorPessoa`, `gsPorHora`, `gsTab`): janela antes do PDF com porcentagem, origem, o que não entrou, divergências do dia, bipes por pessoa, bipes por hora e observação para a diretoria. `gsPdfProjetor(dia,op)` respeita as marcações.
+- **Bipe de madrugada** (até as 6h do dia seguinte) conta no romaneio do dia anterior — turno que vira a noite não derruba mais a porcentagem.
+- **Por origem mostra a conta** ("CAJ · Reginaldo (12 de 13)").
+- **Divergência que chegou ≠ reentrega** (`nexAbrirSuspeitas`): linha com `data-dvid` quando `dvAcha(ped,nf)` encontra divergência aberta; sem motivo/motorista, com checkbox "Dar baixa"; ao confirmar, `st='resolvida'` + `res.obs` com o romaneio que trouxe o volume. O handler antigo `tr[data-dvav-id]` (linha ~10289) pulava direto para "Voltou como reentrega" e quebrava com null — agora ignora `data-dvid` e tem guarda de null.
