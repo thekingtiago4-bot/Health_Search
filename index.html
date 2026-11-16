@@ -563,6 +563,7 @@ tr.alvo td{background:var(--tealBg)!important}
 .geo-cor{width:14px;height:14px;border-radius:4px;display:inline-block;vertical-align:-2px}
 @media (max-width:860px){ .geo-grid{grid-template-columns:1fr} .geo-mapa canvas{height:420px} .geo-colar,.geo-prev .cab{grid-template-columns:1fr} .geo-colar textarea{grid-column:1} }
 /* ---------- NEX: prioridade, etiquetas, retiradas, reentregas ---------- */
+.nx-chip-bt{border:1px solid var(--c);cursor:pointer;font:inherit;font-size:.75rem;font-weight:600}.nx-chip-bt:hover{filter:brightness(1.25)}
 .nx-chip{display:inline-flex;align-items:center;gap:3px;font-size:.75rem;font-weight:600;line-height:1;padding:3px 7px;border-radius:20px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid color-mix(in srgb,var(--c) 40%,transparent);white-space:nowrap;margin:1px 3px 1px 0}
 .nx-peso b{font-family:"Barlow Semi Condensed",sans-serif}
 .nx-barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:var(--fs-sm);color:var(--tinta2);margin:0 0 8px}
@@ -3695,12 +3696,46 @@ function nexParaReentrega(o,dia,origem){ const D=RE.ler(); D.dias[dia]=D.dias[di
   RE.gravar(); return true; }
 
 /* ---- romaneio aberto como lista: checkbox (entra/não entra), prioridade, etiquetas e peso ---- */
+/* ================= v10.2.3 · Tirar de uma vez as reentregas marcadas erradas num romaneio =================
+   O chip "31 reentrega(s)" no cartão do romaneio vira botão: o responsável diz que não são, e o app
+   desmarca todas daquele romaneio e tira do controle de Reentregas as que já tinham sido lançadas.
+   Como é histórico de reentrega, a planilha é baixada ANTES de qualquer coisa ser apagada. */
+function nexReentDoRom(r){ const n=nexS(); const out=[];
+  for(const x of (r.rows||[])){ const k=nexK(x); const e=k&&n.reent[k];
+    if(e&&e.rom===r.id&&e.status!=='ignorada') out.push({k,x,e}); }
+  return out; }
+function nexCsvReent(r,L){ const esq=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const cab=['Romaneio','Dia','NF','Pedido','Cliente','Cidade','UF','Volumes','Situacao','Motivo'];
+  const li=L.map(({x,e})=>[r.numero||'',fmtData(e.d||''),x.nf||'',x.ped||'',x.dest||'',x.cid||'',x.uf||'',x.vol||'',e.status||'',e.motivo||''].map(esq).join(';'));
+  return '﻿'+[cab.map(esq).join(';'),...li].join('\r\n'); }
+async function nexLimparReent(romId){ try{
+  const r=(S.romaneios||[]).find(x=>x.id===romId); if(!r){ toast('Romaneio não está carregado.'); return; }
+  if(!(typeof cargoCompleto==='function'&&cargoCompleto(cargoMeu()))){ toast('Só Admin, Líder ou Supervisor desmarca reentrega.'); return; }
+  const L=nexReentDoRom(r); if(!L.length){ toast('Esse romaneio não tem reentrega marcada.'); return; }
+  if(!(await confirmar('Não são reentregas',`Desmarcar as <b>${fmtN(L.length)}</b> reentrega(s) do romaneio <b>${esc(r.numero||'')}</b>? Vou baixar a planilha com todas antes, e tirar do controle de Reentregas as que já foram lançadas. <b>Isso não tem volta.</b>`,'Baixar e desmarcar'))) return;
+  try{ nexBaixar(nexCsvReent(r,L),'Reentregas desmarcadas '+(r.numero||'')+' '+hojeISO()+'.csv','text/csv;charset=utf-8'); }
+  catch(e){ toast('Não consegui baixar a planilha, não vou desmarcar nada.'); return; }
+  const n=nexS(); let tirou=0;
+  const D=RE.ler();
+  for(const {k,x,e} of L){
+    e.status='ignorada'; (S.reFeito=S.reFeito||{})[k]=e.d;
+    try{ nexSetTag(k,'Reentrega',false); }catch(er){}
+    for(const dia of Object.keys(D.dias||{})){ const arr=D.dias[dia]||[];
+      for(let i=arr.length-1;i>=0;i--){ const l=arr[i];
+        if(z(l.nf)&&z(l.nf)===z(x.nf)&&(!l.origem||l.origem==='nex'||l.origem==='automatica')){ arr.splice(i,1); tirou++; } }
+      if(!arr.length) delete D.dias[dia]; }
+  }
+  RE.gravar(); salvar(); try{ nuvSinc(); }catch(e){}
+  try{ renderTudo(); }catch(e){} try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){}
+  toast(`✔ ${fmtN(L.length)} marcação(ões) desfeita(s)${tirou?` · ${fmtN(tirou)} linha(s) tirada(s) do controle de Reentregas`:''}. A planilha foi baixada.`);
+}catch(e){ toast('Não consegui desmarcar: '+(e&&e.message||e)); } }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-limpare]'); if(b){ e.preventDefault(); e.stopPropagation(); nexLimparReent(b.dataset.nxLimpare); } });
 function nexEnfeitarRomaneios(){ const n=nexS();
   for(const r of S.romaneios){ const box=document.getElementById('rom-'+r.id); if(!box) continue;
     const fora=r.rows.filter(x=>n.fora[nexK(x)]).length, prio=r.rows.filter(x=>nexPrio(nexK(x))&&!n.fora[nexK(x)]).length,
       reen=r.rows.filter(x=>{ const e=n.reent[nexK(x)]; return e&&e.rom===r.id&&e.status!=='ignorada'; }).length,
       peso=nexPeso(r.rows.filter(x=>!n.fora[nexK(x)]));
-    const meta=box.querySelector('.meta'); if(meta){ meta.insertAdjacentHTML('beforeend',`<span class="nx-peso">Peso na operação <b>${nexKg(peso)}</b></span>${prio?`<span class="nx-chip" style="--c:${nexCor('Prioridade')}">⚡ ${prio} prioridade(s)</span>`:''}${reen?`<span class="nx-chip" style="--c:${nexCor('Reentrega')}">${reen} reentrega(s)</span>`:''}${fora?`<span class="nx-chip" style="--c:#495057">${fora} retirada(s)</span>`:''}`); }
+    const meta=box.querySelector('.meta'); if(meta){ meta.insertAdjacentHTML('beforeend',`<span class="nx-peso">Peso na operação <b>${nexKg(peso)}</b></span>${prio?`<span class="nx-chip" style="--c:${nexCor('Prioridade')}">⚡ ${prio} prioridade(s)</span>`:''}${reen?`<button type="button" class="nx-chip nx-chip-bt" data-nx-limpare="${r.id}" title="Se não são reentregas, toque para desmarcar todas deste romaneio" style="--c:${nexCor('Reentrega')}">${reen} reentrega(s) ✕</button>`:''}${fora?`<span class="nx-chip" style="--c:#495057">${fora} retirada(s)</span>`:''}`); }
     const tb=box.querySelector('.corpo table'); if(!tb) continue;
     const corpo=box.querySelector('.corpo'); corpo.insertAdjacentHTML('afterbegin',`<div class="nx-barra"><span>Desmarque a nota que <b>não entra</b> na operação: ela vai para <b>Retiradas</b> com o motivo.</span><span class="esp"></span>
       <button class="btn mini" type="button" data-nx-todas="${esc(r.id)}">Marcar todas</button><button class="btn mini" type="button" data-nx-prio-sel="${esc(r.id)}">⚡ Prioridade nas selecionadas</button><button class="btn mini" type="button" data-nx-etq-sel="${esc(r.id)}">Etiquetar selecionadas</button></div>`);
@@ -4284,7 +4319,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.2.2', HS_DATA='16/11/2026';
+const HS_VERSAO='10.2.3', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);

@@ -1020,6 +1020,33 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(fc.p1===25,'fechar o dia: antes, 1 de 4 conferidas = 25% ('+fc.p1+'%)');
     ok(fc.p2===100&&fc.tn2===1&&fc.fora2===3,'fechar o dia: num clique, as 3 que faltavam saem da conta e o dia fecha 100% ('+fc.p2+'%, '+fc.tn2+' notas, '+fc.fora2+' fora)');
     ok(fc.por&&fc.em,'fechar o dia: tem que gravar quem fechou e quando ('+fc.por+')'); }
+  /* v10.2.3: desmarcar de uma vez as reentregas erradas de um romaneio */
+  { const lr=await p.evaluate(async()=>{ const hoje=hojeISO(), rid='T-LIMPRE';
+      const gRom=JSON.stringify(S.romaneios||[]), gNex=JSON.stringify(nexS()), gRE=JSON.stringify(RE.ler().dias||{}), gFeito=JSON.stringify(S.reFeito||{});
+      S.romaneios=[{id:rid,numero:'0017795',base:'MESA',dia:hoje,rows:[
+        {nf:'870001',ped:'G1',dest:'CLI A',cid:'ARARAQUARA',uf:'SP',vol:'2'},
+        {nf:'870002',ped:'G2',dest:'CLI B',cid:'BAURU',uf:'SP',vol:'1'},
+        {nf:'870003',ped:'G3',dest:'CLI C',cid:'ASSIS',uf:'SP',vol:'1'}]}];
+      const n=nexS(); n.reent={};
+      for(const x of S.romaneios[0].rows.slice(0,2)) n.reent[nexK(x)]={status:'suspeita',rom:rid,d:hoje,nf:x.nf,ped:x.ped};
+      const D=RE.ler(); D.dias[hoje]=[{nf:'870001',cli:'CLI A',obs:'ERA REENTREGA',origem:'nex'},{nf:'999999',cli:'REAL',obs:'FERIADO',origem:'manual'}];
+      S.reFeito={};
+      const gB=window.nexBaixar; let csv=''; window.nexBaixar=(t)=>{ csv=t; };
+      const gC=window.confirmar; window.confirmar=async()=>true;
+      const gCg=window.cargoMeu; window.cargoMeu=()=>'admin';
+      await nexLimparReent(rid);
+      window.nexBaixar=gB; window.confirmar=gC; window.cargoMeu=gCg;
+      const nn=nexS();
+      const ign=S.romaneios[0].rows.slice(0,2).every(x=>(nn.reent[nexK(x)]||{}).status==='ignorada');
+      const re=(RE.ler().dias[hoje]||[]);
+      const r={ign,csvTemNF:/870001/.test(csv),csvCab:/Romaneio;|"Romaneio"/.test(csv),
+        sobrou:re.length,sobrouReal:re.some(l=>String(l.nf)==='999999')};
+      S.romaneios=JSON.parse(gRom); const g=JSON.parse(gNex); nexS().reent=g.reent||{};
+      RE.ler().dias=JSON.parse(gRE); RE.gravar(); S.reFeito=JSON.parse(gFeito);
+      return r; });
+    ok(lr.ign,'desmarcar: as reentregas do romaneio têm que ficar como ignoradas');
+    ok(lr.csvTemNF&&lr.csvCab,'desmarcar: a planilha tem que sair antes, com cabeçalho e as notas');
+    ok(lr.sobrou===1&&lr.sobrouReal,'desmarcar: só a lançada pelo app sai do controle; a reentrega de verdade fica ('+lr.sobrou+')'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
