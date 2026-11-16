@@ -190,3 +190,9 @@ reentrega** — só avisa.
 - **`gsDvDoDia` vale para qualquer divergência da nota**, não só a aberta naquele dia: a falta costuma ser registrada depois (ou no dia em que a caixa apareceu). Era por isso que as notas do 13/11 continuavam como "não entraram" mesmo com as divergências na tela.
 - **Fechar a conta à mão** (`gsAjLer`, `gsAjK`, `gsAjMarcar`, campo sincronizado `gsAjuste`): na lista "o que não entrou", cada nota tem "✔ conferida" e "⚠ divergência". Só Admin/Líder/Supervisor. Grava `por` e `em`, `gsContar` respeita, e o PDF escreve "N nota(s) fechada(s) manualmente por Fulano".
 - **Armadilha paga**: inserir CSS com `\n` dentro de uma string entre aspas simples quebra o script inteiro (o app não carrega e os testes somem com "hojeISO is not defined"). **Rodar sempre `node --check` no script extraído antes de publicar.**
+
+## v10.2.1 (16/11/2026) — o denominador do dia
+O print do dia 13/11 às 07:59 mostrava **288 de 288 (100%)** com a faixa "Simulação ligada por Tiago Souza: 12 nota(s) tirada(s) da conta". A remontagem dava 290 de 300 porque a simulação já estava desligada quando ela rodou — `opForaFiltro` só enxerga o estado de agora.
+- `gsContar(roms,lidosDe,dvm,aj,foraAntes)`: nota fora da conta (Simulação, `nexS().fora`, ou marcada à mão com `m:'fora'`) **não entra em `tn`**, e as chaves saem em `c.fora`.
+- A foto grava `fora:[...]`; a remontagem seguinte recebe essa lista, então **o número de um dia fechado não muda depois**, mesmo que a simulação mude.
+- Terceiro botão na lista "o que não entrou": **✖ não conta** (além de ✔ conferida e ⚠ divergência). Cartão e PDF dizem quantas notas saíram da conta.
