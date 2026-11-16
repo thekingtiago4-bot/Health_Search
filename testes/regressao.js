@@ -367,6 +367,17 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(/741351:ok/.test(mk.bip),'romaneio: a nota de 1 volume tinha que ficar conferida ('+mk.bip+')');
     ok(/741828:ok/.test(mk.bip),'romaneio: a nota de 4 volumes também tem que ficar conferida ('+mk.bip+')');
     ok(mk.aberta2,'romaneio: depois de marcar a janela tem que continuar aberta'); }
+  /* 10.5.5: modo por volume + nota já bipada em parte por OUTRO conferente: o verde fecha a nota inteira com 1 clique */
+  { const pv=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf'; const era=S.opPorVolume;
+      S.opPorVolume=true; S.opFaltas={}; S.romaneios=[{id:'pv1',numero:'0236556',base:'CAJ',motorista:'R',arquivo:a,rows:[{nf:'741900',ped:'735900',vol:'170',dest:'EDU',cid:'PLANURA',uf:'MG'}]}];
+      S.divergencias=[]; OP.dia=h; renderTudo(); irPara('operacao');
+      OP.bipes=Array.from({length:13},(_,i)=>({local_id:'pv'+i,dia:h,status:'ok',ped:'735900',nf:'741900',vol:i+1,tot:170,usuario:'Outro Usuario',criado_em:new Date(Date.now()-600000).toISOString(),tipo:'numero:camera'}));
+      opRomLista('pv1'); await w(200); document.querySelector('.fundo [data-rl-mk]').click(); await w(600);
+      const c=opContagem('735900','741900'); const r={lidos:c.lidos,esp:c.esp,pend:opPendentes().length,perguntou:!!document.getElementById('op-outra')||!!document.querySelector('[data-mcx]')};
+      [...document.querySelectorAll('.fundo')].forEach(x=>x.remove()); const o=document.getElementById('op-outra'); if(o) o.remove(); S.opPorVolume=era; S.opFaltas={}; S.divergencias=[]; OP.bipes=[]; return r; });
+    ok(!pv.perguntou,'baixa manual verde: não pode perguntar nada quando outro conferente já bipou parte');
+    ok(pv.lidos===170&&pv.esp===170,'baixa manual verde: 1 clique tem que fechar 170 de 170 (veio '+pv.lidos+' de '+pv.esp+')');
+    ok(pv.pend===0,'baixa manual verde: a nota tem que sair da lista de falta ('+pv.pend+')'); }
   /* 9.26.6: marcar como divergência na lista do romaneio (fica laranja do lado das bipadas) */
   { const dvm=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'dv1',numero:'0236361',base:'CAJ',arquivo:a,rows:[{nf:'770001',ped:'880001',vol:'1',dest:'CLIENTE DV',cid:'FRANCA',uf:'SP'}]}];

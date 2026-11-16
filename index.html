@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.4', HS_DATA='16/11/2026';
+const HS_VERSAO='10.5.5', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5106,7 +5106,8 @@ function opLidosBips(bs){ let extra=0; const vs=new Set();
     if(q>1){ extra+=q; continue; }
     if(b&&b.vol){ vs.add('v'+b.vol); continue; }
     vs.add((b&&b.local_id)||Math.random()); }
-  return vs.size+extra; }
+  /* v10.5.5: a marcação da nota inteira já inclui as caixas bipadas uma a uma — não soma as duas (dava 339 de 170) */
+  return Math.max(vs.size,extra); }
 function opContagem(ped,nf){ const rows=[]; const idx=opIndice(); for(const it of (ped&&idx.ped.get(ped))||(nf&&idx.nf.get(nf))||[]) rows.push(it.x);
   const fa=opFaltaAnt(ped,nf); const esp=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(rows.reduce((t,x)=>t+(volNum(x.vol)||1),0)||1);
   const lidos=opLidosBips(OP.bipes.filter(b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(nf&&b.nf===nf))));
@@ -9651,7 +9652,8 @@ async function opMarcarMao(x,modo,semDialogo){ const dv=modo==='dv'; const tot=M
   const bruto=String(x.nf||x.ped||'').replace(/\D/g,'');
   const txt=bruto.length>=4?bruto:(cod.length>=3?('NF'+cod):cod);
   OP.extra={tot,dest:x.dest||'',cid:x.cid||''};
-  const antes=OP.bipes.length; try{ opLer([txt],'mão'); }catch(e){ console.error(e); }
+  /* v10.5.5: marcar à mão é decisão de quem clicou — não pergunta "É outra caixa?" quando outro conferente já bipou parte da nota */
+  OP.forcarOutra=true; const antes=OP.bipes.length; try{ opLer([txt],'mão'); }catch(e){ console.error(e); } OP.forcarOutra=false;
   if(OP.bipes.length<=antes){ toast('Não consegui marcar a NF '+cod+'.'); return false; }
   const b=OP.bipes[0];
   if(chegou<tot){ try{ opConfFalta(b,tot,chegou,'',faltaram); }catch(e){ console.error(e); }
