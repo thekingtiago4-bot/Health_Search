@@ -1077,6 +1077,29 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(dt.temFalta&&dt.temCaixas,'divergências no PDF: falta quantos volumes e quais caixas faltaram');
     ok(dt.temCid&&dt.temRem,'divergências no PDF: falta cidade e remetente');
     ok(dt.temPor&&dt.temApar&&dt.temBaixa,'divergências no PDF: falta quem registrou, onde apareceu e a baixa'); }
+  /* v10.2.6: a conta soma o bipe de todo mundo, não só o deste aparelho */
+  { const jt=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const dia=hojeISO();
+      const gCli=NV.cli, gUser=NV.user, gBip=(OP.bipes||[]).slice();
+      /* o banco "tem" 2 bipes: um meu e um do Christian */
+      const linhas=[{local_id:'meu1',dia,nf:opK('910001'),ped:opK('X1'),status:'ok',usuario:'TIAGO',criado_em:dia+'T05:00:00.000Z'},
+                    {local_id:'dele1',dia,nf:opK('910002'),ped:opK('X2'),status:'ok',usuario:'CHRISTIAN',criado_em:dia+'T05:01:00.000Z'}];
+      NV.user=NV.user||{id:'t'};
+      NV.cli={from(){ return {select:()=>({eq:()=>({order:()=>({range:()=>Promise.resolve({data:linhas,error:null})})})}),
+                              upsert:()=>Promise.resolve({error:null})}; }, channel(){ return {on(){return this;},subscribe(){return this;}}; }, removeChannel(){}};
+      OP.dia=dia; OP.bipes=[linhas[0]].map(opDoBanco); const antes=OP.bipes.length;
+      const novos=await opPuxarDia(false);
+      const nomes=(OP.bipes||[]).map(b=>b.usuario).sort().join(',');
+      NV.cli=gCli; NV.user=gUser; OP.bipes=gBip;
+      return {antes,novos,nomes,total:nomes.split(',').length}; });
+    ok(jt.antes===1,'juntar: o teste começa com só o bipe deste aparelho');
+    ok(jt.novos===1&&jt.total===2,'juntar: repuxar o dia tem que trazer o bipe da outra pessoa ('+jt.novos+' novo(s))');
+    ok(/CHRISTIAN/.test(jt.nomes)&&/TIAGO/.test(jt.nomes),'juntar: a conta tem que ficar com os dois ('+jt.nomes+')'); }
+  { const bt=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      irPara('conftotal'); await w(400); try{ ctMontar(); }catch(e){} await w(200);
+      const g=document.getElementById('ct-geral');
+      return {bt:!!document.querySelector('[data-op-puxar]'),txt:g?g.innerText:''}; });
+    ok(bt.bt||!/[0-9]%/.test(bt.txt),'juntar: falta o botão "Atualizar a conta" na Conferência total'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);

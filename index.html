@@ -4319,7 +4319,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.2.5', HS_DATA='16/11/2026';
+const HS_VERSAO='10.2.6', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5372,7 +5372,13 @@ function opAoVivo(){ if(OP.canal||!opOnline()) return;
     if(p.eventType==='DELETE'){ OP.bipes=OP.bipes.filter(b=>b.id!==p.old.id); opLocalGravar(); opRender(); return; }
     const b=p.new; if(!b||b.dia!==OP.dia) return; const i=OP.bipes.findIndex(x=>x.local_id===b.local_id);
     if(i>=0){ OP.bipes[i]=opDoBanco(b); } else { OP.bipes.unshift(opDoBanco(b)); if(opAdmin()&&(b.status==='fora'||b.status==='dup')) toast(`⚠ ${b.usuario}: ${OP_ST[b.status].t} · pedido ${b.ped||b.codigo}`); }
-    opLocalGravar(); if(!$('#t-operacao').hidden) opRender(); else opBadge(); }).subscribe(); }
+    opLocalGravar(); try{ gsFotoAgendar(); }catch(e){}
+    if(!$('#t-operacao').hidden) opRender(); else opBadge();
+    try{ if(!$('#t-conftotal').hidden) ctMontar(); }catch(e){} })
+  .subscribe(st=>{ /* v10.2.6: canal caiu = conta de um só. Religa e repuxa o dia. */
+    if(st==='CLOSED'||st==='CHANNEL_ERROR'||st==='TIMED_OUT'){
+      try{ NV.cli.removeChannel(OP.canal); }catch(e){}
+      OP.canal=null; setTimeout(()=>{ try{ opAoVivo(); }catch(e){} try{ opPuxarDia(); }catch(e){} },2000); } }); }
 
 async function opApagar(id){ const b=OP.bipes.find(x=>(x.id||x.local_id)===id); if(!b) return true;
   if(b.id&&opOnline()){ const {error}=await NV.cli.from('hs_bipagens').delete().eq('id',b.id); if(error){ toast('Não apagou: '+nvTraduz(error.message)); return false; } }
@@ -8859,6 +8865,38 @@ function evaListar(f,dia){ EVA.ultF=f; EVA.ultDia=dia; const rs=evaRomDoDia(dia)
    
    @media(max-width:560px){.ct-big{grid-template-columns:1fr;justify-items:center;text-align:center}}`; document.head.appendChild(st);
 })();
+/* ================= v10.2.6 · Juntar as porcentagens de todo mundo =================
+   Bipe de qualquer pessoa tem que entrar na conta deste aparelho. Antes isso dependia só do
+   sinal ao vivo: se o canal caísse (tela bloqueada, internet oscilando, app aberto há horas),
+   os bipes dos outros não chegavam e a porcentagem ficava só com os seus.
+   Agora o app repuxa o dia inteiro de tempos em tempos, ao voltar para a tela, e no botão. */
+let OP_PUXANDO=false;
+async function opPuxarDia(aviso){ try{
+  if(!opOnline()||OP.carregando||OP_PUXANDO||!OP.dia) return 0;
+  OP_PUXANDO=true; const dia=OP.dia;
+  try{
+    let todos=[], de=0;
+    for(;;){ const {data,error}=await NV.cli.from('hs_bipagens').select('*').eq('dia',dia).order('criado_em',{ascending:false}).range(de,de+999);
+      if(error) throw error; todos=todos.concat(data||[]); if(!data||data.length<1000) break; de+=1000; }
+    const vis=new Set(todos.map(b=>b.local_id));
+    const pend=opFilaLer().filter(b=>b.dia===dia&&!vis.has(b.local_id));
+    const antes=((OP.bipes||[]).length)|0;
+    OP.bipes=pend.concat(todos.map(opDoBanco));
+    opLocalGravar();
+    const novos=OP.bipes.length-antes;
+    if(novos!==0){ try{ opRender(); }catch(e){} try{ ctMontar(); }catch(e){} try{ gsFotoAgendar(); }catch(e){} try{ gestorRender(); }catch(e){} }
+    if(aviso) toast(novos>0?`✔ Entraram ${fmtN(novos)} bipe(s) de outras pessoas na conta.`:'Nada novo: a conta já está com os bipes de todo mundo.');
+    return novos;
+  } finally{ OP_PUXANDO=false; }
+}catch(e){ OP_PUXANDO=false; if(aviso) toast('Não consegui atualizar a conta: '+(e&&e.message||e)); return 0; } }
+/* de 45 em 45 segundos, ao voltar para a tela e ao reconectar */
+setInterval(()=>{ try{ opFila(); }catch(e){} try{ opPuxarDia(); }catch(e){} },45000);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState!=='visible') return;
+  try{ opFila(); }catch(e){} try{ opPuxarDia(); }catch(e){} });
+window.addEventListener('online',()=>{ try{ opFila(); }catch(e){} try{ opPuxarDia(); }catch(e){} });
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-op-puxar]'); if(b){ e.preventDefault();
+  b.disabled=true; const t=b.textContent; b.textContent='Atualizando…';
+  opPuxarDia(true).then(()=>{ b.disabled=false; b.textContent=t; }); } });
 function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   /* BUG#1-FIX v9.11.0: só mover elementos DOM quando a tela estiver visível.
      Mover #op-cards para dentro da seção hidden causava renderização vazia no NexBip. */
@@ -8872,6 +8910,9 @@ function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
      <div class="ct-origs">${[...porB].map(([b,a])=>{ const p=a.tn?Math.round(100*(a.tn-a.fn)/a.tn):0; return `<div class="ct-o"><b style="color:${opCorBase(b)}">${esc(b)}</b> <span class="sub">${fmtN(a.tn-a.fn)}/${fmtN(a.tn)} · ${p}%</span><div class="bar"><i style="width:${p}%;background:${opCorBase(b)}"></i></div></div>`; }).join('')}</div></div></div>`
     :'<div class="vazio-lista">Nenhum romaneio de hoje carregado. Coloque os PDFs na aba Romaneios.</div>';
   const q=$('#qt-ct'); if(q){ q.textContent=pct+'%'; q.hidden=!tn; }
+  /* v10.2.6 · a conta é de todo mundo: botão para repuxar e aviso de bipe que não subiu */
+  try{ if(g&&tn){ const fila=opFilaLer().filter(b=>b.dia===OP.dia).length;
+    g.insertAdjacentHTML('beforeend',`<div class="ct-juntar"><button class="btn mini" type="button" data-op-puxar="1" title="Traz os bipes das outras pessoas agora">🔄 Atualizar a conta</button>${fila?`<span class="ct-fila">⚠ <b>${fmtN(fila)}</b> bipe(s) deste aparelho ainda não subiram${opOnline()?' — estou tentando':' (sem internet)'}</span>`:'<span class="sub">a conta soma os bipes de todas as pessoas</span>'}</div>`); } }catch(e){}
   try{ ctBuscaRender(); }catch(e){} }
 /* v9.26.7 · aparelho sem os romaneios de hoje: sem isso todo bipe cai como "fora do romaneio" sem explicação */
 function opSemRomaneios(){ try{ return OP.dia===hojeISO()&&opRomsDoDia().length===0; }catch(e){ return false; } }
@@ -9881,7 +9922,7 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
    ${gsSeletor()}
    ${gestorBarras('Reentregas por motivo (7 dias)',d.mot,null,'#B197FC')}${gestorBarras('Reentregas por motorista (7 dias)',d.mtr,null,'#74C0FC')}${gestorBarras('Reentregas por dia',d.dia.map(([k,v])=>[fmtData(k),v]),null,'#63E6BE')}
    ${gestorBarras('Conferência por origem ('+gsDiaNome()+') (%)',d.orig.map(([b,a])=>[b,a.t?Math.round(100*(a.t-a.f)/a.t):100]),v=>v+'%','#20C997')}</div>`; }
-(function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l i.gs-b2{display:flex}#t-gestor .gs-l i.gs-b2 b{height:100%}#t-gestor .gs-l em.ok{color:var(--ok)}#t-gestor .gs-leg{margin:8px 0 0;font-size:12px;color:var(--mudo)}#t-gestor .gs-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px}.gs-dvp{margin:2px 0 6px;color:#F59F00;font-size:var(--fs-sm)}.gs-aj{white-space:nowrap}.gs-aj .btn{margin:0 2px}.gs-semdv{background:rgba(245,159,0,.12);border:1px solid #F59F00;border-radius:10px;padding:8px 10px;font-size:var(--fs-sm);margin:6px 0}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
+(function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l i.gs-b2{display:flex}#t-gestor .gs-l i.gs-b2 b{height:100%}#t-gestor .gs-l em.ok{color:var(--ok)}#t-conftotal .ct-juntar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}#t-conftotal .ct-fila{color:#F59F00;font-size:var(--fs-sm)}#t-gestor .gs-leg{margin:8px 0 0;font-size:12px;color:var(--mudo)}#t-gestor .gs-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px}.gs-dvp{margin:2px 0 6px;color:#F59F00;font-size:var(--fs-sm)}.gs-aj{white-space:nowrap}.gs-aj .btn{margin:0 2px}.gs-semdv{background:rgba(245,159,0,.12);border:1px solid #F59F00;border-radius:10px;padding:8px 10px;font-size:var(--fs-sm);margin:6px 0}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return; ref.insertAdjacentHTML('beforebegin','<button data-tela="gestor"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span class="lbl">Painel de Gestão</span></button>');
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-gestor'; sec.hidden=true; sec.innerHTML='<h1>Painel de Gestão</h1><p class="sub">Reentregas da semana por motivo, motorista e dia, e o andamento da conferência de hoje por origem.</p><div id="gs-corpo"></div>'; const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=document.querySelector('.nav [data-tela="gestor"]'); if(t==='gestor'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-gestor'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); gestorRender(); } else if(bt) bt.removeAttribute('aria-current'); };
