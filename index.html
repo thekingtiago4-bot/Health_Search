@@ -4319,7 +4319,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.2.9', HS_DATA='16/11/2026';
+const HS_VERSAO='10.2.10', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12263,6 +12263,99 @@ setInterval(()=>{ try{ simAvisos(); }catch(e){} },5000);
         if(mudou){ salvar(); try{ nuvSinc(); }catch(e){} try{ avRender(); }catch(e){} } } }
       catch(e){ console.error(e); }
       return d; }; }
+})();
+/* ========== v10.2.10 · o histórico do NexBip para de subir inteiro a cada bipe ==========
+   Medido no backup de 15/11: s:nex pesava 542 KB numa chave só (484 KB de hist com 3.368 itens
+   e 6.261 entradas, TODAS dos últimos 30 dias — podar não resolvia). Como a sincronização sobe a
+   chave inteira quando qualquer coisa dentro dela muda, cada bipe mandava 542 KB para o banco e
+   todo aparelho baixava 542 KB de volta. Era a lentidão do galpão.
+   Agora hist e histPed viajam em 64 baldes (nxh:/nxp:): um bipe mexe num balde de ~8 KB.
+   Regra de ouro deste bloco: ao juntar, UNIÃO, nunca substituição. O pior caso vira entrada
+   repetida, nunca entrada perdida. */
+(function(){
+  if(window.__nx2) return; window.__nx2=true;
+  const NX_BALDES=64;
+
+  /* Qual balde guarda esta nota/pedido — sempre o mesmo, em qualquer aparelho.
+     FNV-1a com embaralhada no fim. O h*31 que eu tinha usado antes agrupava chave parecida:
+     500 notas em sequencia caiam em 19 dos 64 baldes, e nos dados reais o maior balde dava
+     15,5 KB contra 9,7 KB deste. Trocar este hash depois reembaralha tudo (uma subida cheia),
+     entao ele e para ficar. */
+  function nxIdx(k){ const s=String(k); let h=2166136261>>>0;
+    for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619)>>>0; }
+    h^=h>>>13; h=Math.imul(h,0x5bd1e995)>>>0; h^=h>>>15;
+    return String((h>>>0)%NX_BALDES).padStart(2,'0'); }
+  window.nxIdx=nxIdx;
+
+  /* duas entradas são a mesma aparição se for o mesmo dia, romaneio e nota */
+  const nxSig=e=>String((e&&e.d)||'')+'|'+String((e&&e.rom)||'')+'|'+String((e&&e.nf)||'');
+  function nxUniaoLista(a,b){ const m=new Map();
+    for(const e of (a||[])) if(e) m.set(nxSig(e),Object.assign({},e));
+    for(const e of (b||[])){ if(!e) continue; const s=nxSig(e), ja=m.get(s);
+      if(!ja){ m.set(s,Object.assign({},e)); continue; }
+      /* mesma aparição dos dois lados: fica o campo preenchido, venha de onde vier */
+      for(const k of Object.keys(e)) if(e[k]!=null) ja[k]=e[k]; }
+    return [...m.values()].sort((x,y)=>String(x.d||'').localeCompare(String(y.d||''))); }
+  function nxUniao(destino,origem){ for(const k of Object.keys(origem||{})){ const arr=origem[k];
+      if(!Array.isArray(arr)||!arr.length) continue;
+      destino[k]=(destino[k]&&destino[k].length)?nxUniaoLista(destino[k],arr):arr.map(e=>Object.assign({},e)); }
+    return destino; }
+  window.nxUniao=nxUniao;
+
+  /* 1. o que sobe: s:nex sem o histórico, mais os baldes */
+  { const _nl=nuvLocal; nuvLocal=function(){ const m=_nl(); try{
+      const ent=m.get('s:nex');
+      if(ent&&ent.valor&&(ent.valor.hist||ent.valor.histPed)){
+        const resto=Object.assign({},ent.valor); delete resto.hist; delete resto.histPed;
+        if(Object.keys(resto).length) m.set('s:nex',{tipo:'s',valor:resto}); else m.delete('s:nex'); }
+      const n=S.nex||{};
+      const baldes=(pref,obj)=>{ const b={};
+        for(const k of Object.keys(obj||{})){ const arr=obj[k]; if(!Array.isArray(arr)||!arr.length) continue;
+          const ch=pref+nxIdx(k); (b[ch]=b[ch]||{})[k]=arr; }
+        for(const ch of Object.keys(b)) m.set(ch,{tipo:'nx',valor:b[ch]}); };
+      baldes('nxh:',n.hist); baldes('nxp:',n.histPed);
+    }catch(e){ console.error(e); } return m; }; }
+
+  /* 2. o que desce: balde entra por união; s:nex de aparelho desatualizado também é unido,
+        nunca substitui o S.nex inteiro (era por aí que o histórico novo se perdia) */
+  { const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){
+      if(!/^nx[hp]:/.test(chave)&&chave!=='s:nex') return _na(chave,valor,apagado);
+      NUV.aplicando=true;
+      try{ const n=S.nex=S.nex||{};
+        if(chave==='s:nex'){ if(apagado||!valor) return;
+          const resto=Object.assign({},valor); const h=resto.hist, hp=resto.histPed;
+          delete resto.hist; delete resto.histPed;
+          Object.assign(n,resto);
+          if(h) nxUniao(n.hist=n.hist||{},h);
+          if(hp) nxUniao(n.histPed=n.histPed||{},hp); }
+        else if(apagado){ /* só o "Zerar tudo" apaga balde: tira as chaves que caem nele */
+          const alvo=chave.startsWith('nxh:')?n.hist:n.histPed, bal=chave.slice(4);
+          if(alvo) for(const k of Object.keys(alvo)) if(nxIdx(k)===bal) delete alvo[k]; }
+        else { const alvo=chave.startsWith('nxh:')?(n.hist=n.hist||{}):(n.histPed=n.histPed||{});
+          nxUniao(alvo,valor||{}); }
+        salvar();
+      }catch(e){ console.error(e); }finally{ NUV.aplicando=false; } }; }
+
+  /* 3. conflito nos dois lados ao mesmo tempo: fica a união dos dois */
+  { const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){
+      if(!/^nx[hp]:/.test(chave)) return _nj(chave,local,remoto);
+      return nxUniao(nxUniao({},local||{}),remoto||{}); }; }
+
+  /* 4. Zerar tudo precisa apagar os baldes no banco, senão outro aparelho devolve tudo */
+  { const _rz=rbZerarTudo; rbZerarTudo=async function(){
+      const n0=S.nex||{};
+      const antes=new Set([...Object.keys(n0.hist||{}).map(k=>'nxh:'+nxIdx(k)),
+                           ...Object.keys(n0.histPed||{}).map(k=>'nxp:'+nxIdx(k))]);
+      const r=await _rz.apply(this,arguments);
+      try{ const n=S.nex||{};
+        const zerou=!Object.keys(n.hist||{}).length&&!Object.keys(n.histPed||{}).length;
+        if(zerou&&antes.size&&opOnline()&&window.NV&&NV.cli){
+          const eu=opEu(), linhas=[...antes].map(ch=>({chave:ch,tipo:'nx',valor:null,apagado:true,atualizado_por:eu}));
+          for(let i=0;i<linhas.length;i+=50) await NV.cli.from('hs_sync').upsert(linhas.slice(i,i+50));
+          for(const ch of antes) NUV.h[ch]='x'; } }catch(e){ console.error(e); }
+      return r; }; }
+  /* o botão guardava a função antiga, amarrada no início */
+  try{ const b=document.getElementById('rb-zerar'); if(b) b.onclick=()=>rbZerarTudo(); }catch(e){}
 })();
 </script>
 

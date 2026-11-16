@@ -246,3 +246,41 @@ Dois conferentes bipando: os bipes do Tiago entravam na porcentagem e os do Chri
 - **`opPuxarDia(aviso)`**: repuxa `hs_bipagens` do dia inteiro, junta com a fila local que ainda não subiu, regrava e redesenha (`opRender`, `ctMontar`, `gestorRender`, `gsFotoAgendar`). Roda a cada 45 s, no `visibilitychange`, no evento `online` e no botão **🔄 Atualizar a conta** (`[data-op-puxar]`, na Conferência total).
 - **`opAoVivo` com status**: em `CLOSED`/`CHANNEL_ERROR`/`TIMED_OUT` remove o canal, zera `OP.canal`, religa e repuxa. O insert ao vivo agora também atualiza a Conferência total e agenda a foto do dia.
 - A Conferência total mostra **quantos bipes daquele aparelho ainda não subiram** (fila local), em laranja.
+
+## v10.2.10 (16/11/2026) — o histórico do NexBip para de subir inteiro a cada bipe
+**Quem mexe no app:** a conversa `session_01Gof5gngXKVm7DYTZnqnNpL` assumiu às 09:19 de 16/11,
+a pedido do Tiago ("é seu, pode fazer"), depois da v10.2.9.
+
+Medido no backup do robô de 15/11 (não foi chute): `s:nex` pesava **542 KB numa chave só** —
+484 KB de `hist`, com 3.368 notas e 6.261 entradas, **todas dos últimos 30 dias** (podar não
+resolvia: a chave nasceu em outubro e cresce ~500 KB por mês). Como `nuvSinc` sobe a chave
+inteira quando qualquer coisa dentro dela muda, **cada bipe mandava 542 KB e todo aparelho
+baixava 542 KB**. Era a lentidão do galpão, e piorava todo dia.
+
+- **64 baldes** `nxh:<00..63>` (hist) e `nxp:<00..63>` (histPed). `nuvLocal` tira `hist`/`histPed`
+  do `s:nex` e publica os baldes; `s:nex` sozinho cai para 0,8 KB.
+- **Medido nos dados reais: 542,4 KB → 8,3 KB por bipe (65× menos).** Maior balde: 9,7 KB.
+  A primeira sincronização depois de atualizar sobe 542 KB uma vez só.
+- **`nxIdx` é FNV-1a com embaralhada no fim.** O `h*31` que tentei primeiro agrupava chave
+  parecida: 500 notas em sequência caíam em 19 dos 64 baldes. **Trocar este hash depois
+  reembaralha tudo** — ele é para ficar.
+- **Regra de ouro do bloco: ao juntar, UNIÃO, nunca substituição.** O pior caso é entrada
+  repetida, nunca entrada perdida. Duas entradas são a mesma aparição se tiverem o mesmo
+  dia + romaneio + nota; quando a mesma aparição chega duas vezes, fica o campo preenchido.
+- **`nuvAplicar('s:nex')` agora funde em vez de trocar o `S.nex` inteiro.** Era por aí que o
+  histórico novo se perderia quando um aparelho desatualizado subisse o `s:nex` antigo com
+  `hist` dentro. Aparelho velho recebendo `nxh:` apenas ignora (prefixo desconhecido).
+- **`rbZerarTudo`** ganhou wrapper que marca os baldes como apagados no banco, senão outro
+  aparelho devolvia tudo na sincronização seguinte. O botão `#rb-zerar` foi **reamarrado**
+  (guardava a referência da função antiga).
+- **Armadilha**: `nuvLocal` roda a cada sincronização e agora percorre as 3.368 chaves para
+  montar os baldes. É barato, mas não ponha nada pesado ali dentro.
+
+### Auditoria do mesmo dia — pendências que não são do app
+- O **robô de backup** não copiava `hs_fotos`, `hs_versoes` nem `hs_auditoria`; as duas
+  primeiras estão descritas aqui como permanentes e **não tinham cópia nenhuma**. Corrigido no
+  repositório `Health_Search_Backups`: `hs_fotos` inteira, `hs_auditoria` 90 dias, `hs_versoes`
+  em arquivo próprio e só o que é novo (com `estado.json` guardando o último id).
+- O **Supabase caiu às 09:23 de 16/11** (HTTP 521). O robô agora tenta 4 vezes antes de desistir.
+- **Custo não é tamanho**: o banco inteiro tem 4,2 MB num plano de 8 GB. Trocar de servidor não
+  economizaria nada.

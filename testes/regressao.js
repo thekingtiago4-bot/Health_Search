@@ -1223,5 +1223,51 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!seg.executou,'segurança: foto gravada no banco executou script no cartão (XSS armazenado)');
     ok(seg.src==='','segurança: o src da foto inválida deveria sair vazio ('+seg.src+')');
     ok(seg.boa&&seg.ruim,'segurança: fotoSegura está barrando foto boa ou deixando passar endereço perigoso'); }
+  /* 10.2.10 · o historico do NexBip viaja em baldes — nada pode se perder na juncao */
+  { const nx=await p.evaluate(()=>{
+      const n=nexS(); n.hist={}; n.histPed={};
+      n.hist['NF1|P1']=[{d:'2026-11-10',rom:'r1',num:'001',m:'bip',v:5}];
+      n.hist['NF2|P2']=[{d:'2026-11-11',rom:'r2',num:'002',m:'bip',v:3}];
+      n.histPed['P1']=[{d:'2026-11-10',rom:'r1',num:'001',nf:'NF1'}];
+      salvar();
+      const m=nuvLocal();
+      const chaves=[...m.keys()].filter(k=>/^nx[hp]:/.test(k)).sort();
+      const sNex=m.get('s:nex');
+      /* 1) s:nex nao leva mais o historico */
+      const limpo=!sNex||(!sNex.valor.hist&&!sNex.valor.histPed);
+      /* 2) todo item esta em algum balde, e sempre no mesmo */
+      const dentroH=chaves.filter(k=>k.startsWith('nxh:')).reduce((a,k)=>a.concat(Object.keys(m.get(k).valor)),[]).sort().join(',');
+      const dentroP=chaves.filter(k=>k.startsWith('nxp:')).reduce((a,k)=>a.concat(Object.keys(m.get(k).valor)),[]).sort().join(',');
+      const estavel=nxIdx('NF1|P1')===nxIdx('NF1|P1');
+      /* 3) o balde que chega do outro aparelho ENTRA, nao substitui */
+      const bal='nxh:'+nxIdx('NF3|P3');
+      nuvAplicar(bal,{'NF3|P3':[{d:'2026-11-12',rom:'r3',num:'003'}]},false);
+      const somou=!!(nexS().hist['NF3|P3']&&nexS().hist['NF1|P1']);
+      /* 4) mesma nota bipada nos dois aparelhos no mesmo dia, romaneios diferentes: ficam as duas */
+      const b1='nxh:'+nxIdx('NF1|P1');
+      nuvAplicar(b1,{'NF1|P1':[{d:'2026-11-13',rom:'rX',num:'009'}]},false);
+      const duas=nexS().hist['NF1|P1'].length;
+      /* 5) a mesma aparicao chegando de novo nao duplica, e completa o campo que faltava */
+      nuvAplicar(b1,{'NF1|P1':[{d:'2026-11-13',rom:'rX',num:'009',v:7}]},false);
+      const h1=nexS().hist['NF1|P1'];
+      const semDup=h1.length===duas, completou=(h1.find(e=>e.rom==='rX')||{}).v===7;
+      /* 6) conflito nos dois lados ao mesmo tempo: fica a uniao */
+      const j=nuvJuntar(b1,{'A':[{d:'2026-11-01',rom:'a'}]},{'A':[{d:'2026-11-02',rom:'b'}],'B':[{d:'2026-11-03',rom:'c'}]});
+      const juntou=j.A.length===2&&!!j.B;
+      /* 7) s:nex de aparelho desatualizado (com hist dentro) soma, nao apaga o que ja tem */
+      nuvAplicar('s:nex',{versao:1,hist:{'NF9|P9':[{d:'2026-11-05',rom:'r9'}]}},false);
+      const velho=!!(nexS().hist['NF9|P9']&&nexS().hist['NF1|P1']);
+      const r={limpo,chaves:chaves.length,dentroH,dentroP,estavel,somou,duas,semDup,completou,juntou,velho};
+      n.hist={}; n.histPed={}; salvar(); return r; });
+    ok(nx.limpo,'nex: o s:nex ainda está levando o histórico junto');
+    ok(nx.dentroH==='NF1|P1,NF2|P2','nex: as notas não foram todas para os baldes de hist ('+nx.dentroH+')');
+    ok(nx.dentroP==='P1','nex: os pedidos não foram para os baldes de histPed ('+nx.dentroP+')');
+    ok(nx.estavel,'nex: o mesmo item caiu em baldes diferentes');
+    ok(nx.somou,'nex: o balde que chegou do outro aparelho apagou o que já estava aqui');
+    ok(nx.duas===2,'nex: duas aparições da mesma nota deveriam coexistir, ficaram '+nx.duas);
+    ok(nx.semDup,'nex: a mesma aparição chegando de novo duplicou a linha');
+    ok(nx.completou,'nex: ao receber a mesma aparição com mais informação, o campo não foi preenchido');
+    ok(nx.juntou,'nex: conflito nos dois lados deveria virar união');
+    ok(nx.velho,'nex: s:nex de aparelho desatualizado apagou o histórico novo'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
