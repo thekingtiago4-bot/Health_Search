@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.0', HS_DATA='16/11/2026';
+const HS_VERSAO='10.5.1', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9176,7 +9176,7 @@ function ctBuscaRender(){ const el=$('#ct-busca'); if(!el) return;
     $('#ct-q').addEventListener('input',e=>{ CTB.q=e.target.value; ctBuscaLista(); });
     $('#ct-qx').onclick=()=>{ CTB.q=''; $('#ct-q').value=''; ctBuscaLista(); };
     $('#ct-res').addEventListener('click',async e=>{ const b2=e.target.closest('[data-ctb]'); if(!b2) return; const it=CTB.res[+b2.dataset.ctb]; if(!it) return;
-      b2.disabled=true; const fez=await opMarcarMao(it.x,b2.dataset.m); if(!fez){ b2.disabled=false; return; } ctBuscaLista(); });
+      b2.disabled=true; const fez=await opMarcarMao(it.x,b2.dataset.m,b2.dataset.m==='ok'); if(!fez){ b2.disabled=false; return; } ctBuscaLista(); });
   }
   const inp=$('#ct-q'); if(inp&&inp.value!==CTB.q) inp.value=CTB.q;
   ctBuscaLista(); }
@@ -9192,7 +9192,7 @@ function ctBuscaLista(){ const el=$('#ct-res'); if(!el) return; const q=N(CTB.q|
   const linha=(it,i)=>{ const x=it.x, d=dvDe(x), tot=volNum(x.vol)||1;
     return `<div class="ct-r"><div><b>NF ${esc(opK(x.nf)||'—')}</b> <small class="sub">ped. ${esc(opK(x.ped)||'—')} · ${fmtN(tot)} vol. · ${esc((it.r&&it.r.numero)||'')}</small><br><small class="sub">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</small></div>`+
       (i==null?`<span class="${d?'ct-dv':'ct-ok'}">${d?'⚠ divergência '+esc(dvNum(d)):'✔ conferida'}</span>`
-             :`<span class="ct-bts"><button class="btn mini" type="button" data-ctb="${i}" data-m="ok">✔ Batida</button><button class="btn mini ct-bdv" type="button" data-ctb="${i}" data-m="dv">⚠ Divergência</button></span>`)+`</div>`; };
+             :`<span class="ct-bts"><button class="btn mini" type="button" data-ctb="${i}" data-m="ok" style="background:#16a34a;color:#fff;border-color:#16a34a">✔ Dar baixa</button><button class="btn mini" type="button" data-ctb="${i}" data-m="dv" style="background:#f97316;color:#fff;border-color:#f97316">⚠ Divergência</button></span>`)+`</div>`; };
   el.innerHTML=(CTB.res.length?`<p class="sub" style="margin:8px 0 4px">Faltando (${CTB.res.length})</p>`+CTB.res.map((it,i)=>linha(it,i)).join(''):'')
     +(bip.length?`<p class="sub" style="margin:10px 0 4px">Já conferidas (${bip.length})</p>`+bip.map(it=>linha(it,null)).join(''):'')
     +((!CTB.res.length&&!bip.length)?'<p class="sub" style="margin:8px 0">Nada encontrado nos romaneios de hoje.</p>':''); }
@@ -9644,8 +9644,8 @@ function opQuantosMao(x,tot,dv){ return new Promise(res=>{ const f=document.crea
     const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='c')){ f.remove(); res(null); return; }
     if(b&&b.dataset.a==='ok'){ const fa=[...falt].sort((p,q)=>p-q); f.remove(); res({chegou:Math.max(0,tot-fa.length),faltaram:fa}); } });
   document.body.appendChild(f); }); }
-async function opMarcarMao(x,modo){ const dv=modo==='dv'; const tot=Math.max(1,volNum(x.vol)||1); let chegou=tot, faltaram=[];
-  if(tot>1){ const r=await opQuantosMao(x,tot,dv); if(!r) return false; chegou=r.chegou; faltaram=r.faltaram; }
+async function opMarcarMao(x,modo,semDialogo){ const dv=modo==='dv'; const tot=Math.max(1,volNum(x.vol)||1); let chegou=tot, faltaram=[];
+  if(tot>1&&!semDialogo){ const r=await opQuantosMao(x,tot,dv); if(!r) return false; chegou=r.chegou; faltaram=r.faltaram; }
   if(dv&&chegou>=tot){ chegou=tot-1<0?0:(tot>1?tot-1:0); if(tot===1){ chegou=0; faltaram=[1]; } }
   const cod=String(opK(x.nf)||opK(x.ped)||''); if(!cod) return false;
   const bruto=String(x.nf||x.ped||'').replace(/\D/g,'');
@@ -11946,7 +11946,7 @@ function espPainel(){ const m=espMedir(); const f=document.createElement('div');
    <div style="max-height:260px;overflow:auto">${m.det.slice(0,10).map(([n,t])=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--linha)"><span>${esc(n)}</span><b>${espMB(t)} · ${Math.round(t/m.tot*100)}%</b></div>`).join('')}</div>
    <p class="sub" style="margin-top:10px">XMLs: o aparelho guarda só os dos últimos ${XMLA.dias} dias; os mais antigos ficam na nuvem (${fmtN(nArq)} já guardados lá) e voltam sozinhos quando você abre um dia antigo no NexBip.${velhos?` Há <b>${fmtN(velhos)}</b> XML(s) antigos aqui agora.`:''}</p>
    <p class="sub" style="margin-top:6px">Bipes: de todo dia que já tem a foto no Painel de Gestão (porcentagem, origem, divergências e o que não entrou) o aparelho não precisa guardar o bipe cru — ele fica no banco online e volta sozinho se você abrir aquele dia.</p>
-   <div class="botoes"><button class="btn" data-r="0">Fechar</button><button class="btn" data-r="b">Tirar bipes antigos do aparelho</button><button class="btn pri" data-r="x">Tirar XMLs antigos do aparelho</button></div></div>`;
+   <div class="botoes" style="justify-content:space-between"><button class="btn" data-r="0">Fechar</button><div style="display:flex;gap:8px"><button class="btn" data-r="b">Tirar bipes antigos</button><button class="btn pri" data-r="x">Tirar XMLs antigos</button></div></div></div>`;
   document.body.appendChild(f); f.addEventListener('click',e=>{ const b=e.target.closest('[data-r]'); if(b&&b.dataset.r==='x'){ xmlArquivar(true); f.remove(); espChip(); return; }
     if(b&&b.dataset.r==='b'){ b.disabled=true; b.textContent='Tirando…'; gsEnxugarBipes(true).then(r=>{ f.remove(); espChip();
       toast(r.dias?`✔ Tirei os bipes de ${r.dias} dia(s) do aparelho (${espMB(r.bytes)}). A conta desses dias continua no Painel de Gestão.`:'Nada para tirar: os bipes guardados ainda são de dias sem foto.'); }); return; } if(b||e.target===f) f.remove(); }); f.addEventListener('keydown',e=>{ if(e.key==='Escape') f.remove(); }); }
