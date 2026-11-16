@@ -4284,7 +4284,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.1.9', HS_DATA='16/11/2026';
+const HS_VERSAO='10.2.0', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9846,7 +9846,7 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
    ${gsSeletor()}
    ${gestorBarras('Reentregas por motivo (7 dias)',d.mot,null,'#B197FC')}${gestorBarras('Reentregas por motorista (7 dias)',d.mtr,null,'#74C0FC')}${gestorBarras('Reentregas por dia',d.dia.map(([k,v])=>[fmtData(k),v]),null,'#63E6BE')}
    ${gestorBarras('Conferência por origem ('+gsDiaNome()+') (%)',d.orig.map(([b,a])=>[b,a.t?Math.round(100*(a.t-a.f)/a.t):100]),v=>v+'%','#20C997')}</div>`; }
-(function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l i.gs-b2{display:flex}#t-gestor .gs-l i.gs-b2 b{height:100%}#t-gestor .gs-l em.ok{color:var(--ok)}#t-gestor .gs-leg{margin:8px 0 0;font-size:12px;color:var(--mudo)}#t-gestor .gs-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px}.gs-dvp{margin:2px 0 6px;color:#F59F00;font-size:var(--fs-sm)}.gs-semdv{background:rgba(245,159,0,.12);border:1px solid #F59F00;border-radius:10px;padding:8px 10px;font-size:var(--fs-sm);margin:6px 0}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
+(function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l i.gs-b2{display:flex}#t-gestor .gs-l i.gs-b2 b{height:100%}#t-gestor .gs-l em.ok{color:var(--ok)}#t-gestor .gs-leg{margin:8px 0 0;font-size:12px;color:var(--mudo)}#t-gestor .gs-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px}.gs-dvp{margin:2px 0 6px;color:#F59F00;font-size:var(--fs-sm)}.gs-aj{white-space:nowrap}.gs-aj .btn{margin:0 2px}.gs-semdv{background:rgba(245,159,0,.12);border:1px solid #F59F00;border-radius:10px;padding:8px 10px;font-size:var(--fs-sm);margin:6px 0}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return; ref.insertAdjacentHTML('beforebegin','<button data-tela="gestor"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span class="lbl">Painel de Gestão</span></button>');
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-gestor'; sec.hidden=true; sec.innerHTML='<h1>Painel de Gestão</h1><p class="sub">Reentregas da semana por motivo, motorista e dia, e o andamento da conferência de hoje por origem.</p><div id="gs-corpo"></div>'; const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=document.querySelector('.nav [data-tela="gestor"]'); if(t==='gestor'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-gestor'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); gestorRender(); } else if(bt) bt.removeAttribute('aria-current'); };
@@ -9862,7 +9862,7 @@ function gsFotoMontar(){ try{
   if(!roms.length) return null;
   const bs=((OP&&OP.bipes)||[]).filter(b=>b&&(b.status==='ok'||b.status==='semnota'||b.status==='dup'));
   const lidosDe=(ped,nf)=>new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):b.local_id)).size;
-  const c=gsContar(roms,lidosDe,gsDvDoDia(dia));
+  const c=gsContar(roms,lidosDe,gsDvDoDia(dia),gsAjLer(dia));
   if(!c.tn) return null;
   let dvs=0; try{ dvs=(dvSo()||[]).filter(d=>String(d.d||'').slice(0,10)===dia).length; }catch(e){}
   return {dia,ts:Date.now(),tn:c.tn,fn:c.fn,tv:c.tv,fv:c.fv,dn:c.dn,dvv:c.dv,
@@ -9886,7 +9886,7 @@ function gsCartao(f){ if(!f) return '<div class="gs-box"><h3>Conferência do dia
     ${pdv?`<p class="gs-dvp">Desse total, <b>${pdv}%</b> foi conferido <b>em divergência</b> (${fmtN(f.dn||0)} nota(s) com falta apontada).</p>`:''}
     <p class="sub"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> nota(s) conferida(s) · ${fmtN(f.tv-f.fv)} de ${fmtN(f.tv)} volume(s) (${f.pctVol}%) · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</p>
     ${(f.fn&&!(f.dv||0)&&f.dia<hojeISO())?`<p class="gs-semdv">⚠ Este aparelho está <b>sem as divergências deste dia</b>. Se as notas abaixo foram apontadas como falta, elas contam como conferidas (em laranja) assim que as divergências voltarem. <button class="btn mini pri" type="button" data-gs-puxardv="${f.dia}">Baixar divergências e refazer a conta</button></p>`:''}
-    ${f.fn?`<details><summary><b>${fmtN(f.fn)}</b> nota(s) que não entraram</summary><div class="gs-falta"><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${f.falta.map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>${f.fn>f.falta.length?`<p class="sub">Mostrando as primeiras ${f.falta.length}.</p>`:''}</div></details>`:'<p class="ok"><b>Operação 100% conferida.</b></p>'}
+    ${f.fn?`<details><summary><b>${fmtN(f.fn)}</b> nota(s) que não entraram</summary><div class="gs-falta"><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th><th>Fechar</th></tr></thead><tbody>${f.falta.map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td><td class="gs-aj"><button class="btn mini" type="button" data-gs-aj="${f.dia}|ok" data-nf="${esc(x.nf)}" data-ped="${esc(x.ped)}" title="Esta nota foi conferida">✔ conferida</button><button class="btn mini" type="button" data-gs-aj="${f.dia}|dv" data-nf="${esc(x.nf)}" data-ped="${esc(x.ped)}" title="Esta nota teve falta apontada">⚠ divergência</button></td></tr>`).join('')}</tbody></table><p class="sub">Marcando aqui, fica gravado quem marcou e quando — e a conta do dia passa a contar isso.</p>${f.fn>f.falta.length?`<p class="sub">Mostrando as primeiras ${f.falta.length}.</p>`:''}</div></details>`:'<p class="ok"><b>Operação 100% conferida.</b></p>'}
     <div style="margin-top:10px"><button class="btn mini pri" data-gs-pdf="${f.dia}">📄 PDF para projetor</button></div></div>`; }
 /* v10.1.2 · escolher o que sai no relatório antes de gerar o PDF */
 const GSR={pct:true,orig:true,falta:true,dv:true,pessoa:false,hora:false,obs:''};
@@ -9930,6 +9930,9 @@ function gsPdfProjetor(dia,op){ op=op||{pct:1,orig:1,falta:1,dv:1}; const f=gsFo
   tr{break-inside:avoid}</style></head><body>
   <header><b>Health Search · Conferência da operação</b><span>${f.dia===hojeISO()?'Hoje':''} ${fmtData(f.dia)}</span></header>
   ${op.pct?`<div class="pct">${f.pct}%</div>`:''}
+  ${(()=>{ try{ const aj=gsAjLer(f.dia), ks=Object.keys(aj); if(!ks.length) return '';
+      const quem=[...new Set(ks.map(k=>aj[k].por).filter(Boolean))].join(', ');
+      return `<p style="text-align:center;color:#B26A00;font-size:12pt;margin:-6px 0 10px">${ks.length} nota(s) fechada(s) manualmente${quem?' por '+esc(quem):''}</p>`; }catch(e){ return ''; } })()}
   <div class="lin"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> notas conferidas${(f.dn||0)?` <span style="color:#B26A00">(${f.pctDv||0}% em divergência)</span>`:''} · <b>${fmtN(f.tv-f.fv)}</b> de <b>${fmtN(f.tv)}</b> volumes · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</div>
   ${op.orig?`<h2>Por origem</h2>
   <table><thead><tr><th>Origem</th><th>Motorista</th><th>Notas</th><th>Conferidas</th><th>%</th><th>Em divergência</th><th>Volumes</th><th>%</th></tr></thead><tbody>
@@ -9957,12 +9960,13 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
    o pedaço que ela representa na operação sai em LARANJA na barra do romaneio.
    Então o dia pode fechar 100% conferido e ainda mostrar quanto disso foi divergência. */
 function gsDvDoDia(dia){ const m={nf:new Set(),ped:new Set()};
-  try{ for(const d of (dvS()||[])){ if(String(d.d||'').slice(0,10)!==dia) continue;
-    if(d.nf) m.nf.add(z(d.nf)); if(d.ped) m.ped.add(z(d.ped)); } }catch(e){}
+  /* v10.2.0 · vale QUALQUER divergência daquela nota, não só a aberta no mesmo dia:
+     a falta costuma ser registrada depois, e a nota continua sendo "conferida em divergência". */
+  try{ for(const d of (dvS()||[])){ if(d.nf) m.nf.add(z(d.nf)); if(d.ped) m.ped.add(z(d.ped)); } }catch(e){}
   return m; }
 const gsTemDv=(m,ped,nf)=>!!((nf&&m.nf.has(z(nf)))||(ped&&m.ped.has(z(ped))));
 /* conta um dia inteiro: recebe os romaneios e uma função que diz quantos volumes foram lidos */
-function gsContar(roms,lidosDe,dvm){
+function gsContar(roms,lidosDe,dvm,aj){ aj=aj||{};
   const vis=new Set(), visNf=new Set(); let tn=0,fn=0,tv=0,fv=0,dn=0,dv=0; const orig=[], falta=[];
   for(const r of roms){ let rtn=0,rfn=0,rtv=0,rfv=0,rdn=0,rdv=0;
     for(const x of (r.rows||[])){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue;
@@ -9970,7 +9974,8 @@ function gsContar(roms,lidosDe,dvm){
       const esp=volNum(x.vol); if(esp===0) continue;
       try{ if(opForaFiltro(x)) continue; }catch(e){}
       const k=(typeof opNotaK==='function')?opNotaK(x):(nf||ped); if(k){ if(vis.has(k)) continue; vis.add(k); }
-      const espV=esp||1, lidos=Math.max(0,lidosDe(ped,nf)), temDv=gsTemDv(dvm,ped,nf);
+      const espV=esp||1; let lidos=Math.max(0,lidosDe(ped,nf)), temDv=gsTemDv(dvm,ped,nf);
+      const mao=aj[gsAjK(x.nf,x.ped)]; if(mao){ if(mao.m==='dv') temDv=true; else if(mao.m==='ok'&&lidos<=0) lidos=espV; }
       rtn++; rtv+=espV;
       /* regra do Tiago: um bipe confere a NOTA INTEIRA. Só quando a conferência é caixa a caixa
          (opPorVol ligado) é que volume lido a menos conta como volume faltando. */
@@ -10105,6 +10110,30 @@ try{ const _sa=salvarAg; salvarAg=function(){ const r=_sa.apply(this,arguments);
 try{ const _dr=dvRegistrar; dvRegistrar=function(){ const r=_dr.apply(this,arguments); nuvJa(); return r; }; }catch(e){}
 try{ const _rg=RE.gravar.bind(RE); RE.gravar=function(){ const r=_rg(); nuvJa(); return r; }; }catch(e){}
 
+/* ================= v10.2.0 · Fechar a conta do dia à mão, com autoria =================
+   Quando a nota foi conferida mas não deixou rastro (bipe perdido, falta registrada só no papel),
+   o responsável marca aqui: "foi conferida" ou "era divergência". Fica gravado quem marcou e quando,
+   e o número do dia passa a contar isso. Não é maquiar: é o gestor assumindo a conferência. */
+function gsAjLer(dia){ try{ return ((S.gsAjuste||{})[dia])||{}; }catch(e){ return {}; } }
+function gsAjK(nf,ped){ const a=z(nf), b=z(ped); return a?('N'+a):(b?('P'+b):''); }
+function gsAjMarcar(dia,nf,ped,modo){ try{ const k=gsAjK(nf,ped); if(!k) return false;
+  S.gsAjuste=S.gsAjuste||{}; S.gsAjuste[dia]=S.gsAjuste[dia]||{};
+  if(modo==='x') delete S.gsAjuste[dia][k];
+  else S.gsAjuste[dia][k]={m:modo,por:(typeof opEu==='function'?opEu():''),em:new Date().toISOString()};
+  salvar(); try{ nuvSinc(); }catch(e){} return true; }catch(e){ return false; } }
+try{ if(!NUV_CAMPOS.includes('gsAjuste')) NUV_CAMPOS.push('gsAjuste'); }catch(e){}
+document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-gs-aj]'); if(!b) return;
+  e.preventDefault();
+  const [dia,modo]=b.dataset.gsAj.split('|'), nf=b.dataset.nf||'', ped=b.dataset.ped||'';
+  if(!(typeof cargoCompleto==='function'&&cargoCompleto(cargoMeu()))){ toast('Só Admin, Líder ou Supervisor fecha a conta à mão.'); return; }
+  if(!gsAjMarcar(dia,nf,ped,modo)) return;
+  b.disabled=true;
+  try{ await gsGarantirFoto(dia,true); }catch(er){}
+  try{ gestorRender(); }catch(er){}
+  const f=gsFotoLer(dia);
+  toast(modo==='dv'?`⚠ NF ${nf||ped}: marcada como divergência. O dia está em ${f?f.pct:'—'}%.`
+                   :`✔ NF ${nf||ped}: marcada como conferida. O dia está em ${f?f.pct:'—'}%.`); });
+
 /* ================= v10.1.1 · Conferência por origem de QUALQUER dia =================
    Antes o quadro só sabia calcular o dia de hoje (opPorRom lê os romaneios carregados),
    então todo dia passado aparecia 0%. Agora, para um dia anterior, o app remonta a conta
@@ -10138,7 +10167,7 @@ async function gsFotoDeDiaPassado(dia){
       const t=new Date(b.criado_em||0); return !isNaN(t)&&t.getHours()<6; });
     if(madr.length) bs=bs.concat(madr); }catch(e){}
   const lidosDe=(ped,nf)=>new Set(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)).map(b=>b.vol?('v'+b.vol):(b.local_id||b.id||Math.random()))).size;
-  const c=gsContar(roms,lidosDe,gsDvDoDia(dia));
+  const c=gsContar(roms,lidosDe,gsDvDoDia(dia),gsAjLer(dia));
   if(!c.tn) return null;
   let dvs=0; try{ dvs=(dvSo()||[]).filter(d=>String(d.d||'').slice(0,10)===dia).length; }catch(e){}
   return {dia,ts:Date.now(),tn:c.tn,fn:c.fn,tv:c.tv,fv:c.fv,dn:c.dn,dvv:c.dv,
@@ -10162,7 +10191,8 @@ async function gsRemontarTudo(bt){ try{
     if(bt) bt.textContent=`Remontando… ${i+1}/${lista.length}`;
     const f=await gsGarantirFoto(d,true); if(f) feitos++; }
   if(bt){ bt.disabled=false; bt.textContent='📊 Remontar o histórico'; }
-  toast(feitos?`✔ Histórico remontado: ${feitos} dia(s) com conferência.`:'Não achei romaneios antigos no banco para remontar.');
+  let laranja=0; try{ for(const d of lista){ const f=(S.gsSnap||{})[d]; if(f) laranja+=(f.dn||0); } }catch(e){}
+  toast(feitos?`✔ Histórico remontado: ${feitos} dia(s)${laranja?`, ${laranja} nota(s) em divergência (laranja)`:''}.`:'Não achei romaneios antigos no banco para remontar.');
   try{ gestorRender(); }catch(e){} }catch(e){ toast('Não consegui remontar: '+(e&&e.message||e)); } }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-remontar]'); if(b){ e.preventDefault(); gsRemontarTudo(b); } });
 

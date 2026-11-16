@@ -928,6 +928,39 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const fonte=String((window.hsCineHtml||function(){return ''})());
       return {dica:/pular/i.test(fonte)}; });
     ok(!ab.dica,'abertura: não pode mais aparecer "toque para pular"'); }
+  /* v10.2.0: fechar a conta do dia à mão, com autoria, e divergência de qualquer dia vale */
+  { const aj=await p.evaluate(async()=>{ const ant='2026-10-26';
+      const gRB=localStorage.getItem(RB.local), gBip=localStorage.getItem(OP_LOCAL+ant);
+      const gDv=JSON.stringify(S.divergencias||[]), gSnap=JSON.stringify(S.gsSnap||{}), gAj=JSON.stringify(S.gsAjuste||{});
+      const L={}; L[ant]={}; L[ant][ant+'|R1']={id:ant+'|R1',dia:ant,base:'CAJ',motorista:'REGINALDO',rows:[
+        {nf:'840001',ped:'D1',dest:'A',cid:'FRANCA',vol:'2'},
+        {nf:'840002',ped:'D2',dest:'B',cid:'BAURU',vol:'3'},
+        {nf:'840003',ped:'D3',dest:'C',cid:'ASSIS',vol:'1'}]};
+      localStorage.setItem(RB.local,JSON.stringify(L));
+      localStorage.setItem(OP_LOCAL+ant,JSON.stringify([{nf:opK('840001'),ped:opK('D1'),status:'ok',dia:ant,local_id:'a1',criado_em:ant+'T10:00:00.000Z'}]));
+      /* divergência aberta em OUTRO dia, mas da nota 840002 */
+      S.divergencias=[{id:'dvo',n:6,cat:'dv',st:'aberta',tipo:'Falta de volume',d:'2026-11-16',nf:'840002',ped:'D2',qtd:1}];
+      S.gsAjuste={}; delete (S.gsSnap||{})[ant];
+      const f1=await gsFotoDeDiaPassado(ant);
+      /* fecha a última à mão */
+      gsAjMarcar(ant,'840003','D3','ok');
+      delete (S.gsSnap||{})[ant];
+      const f2=await gsFotoDeDiaPassado(ant);
+      const reg=((S.gsAjuste||{})[ant]||{})['N840003']||{};
+      /* e como divergência */
+      gsAjMarcar(ant,'840003','D3','dv'); delete (S.gsSnap||{})[ant];
+      const f3=await gsFotoDeDiaPassado(ant);
+      S.gsSnap=S.gsSnap||{}; S.gsSnap[ant]=f3;
+      const cart=gsCartao(f3);
+      localStorage.setItem(RB.local,gRB||'{}'); if(gBip) localStorage.setItem(OP_LOCAL+ant,gBip); else localStorage.removeItem(OP_LOCAL+ant);
+      S.divergencias=JSON.parse(gDv); S.gsSnap=JSON.parse(gSnap); S.gsAjuste=JSON.parse(gAj);
+      return {p1:f1&&f1.pct,dn1:f1&&f1.dn,p2:f2&&f2.pct,dn2:f2&&f2.dn,p3:f3&&f3.pct,dn3:f3&&f3.dn,
+        por:reg.por||'',em:!!reg.em,semBotao:!/data-gs-aj/.test(cart)}; });
+    ok(aj.p1===67&&aj.dn1===1,'divergência de outro dia: a nota 840002 tinha que entrar como laranja ('+aj.p1+'%, '+aj.dn1+' laranja)');
+    ok(aj.p2===100&&aj.dn2===1,'fechar à mão: marcando "conferida", o dia tem que fechar 100% ('+aj.p2+'%)');
+    ok(aj.por&&aj.em,'fechar à mão: tem que gravar quem marcou e quando ('+aj.por+')');
+    ok(aj.p3===100&&aj.dn3===2,'fechar à mão: marcando "divergência", conta 100% com 2 laranjas ('+aj.p3+'%, '+aj.dn3+')');
+    ok(aj.semBotao,'fechar à mão: com o dia 100% não sobra lista de notas para marcar'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
