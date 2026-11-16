@@ -1132,6 +1132,29 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       return {temEstranho:'campoEstranho' in o, temChave:'chave' in o, status:o.status, vol:o.vol, valor:o.valor, codigo:o.codigo}; });
     ok(!lb.temEstranho&&!lb.temChave,'fila: campo que não existe na tabela não pode ser enviado');
     ok(lb.status==='ok'&&lb.vol===3&&lb.valor===12.5&&lb.codigo==='1','fila: a linha tem que ser arrumada antes de subir ('+JSON.stringify(lb)+')'); }
+  /* v10.2.8: marcar à mão dá baixa em todos os volumes, não em 1 */
+  { const mm=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const hoje=hojeISO(), rid='T-MAO5';
+      const gRom=JSON.stringify(S.romaneios||[]), gBip=(OP.bipes||[]).slice(), gPV=S.opPorVolume;
+      S.opPorVolume=true; /* conferência caixa a caixa ligada: é aí que o erro aparecia */
+      S.romaneios=[{id:rid,numero:'991',base:'CAJ',dia:hoje,rows:[{nf:'930001',ped:'M1',dest:'CLI',cid:'FRANCA',vol:'5'}]}];
+      OP.dia=hoje; OP.bipes=[];
+      /* o bipe que a marcação à mão cria: um só, carimbado com a nota inteira */
+      OP.bipes=[{local_id:'mao1',dia:hoje,nf:opK('930001'),ped:opK('M1'),status:'ok',usuario:'TIAGO',criado_em:new Date().toISOString()}];
+      opConfMarcar(OP.bipes[0],'ok',5);
+      const ok=true;
+      const c=opContagem(opK('M1'),opK('930001'));
+      const pend=opPendentes().filter(it=>String(it.nf)===opK('930001')).length;
+      const b=OP.bipes[0]||{};
+      const r={ok,esp:c.esp,lidos:c.lidos,pend,qt:b.conferido_qt,
+        soma1:opLidosBips([{local_id:'a'}]), soma5:opLidosBips([{local_id:'a',conferido_qt:5}]),
+        somaVol:opLidosBips([{local_id:'a',vol:1},{local_id:'b',vol:2}])};
+      S.romaneios=JSON.parse(gRom); OP.bipes=gBip; S.opPorVolume=gPV;
+      return r; });
+    ok(mm.ok&&mm.qt===5,'marcar à mão: o bipe tem que guardar que a nota inteira foi conferida ('+mm.qt+')');
+    ok(mm.lidos===5&&mm.lidos>=mm.esp,'marcar à mão: nota de 5 volumes tem que contar os 5, não 1 ('+mm.lidos+' de '+mm.esp+')');
+    ok(mm.pend===0,'marcar à mão: a nota tem que sair das pendentes');
+    ok(mm.soma1===1&&mm.soma5===5&&mm.somaVol===2,'marcar à mão: a conta de volumes lidos está errada ('+mm.soma1+','+mm.soma5+','+mm.somaVol+')'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
