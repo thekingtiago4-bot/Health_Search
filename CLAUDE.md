@@ -19,6 +19,8 @@ O `index.html` tem ~9,4 MB (fontes e malha em base64). **Nunca leia o arquivo in
 - Tudo em português do Brasil, linguagem de galpão.
 - Botão criado é botão clicado: testar antes de publicar.
 - `node testes/regressao.js` tem que passar antes de todo publish.
+- Antes dos testes, checar a sintaxe do script (um `\n` dentro de string quebra o app inteiro):
+  `python3 -c "import re;s=open('index.html',encoding='utf-8').read();b=max(re.findall(r'<script>(.*?)</script>',s,re.S),key=len);open('/tmp/app.js','w',encoding='utf-8').write(b)" && node --check /tmp/app.js`
 - Publicar = versão no `index.html` + cache no `sw.js` + `version.json` + testes + push.
 - Nada de apagar dado do usuário sem backup e sem autorização explícita.
 - Toda alteração entra na lista de tarefas, somando ao histórico.

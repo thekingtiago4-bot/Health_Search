@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 16/11/2026 02:47 · versão 10.1.8
+Gerado em 16/11/2026 03:01 · versão 10.2.0
 
 
 ## EV
@@ -28,10 +28,10 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `agfRender` — linha 5606
 
 ## aj
-- `ajTela` — linha 10956
+- `ajTela` — linha 10986
 - `ajudaAbrir` — linha 9654
 - `ajudaBotoes` — linha 9655
-- `ajudaTela` — linha 10972
+- `ajudaTela` — linha 11002
 - `ajustarCantos` — linha 2091
 
 ## an
@@ -68,33 +68,33 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `audRender` — linha 7082
 
 ## av
-- `avAcha` — linha 10375
-- `avBadge` — linha 10380
-- `avBipar` — linha 10415
-- `avFoto` — linha 10393
-- `avJanela` — linha 10396
-- `avRegistrar` — linha 10410
-- `avRender` — linha 10469
-- `avRenderLista` — linha 10473
-- `avS` — linha 10371
-- `avSolucao` — linha 10462
+- `avAcha` — linha 10405
+- `avBadge` — linha 10410
+- `avBipar` — linha 10445
+- `avFoto` — linha 10423
+- `avJanela` — linha 10426
+- `avRegistrar` — linha 10440
+- `avRender` — linha 10499
+- `avRenderLista` — linha 10503
+- `avS` — linha 10401
+- `avSolucao` — linha 10492
 - `avisoDiario` — linha 3160
 
 ## ba
 - `baixar` — linha 2624
 
 ## bi
-- `bitAtualiza` — linha 11613
-- `bitSvg` — linha 11608
-- `bitTrocaTela` — linha 11619
+- `bitAtualiza` — linha 11644
+- `bitSvg` — linha 11639
+- `bitTrocaTela` — linha 11650
 
 ## bk
 - `bkBaixar` — linha 4422
 - `bkMontar` — linha 4419
 - `bkRestaurarCompleto` — linha 4426
 - `bkResumo` — linha 4421
-- `bkSoAdmin` — linha 10604
-- `bkTela` — linha 10808
+- `bkSoAdmin` — linha 10634
+- `bkTela` — linha 10838
 - `bkUltimo` — linha 4439
 - `bkfBackupFisico` — linha 7941
 - `bknBaixar` — linha 6744
@@ -111,9 +111,9 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 
 ## bu
 - `buscaCampo` — linha 2390
-- `buscaHist` — linha 11052
+- `buscaHist` — linha 11082
 - `buscaNum` — linha 2301
-- `buscaResumo` — linha 11040
+- `buscaResumo` — linha 11070
 - `buscaTxt` — linha 2302
 - `buscarJSON` — linha 3055
 
@@ -173,8 +173,8 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `cfDestXml` — linha 5457
 
 ## ch
-- `chApagar` — linha 10714
-- `chAvisar` — linha 10926
+- `chApagar` — linha 10744
+- `chAvisar` — linha 10956
 - `chBadge` — linha 7320
 - `chCarregar` — linha 7317
 - `chNaoLidos` — linha 7316
@@ -231,7 +231,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `components` — linha 1275
 - `computar` — linha 2393
 - `confDiasReg` — linha 7994
-- `confRelTela` — linha 10829
+- `confRelTela` — linha 10859
 - `conferir` — linha 1889
 - `confirmar` — linha 2618
 - `contar` — linha 2229
@@ -244,7 +244,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `corSelLista` — linha 4196
 - `corTirarEraDv` — linha 4210
 - `corpoHTML` — linha 2017
-- `corujar` — linha 11559
+- `corujar` — linha 11590
 
 ## cr
 - `cremerAchar` — linha 6496
@@ -263,7 +263,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `deitada` — linha 1640
 - `desenharGeo` — linha 3458
 - `desenharGeoAgora` — linha 3459
-- `desfazerOferecer` — linha 10541
+- `desfazerOferecer` — linha 10571
 - `detalhesLinha` — linha 2317
 
 ## di
@@ -272,45 +272,45 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `digitos` — linha 1478
 
 ## du
-- `duBaixa` — linha 10288
-- `duBancoDia` — linha 10339
-- `duCard` — linha 10293
-- `duCfg` — linha 10284
-- `duColunas` — linha 10323
-- `duDiaHora` — linha 10287
-- `duHora` — linha 10286
-- `duLinha` — linha 10292
-- `duMudarDia` — linha 10352
-- `duOrdenar` — linha 10290
-- `duPend` — linha 10289
-- `duQuando` — linha 10285
+- `duBaixa` — linha 10318
+- `duBancoDia` — linha 10369
+- `duCard` — linha 10323
+- `duCfg` — linha 10314
+- `duColunas` — linha 10353
+- `duDiaHora` — linha 10317
+- `duHora` — linha 10316
+- `duLinha` — linha 10322
+- `duMudarDia` — linha 10382
+- `duOrdenar` — linha 10320
+- `duPend` — linha 10319
+- `duQuando` — linha 10315
 - `dupPorRomaneio` — linha 2261
 
 ## dv
 - `dvAcha` — linha 5729
-- `dvAvisarDono` — linha 10015
-- `dvAvisoVisto` — linha 10022
-- `dvAvisosVistos` — linha 10021
+- `dvAvisarDono` — linha 10020
+- `dvAvisoVisto` — linha 10027
+- `dvAvisosVistos` — linha 10026
 - `dvBadge` — linha 5737
-- `dvBaixaPeloBipe` — linha 10025
+- `dvBaixaPeloBipe` — linha 10030
 - `dvBipar` — linha 5869
-- `dvBotaoBaixa` — linha 10032
+- `dvBotaoBaixa` — linha 10037
 - `dvCidade` — linha 5724
 - `dvJanelaFalta` — linha 5847
 - `dvLeitura` — linha 5835
-- `dvMeusAvisos` — linha 10023
+- `dvMeusAvisos` — linha 10028
 - `dvNoBanco` — linha 5843
 - `dvParaReentregas` — linha 5812
-- `dvRegistrar` — linha 10385
+- `dvRegistrar` — linha 10415
 - `dvRender` — linha 5823
 - `dvRenderLista` — linha 5827
 - `dvS` — linha 5720
-- `dvSo` — linha 10279
+- `dvSo` — linha 10309
 - `dvVarrer` — linha 5732
-- `dvavBarra` — linha 10480
-- `dvavDaNota` — linha 10495
-- `dvavFoto` — linha 10544
-- `dvavVoltar` — linha 10545
+- `dvavBarra` — linha 10510
+- `dvavDaNota` — linha 10525
+- `dvavFoto` — linha 10574
+- `dvavVoltar` — linha 10575
 
 ## ed
 - `edAbrir` — linha 4106
@@ -333,16 +333,16 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 ## es
 - `escalar` — linha 1601
 - `escolherSug` — linha 2500
-- `espChip` — linha 11538
-- `espCor` — linha 11537
-- `espEquipe` — linha 11572
-- `espMedir` — linha 11531
-- `espPainel` — linha 11542
-- `espReportar` — linha 11567
+- `espChip` — linha 11569
+- `espCor` — linha 11568
+- `espEquipe` — linha 11603
+- `espMedir` — linha 11562
+- `espPainel` — linha 11573
+- `espReportar` — linha 11598
 
 ## et
 - `etqAchouAlgo` — linha 9013
-- `etqDados` — linha 11700
+- `etqDados` — linha 11731
 - `etqHLSufixos` — linha 9009
 - `etqInterpretar` — linha 6432
 - `etqLinhas` — linha 6430
@@ -356,7 +356,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `evaAcharLista` — linha 8365
 - `evaAplicarVisual` — linha 8406
 - `evaArquivos` — linha 9173
-- `evaAvarias` — linha 10517
+- `evaAvarias` — linha 10547
 - `evaBadge` — linha 8291
 - `evaBalao` — linha 8914
 - `evaBuscar` — linha 8247
@@ -370,14 +370,14 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `evaDivergencias` — linha 8763
 - `evaDuv` — linha 8222
 - `evaDuvHtml` — linha 8285
-- `evaEnsinoRender` — linha 11095
+- `evaEnsinoRender` — linha 11125
 - `evaEntender` — linha 8257
 - `evaEntendiHtml` — linha 8281
 - `evaEtqHtml` — linha 9509
 - `evaEtqPendentes` — linha 9508
 - `evaEtqSug` — linha 9437
 - `evaFala` — linha 8292
-- `evaFatoAcha` — linha 11090
+- `evaFatoAcha` — linha 11120
 - `evaFeriados` — linha 8753
 - `evaFiltros` — linha 8702
 - `evaListaHtml` — linha 8368
@@ -389,7 +389,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `evaNoBip` — linha 8919
 - `evaNoNexBip` — linha 8953
 - `evaNome` — linha 8911
-- `evaNotaOcorr` — linha 10519
+- `evaNotaOcorr` — linha 10549
 - `evaNotaStatus` — linha 8743
 - `evaNotasFiltradas` — linha 8712
 - `evaNovaDuvida` — linha 8225
@@ -409,14 +409,14 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `evaRotas` — linha 8765
 - `evaStatusCurto` — linha 8933
 - `evaSvgVestida` — linha 8405
-- `evaTela` — linha 10969
+- `evaTela` — linha 10999
 - `evaVis` — linha 8404
-- `evbDiz` — linha 11204
-- `evbDuvidas` — linha 11226
-- `evbEstado` — linha 11203
-- `evbHumor` — linha 11236
-- `evbReage` — linha 11248
-- `evbSvg` — linha 11257
+- `evbDiz` — linha 11234
+- `evbDuvidas` — linha 11256
+- `evbEstado` — linha 11233
+- `evbHumor` — linha 11266
+- `evbReage` — linha 11278
+- `evbSvg` — linha 11287
 
 ## ex
 - `executar` — linha 2411
@@ -455,16 +455,16 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `foraOrigemSug` — linha 7205
 - `foraRegistrar` — linha 7212
 - `foraRender` — linha 7246
-- `fotAprovar` — linha 11791
-- `fotCard` — linha 11736
-- `fotEnsinar` — linha 11801
-- `fotEntrar` — linha 11808
-- `fotForaForm` — linha 11745
-- `fotLancarFora` — linha 11726
-- `fotLer` — linha 11771
-- `fotPassadas` — linha 11718
-- `fotProcessar` — linha 11807
-- `fotRender` — linha 11747
+- `fotAprovar` — linha 11822
+- `fotCard` — linha 11767
+- `fotEnsinar` — linha 11832
+- `fotEntrar` — linha 11839
+- `fotForaForm` — linha 11776
+- `fotLancarFora` — linha 11757
+- `fotLer` — linha 11802
+- `fotPassadas` — linha 11749
+- `fotProcessar` — linha 11838
+- `fotRender` — linha 11778
 
 ## fr
 - `fromB64` — linha 1264
@@ -476,10 +476,10 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `geoCasar` — linha 3275
 - `geoClass` — linha 3248
 - `geoCodLinha` — linha 3266
-- `geoConferir` — linha 10663
+- `geoConferir` — linha 10693
 - `geoCoords` — linha 3211
 - `geoDesenharRuas` — linha 3440
-- `geoDiagnostico` — linha 10689
+- `geoDiagnostico` — linha 10719
 - `geoEnsinar` — linha 3386
 - `geoEscolher` — linha 3411
 - `geoIdViaMinas` — linha 3265
@@ -494,16 +494,16 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `geoMudou` — linha 3238
 - `geoOriginais` — linha 3213
 - `geoParaConferir` — linha 3378
-- `geoPendente` — linha 10617
-- `geoPerdeu` — linha 10656
+- `geoPendente` — linha 10647
+- `geoPerdeu` — linha 10686
 - `geoPerto` — linha 3497
 - `geoPontosMapa` — linha 3429
-- `geoPorLista` — linha 10655
+- `geoPorLista` — linha 10685
 - `geoPrevia` — linha 3333
-- `geoProv` — linha 10678
-- `geoPubBarra` — linha 10638
-- `geoPubLer` — linha 10616
-- `geoPublicar` — linha 10624
+- `geoProv` — linha 10708
+- `geoPubBarra` — linha 10668
+- `geoPubLer` — linha 10646
+- `geoPublicar` — linha 10654
 - `geoRecuperar` — linha 7428
 - `geoSalvarPrev` — linha 3365
 - `geoSegmentos` — linha 3293
@@ -511,7 +511,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `geoSugerir` — linha 3416
 - `geoTile` — linha 3432
 - `geoTituloDeArquivo` — linha 3331
-- `geoVoltarPublicado` — linha 10681
+- `geoVoltarPublicado` — linha 10711
 - `geoXY` — linha 3427
 - `geoZoom` — linha 3498
 - `gerarPacote` — linha 2664
@@ -523,42 +523,45 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `girar` — linha 1641
 
 ## gr
-- `gravFaixa` — linha 10060
+- `gravFaixa` — linha 10065
 - `grayParaCanvas` — linha 1558
 - `gridDist` — linha 1315
 - `groupComps` — linha 1283
 
 ## gs
-- `gsBarras2` — linha 9990
+- `gsAjK` — linha 10118
+- `gsAjLer` — linha 10117
+- `gsAjMarcar` — linha 10119
+- `gsBarras2` — linha 9995
 - `gsBipes` — linha 9830
-- `gsBipesAntigos` — linha 10000
-- `gsBipesDia` — linha 10124
+- `gsBipesAntigos` — linha 10005
+- `gsBipesDia` — linha 10153
 - `gsCartao` — linha 9881
-- `gsContar` — linha 9965
+- `gsContar` — linha 9969
 - `gsDia` — linha 9827
 - `gsDiaNome` — linha 9829
 - `gsDias` — linha 9824
-- `gsDvDoDia` — linha 9959
-- `gsEnxugarBipes` — linha 10005
+- `gsDvDoDia` — linha 9962
+- `gsEnxugarBipes` — linha 10010
 - `gsFotoAgendar` — linha 9878
-- `gsFotoDeDiaPassado` — linha 10132
+- `gsFotoDeDiaPassado` — linha 10161
 - `gsFotoGravar` — linha 9874
 - `gsFotoLer` — linha 9879
 - `gsFotoMontar` — linha 9860
-- `gsFotoNuvemDias` — linha 10183
-- `gsFotoNuvemGravar` — linha 10173
-- `gsFotoNuvemLer` — linha 10180
-- `gsGarantirFoto` — linha 10148
-- `gsOrigemBox` — linha 10206
+- `gsFotoNuvemDias` — linha 10213
+- `gsFotoNuvemGravar` — linha 10203
+- `gsFotoNuvemLer` — linha 10210
+- `gsGarantirFoto` — linha 10177
+- `gsOrigemBox` — linha 10236
 - `gsPdfEscolher` — linha 9893
 - `gsPdfProjetor` — linha 9916
 - `gsPorHora` — linha 9912
 - `gsPorPessoa` — linha 9910
-- `gsRemontarTudo` — linha 10154
-- `gsRomsDia` — linha 10113
+- `gsRemontarTudo` — linha 10183
+- `gsRomsDia` — linha 10142
 - `gsSeletor` — linha 9833
 - `gsTab` — linha 9915
-- `gsTrocarOrigem` — linha 10213
+- `gsTrocarOrigem` — linha 10243
 
 ## gu
 - `guardarMunicipais` — linha 3060
@@ -572,7 +575,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 
 ## hs
 - `hsAparelho` — linha 7808
-- `hsCineHtml` — linha 11432
+- `hsCineHtml` — linha 11462
 - `hsMesclarRom` — linha 2626
 - `hsSalvarAgora` — linha 7886
 - `hsSplash` — linha 5641
@@ -615,7 +618,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `limparTxt` — linha 1483
 - `linhaAgendada` — linha 5574
 - `linhaSug` — linha 2483
-- `linhaTempo` — linha 10569
+- `linhaTempo` — linha 10599
 - `linhasDe` — linha 1682
 - `linhasDoAg` — linha 2593
 - `linhasPlanilha` — linha 1911
@@ -723,7 +726,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `nuvBkpLimpar` — linha 7816
 - `nuvGuardar` — linha 6644
 - `nuvHash` — linha 6643
-- `nuvJa` — linha 10103
+- `nuvJa` — linha 10108
 - `nuvJuntar` — linha 6653
 - `nuvLocal` — linha 6646
 - `nuvMesclar` — linha 6731
@@ -732,7 +735,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `nuvRestaurarBkp` — linha 7822
 - `nuvSinc` — linha 6661
 - `nuvStatus` — linha 6660
-- `nuvSujo` — linha 10084
+- `nuvSujo` — linha 10089
 - `nuvTelaBackups` — linha 7828
 
 ## nv
@@ -755,7 +758,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `nvTela` — linha 3878
 - `nvTempoReal` — linha 3961
 - `nvTraduz` — linha 3881
-- `nvTrocaPrimeiroAcesso` — linha 10913
+- `nvTrocaPrimeiroAcesso` — linha 10943
 - `nvUI` — linha 3978
 - `nvValidar` — linha 3994
 
@@ -886,7 +889,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 
 ## pe
 - `peel` — linha 1325
-- `pendFaixa` — linha 10088
+- `pendFaixa` — linha 10093
 - `perfilAcesso` — linha 9792
 - `perfilAplicar` — linha 9793
 - `permEstado` — linha 5948
@@ -978,8 +981,8 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `reMesmoRomaneio` — linha 6191
 - `reMotivosRender` — linha 7530
 - `reNoDia` — linha 5448
-- `reRapida` — linha 10551
-- `reRapidaLancar` — linha 10560
+- `reRapida` — linha 10581
+- `reRapidaLancar` — linha 10590
 - `reRecuperarConfirmadas` — linha 6276
 - `reRegraMesa` — linha 5582
 - `reRender` — linha 2418
@@ -1007,7 +1010,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `relImportar` — linha 6366
 - `relLer` — linha 6349
 - `relSeparar` — linha 6370
-- `relTela` — linha 10824
+- `relTela` — linha 10854
 - `relatorioCarga` — linha 2270
 - `reler` — linha 1778
 - `renderAgenda` — linha 2594
@@ -1056,7 +1059,7 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 
 ## ro
 - `roboChecar` — linha 8348
-- `roboSqlChecar` — linha 10740
+- `roboSqlChecar` — linha 10770
 - `rotDia` — linha 3011
 - `rotEhRoteirizador` — linha 9384
 - `rotGravar` — linha 9396
@@ -1107,12 +1110,12 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 
 ## se
 - `segment` — linha 1302
-- `semBkFalta` — linha 11590
-- `semBkFeito` — linha 11588
-- `semBkMarcar` — linha 11589
+- `semBkFalta` — linha 11621
+- `semBkFeito` — linha 11619
+- `semBkMarcar` — linha 11620
 - `semPedido` — linha 2304
 - `semRegiaoHoje` — linha 4685
-- `semSegunda` — linha 11587
+- `semSegunda` — linha 11618
 - `semanalAbrir` — linha 7310
 - `semanalHTML` — linha 7290
 - `senhaFraca` — linha 3911
@@ -1124,15 +1127,15 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `sfColar` — linha 7682
 
 ## si
-- `simAplicaRemoto` — linha 11831
-- `simAvisos` — linha 11837
+- `simAplicaRemoto` — linha 11862
+- `simAvisos` — linha 11868
 - `simCadResumo` — linha 4637
 - `simCadastrado` — linha 4624
 - `simCalc` — linha 4625
 - `simCidLista` — linha 4633
 - `simCidSel` — linha 4623
 - `simFora` — linha 4622
-- `simGrava` — linha 11829
+- `simGrava` — linha 11860
 - `simRegistrar` — linha 4693
 - `simRender` — linha 4629
 - `simTexto` — linha 4705
@@ -1225,12 +1228,12 @@ Gerado em 16/11/2026 02:47 · versão 10.1.8
 - `xlStatus` — linha 1989
 
 ## xm
-- `xmlArqLer` — linha 11507
-- `xmlArquivar` — linha 11510
+- `xmlArqLer` — linha 11538
+- `xmlArquivar` — linha 11541
 
 ## za
-- `zapConfig` — linha 10899
-- `zapEscolher` — linha 10895
+- `zapConfig` — linha 10929
+- `zapEscolher` — linha 10925
 
 ## zi
 - `zip` — linha 1916

@@ -185,3 +185,8 @@ reentrega** — só avisa.
 
 ## v10.1.9 (16/11/2026)
 - **Abertura não se pula**: saíram o `click`/`keydown` que chamavam `sair()` e a dica `.hc-pular` (com o CSS dela). Só o `setTimeout(sair,5600)` continua. Junto com a máscara da v10.1.0, ninguém vê tela antes da hora.
+
+## v10.2.0 (16/11/2026)
+- **`gsDvDoDia` vale para qualquer divergência da nota**, não só a aberta naquele dia: a falta costuma ser registrada depois (ou no dia em que a caixa apareceu). Era por isso que as notas do 13/11 continuavam como "não entraram" mesmo com as divergências na tela.
+- **Fechar a conta à mão** (`gsAjLer`, `gsAjK`, `gsAjMarcar`, campo sincronizado `gsAjuste`): na lista "o que não entrou", cada nota tem "✔ conferida" e "⚠ divergência". Só Admin/Líder/Supervisor. Grava `por` e `em`, `gsContar` respeita, e o PDF escreve "N nota(s) fechada(s) manualmente por Fulano".
+- **Armadilha paga**: inserir CSS com `\n` dentro de uma string entre aspas simples quebra o script inteiro (o app não carrega e os testes somem com "hojeISO is not defined"). **Rodar sempre `node --check` no script extraído antes de publicar.**
