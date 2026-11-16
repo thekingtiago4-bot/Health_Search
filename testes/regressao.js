@@ -6,7 +6,13 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
 (async()=>{
   const ch44=()=>'35261112345678000199550010000000251000000025';
   const opKi=v=>String(v||'').replace(/\D/g,'').replace(/^0+(?=\d)/,''); const b=await chromium.launch({args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']}); const falhas=[]; const ok=(c,m)=>{ if(!c) falhas.push(m); };
-  const nova=async()=>{ const p=await b.newPage(); const er=[]; p.on('pageerror',e=>er.push(e.message)); await p.route(/^https?:\/\//,r=>r.abort()); await p.goto(URL); await p.waitForTimeout(1500); p._er=er; return p; };
+  /* v10.3.0: a camada HSDB (IndexedDB) tem teste próprio em testes/idb.js. Esta suíte valida a LÓGICA do app
+     pela camada LS no modo localStorage (o fallback real de produção, síncrono e determinístico). Para isso,
+     escondemos o IndexedDB antes do app carregar — o LS cai no localStorage e os testes que escrevem direto
+     no localStorage voltam a enxergar o que o app lê. */
+  const nova=async()=>{ const p=await b.newPage(); const er=[]; p.on('pageerror',e=>er.push(e.message));
+    await p.addInitScript(()=>{ try{ Object.defineProperty(window,'indexedDB',{configurable:true,get:()=>undefined}); }catch(e){ try{ window.indexedDB=undefined; }catch(e2){} } });
+    await p.route(/^https?:\/\//,r=>r.abort()); await p.goto(URL); await p.waitForTimeout(1500); p._er=er; return p; };
   let p=await nova();
   const r=await p.evaluate(async()=>{ const out={}; const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
     S.romaneios=[{id:'a',numero:'0019486',arquivo:a,rows:[{nf:'731084',ped:'724486',vol:'3',dest:'A',cid:'LAVRAS',uf:'MG'}]}]; renderTudo(); irPara('operacao'); OP.dia=h; OP.bipes=[];

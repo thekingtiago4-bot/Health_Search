@@ -18,7 +18,11 @@ O `index.html` tem ~9,4 MB (fontes e malha em base64). **Nunca leia o arquivo in
 
 - Tudo em português do Brasil, linguagem de galpão.
 - Botão criado é botão clicado: testar antes de publicar.
-- `node testes/regressao.js` tem que passar antes de todo publish.
+- `node testes/regressao.js` tem que passar antes de todo publish (valida a lógica do app pela camada `LS`
+  no modo localStorage — o fallback real de produção).
+- `node testes/idb.js` também tem que passar: valida a camada HSDB (IndexedDB) de verdade, subindo um
+  servidor local (o Chromium só dá IndexedDB em http/https, não em `file://`). Cobre migração sem perda,
+  persistência, união entre abas, sessão intacta e falha de gravação virando erro.
 - Antes dos testes, checar a sintaxe do script (um `\n` dentro de string quebra o app inteiro):
   `python3 -c "import re;s=open('index.html',encoding='utf-8').read();b=max(re.findall(r'<script>(.*?)</script>',s,re.S),key=len);open('/tmp/app.js','w',encoding='utf-8').write(b)" && node --check /tmp/app.js`
 - Publicar = versão no `index.html` + cache no `sw.js` + `version.json` + testes + push.

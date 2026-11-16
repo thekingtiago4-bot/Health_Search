@@ -1209,6 +1209,170 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
 <div id="toast" role="status" hidden></div>
 <button id="nx-sino" type="button" title="Notificações" aria-label="Notificações"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span id="nx-sino-n" hidden>0</span></button>
 
+<script>
+/* ================= v10.3.0 · HSDB — os dados do aparelho moram no IndexedDB =================
+   Até a 10.2.x tudo ficava no localStorage, que o navegador limita a uns 9,5 MB por site. Foi esse
+   teto que fez agendamento e divergência sumirem em 16/11. O IndexedDB é o armazenamento grande do
+   mesmo navegador: funciona sem internet igual e cabe centenas de MB (ou GB, conforme o aparelho).
+
+   Como funciona, para não mudar NADA no resto do app:
+   - `LS` tem a mesma cara do localStorage (getItem/setItem/removeItem/key/length). O app inteiro
+     chama `LS.` no lugar de `localStorage.`.
+   - Chave de DADO (ver `DADO` abaixo) vive no IndexedDB, com uma cópia na memória para a leitura
+     continuar instantânea. Chave pequena de preferência/aviso continua no localStorage de verdade.
+   - A sessão do Supabase (`sb-*`, `hs-sessao`) e o `healthSearch.vivo` NUNCA passam por aqui.
+   - Na primeira vez, o que estava no localStorage é copiado, RELIDO do IndexedDB e comparado letra
+     por letra; só depois de bater é que sai do localStorage. Se qualquer coisa falhar, nada é
+     apagado e o app segue no localStorage como antes (`LS.diag.modo==='ls'`).
+   - `LS.pronto` resolve quando a memória está carregada. O início do app espera por ela.
+   Regra de ouro: na dúvida, UNIÃO e cópia de segurança (`sobras`), nunca apagar. */
+(function(root){
+'use strict';
+let real=null; try{ real=root.localStorage; real.getItem('x'); }catch(e){ real=null; }
+const MARCA='healthSearch.idb', BANCO='health-search', LOJA='kv', SOBRAS='sobras', META='~meta';
+/* O que é DADO (vai para o IndexedDB). Estado da sincronização mora junto com o dado que ele descreve:
+   se um dia o navegador limpar o IndexedDB, os dois somem juntos e o aparelho baixa tudo de novo. */
+const DADO=/^(healthSearch\.(v1$|op\.|reentregas|rotas$|xlNomes$|romBanco$|nuvHash$|nuvDesde$|nuvBase$|nuvBaseVal$|copiaEm$|xmlArquivo$|geoPub$|geoEdit$|preAtualizacao$|rt\.|db\.)|healthRomaneio\.v1$)/;
+/* listas de bipes: quando existem dos dois lados, junta pelo local_id (nunca escolhe um lado) */
+const LISTA=/^healthSearch\.op\./;
+const mem=new Map(), pre=new Map(), sujo=new Set(), falhas=new Set(), esperando=[];
+let db=null, modo='espera', pronto=false, gravando=false, agendado=false, tentativa=0, canal=null, uniao=null;
+let temMarca=false; try{ temMarca=!!(real&&real.getItem(MARCA)); }catch(e){}
+const diag={modo:'espera',marca:temMarca,cedo:[],descartes:[],sobras:0,migrou:null,perdido:false,erro:'',persistente:null,cota:0,uso:0,falhas:0};
+const eDado=k=>DADO.test(k);
+function cedo(op,k){ if(diag.cedo.length<60) diag.cedo.push(op+' '+k); }
+
+/* ---------- a mesma cara do localStorage ---------- */
+const LS={
+  getItem(k){ k=String(k); if(modo==='ls'||!eDado(k)) return real.getItem(k);
+    if(!pronto){ cedo('ler',k); if(pre.has(k)) return pre.get(k); return temMarca?null:real.getItem(k); }
+    return mem.has(k)?mem.get(k):null; },
+  setItem(k,v){ k=String(k); v=String(v); if(modo==='ls'||!eDado(k)) return real.setItem(k,v);
+    if(!pronto){ cedo('gravar',k); if(temMarca) pre.set(k,v); else real.setItem(k,v); return; }
+    if(mem.get(k)===v&&!falhas.has(k)) return; mem.set(k,v); uniao=null; sujar(k); },
+  removeItem(k){ k=String(k); if(modo==='ls'||!eDado(k)) return real.removeItem(k);
+    if(!pronto){ cedo('apagar',k); if(!temMarca) real.removeItem(k); return; }
+    if(!mem.has(k)) return; mem.delete(k); uniao=null; sujar(k); },
+  chaves(){ if(modo==='ls'||!pronto){ const o=[]; for(let i=0;i<real.length;i++) o.push(real.key(i)); return o; }
+    if(uniao&&uniao.n===real.length) return uniao.l; const o=[]; for(let i=0;i<real.length;i++){ const k=real.key(i); if(!eDado(k)) o.push(k); } for(const k of mem.keys()) o.push(k); uniao={n:real.length,l:o}; return o; },
+  get length(){ return this.chaves().length; },
+  key(i){ const l=this.chaves(); return i>=0&&i<l.length?l[i]:null; },
+  eDado, diag, pronto:null, aoFalhar:null, aoVoltar:null, simularFalha:null,
+  /* promessa que só resolve quando tudo que foi gravado até agora está no disco; rejeita se a gravação falhou */
+  assentar(){ if(modo!=='idb') return Promise.resolve(); if(!sujo.size&&!gravando) return falhas.size?Promise.reject(new Error(diag.erro||'gravação pendente')):Promise.resolve();
+    return new Promise((ok,er)=>esperando.push([ok,er])); },
+  /* tamanho (em letras) do que está guardado, para o painel do 💾 */
+  medir(){ const l=[]; for(const k of this.chaves()){ const v=this.getItem(k)||''; l.push([k,k.length+v.length]); } return l; },
+  async cota(){ try{ if(navigator.storage&&navigator.storage.estimate){ const e=await navigator.storage.estimate(); diag.cota=e.quota||0; diag.uso=e.usage||0; } }catch(e){} return diag.cota; },
+  async proteger(){ try{ if(navigator.storage&&navigator.storage.persist){ diag.persistente=(navigator.storage.persisted&&await navigator.storage.persisted())||await navigator.storage.persist(); } }catch(e){} return diag.persistente; },
+  /* o que sobrou de conflito (outra aba antiga gravando no localStorage depois da migração) */
+  sobras(){ return new Promise(ok=>{ if(!db) return ok([]); try{ const r=db.transaction(SOBRAS,'readonly').objectStore(SOBRAS).getAll(); r.onsuccess=()=>ok(r.result||[]); r.onerror=()=>ok([]); }catch(e){ ok([]); } }); },
+  /* usuário bloqueado: apaga tudo deste aparelho */
+  apagarTudo(){ try{ mem.clear(); pre.clear(); sujo.clear(); falhas.clear(); uniao=null; modo='ls'; diag.modo='ls'; if(db){ try{ db.close(); }catch(e){} db=null; } if(root.indexedDB) indexedDB.deleteDatabase(BANCO); }catch(e){} }
+};
+
+/* ---------- gravação: uma transação por rodada, a mais nova sempre vence ---------- */
+function sujar(k){ sujo.add(k); if(!agendado){ agendado=true; Promise.resolve().then(descarregar); } }
+function resolver(erro){ const l=esperando.splice(0); for(const [ok,er] of l){ if(erro) er(erro); else ok(); } }
+function deuCerto(lote){ gravando=false; tentativa=0; const tinha=falhas.size; for(const k of lote) if(!sujo.has(k)) falhas.delete(k);
+  try{ if(canal) canal.postMessage({ks:lote}); }catch(e){}
+  if(sujo.size) return descarregar(); if(!falhas.size){ diag.erro=''; resolver(null); if(tinha){ try{ LS.aoVoltar&&LS.aoVoltar(); }catch(e){} } } }
+function deuErrado(lote,e){ gravando=false; for(const k of lote) falhas.add(k); diag.falhas++; diag.erro=String(e&&(e.name||e.message)||e||'erro');
+  resolver(new Error(diag.erro)); try{ LS.aoFalhar&&LS.aoFalhar(e,lote); }catch(x){}
+  const espera=Math.min(60000,3000*Math.pow(2,tentativa++)); setTimeout(()=>{ if(modo!=='idb') return; for(const k of falhas) sujo.add(k); descarregar(); },espera); }
+function descarregar(){ agendado=false; if(gravando||!sujo.size||modo!=='idb') return; gravando=true; const lote=[...sujo]; sujo.clear();
+  if(LS.simularFalha&&lote.some(k=>{ try{ return LS.simularFalha(k); }catch(e){ return false; } })) return deuErrado(lote,new Error('QuotaExceededError (simulada)'));
+  let tx; try{ if(!db) throw new Error('banco fechado'); tx=db.transaction(LOJA,'readwrite'); }catch(e){ reabrir(); return deuErrado(lote,e); }
+  let fim=false; const st=tx.objectStore(LOJA);
+  try{ for(const k of lote){ if(mem.has(k)) st.put(mem.get(k),k); else st.delete(k); } }catch(e){ fim=true; try{ tx.abort(); }catch(x){} return deuErrado(lote,e); }
+  tx.oncomplete=()=>{ if(fim) return; fim=true; deuCerto(lote); };
+  tx.onabort=tx.onerror=()=>{ if(fim) return; fim=true; deuErrado(lote,tx.error||new Error('gravação interrompida')); }; }
+function reabrir(){ if(reabrir.indo) return; reabrir.indo=true; if(db){ try{ db.close(); }catch(e){} db=null; }
+  abrir(8000).then(d=>{ db=ligar(d); }).catch(()=>{}).then(()=>{ reabrir.indo=false; }); }
+function ligar(d){ d.onversionchange=()=>{ try{ d.close(); }catch(e){} if(db===d) db=null; }; d.onclose=()=>{ if(db===d){ db=null; reabrir(); } }; return d; }
+
+/* ---------- abrir, ler tudo, migrar ---------- */
+function abrir(ms){ return new Promise((ok,er)=>{ let fim=false; const t=setTimeout(()=>{ if(!fim){ fim=true; er(new Error('o armazenamento não respondeu')); } },ms);
+  let r; try{ r=indexedDB.open(BANCO,1); }catch(e){ clearTimeout(t); fim=true; return er(e); }
+  r.onupgradeneeded=()=>{ const d=r.result; if(!d.objectStoreNames.contains(LOJA)) d.createObjectStore(LOJA); if(!d.objectStoreNames.contains(SOBRAS)) d.createObjectStore(SOBRAS,{autoIncrement:true}); };
+  r.onsuccess=()=>{ clearTimeout(t); if(fim){ try{ r.result.close(); }catch(e){} return; } fim=true; ok(r.result); };
+  r.onerror=()=>{ clearTimeout(t); if(!fim){ fim=true; er(r.error||new Error('não abriu')); } }; }); }
+function lerTudo(d){ return new Promise((ok,er)=>{ const m=new Map(); let tx; try{ tx=d.transaction(LOJA,'readonly'); }catch(e){ return er(e); }
+  const c=tx.objectStore(LOJA).openCursor(); c.onsuccess=()=>{ const cur=c.result; if(cur){ m.set(String(cur.key),cur.value); cur.continue(); } };
+  tx.oncomplete=()=>ok(m); tx.onabort=tx.onerror=()=>er(tx.error||new Error('não li')); }); }
+function lerAlgumas(d,ks){ return new Promise((ok,er)=>{ const m=new Map(); if(!ks.length) return ok(m); let tx; try{ tx=d.transaction(LOJA,'readonly'); }catch(e){ return er(e); }
+  const st=tx.objectStore(LOJA); for(const k of ks){ const r=st.get(k); r.onsuccess=()=>{ if(r.result!==undefined) m.set(k,r.result); }; }
+  tx.oncomplete=()=>ok(m); tx.onabort=tx.onerror=()=>er(tx.error||new Error('não li')); }); }
+function gravarLote(d,pares,sobras){ return new Promise((ok,er)=>{ let tx; try{ tx=d.transaction([LOJA,SOBRAS],'readwrite'); }catch(e){ return er(e); }
+  try{ const st=tx.objectStore(LOJA); for(const [k,v] of pares) st.put(v,k); const sb=tx.objectStore(SOBRAS); for(const s of (sobras||[])) sb.add(s); }catch(e){ try{ tx.abort(); }catch(x){} return er(e); }
+  tx.oncomplete=()=>ok(); tx.onabort=tx.onerror=()=>er(tx.error||new Error('não gravei')); }); }
+/* junta duas listas de bipes pelo local_id: o pior caso é linha repetida, nunca linha perdida */
+function unir(a,b){ let A,B; try{ A=JSON.parse(a); B=JSON.parse(b); }catch(e){ return null; } if(!Array.isArray(A)||!Array.isArray(B)) return null;
+  const id=x=>x&&x.local_id?('i'+x.local_id):('j'+JSON.stringify(x)); const tem=new Set(A.map(id)); const out=A.slice(); for(const x of B){ const i=id(x); if(!tem.has(i)){ tem.add(i); out.push(x); } } return JSON.stringify(out); }
+async function migrar(d){ const ks=[]; for(let i=0;i<real.length;i++){ const k=real.key(i); if(k&&eDado(k)) ks.push(k); } if(!ks.length) return {n:0,letras:0};
+  const orig=new Map(), fin=new Map(), sobras=[], agora=new Date().toISOString(); let letras=0;
+  for(const k of ks){ const v=real.getItem(k); if(v==null) continue; orig.set(k,v);
+    if(!mem.has(k)||mem.get(k)===v||!temMarca){ fin.set(k,v); continue; } /* sem marca = migração que não terminou: o localStorage é o original e vence */
+    /* com marca e diferente: alguém (aba antiga) gravou no localStorage depois da migração */
+    const u=LISTA.test(k)?unir(mem.get(k),v):null; if(u!=null){ fin.set(k,u); continue; }
+    sobras.push({k,v,em:agora,motivo:'gravado no localStorage depois da migração'}); fin.set(k,mem.get(k)); }
+  const muda=[...fin].filter(([k,v])=>mem.get(k)!==v);
+  if(muda.length||sobras.length) await gravarLote(d,muda,sobras);
+  const lido=await lerAlgumas(d,[...fin.keys()]);
+  for(const [k,v] of fin) if(lido.get(k)!==v) throw new Error('a cópia de "'+k+'" não bateu com o original');
+  /* só agora, com tudo relido e conferido, sai do localStorage — e só se ninguém mexeu nele no meio do caminho */
+  let n=0; for(const [k,v] of fin){ mem.set(k,v); letras+=k.length+v.length; n++; const agoraV=real.getItem(k);
+    if(agoraV===orig.get(k)) real.removeItem(k); else if(agoraV!=null){ mem.set(k,agoraV); sujo.add(k); real.removeItem(k); } }
+  diag.sobras+=sobras.length; return {n,letras}; }
+
+function telaTravada(msg){ try{ if(document.getElementById('hsdb-trava')) return; const f=document.createElement('div'); f.id='hsdb-trava';
+    f.style.cssText='position:fixed;inset:0;z-index:99999;background:#0b1220;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;font:16px/1.5 system-ui,sans-serif;text-align:center';
+    f.innerHTML='<div style="max-width:460px"><h2 style="margin:0 0 10px">Não consegui abrir os dados deste aparelho</h2><p>'+msg+'</p><p><b>Nada foi apagado.</b> Feche o Health Search por completo e abra de novo. Estou tentando sozinho enquanto isso.</p><p><button type="button" id="hsdb-de-novo" style="font:inherit;padding:10px 18px;border-radius:10px;border:0;background:#2f9e44;color:#fff;cursor:pointer">Tentar de novo</button></p><p style="margin-top:22px;font-size:13px;opacity:.8">Se não voltar de jeito nenhum: <a href="#" id="hsdb-sem" style="color:#9ec5fe">continuar sem os dados guardados aqui</a> — o app baixa tudo de novo do banco online depois do login.</p></div>';
+    (document.body||document.documentElement).appendChild(f); f.querySelector('#hsdb-de-novo').onclick=()=>location.reload(); }catch(e){} }
+async function iniciar(){
+  if(!real){ modo='ls'; return; }
+  const atraso=+root.__HSDB_ATRASO||0; if(atraso) await new Promise(r=>setTimeout(r,atraso)); /* só para teste */
+  if(!root.indexedDB){ if(!temMarca){ modo='ls'; diag.erro='sem IndexedDB'; return; } }
+  let d=null, erro=null;
+  for(let i=0;;i++){
+    try{ if(!root.indexedDB) throw new Error('sem IndexedDB'); d=await abrir(i?6000:4000); break; }catch(e){ erro=e; }
+    if(!temMarca){ modo='ls'; diag.erro=String(erro&&erro.message||erro); return; } /* nunca migrou: segue no localStorage, igual a antes */
+    if(i>=1){ telaTravada('O navegador não respondeu ('+String(erro&&erro.message||erro)+').');
+      const sem=document.getElementById('hsdb-sem'); if(sem&&!sem.onclick) sem.onclick=ev=>{ ev.preventDefault(); iniciar.desistiu=true; }; }
+    if(iniciar.desistiu){ try{ real.removeItem(MARCA); }catch(e){} temMarca=false; modo='ls'; diag.erro='seguiu sem o IndexedDB a pedido'; const t=document.getElementById('hsdb-trava'); if(t) t.remove(); return; }
+    await new Promise(r=>setTimeout(r,2500)); }
+  { const t=document.getElementById('hsdb-trava'); if(t) t.remove(); }
+  db=ligar(d);
+  let tudo; try{ tudo=await lerTudo(d); }catch(e){ if(!temMarca){ try{ d.close(); }catch(x){} db=null; modo='ls'; diag.erro='não li o IndexedDB: '+(e&&e.message||e); return; } throw e; }
+  const meta=tudo.get(META); tudo.delete(META); for(const [k,v] of tudo) if(typeof v==='string') mem.set(k,v);
+  if(temMarca&&!meta&&!mem.size){ diag.perdido=true; } /* o navegador limpou o IndexedDB: o aparelho recomeça e baixa do banco online */
+  let r=null;
+  try{ r=await migrar(d); }
+  catch(e){ diag.erro='migração: '+(e&&e.message||e);
+    if(!temMarca){ mem.clear(); sujo.clear(); try{ d.close(); }catch(x){} db=null; modo='ls'; return; } /* nada saiu do localStorage: segue nele */ }
+  modo='idb';
+  if(r&&r.n){ diag.migrou={n:r.n,mb:+(r.letras*2/1048576).toFixed(2),em:new Date().toISOString()}; }
+  try{ const m={v:1,criado:(meta&&JSON.parse(meta).criado)||new Date().toISOString(),ultimaMigracao:diag.migrou||(meta&&JSON.parse(meta).ultimaMigracao)||null};
+    await gravarLote(d,[[META,JSON.stringify(m)]]);
+    if(!temMarca||diag.migrou) real.setItem(MARCA,JSON.stringify({v:1,em:m.criado,migrou:m.ultimaMigracao})); temMarca=true; diag.marca=true; }catch(e){ diag.erro=diag.erro||('marca: '+(e&&e.message||e)); }
+}
+function depois(){ pronto=true; diag.modo=modo; uniao=null;
+  if(modo==='idb'){
+    /* o que alguém tentou gravar antes da memória estar carregada: só entra se não pisar em dado que já existia */
+    for(const [k,v] of pre){ if(!mem.has(k)){ mem.set(k,v); sujo.add(k); } else if(mem.get(k)!==v){ const u=LISTA.test(k)?unir(mem.get(k),v):null; if(u!=null){ mem.set(k,u); sujo.add(k); } else diag.descartes.push(k); } }
+    pre.clear(); if(sujo.size) descarregar();
+    try{ if(root.BroadcastChannel){ canal=new BroadcastChannel('hs-db'); canal.onmessage=ev=>{ const ks=(ev.data&&ev.data.ks)||[]; if(!db||!ks.length) return;
+          lerAlgumas(db,ks.filter(k=>k!==META)).then(m=>{ for(const k of ks){ if(k===META||sujo.has(k)) continue; const velho=mem.has(k)?mem.get(k):null, novo=m.has(k)?m.get(k):null; if(velho===novo) continue;
+              if(novo==null) mem.delete(k); else mem.set(k,novo); uniao=null;
+              try{ root.dispatchEvent(new StorageEvent('storage',{key:k,oldValue:velho,newValue:novo,url:location.href})); }catch(e){} } }).catch(()=>{}); }; } }catch(e){}
+    LS.cota(); setInterval(()=>LS.cota(),5*60e3);
+  } else if(modo==='ls'){ for(const [k,v] of pre){ try{ real.setItem(k,v); }catch(e){} } pre.clear(); }
+}
+LS.pronto=iniciar().catch(e=>{ diag.erro='início: '+(e&&e.message||e); if(modo!=='idb'){ modo=temMarca?'idb':'ls'; } }).then(depois);
+root.LS=LS;
+})(window);
+
+</script>
 <script>/**
  * @licstart The following is the entire license notice for the
  * JavaScript code in this page
@@ -1851,9 +2015,9 @@ function juntarPaginas(card){
 }
 const EXATO=new Set(['pdf','pdf-texto']);
 /* correções de nome feitas à mão: valem para as próximas leituras também */
-const NOMES={_d:null, ler(){ if(!this._d){ try{ this._d=JSON.parse(localStorage.getItem('healthSearch.xlNomes')||'{}'); }catch(e){ this._d={}; } this._d.rem=this._d.rem||{}; this._d.dest=this._d.dest||{}; } return this._d; },
+const NOMES={_d:null, ler(){ if(!this._d){ try{ this._d=JSON.parse(LS.getItem('healthSearch.xlNomes')||'{}'); }catch(e){ this._d={}; } this._d.rem=this._d.rem||{}; this._d.dest=this._d.dest||{}; } return this._d; },
   pegar(campo,k){ return this.ler()[campo][k]; },
-  guardar(campo,k,v){ const d=this.ler(); d[campo][k]=v; const ks=Object.keys(d[campo]); if(ks.length>800) delete d[campo][ks[0]]; try{ localStorage.setItem('healthSearch.xlNomes',JSON.stringify(d)); }catch(e){} } };
+  guardar(campo,k,v){ const d=this.ler(); d[campo][k]=v; const ks=Object.keys(d[campo]); if(ks.length>800) delete d[campo][ks[0]]; try{ LS.setItem('healthSearch.xlNomes',JSON.stringify(d)); }catch(e){} } };
 const fonteDe=(card,r)=>{ const p=card.paginas[r._pg]; return p?p.fonte:'foto'; };
 const editado=(r,k)=>!!(r.u&&r.u[k]);
 /* depois de ler: arruma o que dá para arrumar com o que se sabe (cidades do IBGE, nomes que se repetem, totais do rodapé) */
@@ -2135,8 +2299,8 @@ function iniciarTela(){
   if(TOQUE){ const b=$x('#xl-bt-cam'); if(b){ b.hidden=false; b.onclick=()=>$x('#xl-cam').click(); } }
   if(!OCR.tem()){ const a=$x('#xl-sem-foto'); if(a) a.hidden=false; $x('#xl-arq').setAttribute('accept','application/pdf,.pdf'); }
   sol.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $x('#xl-arq').click(); } });
-  try{ const v=localStorage.getItem('healthSearch.xlAuto'); if(v!=null) $x('#xl-auto').checked=v==='1'; }catch(e){}
-  $x('#xl-auto').addEventListener('change',e=>{ try{ localStorage.setItem('healthSearch.xlAuto',e.target.checked?'1':'0'); }catch(_){} });
+  try{ const v=LS.getItem('healthSearch.xlAuto'); if(v!=null) $x('#xl-auto').checked=v==='1'; }catch(e){}
+  $x('#xl-auto').addEventListener('change',e=>{ try{ LS.setItem('healthSearch.xlAuto',e.target.checked?'1':'0'); }catch(_){} });
   document.addEventListener('input',e=>{ const c=e.target.closest('.xl-c'); if(c){ const card=cardDe(c.dataset.card); if(!card) return; const r=card.rows[+c.dataset.i]; if(!r) return; r[c.dataset.k]=c.value.trim(); r.u=r.u||{}; r.u[c.dataset.k]=1; if(r.d) delete r.d[c.dataset.k]; c.classList.remove('duvida'); c.removeAttribute('title'); atualizarResumo(card); return; }
     const m=e.target.closest('[data-xl-meta]'); if(m){ const card=cardDe(m.dataset.card); if(!card) return; card.fixo=card.fixo||{}; card.fixo[m.dataset.xlMeta]=m.value.trim()||null; card[m.dataset.xlMeta]=m.value.trim()||null; } });
   document.addEventListener('focusin',e=>{ const c=e.target.closest&&e.target.closest('.xl-c'); if(c && c.dataset.orig==null) c.dataset.orig=c.value; if(c && c.classList.contains('duvida')) XL.ultAm=c; });
@@ -2204,11 +2368,11 @@ const Store={modo:'local',pasta:'',chave:'healthSearch.v1',chaveAntiga:'healthRo
     if(/^https?:$/.test(location.protocol) && /^(127\.0\.0\.1|localhost)$/.test(location.hostname)){
       try{ const r=await fetch('/__hr/estado',{cache:'no-store',headers:HDR}); if(r.ok){ const j=await r.json(); if(j&&(j.app==='health-search'||j.app==='health-romaneio')){ this.modo='exe'; this.pasta=j.pasta||''; return j.dados||null; } } }catch(e){}
     }
-    try{ return JSON.parse(localStorage.getItem(this.chave)||localStorage.getItem(this.chaveAntiga)||'null'); }catch(e){ return null; }
+    try{ return JSON.parse(LS.getItem(this.chave)||LS.getItem(this.chaveAntiga)||'null'); }catch(e){ return null; }
   },
   async salvar(obj){ const s=JSON.stringify(obj);
     if(this.modo==='exe'){ try{ const r=await fetch('/__hr/estado',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},HDR),body:s}); if(!r.ok) throw 0; }catch(e){ toast('Não consegui gravar os dados na pasta do programa.'); } return; }
-    try{ localStorage.setItem(this.chave,s); }catch(e){ toast('O navegador não deixou gravar os dados (armazenamento cheio ou bloqueado).'); }
+    try{ LS.setItem(this.chave,s); }catch(e){ toast('O navegador não deixou gravar os dados (armazenamento cheio ou bloqueado).'); }
   }
 };
 
@@ -2712,8 +2876,8 @@ $$('.nav button').forEach(b=>b.onclick=()=>irPara(b.dataset.tela));
 /* ================= REENTREGAS / DIVERGÊNCIAS ================= */
 const RE={chave:'healthSearch.reentregas',
   d:null,
-  ler(){ if(!this.d){ try{ this.d=JSON.parse(localStorage.getItem(this.chave)||'null'); }catch(e){} if(!this.d) this.d={dias:{},apiKey:'',atual:null}; } return this.d; },
-  gravar(){ try{ localStorage.setItem(this.chave,JSON.stringify(this.d)); }catch(e){ toast('O navegador não deixou gravar as reentregas.'); } }
+  ler(){ if(!this.d){ try{ this.d=JSON.parse(LS.getItem(this.chave)||'null'); }catch(e){} if(!this.d) this.d={dias:{},apiKey:'',atual:null}; } return this.d; },
+  gravar(){ try{ LS.setItem(this.chave,JSON.stringify(this.d)); }catch(e){ toast('O navegador não deixou gravar as reentregas.'); } }
 };
 const reHoje=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const reDataBR=iso=>iso.split('-').reverse().join('/');
@@ -2815,7 +2979,7 @@ async function reRestaurar(f){
   let b; try{ b=JSON.parse(await f.text()); }catch(e){ toast('Arquivo inválido.'); return; }
   if(!b||b.tipo!=='healthSearch.reentregas.backup'||!b.dias){ toast('Esse arquivo não é um backup de Reentregas.'); return; }
   const D=RE.ler(); let novas=0;
-  try{ localStorage.setItem('healthSearch.reentregas.antes',JSON.stringify(D.dias)); }catch(e){}
+  try{ LS.setItem('healthSearch.reentregas.antes',JSON.stringify(D.dias)); }catch(e){}
   if(b.substituir){ // troca só o que veio de planilha antes; o que você bipou/digitou fica
     let tirou=0; for(const d of Object.keys(D.dias)){ const fica=D.dias[d].filter(l=>!l.imp); tirou+=D.dias[d].length-fica.length; D.dias[d]=fica; } }
   for(const [d,ls] of Object.entries(b.dias)){ const at=D.dias[d]=D.dias[d]||[];
@@ -2917,9 +3081,9 @@ function reSub(t){ $$('[data-re-sub]').forEach(b=>b.setAttribute('aria-pressed',
     l[inp.dataset.c]=inp.value.trim().toUpperCase(); RE.gravar(); toast('NF '+l.nf+' corrigida.'); rpRender(); });
   $('#rp-regs').addEventListener('click',e=>{ const b=e.target.closest('[data-rp-reg]'); if(!b) return; RP.reg=b.dataset.rpReg; rpRender(); });
   $('#re-bkp').addEventListener('click',reBackup);
-  try{ if(localStorage.getItem('healthSearch.reentregas.antes')&&nvAdmin()) $('#re-desfazer').hidden=false; }catch(e){}
-  $('#re-desfazer').addEventListener('click',()=>{ if(!nvAdmin()){ toast('Só o administrador pode desfazer restaurações.'); return; } let a; try{ a=JSON.parse(localStorage.getItem('healthSearch.reentregas.antes')||'null'); }catch(e){} if(!a){ toast('Nada para desfazer.'); return; }
-    if(!confirm('Voltar as reentregas para como estavam antes da última restauração?')) return; const D=RE.ler(); D.dias=a; if(!D.dias[D.atual]) D.atual=null; RE.gravar(); localStorage.removeItem('healthSearch.reentregas.antes'); $('#re-desfazer').hidden=true; reTela(); toast('Restauração desfeita.'); });
+  try{ if(LS.getItem('healthSearch.reentregas.antes')&&nvAdmin()) $('#re-desfazer').hidden=false; }catch(e){}
+  $('#re-desfazer').addEventListener('click',()=>{ if(!nvAdmin()){ toast('Só o administrador pode desfazer restaurações.'); return; } let a; try{ a=JSON.parse(LS.getItem('healthSearch.reentregas.antes')||'null'); }catch(e){} if(!a){ toast('Nada para desfazer.'); return; }
+    if(!confirm('Voltar as reentregas para como estavam antes da última restauração?')) return; const D=RE.ler(); D.dias=a; if(!D.dias[D.atual]) D.atual=null; RE.gravar(); LS.removeItem('healthSearch.reentregas.antes'); $('#re-desfazer').hidden=true; reTela(); toast('Restauração desfeita.'); });
   $('#re-rest').addEventListener('click',()=>$('#re-rest-arq').click());
   $('#re-rest-arq').addEventListener('change',e=>{ const f=e.target.files[0]; e.target.value=''; if(f) reRestaurar(f); });
   reDia();
@@ -3216,17 +3380,18 @@ const GEO_MATRIZ=[{id:'matriz',nome:'MATRIZ',tipo:'regiao',alias:[],cidades:[],c
 function geoInit(){ if(!S.geo||!Array.isArray(S.geo.listas)){
     /* 9.19.13: registra quando o mapa de fábrica é recriado, para achar a causa */
     try{
-      const havia=localStorage.getItem('healthSearch.geo'); // idb? S.geo pode não ter chegado ainda
-      let tamPrinc=0,chaves=0; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); chaves++; if(k==='healthSearch.v1') tamPrinc=(localStorage.getItem(k)||'').length; } }catch(e){}
+      const havia=LS.getItem('healthSearch.geo'); // idb? S.geo pode não ter chegado ainda
+      let tamPrinc=0,chaves=0; try{ for(let i=0;i<LS.length;i++){ const k=LS.key(i); chaves++; if(k==='healthSearch.v1') tamPrinc=(LS.getItem(k)||'').length; } }catch(e){}
       const reg={em:new Date().toISOString(),versao:typeof HS_VERSAO!=='undefined'?HS_VERSAO:'?',
         haviaCopiaLocal:!!havia,
         haviaSGeo:!!(window.S&&window.S.geo),
         tamPrincipal:tamPrinc, chavesLocal:chaves, idbOk:!!(window.GIDB&&GIDB.db),
         storeInitFeito:!!window.__storeInitFeito,
+        hsdb:(window.LS&&LS.diag)?LS.diag.modo:'?', hsdbErro:(window.LS&&LS.diag)?LS.diag.erro:'', hsdbMigrou:(window.LS&&LS.diag&&LS.diag.migrou)?LS.diag.migrou:null,
         url:location.pathname};
-      const logs=JSON.parse(localStorage.getItem('healthSearch.geoInitLog')||'[]');
+      const logs=JSON.parse(LS.getItem('healthSearch.geoInitLog')||'[]');
       logs.unshift(reg); if(logs.length>20) logs.length=20;
-      localStorage.setItem('healthSearch.geoInitLog',JSON.stringify(logs));
+      LS.setItem('healthSearch.geoInitLog',JSON.stringify(logs));
       console.warn('[GEO] mapa de fábrica recriado',reg);
     }catch(e){}
     /* v9.22.2 · PROVISÓRIO: este mapa não veio de lugar nenhum, é só para a tela não quebrar.
@@ -3235,7 +3400,7 @@ function geoInit(){ if(!S.geo||!Array.isArray(S.geo.listas)){
   } /* v9.15.0: mapa de fábrica nasce "velho" para nunca passar à frente do publicado */ S.geo.aprend=S.geo.aprend||{};
   for(const m of GEO_MATRIZ) if(!S.geo.listas.some(l=>l.id===m.id)) S.geo.listas.push(JSON.parse(JSON.stringify(m))); }
 /* 9.19.12: só uma edição feita por alguém na tela (clique/tecla) marca o mapa como "editado aqui". Sem essa marca, mapa diferente do publicado é cópia velha e não vale. */
-const GEOE={ch:'healthSearch.geoEdit', ler(){ try{ return JSON.parse(localStorage.getItem(this.ch)||'null'); }catch(e){ return null; } }, marcar(){ try{ const ua=navigator.userActivation; if(ua&&!ua.isActive) return; if(!this.ler()) localStorage.setItem(this.ch,JSON.stringify({em:new Date().toISOString()})); }catch(e){} }, limpar(){ try{ localStorage.removeItem(this.ch); }catch(e){} } };
+const GEOE={ch:'healthSearch.geoEdit', ler(){ try{ return JSON.parse(LS.getItem(this.ch)||'null'); }catch(e){ return null; } }, marcar(){ try{ const ua=navigator.userActivation; if(ua&&!ua.isActive) return; if(!this.ler()) LS.setItem(this.ch,JSON.stringify({em:new Date().toISOString()})); }catch(e){} }, limpar(){ try{ LS.removeItem(this.ch); }catch(e){} } };
 function geoMudou(){ GEO.idx={}; GEO.cls={}; S.geo.em=new Date().toISOString(); GEOE.marcar(); salvar(); }
 const kmDist=(a,b)=>{ const la=(a.lat+b.lat)/2*Math.PI/180; const dx=(a.lon-b.lon)*111.32*Math.cos(la), dy=(a.lat-b.lat)*110.57; return Math.sqrt(dx*dx+dy*dy); };
 const geoLista=id=>S.geo.listas.find(l=>l.id===id);
@@ -3908,7 +4073,7 @@ async function nvEmailDoLogin(v){ v=String(v||'').trim().toLowerCase(); if(v.inc
   try{ const {data}=await NV.cli.rpc('hs_email_por_usuario',{u:v}); if(data) return String(data).toLowerCase(); }catch(e){} return nvLoginParaEmail(v); }
 const nvEmailReal=em=>!!em&&!String(em).endsWith('@'+NV_DOM);
 const NV={cli:null,user:null,perfil:null,origem:Math.random().toString(36).slice(2),tSalvar:0,salvando:false,canal:null};
-function nvCfg(){ if(HS_NUVEM.url&&HS_NUVEM.chave) return HS_NUVEM; try{ const c=JSON.parse(localStorage.getItem('healthSearch.nuvem')||'null'); if(c&&c.url&&c.chave) return c; }catch(e){} return null; }
+function nvCfg(){ if(HS_NUVEM.url&&HS_NUVEM.chave) return HS_NUVEM; try{ const c=JSON.parse(LS.getItem('healthSearch.nuvem')||'null'); if(c&&c.url&&c.chave) return c; }catch(e){} return null; }
 function nvLib(){ return new Promise((ok,er)=>{ if(window.supabase) return ok(); const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js'; s.integrity='sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o'; s.crossOrigin='anonymous'; s.onload=()=>ok(); s.onerror=()=>er(new Error('Sem internet para carregar o login.')); document.head.appendChild(s); }); }
 function nvTela(html){ let f=document.getElementById('nv-tela'); if(!f){ f=document.createElement('div'); f.id='nv-tela'; document.body.appendChild(f); } f.innerHTML=`<div class="nv-caixa"><div class="nv-marca"><b>Health Search</b><span>Acesso online</span></div>${html}</div>`; f.hidden=false; return f; }
 function nvFechar(){ const f=document.getElementById('nv-tela'); if(f) f.hidden=true; }
@@ -3920,7 +4085,7 @@ function nvConfigurar(){ return new Promise(res=>{ const f=nvTela(`<h2>Conectar 
   <label>Project URL<input id="nv-url" placeholder="https://xxxx.supabase.co" autocomplete="off"></label><label>Chave anon public<input id="nv-chave" autocomplete="off"></label>
   <div class="nv-msg"></div><div class="nv-bts"><button class="btn" id="nv-off" type="button">Usar offline</button><button class="btn pri" id="nv-ok" type="button">Conectar</button></div>`);
   f.querySelector('#nv-off').onclick=()=>{ nvFechar(); res(null); };
-  f.querySelector('#nv-ok').onclick=()=>{ const url=f.querySelector('#nv-url').value.trim().replace(/\/+$/,''), chave=f.querySelector('#nv-chave').value.trim(); if(!/^https:\/\/.+\.supabase\.co$/.test(url)||chave.length<40){ nvMsg(f,'Confira a URL e a chave.',1); return; } const c={url,chave}; localStorage.setItem('healthSearch.nuvem',JSON.stringify(c)); res(c); }; }); }
+  f.querySelector('#nv-ok').onclick=()=>{ const url=f.querySelector('#nv-url').value.trim().replace(/\/+$/,''), chave=f.querySelector('#nv-chave').value.trim(); if(!/^https:\/\/.+\.supabase\.co$/.test(url)||chave.length<40){ nvMsg(f,'Confira a URL e a chave.',1); return; } const c={url,chave}; LS.setItem('healthSearch.nuvem',JSON.stringify(c)); res(c); }; }); }
 
 function nvLogin(){ return new Promise(res=>{ const f=nvTela(`<h2>Entrar</h2><form id="nv-form"><label>Usuário<input id="nv-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ex.: tiago.souza" required></label><label>Senha<input id="nv-senha" type="password" autocomplete="current-password" required></label>
   <div class="nv-msg"></div><div class="nv-bts"><button class="btn mini" id="nv-esq" type="button">Esqueci a senha</button><button class="btn pri grande" type="submit">Entrar</button></div></form>`);
@@ -3930,12 +4095,12 @@ function nvLogin(){ return new Promise(res=>{ const f=nvTela(`<h2>Entrar</h2><fo
 
 async function nvPerfil(){ const {data,error}=await NV.cli.from('perfis').select('*').eq('id',NV.user.id).maybeSingle(); if(error) throw error; return data; }
 async function nvCarregar(){ const {data,error}=await NV.cli.from('hs_estado').select('dados,atualizado_em,atualizado_por').eq('id','principal').maybeSingle(); if(error) throw error; return data; }
-function nvAplicarRE(re){ if(!re) return; try{ localStorage.setItem(RE.chave,JSON.stringify(re)); }catch(e){} RE.d=re; }
+function nvAplicarRE(re){ if(!re) return; try{ LS.setItem(RE.chave,JSON.stringify(re)); }catch(e){} RE.d=re; }
 
 /* v7.0.2: sem internet abre a última cópia guardada (mapa, romaneios, reentregas…) e avisa; atualiza quando voltar a conexão */
 const nvSemRede=e=>!navigator.onLine||/fetch|network|Failed to|NetworkError|Load failed|ERR_/i.test((e&&(e.message||e.name))||'');
-async function nvOffline(){ const r=await _stInit(); let em=''; try{ em=localStorage.getItem('healthSearch.copiaEm')||''; }catch(e){}
-  try{ if(!NV.perfil){ const p=JSON.parse(localStorage.getItem('healthSearch.perfilCache')||'null'); if(p) NV.perfil=p; } }catch(e){}
+async function nvOffline(){ const r=await _stInit(); let em=''; try{ em=LS.getItem('healthSearch.copiaEm')||''; }catch(e){}
+  try{ if(!NV.perfil){ const p=JSON.parse(LS.getItem('healthSearch.perfilCache')||'null'); if(p) NV.perfil=p; } }catch(e){}
   NV.offline=true; document.documentElement.dataset.offline='1';
   setTimeout(()=>{ const b=document.createElement('span'); b.id='nv-offline'; b.style.cssText='display:inline-block;margin:2px 0 0;background:#B45309;color:#fff;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;cursor:help';
     b.textContent='📴 Sem internet — mostrando a última cópia'+(em?' de '+new Date(em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'. Mapa e consultas funcionam; o que os colegas mudaram chega quando a conexão voltar.';
@@ -3955,7 +4120,7 @@ Store.init=async function(){
   if(/type=recovery/.test(location.hash)) await nvNovaSenha();
   for(;;){ const {data}=await NV.cli.auth.getSession(); NV.user=data.session?data.session.user:await nvLogin();
     if(!data.session&&!navigator.onLine) return nvOffline();
-    try{ NV.perfil=await nvPerfil(); if(NV.perfil) try{ localStorage.setItem('healthSearch.perfilCache',JSON.stringify(NV.perfil)); }catch(e){} }catch(e){ NV.perfil=null; if(data.session&&nvSemRede(e)) return nvOffline(); }
+    try{ NV.perfil=await nvPerfil(); if(NV.perfil) try{ LS.setItem('healthSearch.perfilCache',JSON.stringify(NV.perfil)); }catch(e){} }catch(e){ NV.perfil=null; if(data.session&&nvSemRede(e)) return nvOffline(); }
     if(NV.perfil&&NV.perfil.ativo) break;
     await NV.cli.auth.signOut({scope:'local'}); const f=nvTela(`<h2>Sem acesso</h2><p>Este usuário não está liberado. Peça ao administrador.</p><div class="nv-bts"><button class="btn pri" type="button">Voltar</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
   if(NV.perfil&&NV.perfil.papel==='admin'&&navigator.onLine){ await nvMfa(); NUV._pósMfa=Date.now(); }
@@ -3973,13 +4138,13 @@ Store.init=async function(){
     if(!salvou){ if(nvSemRede(e)&&navigator.onLine===false){ this.modo='local'; return nvOffline(true); }
       if(nvSemRede(e)){ this.modo='local'; return nvOffline(true); }
       toast('Não consegui ler os dados online: '+nvTraduz(e.message)); } }
-  let temCopia=false; try{ temCopia=!!localStorage.getItem('healthSearch.copiaEm')&&!!localStorage.getItem('healthSearch.nuvHash'); }catch(e){}
+  let temCopia=false; try{ temCopia=!!LS.getItem('healthSearch.copiaEm')&&!!LS.getItem('healthSearch.nuvHash'); }catch(e){}
   if(temCopia){ if(row) NV.versao=row.atualizado_em; nvTempoReal(); return await _stInit(); } /* a cópia local + hs_sync trazem o mais novo */
   if(row&&row.dados){ nvAplicarRE(row.dados.re); NV.versao=row.atualizado_em; nvTempoReal(); return row.dados.s||null; }
   nvTempoReal(); return null; // banco vazio: começa do zero (ou do que vier por importação)
 };
 Store.salvar=async function(obj){ if(this.modo!=='nuvem') return _stSalvar(obj);
-  try{ await _stSalvar(obj); localStorage.setItem('healthSearch.copiaEm',new Date().toISOString()); }catch(e){}
+  try{ await _stSalvar(obj); LS.setItem('healthSearch.copiaEm',new Date().toISOString()); }catch(e){}
   const syncOk=typeof NUV!=='undefined'&&NUV.ult&&!NUV.erro; /* v9.19.2: cópia antiga (hs_estado) só do admin, no máximo a cada 6 h; os dados vão pelo hs_sync */ if(syncOk&&(!nvAdmin()||Date.now()-(NV.ultEstado||0)<6*3600e3)){ nvSelo('Salvo online'); return; } const espera=syncOk?Math.max(700,300000-(Date.now()-(NV.ultEstado||0))):700;
   clearTimeout(NV.tSalvar); nvSelo(syncOk?'Salvo online':'Salvando…');
   NV.tSalvar=setTimeout(async()=>{ NV.ultEstado=Date.now(); NV.salvando=true;
@@ -4007,7 +4172,7 @@ function atualizarBotoesAdmin(){
   });
   /* re-desfazer: só admin, E só se houver backup pendente no localStorage */
   const rd=document.getElementById('re-desfazer');
-  if(rd){ try{ rd.hidden = !adm || !localStorage.getItem('healthSearch.reentregas.antes'); }catch(e){ rd.hidden=!adm; } }
+  if(rd){ try{ rd.hidden = !adm || !LS.getItem('healthSearch.reentregas.antes'); }catch(e){ rd.hidden=!adm; } }
 }
 
 function nvUI(){ const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||NV.user.email)}</b><small>${NV.perfil.papel==='admin'?'Administrador':NV.perfil.papel==='gestor'?'Gestor':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
@@ -4319,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.2.10', HS_DATA='16/11/2026';
+const HS_VERSAO='10.3.0', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4451,11 +4616,11 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[d
 
 /* ================= BACKUP COMPLETO (todos os dados) + lembrete diário ================= */
 const BK_TIPO='healthSearch.backup.completo';
-async function bkMontar(){ let ops=[]; try{ if(Store.modo==='nuvem'&&NV.cli){ const {data}=await NV.cli.from('nex_operacoes').select('*'); ops=data||[]; } else ops=JSON.parse(localStorage.getItem('healthSearch.rotas')||'[]'); }catch(e){}
+async function bkMontar(){ let ops=[]; try{ if(Store.modo==='nuvem'&&NV.cli){ const {data}=await NV.cli.from('nex_operacoes').select('*'); ops=data||[]; } else ops=JSON.parse(LS.getItem('healthSearch.rotas')||'[]'); }catch(e){}
   return {tipo:BK_TIPO,versao:1,app:HS_VERSAO,geradoEm:new Date().toISOString(),por:(NV.perfil&&NV.perfil.nome)||'',dados:{s:S,re:RE.ler(),operacoes:ops}}; }
 function bkResumo(b){ const s=b.dados.s||{}, re=b.dados.re||{dias:{}}; return {rom:(s.romaneios||[]).length,ag:(s.agendamentos||[]).length,re:Object.values(re.dias||{}).reduce((t,l)=>t+l.length,0),reg:((s.geo||{}).listas||[]).length,ops:(b.dados.operacoes||[]).length}; }
 async function bkBaixar(auto){ const b=await bkMontar(), r=bkResumo(b); const nome='Backup_HealthSearch_'+reHoje()+'.json';
-  nexBaixar(JSON.stringify(b),nome,'application/json'); try{ localStorage.setItem('healthSearch.ultimoBackup',new Date().toISOString()); }catch(e){}
+  nexBaixar(JSON.stringify(b),nome,'application/json'); try{ LS.setItem('healthSearch.ultimoBackup',new Date().toISOString()); }catch(e){}
   try{ const D=RE.ler(); D.ultimoBackup=new Date().toISOString(); }catch(e){}
   toast(`${auto?'Backup automático do dia':'Backup completo'} salvo em Downloads (${nome}): ${r.rom} romaneio(s), ${r.re} reentrega(s), ${r.ag} agendamento(s), ${r.reg} região(ões)/base(s), ${r.ops} operação(ões).`); nexBadges&&nexBadges(); }
 async function bkRestaurarCompleto(b){ const r=bkResumo(b);
@@ -4463,23 +4628,23 @@ async function bkRestaurarCompleto(b){ const r=bkResumo(b);
     <p><b>Todos os dados atuais serão trocados pelos do backup</b>${Store.modo==='nuvem'?', para toda a equipe':''}. O estado de agora vira uma cópia de segurança no servidor, então dá para voltar.</p>
     <div class="botoes"><button class="btn" data-a="x" type="button">Cancelar</button><button class="btn perigo" data-a="ok" type="button">Restaurar tudo</button></div></div>`;
   document.body.appendChild(f); f.addEventListener('click',async e=>{ const x=e.target.closest('[data-a]'); if(!x) return; f.remove(); if(x.dataset.a!=='ok') return;
-    for(const k of Object.keys(S)) if(k!=='tema'&&k!=='introOff') delete S[k]; Object.assign(S,b.dados.s||{}); RE.d=b.dados.re||{dias:{},atual:null,apiKey:''}; try{ localStorage.setItem(RE.chave,JSON.stringify(RE.d)); }catch(err){}
+    for(const k of Object.keys(S)) if(k!=='tema'&&k!=='introOff') delete S[k]; Object.assign(S,b.dados.s||{}); RE.d=b.dados.re||{dias:{},atual:null,apiKey:''}; try{ LS.setItem(RE.chave,JSON.stringify(RE.d)); }catch(err){}
     if(Store.modo==='nuvem'&&NV.cli&&(b.dados.operacoes||[]).length){ const {error}=await NV.cli.from('nex_operacoes').upsert(b.dados.operacoes); if(error) toast('Operações não restauradas: '+nvTraduz(error.message)); }
-    else if((b.dados.operacoes||[]).length){ try{ localStorage.setItem('healthSearch.rotas',JSON.stringify(b.dados.operacoes)); }catch(err){} }
+    else if((b.dados.operacoes||[]).length){ try{ LS.setItem('healthSearch.rotas',JSON.stringify(b.dados.operacoes)); }catch(err){} }
     montarDicionario(); geoInit(); GEO.idx={}; GEO.cls={}; salvar(); renderTudo(); try{ reTela(); }catch(err){} toast('Backup completo restaurado.'); }); }
 /* o botão "Fazer backup" agora salva tudo; "Restaurar" aceita os dois formatos */
 { const bt=$('#re-bkp'); if(bt){ const novo=bt.cloneNode(true); bt.replaceWith(novo); novo.textContent='Fazer backup completo'; novo.title='Baixa um arquivo com TODOS os dados do programa'; novo.addEventListener('click',()=>bkBaixar(false)); } }
 { const _rr2=reRestaurar; reRestaurar=async function(f){ let b=null; try{ b=JSON.parse(await f.text()); }catch(e){} if(b&&b.tipo===BK_TIPO&&b.dados) return bkRestaurarCompleto(b); return _rr2(f); }; }
 /* lembrete diário + opção de baixar sozinho todo dia */
-function bkUltimo(){ try{ return localStorage.getItem('healthSearch.ultimoBackup')||''; }catch(e){ return ''; } }
+function bkUltimo(){ try{ return LS.getItem('healthSearch.ultimoBackup')||''; }catch(e){ return ''; } }
 const bkAtrasado=()=>{ const u=bkUltimo(); return !u||u.slice(0,10)<hojeISO(); };
 { const _av2=nexAvisos; nexAvisos=function(){ const a=_av2(); if(nvAdmin()&&bkAtrasado()) a.unshift({cor:'#1C7ED6',txt:'<b>Backup de hoje</b> ainda não foi feito — Reentregas → Fazer backup completo',acao:'bk'}); return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="bk"]'); if(b) setTimeout(()=>bkBaixar(false),50); });
 { const bar=$('#re-bkp'); if(bar) bar.insertAdjacentHTML('afterend',`<label class="bk-auto" title="Na primeira vez que abrir o programa no dia, baixa o backup completo sozinho (neste computador)"><input type="checkbox" id="bk-auto"> backup automático diário</label>`);
-  try{ $('#bk-auto').checked=localStorage.getItem('healthSearch.bkAuto')==='1'; }catch(e){} }
-document.addEventListener('change',e=>{ if(e.target.id==='bk-auto'){ try{ localStorage.setItem('healthSearch.bkAuto',e.target.checked?'1':'0'); }catch(err){} toast(e.target.checked?'Todo dia, ao abrir, o programa baixa o backup completo neste computador.':'Backup automático desligado.'); } });
+  try{ $('#bk-auto').checked=LS.getItem('healthSearch.bkAuto')==='1'; }catch(e){} }
+document.addEventListener('change',e=>{ if(e.target.id==='bk-auto'){ try{ LS.setItem('healthSearch.bkAuto',e.target.checked?'1':'0'); }catch(err){} toast(e.target.checked?'Todo dia, ao abrir, o programa baixa o backup completo neste computador.':'Backup automático desligado.'); } });
 (function(){ let n=0; const t=setInterval(()=>{ n++; const pronto=S.geo&&!(document.getElementById('nv-tela')&&!document.getElementById('nv-tela').hidden)&&(Store.modo!=='nuvem'||NV.perfil); if(!pronto){ if(n>200) clearInterval(t); return; } clearInterval(t);
-  let auto=false; try{ auto=localStorage.getItem('healthSearch.bkAuto')==='1'; }catch(e){} if(auto&&bkAtrasado()) setTimeout(()=>bkBaixar(true),3000); else if(nvAdmin()&&bkAtrasado()) setTimeout(()=>{ try{ nexBadges(); }catch(e){} },1500); },500); })();
+  let auto=false; try{ auto=LS.getItem('healthSearch.bkAuto')==='1'; }catch(e){} if(auto&&bkAtrasado()) setTimeout(()=>bkBaixar(true),3000); else if(nvAdmin()&&bkAtrasado()) setTimeout(()=>{ try{ nexBadges(); }catch(e){} },1500); },500); })();
 
 /* ================= SEGURANÇA ================= */
 /* cópias de segurança (admin) */
@@ -5355,12 +5520,12 @@ function opConfFalta(b,tot,chegou,obs,faltaram){ const falta=Math.max(0,Math.max
   opConfFechar(); }
 
 /* ---------- guardar: aparelho + banco online ---------- */
-function opLocalLer(dia){ try{ return JSON.parse(localStorage.getItem(OP_LOCAL+dia)||'[]'); }catch(e){ return []; } }
-function opLocalGravar(){ try{ localStorage.setItem(OP_LOCAL+OP.dia,JSON.stringify(OP.bipes.slice(0,5000))); }catch(e){} }
+function opLocalLer(dia){ try{ return JSON.parse(LS.getItem(OP_LOCAL+dia)||'[]'); }catch(e){ return []; } }
+function opLocalGravar(){ try{ LS.setItem(OP_LOCAL+OP.dia,JSON.stringify(OP.bipes.slice(0,5000))); }catch(e){} }
 const opParaBanco=({chave,...b})=>Object.assign(b,{usuario_id:NV.user.id});
 async function opEnviar(b){ if(!opOnline()){ opSinc(); return; } const fila=opFilaLer(); fila.push(b); opFilaGravar(fila); opFila(); }
-const opFilaLer=()=>{ try{ return JSON.parse(localStorage.getItem(OP_FILA)||'[]'); }catch(e){ return []; } };
-const opFilaGravar=f=>{ try{ localStorage.setItem(OP_FILA,JSON.stringify(f)); }catch(e){} };
+const opFilaLer=()=>{ try{ return JSON.parse(LS.getItem(OP_FILA)||'[]'); }catch(e){ return []; } };
+const opFilaGravar=f=>{ try{ LS.setItem(OP_FILA,JSON.stringify(f)); }catch(e){} };
 let opEnviando=false;
 async function opFila(){ if(!opOnline()||opEnviando) return; const fila=opFilaLer(); if(!fila.length){ opSinc(); return; } opEnviando=true;
   try{ const {error}=await NV.cli.from('hs_bipagens').upsert(fila.map(opParaBanco),{onConflict:'local_id',ignoreDuplicates:true}); if(!error){ const rest=opFilaLer().filter(b=>!fila.some(f=>f.local_id===b.local_id)); opFilaGravar(rest); }
@@ -5686,8 +5851,8 @@ function agfRender(){ const el=$('#agf-lista'); if(!el) return; const l=agFora()
 
 /* ================= v6.3.4 · tela de carregamento, sessão (aberto = sempre logado; fechado = sai após 1 hora) ================= */
 const HS_VIVO='healthSearch.vivo', HS_SESS_FECHADO=60*60*1000;
-(function hsSessao(){ try{ const v=+localStorage.getItem(HS_VIVO)||0; if(v&&Date.now()-v>HS_SESS_FECHADO){ localStorage.removeItem('hs-sessao'); for(const k of Object.keys(localStorage)) if(/^sb-.*-auth-token$/.test(k)) localStorage.removeItem(k); } }catch(e){}
-  const bate=()=>{ try{ localStorage.setItem(HS_VIVO,String(Date.now())); }catch(e){} };
+(function hsSessao(){ try{ const v=+LS.getItem(HS_VIVO)||0; if(v&&Date.now()-v>HS_SESS_FECHADO){ LS.removeItem('hs-sessao'); for(const k of Object.keys(localStorage)) if(/^sb-.*-auth-token$/.test(k)) LS.removeItem(k); } }catch(e){}
+  const bate=()=>{ try{ LS.setItem(HS_VIVO,String(Date.now())); }catch(e){} };
   bate(); setInterval(bate,20000); addEventListener('pagehide',bate); document.addEventListener('visibilitychange',bate); })();
 function hsSplash(msg){ const s=document.getElementById('hs-splash'); if(!s) return; if(msg){ const m=document.getElementById('hs-splash-msg'); if(m) m.textContent=msg; return; } s.style.transition='opacity .25s'; s.style.opacity='0'; setTimeout(()=>s.remove(),260); }
 hsSplash('Conectando…');
@@ -5702,8 +5867,8 @@ hsSplash('Conectando…');
 /* ================= v6.3.4 · MURAL PERSONALIZÁVEL (por usuário): ordem, mostrar/ocultar, tamanho; texto se adapta ================= */
 const MU={edit:false};
 const muChave=()=>'healthSearch.mural.'+((NV&&NV.user&&NV.user.id)||'local');
-function muLer(){ try{ return JSON.parse(localStorage.getItem(muChave())||'null')||{ordem:[],oculto:[],tam:{}}; }catch(e){ return {ordem:[],oculto:[],tam:{}}; } }
-function muGravar(c){ try{ localStorage.setItem(muChave(),JSON.stringify(c)); }catch(e){} }
+function muLer(){ try{ return JSON.parse(LS.getItem(muChave())||'null')||{ordem:[],oculto:[],tam:{}}; }catch(e){ return {ordem:[],oculto:[],tam:{}}; } }
+function muGravar(c){ try{ LS.setItem(muChave(),JSON.stringify(c)); }catch(e){} }
 const muId=c=>{ const h=c.querySelector('h3'); return 'm-'+N((h&&h.textContent)||'').replace(/\d+/g,'').trim().replace(/\s+/g,'-').toLowerCase().slice(0,40); };
 (function(){ const st=document.createElement('style'); st.textContent=`
 #mural .mural-g{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-flow:row dense}
@@ -5750,7 +5915,7 @@ function muSalvarDoDom(){ const g=document.querySelector('#mural .mural-g'); if(
 
 document.addEventListener('click',e=>{ const m=e.target.closest('#mural'); if(!m) return;
   if(e.target.closest('#mu-bt')){ if(MU.edit) muSalvarDoDom(); MU.edit=!MU.edit; muAplicar(); if(!MU.edit) toast('Mural salvo do seu jeito.'); return; }
-  if(e.target.closest('#mu-reset')){ if(!nvAdmin()){ toast('Só o administrador muda o layout do mural.'); return; } try{ S.muralLay=null; salvar(); nuvSinc(); localStorage.removeItem(muChave()); }catch(er){} MU.edit=false; muralAbrir(); toast('Mural voltou ao padrão.'); return; }
+  if(e.target.closest('#mu-reset')){ if(!nvAdmin()){ toast('Só o administrador muda o layout do mural.'); return; } try{ S.muralLay=null; salvar(); nuvSinc(); LS.removeItem(muChave()); }catch(er){} MU.edit=false; muralAbrir(); toast('Mural voltou ao padrão.'); return; }
   if(!MU.edit) return; const c=e.target.closest('.mural-c'); if(!c) return;
   const w=e.target.closest('[data-mu-w]'); if(w){ c.dataset.w=w.dataset.muW; muSalvarDoDom(); muAplicar(); return; }
   if(e.target.closest('[data-mu-ver]')){ c.dataset.oculto=c.dataset.oculto==='1'?'0':'1'; muSalvarDoDom(); muAplicar(); return; }
@@ -5997,11 +6162,11 @@ OP_ST.dvg={t:'Divergência',c:'#C2255C'};
 /* permissão da câmera: pede assim que abre no celular (uma vez), explica se estiver bloqueada */
 const PERM_K='healthSearch.perm.camera';
 async function permEstado(){ try{ if(navigator.permissions&&navigator.permissions.query){ const r=await navigator.permissions.query({name:'camera'}); return r.state; } }catch(e){} return 'desconhecido'; }
-async function permPedirCamera(){ try{ let s; try{ s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}); }catch(e1){ if(e1&&e1.name==='NotAllowedError') throw e1; s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); } s.getTracks().forEach(t=>t.stop()); try{ localStorage.setItem(PERM_K,'ok'); }catch(e){} return true; }catch(e){ return false; } }
+async function permPedirCamera(){ try{ let s; try{ s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}); }catch(e1){ if(e1&&e1.name==='NotAllowedError') throw e1; s=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); } s.getTracks().forEach(t=>t.stop()); try{ LS.setItem(PERM_K,'ok'); }catch(e){} return true; }catch(e){ return false; } }
 async function permVerificar(forcar){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return;
-  const st=await permEstado(); if(st==='granted'){ try{ localStorage.setItem(PERM_K,'ok'); }catch(e){} return; }
-  let visto=''; try{ visto=localStorage.getItem(PERM_K)||''; }catch(e){}
+  const st=await permEstado(); if(st==='granted'){ try{ LS.setItem(PERM_K,'ok'); }catch(e){} return; }
+  let visto=''; try{ visto=LS.getItem(PERM_K)||''; }catch(e){}
   if(!forcar&&(visto==='ok'||visto==='depois')) return;
   if($('#perm-sheet')) return;
   const bloq=st==='denied';
@@ -6012,9 +6177,9 @@ async function permVerificar(forcar){
     <div class="bts"><button class="btn" type="button" data-p="depois">Agora não</button><button class="btn pri" type="button" data-p="ok">${bloq?'Já liberei':'Permitir câmera'}</button></div>`;
   document.body.appendChild(f);
   f.onclick=async e=>{ const b=e.target.closest('[data-p]'); if(!b) return;
-    if(b.dataset.p==='depois'){ try{ localStorage.setItem(PERM_K,'depois'); }catch(er){} f.remove(); toast('Tudo bem. A câmera será pedida quando você abrir a Operação.'); return; }
+    if(b.dataset.p==='depois'){ try{ LS.setItem(PERM_K,'depois'); }catch(er){} f.remove(); toast('Tudo bem. A câmera será pedida quando você abrir a Operação.'); return; }
     b.disabled=true; b.textContent='Aguardando…'; const ok=await permPedirCamera(); f.remove();
-    if(ok) toast('📷 Câmera liberada. Já pode conferir pela aba Operação.'); else { try{ localStorage.removeItem(PERM_K); }catch(er){} toast('A câmera continua bloqueada. Libere nas permissões do navegador.'); setTimeout(()=>permVerificar(true),600); } }; }
+    if(ok) toast('📷 Câmera liberada. Já pode conferir pela aba Operação.'); else { try{ LS.removeItem(PERM_K); }catch(er){} toast('A câmera continua bloqueada. Libere nas permissões do navegador.'); setTimeout(()=>permVerificar(true),600); } }; }
 { const _ir2=irPara; let primeira=true; irPara=function(t){ _ir2(t);
     if(primeira&&(TOQUE||matchMedia('(max-width:860px)').matches)){ primeira=false; setTimeout(()=>permVerificar(false),1200); }
     if(t==='operacao') setTimeout(async()=>{ const st=await permEstado(); if(st!=='granted'&&(TOQUE||matchMedia('(max-width:860px)').matches)) permVerificar(true); },300); }; }
@@ -6031,9 +6196,9 @@ function mbFaixa(id,html){ if(document.getElementById(id)) return; const d=docum
 #mb-pc{top:calc(10px + env(safe-area-inset-top,0px));bottom:auto;background:#b45309;font-size:28px}#mb-pc b{font-size:34px}#mb-pc button{font-size:28px;padding:18px 24px}`; document.head.appendChild(st); })();
 /* celular aberto em "versão para computador": a tela fica minúscula; avisa como desligar */
 function mbChecarPC(){ if(mbCelular()&&innerWidth>=900){ const f=mbFaixa('mb-pc',`<div class="txt"><b>Desligue a "Versão para computador"</b>No Chrome, toque em <b>⋮</b> (canto de cima) e <b>desmarque "Site para computador"</b>. O Health Search já se ajusta ao celular.</div><button type="button">Entendi</button>`); if(f) f.querySelector('button').onclick=()=>f.remove(); } else { const f=$('#mb-pc'); if(f) f.remove(); } }
-function mbInstalarAviso(){ if(mbInstalado()||!mbCelular()) return; if(document.getElementById('perm-sheet')){ clearTimeout(mbInstalarAviso.t); mbInstalarAviso.t=setTimeout(mbInstalarAviso,3000); return; } let n=''; try{ n=localStorage.getItem('healthSearch.instAviso')||''; }catch(e){} if(n&&Date.now()-(+n)<3*864e5) return;
+function mbInstalarAviso(){ if(mbInstalado()||!mbCelular()) return; if(document.getElementById('perm-sheet')){ clearTimeout(mbInstalarAviso.t); mbInstalarAviso.t=setTimeout(mbInstalarAviso,3000); return; } let n=''; try{ n=LS.getItem('healthSearch.instAviso')||''; }catch(e){} if(n&&Date.now()-(+n)<3*864e5) return;
   const f=mbFaixa('mb-inst',`<div class="txt"><b>📲 Instalar o Health Search</b>${PWA_PEDIDO?'Fica com ícone na tela inicial, abre em tela cheia e guarda a permissão da câmera.':mbIOS()?'No Safari, toque em <b>Compartilhar</b> (□↑) e depois em <b>Adicionar à Tela de Início</b>.':'No Chrome, toque em <b>⋮</b> e depois em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.'}</div>${PWA_PEDIDO?'<button type="button" data-i="ok">Instalar</button>':''}<button type="button" class="sec" data-i="x">Agora não</button>`);
-  if(!f) return; f.onclick=async e=>{ const b=e.target.closest('[data-i]'); if(!b) return; if(b.dataset.i==='ok'&&PWA_PEDIDO){ PWA_PEDIDO.prompt(); try{ await PWA_PEDIDO.userChoice; }catch(er){} PWA_PEDIDO=null; } else { try{ localStorage.setItem('healthSearch.instAviso',String(Date.now())); }catch(er){} } f.remove(); }; }
+  if(!f) return; f.onclick=async e=>{ const b=e.target.closest('[data-i]'); if(!b) return; if(b.dataset.i==='ok'&&PWA_PEDIDO){ PWA_PEDIDO.prompt(); try{ await PWA_PEDIDO.userChoice; }catch(er){} PWA_PEDIDO=null; } else { try{ LS.setItem('healthSearch.instAviso',String(Date.now())); }catch(er){} } f.remove(); }; }
 addEventListener('resize',()=>{ clearTimeout(mbChecarPC.t); mbChecarPC.t=setTimeout(mbChecarPC,300); });
 /* depois que o programa abre: checa modo computador, permissão da câmera e instalação (também quando o mural fecha) */
 { const _ir3=irPara; let vez=0; irPara=function(t){ _ir3(t); if(vez++===0) setTimeout(()=>{ mbChecarPC(); if(mbCelular()) permVerificar(false); setTimeout(mbInstalarAviso,4000); },1500); }; }
@@ -6043,8 +6208,8 @@ addEventListener('resize',()=>{ clearTimeout(mbChecarPC.t); mbChecarPC.t=setTime
 const RB={mes:hojeISO().slice(0,7),dias:{},aberto:null,carregando:false,local:'healthSearch.romBanco'};
 const rbMin=rows=>(rows||[]).map(x=>({nf:z(x.nf),ped:z(x.ped),rem:x.rem||'',dest:x.dest||'',cid:x.cid||'',uf:x.uf||'',vol:x.vol||''}));
 const rbHash=r=>{ let h=0; const s=JSON.stringify(rbMin(r.rows)); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return String(h); };
-function rbLocalLer(){ try{ return JSON.parse(localStorage.getItem(RB.local)||'{}'); }catch(e){ return {}; } }
-function rbLocalGravar(o){ try{ localStorage.setItem(RB.local,JSON.stringify(o)); }catch(e){ /* cheio: mantém só os 120 dias mais novos */ const ks=Object.keys(o).sort().reverse(); const n={}; for(const k of ks.slice(0,120)) n[k]=o[k]; try{ localStorage.setItem(RB.local,JSON.stringify(n)); }catch(e2){} } }
+function rbLocalLer(){ try{ return JSON.parse(LS.getItem(RB.local)||'{}'); }catch(e){ return {}; } }
+function rbLocalGravar(o){ try{ LS.setItem(RB.local,JSON.stringify(o)); }catch(e){ /* cheio: mantém só os 120 dias mais novos */ const ks=Object.keys(o).sort().reverse(); const n={}; for(const k of ks.slice(0,120)) n[k]=o[k]; try{ LS.setItem(RB.local,JSON.stringify(n)); }catch(e2){} } }
 /* guarda um romaneio no banco (online + aparelho) */
 async function rbGuardar(r,dia){ const reg={id:dia+'|'+r.id,dia,numero:String(r.numero||''),base:r.base||'',motorista:r.motorista||'',notas:contar(r.rows).notas,vol:contar(r.rows).vol,rows:rbMin(r.rows),hash:rbHash(r),criado_por:(NV.perfil&&NV.perfil.nome)||''};
   const L=rbLocalLer(); const d=L[dia]=L[dia]||{}; const ja=d[reg.id]; if(ja&&ja.hash===reg.hash&&ja.on) return false; d[reg.id]=Object.assign({},reg,{on:false}); rbLocalGravar(L);
@@ -6306,7 +6471,7 @@ setTimeout(()=>{ try{ reLimparVelhas(); }catch(e){} },2000);
 async function rbZerarTudo(){ if(!opAdmin()&&opOnline()){ toast('Só o administrador pode zerar.'); return; }
   if(!await confirmar('Zerar histórico de romaneios','Apaga <b>todo o Banco de romaneios</b> (online e neste aparelho), <b>todo o histórico de notas e pedidos</b> e <b>todas as reentregas detectadas que ainda não foram confirmadas</b>. As reentregas já lançadas em Reentregas continuam. Não dá para desfazer.','Zerar tudo')) return;
   if(opOnline()){ try{ const {error}=await NV.cli.from('hs_rom_banco').delete().gte('dia','1900-01-01'); if(error) toast('Online: '+nvTraduz(error.message)); }catch(e){} }
-  try{ localStorage.removeItem(RB.local); }catch(e){}
+  try{ LS.removeItem(RB.local); }catch(e){}
   const n=nexS(); n.hist={}; n.histPed={}; for(const k of Object.keys(n.reent)) if(n.reent[k].status!=='confirmada') delete n.reent[k];
   salvar(); try{ renderTudo(); }catch(e){} RB.dias={}; RB.aberto=null; rbRender(); toast('Tudo zerado. Agora alimente os dias anteriores e carregue os romaneios de hoje.'); }
 (function(){ const box=$('#rb'); if(!box) return; box.querySelector('h2').insertAdjacentHTML('afterend','<button class="btn mini" type="button" id="rb-zerar" style="float:right;margin-top:-30px;color:var(--no)">🗑 Zerar tudo</button>'); $('#rb-zerar').onclick=rbZerarTudo; })();
@@ -6369,7 +6534,7 @@ function reDiagRender(){ const el=$('#re-diag'); if(!el) return; try{ rbReavalia
 function camLiberar(){ const info=`seguro=${window.isSecureContext} · mediaDevices=${!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)} · endereço=${location.protocol}//${location.host}`;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ alert('Este navegador não deixa o site usar a câmera.\n\nAbra pelo Chrome no endereço https://thekingtiago4-bot.github.io/Health_Search/ (não pelo WhatsApp nem pelo arquivo).\n\n'+info); return; }
   /* chamado direto no toque, sem esperar nada antes: é isso que faz o Chrome mostrar a pergunta */
-  navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(st=>{ st.getTracks().forEach(t=>t.stop()); try{ localStorage.setItem(PERM_K,'ok'); }catch(e){} const b=$('#cam-liberar'); if(b) b.hidden=true; toast('📷 Câmera liberada! Toque em "Abrir câmera".'); })
+  navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(st=>{ st.getTracks().forEach(t=>t.stop()); try{ LS.setItem(PERM_K,'ok'); }catch(e){} const b=$('#cam-liberar'); if(b) b.hidden=true; toast('📷 Câmera liberada! Toque em "Abrir câmera".'); })
     .catch(e=>{ alert('O Chrome não liberou a câmera.\n\nMotivo: '+(e&&e.name||'?')+(e&&e.message?' — '+e.message:'')+'\n\n'+info+'\n\nMande um print desta mensagem para o Claude.'); }); }
 (function(){ const alvo=$('#op-bt-cam'); if(!alvo) return; alvo.insertAdjacentHTML('beforebegin','<button class="btn grande" type="button" id="cam-liberar" style="border:2px solid #E8590C">🔓 Liberar câmera</button>'); $('#cam-liberar').onclick=camLiberar;
   (async()=>{ try{ const st=await permEstado(); if(st==='granted'){ $('#cam-liberar').hidden=true; } }catch(e){} })(); })();
@@ -6690,9 +6855,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#rx')){ e.stopP
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-cor-aceita]'); if(!b) return; const sel=b.parentElement.querySelector('select[data-cor-ens]'); if(!sel) return; sel.value=b.dataset.corAceita; sel.dispatchEvent(new Event('change',{bubbles:true})); });
 /* ================= v6.7.0 · Banco online: reentregas e divergências sincronizadas (hs_sync) ================= */
 const NUV={tab:Math.random().toString(36).slice(2,8),sessao:new Set(),chH:'healthSearch.nuvHash',chD:'healthSearch.nuvDesde',h:{},desde:'',ok:null,timer:null,rodando:false,aplicando:false,ult:null,erro:''};
-try{ NUV.h=JSON.parse(localStorage.getItem(NUV.chH)||'{}'); NUV.desde=localStorage.getItem(NUV.chD)||''; }catch(e){}
+try{ NUV.h=JSON.parse(LS.getItem(NUV.chH)||'{}'); NUV.desde=LS.getItem(NUV.chD)||''; }catch(e){}
 function nuvHash(v){ const s=JSON.stringify(v)||''; let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36)+'.'+s.length; }
-function nuvGuardar(){ try{ localStorage.setItem(NUV.chH,JSON.stringify(NUV.h)); localStorage.setItem(NUV.chD,NUV.desde||''); }catch(e){} }
+function nuvGuardar(){ try{ LS.setItem(NUV.chH,JSON.stringify(NUV.h)); LS.setItem(NUV.chD,NUV.desde||''); }catch(e){} }
 /* tudo o que vai para o banco, com a sua chave */
 function nuvLocal(){ const m=new Map(); const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias||{})) if(ls&&ls.length) m.set('re:'+d,{tipo:'re',valor:ls});
   for(const x of dvS()) if(x&&x.id) m.set('dv:'+x.id,{tipo:'dv',valor:x}); return m; }
@@ -6749,7 +6914,7 @@ function nuvAgendar(){ if(NUV.aplicando) return; clearTimeout(NUV.timer); NUV.ti
 /* v9.19.3: app aberto em mais de uma aba/janela no mesmo aparelho — a aba velha não grava por cima da nova: quando outra aba salva, esta recarrega os dados na hora */
 window.addEventListener('storage',e=>{ try{
   if(e.key===Store.chave&&e.newValue){ const n=JSON.parse(e.newValue); if(!n||typeof n!=='object') return; NUV.aplicando=true; try{ for(const k of Object.keys(S)) if(!(k in n)) delete S[k]; Object.assign(S,n); }finally{ NUV.aplicando=false; }
-    try{ NUV.h=JSON.parse(localStorage.getItem(NUV.chH)||'{}')||{}; NUV.desde=localStorage.getItem(NUV.chD)||NUV.desde; }catch(x){}
+    try{ NUV.h=JSON.parse(LS.getItem(NUV.chH)||'{}')||{}; NUV.desde=LS.getItem(NUV.chD)||NUV.desde; }catch(x){}
     try{ montarDicionario(); }catch(x){} try{ renderTudo(); }catch(x){} try{ if(typeof simAplicaRemoto==='function') simAplicaRemoto(); }catch(x){} try{ opRender(); }catch(x){} try{ if(!$('#t-conftotal').hidden) ctMontar(); }catch(x){} }
   else if(e.key===RE.chave){ RE.d=null; try{ if(!$('#t-reentregas').hidden) reTela(); }catch(x){} }
   else if(e.key===NUV.chH&&e.newValue){ NUV.h=JSON.parse(e.newValue)||{}; }
@@ -6777,7 +6942,7 @@ const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Obje
     else if(tp==='rom'){ const L=S.romaneios=S.romaneios||[]; const i=L.findIndex(r=>r.id===id); if(apagado){ if(i>=0) L.splice(i,1); } else if(i>=0) L[i]=valor; else L.push(valor); L.sort((a,b)=>String(a.numero).localeCompare(String(b.numero))); }
     else if(tp==='xml'){ S.opXml=S.opXml||{}; if(apagado) delete S.opXml[id]; else S.opXml[id]=valor; }
     else if(tp==='rel'){ S.opRel=S.opRel||{}; if(apagado) delete S.opRel[id]; else S.opRel[id]=valor; }
-    else if(tp==='ls'&&id==='xlNomes'){ try{ localStorage.setItem('healthSearch.xlNomes',JSON.stringify(valor)); window.HS_NOMES._d=null; }catch(e){} }
+    else if(tp==='ls'&&id==='xlNomes'){ try{ LS.setItem('healthSearch.xlNomes',JSON.stringify(valor)); window.HS_NOMES._d=null; }catch(e){} }
     salvar(); }finally{ NUV.aplicando=false; } }; }
 function nuvMesclar(l,r){ if(Array.isArray(l)&&Array.isArray(r)){ const ch=x=>x&&typeof x==='object'?(x.id||x.chave||JSON.stringify(x)):JSON.stringify(x); const m=new Map(); for(const x of l) m.set(ch(x),x); for(const x of r) m.set(ch(x),x); return [...m.values()]; }
   if(l&&r&&typeof l==='object'&&typeof r==='object'){ const o=Object.assign({},l); for(const k of Object.keys(r)) o[k]=(o[k]&&typeof o[k]==='object'&&r[k]&&typeof r[k]==='object')?nuvMesclar(o[k],r[k]):r[k]; return o; } return r; }
@@ -6800,12 +6965,12 @@ async function bknBaixar(manual){ if(!opOnline()||!nvAdmin()) { if(manual) toast
     try{ dump.tabelas.hs_bipagens=await bknTabela('hs_bipagens','*',q=>q.gte('dia',ini)); }catch(e){ dump.erros=(dump.erros||[]).concat('hs_bipagens: '+e.message); }
     let blob=new Blob([JSON.stringify(dump)],{type:'application/json'}), ext='json';
     if(typeof CompressionStream!=='undefined'){ blob=await new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob(); ext='json.gz'; }
-    baixar(blob,`Backup_banco_HealthSearch_${hojeISO()}.${ext}`); try{ localStorage.setItem(BKN.ch,new Date().toISOString()); }catch(e){}
+    baixar(blob,`Backup_banco_HealthSearch_${hojeISO()}.${ext}`); try{ LS.setItem(BKN.ch,new Date().toISOString()); }catch(e){}
     const n=Object.values(dump.tabelas).reduce((t,a)=>t+a.length,0); toast(`Backup do banco salvo em Downloads (${fmtN(n)} registros${dump.erros?', com avisos':''}).`);
   }catch(e){ console.error(e); toast('Backup do banco falhou: '+(e.message||e)); } }
 (function(){ let n=0; const t=setInterval(()=>{ if(!opOnline()||!NV.perfil){ if(++n>180) clearInterval(t); return; } clearInterval(t); if(!nvAdmin()) return;
-  let ult=''; try{ ult=localStorage.getItem(BKN.ch)||''; }catch(e){} if(!ult||Date.now()-new Date(ult).getTime()>7*864e5) setTimeout(()=>bknBaixar(false),8000); },1000); })();
-{ const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const el=$('#cor-corpo'); if(!el||!nvAdmin()||$('#bkn-bt')) return; let ult=''; try{ ult=localStorage.getItem(BKN.ch)||''; }catch(e){}
+  let ult=''; try{ ult=LS.getItem(BKN.ch)||''; }catch(e){} if(!ult||Date.now()-new Date(ult).getTime()>7*864e5) setTimeout(()=>bknBaixar(false),8000); },1000); })();
+{ const _rc=renderCorrecao; renderCorrecao=function(){ _rc(); const el=$('#cor-corpo'); if(!el||!nvAdmin()||$('#bkn-bt')) return; let ult=''; try{ ult=LS.getItem(BKN.ch)||''; }catch(e){}
   el.insertAdjacentHTML('afterbegin',`<div class="barra" style="margin-bottom:10px;gap:10px;display:flex;align-items:center;flex-wrap:wrap"><button class="btn mini" id="bkn-bt" type="button">💾 Backup do banco agora</button><small class="sec">Automático toda semana neste PC · último: ${ult?fmtData(ult.slice(0,10)):'nunca'}</small></div>`);
   $('#bkn-bt').onclick=()=>bknBaixar(true); }; }
 /* v6.9.2: restaurar o banco a partir do arquivo de backup (só admin) */
@@ -7853,28 +8018,28 @@ async function integConferir(aviso){ try{
   return voltou; }catch(e){ return 0; } }
 
 /* ================= v7.9.6 · Proteção contra aparelho desatualizado + backup na nuvem ao entrar em outro aparelho ================= */
-function nuvBases(){ try{ return JSON.parse(localStorage.getItem('healthSearch.nuvBase')||'{}'); }catch(e){ return {}; } }
+function nuvBases(){ try{ return JSON.parse(LS.getItem('healthSearch.nuvBase')||'{}'); }catch(e){ return {}; } }
 function nuvBase(k){ return nuvBases()[k]||''; }
-function nuvBaseMarca(){ try{ const b=nuvBases(); const loc=nuvLocal(); const t=x=>x&&((((x.hist||[]).slice(-1)[0]||{}).em)||x.em)||''; for(const [k,o] of loc){ if(!k.startsWith('s:')) continue; if(NUV.h[k]===nuvHash(o.valor)) b[k]=t(o.valor)||b[k]||new Date().toISOString(); } localStorage.setItem('healthSearch.nuvBase',JSON.stringify(b)); }catch(e){} }
-function hsAparelho(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ id=Math.random().toString(36).slice(2,8); localStorage.setItem('healthSearch.aparelho',id); } const ua=navigator.userAgent; const tipo=/iPad|Tablet|SM-T|Tab/i.test(ua)?'Tablet':/Mobi|Android/i.test(ua)?'Celular':'Computador'; return tipo+' '+id; }catch(e){ return 'Aparelho'; } }
+function nuvBaseMarca(){ try{ const b=nuvBases(); const loc=nuvLocal(); const t=x=>x&&((((x.hist||[]).slice(-1)[0]||{}).em)||x.em)||''; for(const [k,o] of loc){ if(!k.startsWith('s:')) continue; if(NUV.h[k]===nuvHash(o.valor)) b[k]=t(o.valor)||b[k]||new Date().toISOString(); } LS.setItem('healthSearch.nuvBase',JSON.stringify(b)); }catch(e){} }
+function hsAparelho(){ try{ let id=LS.getItem('healthSearch.aparelho'); if(!id){ id=Math.random().toString(36).slice(2,8); LS.setItem('healthSearch.aparelho',id); } const ua=navigator.userAgent; const tipo=/iPad|Tablet|SM-T|Tab/i.test(ua)?'Tablet':/Mobi|Android/i.test(ua)?'Celular':'Computador'; return tipo+' '+id; }catch(e){ return 'Aparelho'; } }
 /* backup da nuvem (cópia do que está online) antes de um aparelho desatualizado ou recém-logado sincronizar */
 async function nuvBackupNuvem(motivo){ if(!opOnline()||!NV.cli) return false; try{
     let data=[]; for(let pg=0;pg<20;pg++){ const {data:d1,error}=await NV.cli.from('hs_sync').select('chave,valor,apagado').or('chave.like.s:%,chave.like.re:%,chave.like.dv:%,chave.like.ls:%').range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; }
     const itens=data.filter(r=>!r.apagado).map(r=>({chave:r.chave,valor:r.valor})); if(!itens.length) return false;
     const em=new Date().toISOString(); const {error}=await NV.cli.from('hs_sync').upsert({chave:'bkp:'+em,tipo:'bkp',valor:{em,motivo,aparelho:hsAparelho(),por:opEu(),itens},apagado:false,atualizado_por:opEu()}); if(error) throw error;
-    try{ localStorage.setItem('healthSearch.ultBkpNuvem',em); }catch(e){} nuvBkpLimpar(); return true; }catch(e){ console.error('bkp',e); return false; } }
+    try{ LS.setItem('healthSearch.ultBkpNuvem',em); }catch(e){} nuvBkpLimpar(); return true; }catch(e){ console.error('bkp',e); return false; } }
 /* v7.9.7: guarda só os 30 backups mais recentes */
 async function nuvBkpLimpar(){ try{ const {data}=await NV.cli.from('hs_sync').select('chave').like('chave','bkp:%').eq('apagado',false).order('chave',{ascending:false}).range(30,500); for(const r of (data||[])){ const {error}=nvAdmin()?await NV.cli.from('hs_sync').delete().eq('chave',r.chave):{error:1}; if(error) await NV.cli.from('hs_sync').update({valor:null,apagado:true}).eq('chave',r.chave); } }catch(e){ console.error(e); } }
-{ const _ns=nuvSinc; let primeira=true; nuvSinc=async function(){ if(primeira&&Store.modo==='nuvem'&&opOnline()){ primeira=false; let ult=''; try{ ult=localStorage.getItem('healthSearch.ultSync')||''; }catch(e){}
-      const velho=!ult||Date.now()-new Date(ult).getTime()>6*3600e3; /* v9.19.1: cópia completa só no aparelho do admin e no máximo 1x por dia (Egress) */ if(velho&&nvAdmin()&&localStorage.getItem('healthSearch.bkDia')!==hojeISO()){ localStorage.setItem('healthSearch.bkDia',hojeISO()); await nuvBackupNuvem(ult?'aparelho voltou depois de '+Math.round((Date.now()-new Date(ult).getTime())/3600e3)+'h':'primeiro acesso neste aparelho'); } }
-    const r=await _ns.apply(this,arguments); try{ if(!NUV.erro){ localStorage.setItem('healthSearch.ultSync',new Date().toISOString()); nuvBaseMarca(); } }catch(e){} return r; }; }
+{ const _ns=nuvSinc; let primeira=true; nuvSinc=async function(){ if(primeira&&Store.modo==='nuvem'&&opOnline()){ primeira=false; let ult=''; try{ ult=LS.getItem('healthSearch.ultSync')||''; }catch(e){}
+      const velho=!ult||Date.now()-new Date(ult).getTime()>6*3600e3; /* v9.19.1: cópia completa só no aparelho do admin e no máximo 1x por dia (Egress) */ if(velho&&nvAdmin()&&LS.getItem('healthSearch.bkDia')!==hojeISO()){ LS.setItem('healthSearch.bkDia',hojeISO()); await nuvBackupNuvem(ult?'aparelho voltou depois de '+Math.round((Date.now()-new Date(ult).getTime())/3600e3)+'h':'primeiro acesso neste aparelho'); } }
+    const r=await _ns.apply(this,arguments); try{ if(!NUV.erro){ LS.setItem('healthSearch.ultSync',new Date().toISOString()); nuvBaseMarca(); } }catch(e){} return r; }; }
 /* restaurar um backup da nuvem */
 async function nuvBackups(){ const {data,error}=await NV.cli.from('hs_sync').select('chave,atualizado_em,atualizado_por').like('chave','bkp:%').eq('apagado',false).order('chave',{ascending:false}).limit(30); if(error) throw error; return data||[]; }
 async function nuvRestaurarBkp(chave){ if(!nvAdmin()){ toast('Só o administrador restaura.'); return; } const {data,error}=await NV.cli.from('hs_sync').select('valor').eq('chave',chave).maybeSingle(); if(error||!data){ toast('Não achei esse backup.'); return; }
   const b=data.valor; if(!(await confirmar('Restaurar backup',`Voltar regiões, cadastros, reentregas e divergências para como estavam em ${new Date(b.em).toLocaleString('pt-BR')} (${esc(b.motivo||'')}, ${esc(b.aparelho||'')})? Antes disso eu guardo um backup do estado atual.`,'Restaurar'))) return;
   await nuvBackupNuvem('antes de restaurar '+new Date(b.em).toLocaleString('pt-BR')); const agora=new Date().toISOString(); let q=0;
   for(const it of b.itens){ let v=it.valor; if(it.chave.startsWith('s:')&&v&&typeof v==='object'&&!Array.isArray(v)) v=Object.assign({},v,{em:agora}); nuvAplicar(it.chave,v,false); q++; }
-  try{ const bs=nuvBases(); for(const it of b.itens) if(it.chave.startsWith('s:')) bs[it.chave]=agora; localStorage.setItem('healthSearch.nuvBase',JSON.stringify(bs)); }catch(e){}
+  try{ const bs=nuvBases(); for(const it of b.itens) if(it.chave.startsWith('s:')) bs[it.chave]=agora; LS.setItem('healthSearch.nuvBase',JSON.stringify(bs)); }catch(e){}
   salvar(); try{ RE.gravar(); }catch(e){} try{ renderTudo(); }catch(e){} await nuvSinc(); toast('✔ Backup restaurado ('+q+' itens) e enviado para a nuvem.'); }
 async function nuvTelaBackups(){ let L=[]; try{ L=await nuvBackups(); }catch(e){ toast('Não consegui listar: '+e.message); return; }
   const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
@@ -7892,8 +8057,8 @@ async function nuvTelaBackups(){ let L=[]; try{ L=await nuvBackups(); }catch(e){
    3) o banco também guarda sozinho versões do mapa e das configurações (gatilho no Supabase);
    4) o mapa não é mais "um pacote só": se dois aparelhos mexeram, junta cidade a cidade (nenhuma marcação se perde). */
 const VSN={ok:null,chBase:'healthSearch.nuvBaseVal'};
-function vsnBaseLer(k){ try{ return (JSON.parse(localStorage.getItem(VSN.chBase)||'{}'))[k]||null; }catch(e){ return null; } }
-function vsnBaseGravar(k,v){ try{ const o=JSON.parse(localStorage.getItem(VSN.chBase)||'{}'); o[k]=v; localStorage.setItem(VSN.chBase,JSON.stringify(o)); }catch(e){} }
+function vsnBaseLer(k){ try{ return (JSON.parse(LS.getItem(VSN.chBase)||'{}'))[k]||null; }catch(e){ return null; } }
+function vsnBaseGravar(k,v){ try{ const o=JSON.parse(LS.getItem(VSN.chBase)||'{}'); o[k]=v; LS.setItem(VSN.chBase,JSON.stringify(o)); }catch(e){} }
 /* junta o mapa em 3 vias: o que estava sincronizado (base), o deste aparelho e o da nuvem */
 function geoJuntar3(base,loc,rem){ base=base||{listas:[],aprend:{}}; loc=loc||{listas:[],aprend:{}}; rem=rem||{listas:[],aprend:{}};
   const mp=a=>new Map((a.listas||[]).map(l=>[l.id,l])); const B=mp(base), L=mp(loc), R=mp(rem); const out=[]; const ganhouAqui=new Map();
@@ -7937,12 +8102,12 @@ async function vsnGravar(tipo,resumo){ /* v9.19.2: cópia feita dentro do banco 
 async function hsSalvarAgora(){ if(!opOnline()){ toast('Sem internet: está guardado neste aparelho e sobe sozinho quando a conexão voltar.'); return; }
   const b=$('#hs-salvar'); if(b){ b.disabled=true; b.textContent='⏳ Salvando…'; }
   try{ NUV.desde=NUV.desde||''; await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro); const r=await vsnGravar('manual');
-    if(!r.ok) throw new Error(r.msg); try{ localStorage.setItem('healthSearch.ultSalvar',new Date().toISOString()); }catch(e){}
+    if(!r.ok) throw new Error(r.msg); try{ LS.setItem('healthSearch.ultSalvar',new Date().toISOString()); }catch(e){}
     toast('✔ Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+(r.velho?' ('+r.msg+')':r.igual?' — tudo já estava guardado ('+r.msg+'). Quem abrir agora já recebe esta.':' — versão guardada para sempre. Quem abrir agora já recebe esta.'));
   }catch(e){ toast('⚠ Não consegui salvar na nuvem: '+(e.message||e)+' — os dados continuam guardados neste aparelho.'); }
   finally{ if(b){ b.disabled=false; b.textContent='💾 Salvar'; } } }
 /* cópia completa automática: 1x por dia por aparelho logado (além das versões que o próprio banco guarda a cada mudança) */
-async function vsnDiaria(){ try{ if(!opOnline()) return; const h=hojeISO(); if(localStorage.getItem('healthSearch.vsnDia')===h) return; const r=await vsnGravar('diario','cópia automática do dia'); if(r.ok) localStorage.setItem('healthSearch.vsnDia',h); }catch(e){} }
+async function vsnDiaria(){ try{ if(!opOnline()) return; const h=hojeISO(); if(LS.getItem('healthSearch.vsnDia')===h) return; const r=await vsnGravar('diario','cópia automática do dia'); if(r.ok) LS.setItem('healthSearch.vsnDia',h); }catch(e){} }
 setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(opOnline()&&NUV.ult){ clearInterval(t); vsnDiaria(); } else if(++n>300) clearInterval(t); },2000); },8000);
 
 /* lista de versões + restaurar (só admin) */
@@ -7962,7 +8127,7 @@ async function vsnRestaurar(id){ if(!nvAdmin()){ toast('Só o administrador volt
   await vsnGravar('manual','antes de voltar para '+new Date(data.em).toLocaleString('pt-BR')); const agora=new Date().toISOString();
   const itens=soMapa?[{chave:'s:geo',valor:data.valor}]:((data.valor&&data.valor.itens)||[]); let q=0;
   for(const it of itens){ let v=it.valor; if(it.chave.startsWith('s:')&&v&&typeof v==='object'&&!Array.isArray(v)) v=Object.assign({},v,{em:agora}); nuvAplicar(it.chave,v,false); q++; }
-  try{ const bs=nuvBases(); for(const it of itens) if(it.chave.startsWith('s:')) bs[it.chave]=agora; localStorage.setItem('healthSearch.nuvBase',JSON.stringify(bs)); }catch(e){}
+  try{ const bs=nuvBases(); for(const it of itens) if(it.chave.startsWith('s:')) bs[it.chave]=agora; LS.setItem('healthSearch.nuvBase',JSON.stringify(bs)); }catch(e){}
   if(soMapa) vsnBaseGravar('s:geo',null); try{ GEO.idx={}; GEO.cls={}; }catch(e){}
   salvar(); try{ RE.gravar(); }catch(e){} try{ renderTudo(); }catch(e){} await nuvSinc(); toast('✔ Versão restaurada ('+q+' itens) e enviada para todos.'); }
 
@@ -7977,7 +8142,7 @@ async function vsnRestaurar(id){ if(!nvAdmin()){ toast('Só o administrador volt
 (function(){ const el=$('#nuv-st'); if(!el) return; const _oc=el.onclick; el.onclick=()=>{ _oc&&_oc(); setTimeout(()=>{ const m=document.querySelector('.fundo:last-child [data-n="p"]'); if(m&&!m.parentNode.querySelector('[data-n="v"]')){ m.insertAdjacentHTML('beforebegin','<button class="btn" data-n="v">🕘 Versões salvas (permanentes)</button>'); m.parentNode.querySelector('[data-n="v"]').onclick=e=>{ e.stopPropagation(); m.closest('.fundo').remove(); vsnTela(); }; } },0); }; })();
 /* ================= v8.5.0 · Admin mestre, backup físico + liberar espaço (90 dias online), aviso de 70% ================= */
 /* o mapa entra no backup geral (sem versão separada); cópias oficiais só do administrador e do robô do GitHub */
-vsnDiaria=async function(){ try{ if(!opOnline()||!nvAdmin()) return; const h=hojeISO(); if(localStorage.getItem('healthSearch.vsnDia')===h) return; const r=await vsnGravar('diario','cópia automática do dia (admin)'); if(r.ok) localStorage.setItem('healthSearch.vsnDia',h); }catch(e){} };
+vsnDiaria=async function(){ try{ if(!opOnline()||!nvAdmin()) return; const h=hojeISO(); if(LS.getItem('healthSearch.vsnDia')===h) return; const r=await vsnGravar('diario','cópia automática do dia (admin)'); if(r.ok) LS.setItem('healthSearch.vsnDia',h); }catch(e){} };
 { const _sa=hsSalvarAgora; hsSalvarAgora=async function(){ if(nvAdmin()) return _sa(); if(!opOnline()){ toast('Sem internet: está guardado neste aparelho e sobe sozinho quando a conexão voltar.'); return; }
     await nuvSinc(); toast(NUV.erro?'⚠ '+NUV.erro:'✔ Suas mudanças estão no banco online. A cópia oficial (backup) é feita pelo administrador e pelo robô diário.'); }; }
 /* uso do banco */
@@ -8001,7 +8166,7 @@ async function bkfBackupFisico(){ if(!opOnline()||!nvAdmin()){ toast('Só o admi
     const chk=JSON.parse(txt); const okArq=Object.entries(cont).every(([t,n])=>(chk.tabelas[t]||[]).length===n);
     if(!okArq) throw new Error('o arquivo gerado não bateu com o banco; nada foi apagado.');
     const d=new Date(), nome=`Health Search backup ${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}.${ext}`;
-    baixar(blob,nome); try{ localStorage.setItem(BKN.ch,new Date().toISOString()); localStorage.setItem('healthSearch.ultBkFisico',JSON.stringify({em:dump.geradoEm,nome,cont})); }catch(e){}
+    baixar(blob,nome); try{ LS.setItem(BKN.ch,new Date().toISOString()); LS.setItem('healthSearch.ultBkFisico',JSON.stringify({em:dump.geradoEm,nome,cont})); }catch(e){}
     const total=Object.values(cont).reduce((a,b)=>a+b,0);
     if(!(await confirmar('Backup físico pronto',`✔ Arquivo "${esc(nome)}" baixado e conferido (${fmtN(total)} registros, ${(blob.size/1048576).toFixed(1)} MB). Guarde-o na área de trabalho e numa segunda cópia (pen drive ou Google Drive).<br><br>Quer <b>liberar espaço</b> agora? Apago do banco online só o que tem <b>mais de 90 dias</b> (bipes, romaneios do banco, reentregas, versões e cópias antigas). Os últimos 90 dias continuam online para as reentregas funcionarem. O que for apagado está dentro deste arquivo e pode voltar pelo “Restaurar”.`,'Liberar espaço'))) return;
     const {data,error}=await NV.cli.rpc('hs_limpar_antigos',{dias:90}); if(error) throw new Error(/hs_limpar_antigos|does not exist|schema cache/i.test(error.message)?'falta rodar o arquivo supabase-v8.5.0.sql no Supabase':error.message);
@@ -8012,7 +8177,8 @@ async function bkfBackupFisico(){ if(!opOnline()||!nvAdmin()){ toast('Só o admi
   $('#bkf-bt').onclick=()=>bkfBackupFisico(); const u=$('#uso-txt'); if(u) usoLer().then(d=>{ if(d) u.textContent='· banco online: '+d.pct+'% de 8 GB'; }); }; }
 /* ================= v8.6.0 · Bloqueio apaga a cópia do aparelho + validade offline + 🧠 Cérebro (mini IA que aprende as etiquetas) ================= */
 /* ---- 1) usuário bloqueado: na próxima vez que o aparelho falar com o servidor, apaga tudo dele ---- */
-function blqApagarAparelho(motivo){ try{ for(const k of Object.keys(localStorage)) if(/^(healthSearch|healthRomaneio|hs[._]|sb-)/.test(k)) localStorage.removeItem(k); }catch(e){}
+function blqApagarAparelho(motivo){ try{ if(window.LS&&LS.apagarTudo) LS.apagarTudo(); }catch(e){}
+  try{ for(const k of Object.keys(localStorage)) if(/^(healthSearch|healthRomaneio|hs[._]|sb-)/.test(k)) LS.removeItem(k); }catch(e){}
   try{ sessionStorage.clear(); }catch(e){}
   try{ caches.keys().then(ks=>ks.filter(k=>/^hs-/.test(k)).forEach(k=>caches.delete(k))); }catch(e){}
   try{ navigator.serviceWorker&&navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())); }catch(e){}
@@ -8022,7 +8188,7 @@ function blqApagarAparelho(motivo){ try{ for(const k of Object.keys(localStorage
 async function blqChecar(){ try{ if(!NV||!NV.cli||!NV.user||!navigator.onLine) return;
     const {data,error}=await NV.cli.rpc('hs_meu_status');
     if(error){ if(/banned|banido/i.test(error.message||'')) blqApagarAparelho(); return; }
-    try{ localStorage.setItem('healthSearch.ultContato',new Date().toISOString()); }catch(e){}
+    try{ LS.setItem('healthSearch.ultContato',new Date().toISOString()); }catch(e){}
     if(data&&data.existe&&data.ativo===false) blqApagarAparelho();
   }catch(e){} }
 /* o login também denuncia o banimento (sessão derrubada ou "User is banned") */
@@ -8031,12 +8197,12 @@ async function blqChecarSessao(){ try{ if(!NV||!NV.cli||!navigator.onLine) retur
   setInterval(()=>{ if(!document.hidden){ blqChecar(); blqChecarSessao(); } },60000); window.addEventListener('online',()=>{ blqChecar(); blqChecarSessao(); }); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) blqChecar(); }); },1000); })();
 /* ---- 2) validade da cópia offline: sem falar com o servidor por 3 dias, o app pede internet para abrir ---- */
 const OFF_DIAS=3;
-function offChecar(){ try{ if(navigator.onLine){ const o=$('#off-trava'); if(o) o.remove(); return; } const u=localStorage.getItem('healthSearch.ultContato'); if(!u) return;
+function offChecar(){ try{ if(navigator.onLine){ const o=$('#off-trava'); if(o) o.remove(); return; } const u=LS.getItem('healthSearch.ultContato'); if(!u) return;
     if(Date.now()-new Date(u).getTime()<OFF_DIAS*864e5) return; if($('#off-trava')) return;
     const d=document.createElement('div'); d.id='off-trava'; d.style.cssText='position:fixed;inset:0;z-index:3000;background:#0F4B55;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:system-ui';
     d.innerHTML=`<div><h2 style="margin:0 0 8px">Conecte à internet</h2><p>Este aparelho está há mais de ${OFF_DIAS} dias sem falar com o servidor.<br>Por segurança, o Health Search só abre depois de conferir seu acesso online.</p></div>`; document.body.appendChild(d); }catch(e){} }
 setTimeout(offChecar,2000); setInterval(offChecar,30000); window.addEventListener('online',()=>{ offChecar(); setTimeout(blqChecar,1500); }); window.addEventListener('offline',offChecar);
-{ const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); try{ if(!NUV.erro&&opOnline()) localStorage.setItem('healthSearch.ultContato',new Date().toISOString()); }catch(e){} return r; }; }
+{ const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); try{ if(!NUV.erro&&opOnline()) LS.setItem('healthSearch.ultContato',new Date().toISOString()); }catch(e){} return r; }; }
 
 /* ---- 3) 🧠 Cérebro: aprende com cada bipe que deu certo, e todos os aparelhos aprendem juntos (vai para a nuvem em S.cerebro) ---- */
 if(!NUV_CAMPOS.includes('cerebro')) NUV_CAMPOS.push('cerebro');
@@ -8055,7 +8221,7 @@ setInterval(confDiasReg, 5*60*1000);
 /* v9.10.0 — Task #17: BIT observa a operação e gera sugestões */
 function evaObservar(){ try{
   const h=hojeISO(); const obs='evaObs:'+h;
-  try{ if(localStorage.getItem(obs)) return; }catch(e){}
+  try{ if(LS.getItem(obs)) return; }catch(e){}
   const insights=[];
   /* conferência */
   const L=opPorRom(); const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0);
@@ -8080,7 +8246,7 @@ function evaObservar(){ try{
   }catch(e){}
   if(!insights.length) return;
   setTimeout(()=>{ evaFala('<b>🔍 Observação do dia ('+h.split('-').reverse().join('/')+')</b><br>'+insights.join('<br>'),'eva'); },3000);
-  try{ localStorage.setItem(obs,'1'); }catch(e){}
+  try{ LS.setItem(obs,'1'); }catch(e){}
 }catch(e){ console.error('[evaObservar]',e); } }
 /* roda ao carregar (com delay) e a cada hora */
 setTimeout(evaObservar, 10000);
@@ -8452,7 +8618,7 @@ function evaCidadeResp(o){ const cod=o.c; const nm=r=>(r&&r.ids||[]).map(i=>(geo
     if(t.split(' ').length<=5&&!/\d/.test(t)){ const o=evaAcharCidade(txt); if(o) return evaCidadeResp(o); }
     return _ee(txt); }; }
 /* ================= v8.8.6 · Personalizar BIT (colete refletivo, capacete, laço) — cada usuário escolhe o seu ================= */
-function evaVis(){ try{ return Object.assign({colete:false,capacete:false,laco:true,cor:'#EC4899'},JSON.parse(localStorage.getItem('healthSearch.evaVisual')||'{}')); }catch(e){ return {colete:false,capacete:false,laco:true,cor:'#EC4899'}; } }
+function evaVis(){ try{ return Object.assign({colete:false,capacete:false,laco:true,cor:'#EC4899'},JSON.parse(LS.getItem('healthSearch.evaVisual')||'{}')); }catch(e){ return {colete:false,capacete:false,laco:true,cor:'#EC4899'}; } }
 function evaSvgVestida(v){ return EVA_SVG; }
 function evaAplicarVisual(){ const v=evaVis(); const b=$('#eva-bt'); if(b){ const qt=b.querySelector('#eva-qt'); b.innerHTML=evaSvgVestida(v); if(qt) b.appendChild(qt); } const a=document.querySelector('#eva-painel .eva-cab .av'); if(a) a.innerHTML=evaSvgVestida(v); }
 function evaPersonalizar(){ const v=evaVis(); const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1700';
@@ -8464,7 +8630,7 @@ function evaPersonalizar(){ const v=evaVis(); const f=document.createElement('di
   const ler=()=>({colete:$('#ep-colete').checked,capacete:$('#ep-capacete').checked,laco:$('#ep-laco').checked,cor:$('#ep-cor').value}); const prev=()=>{ $('#ep-prev').innerHTML=evaSvgVestida(ler()); };
   f.addEventListener('change',prev); f.addEventListener('click',e=>{ const b=e.target.closest('[data-ep]'); if(e.target===f){ f.remove(); return; } if(!b) return;
     if(b.dataset.ep==='pad'){ $('#ep-colete').checked=false; $('#ep-capacete').checked=false; $('#ep-laco').checked=true; $('#ep-cor').value='#EC4899'; prev(); return; }
-    try{ localStorage.setItem('healthSearch.evaVisual',JSON.stringify(ler())); }catch(er){} evaAplicarVisual(); f.remove(); toast('BIT personalizada!'); });
+    try{ LS.setItem('healthSearch.evaVisual',JSON.stringify(ler())); }catch(er){} evaAplicarVisual(); f.remove(); toast('BIT personalizada!'); });
   document.body.appendChild(f); prev(); }
 (function(){ const cab=document.querySelector('#eva-painel .eva-cab'); const x=$('#eva-x'); if(cab&&x) x.insertAdjacentHTML('beforebegin','<button type="button" id="eva-cfg" title="Personalizar BIT" aria-label="Personalizar BIT" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:4px 6px">🎨</button>'); const c=$('#eva-cfg'); if(c) c.onclick=evaPersonalizar; evaAplicarVisual(); })();
 /* v9.10.0 — Task #14: resetar BIT (admin) */
@@ -8852,7 +9018,7 @@ function evaListar(f,dia){ EVA.ultF=f; EVA.ultDia=dia; const rs=evaRomDoDia(dia)
   g.innerHTML=`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/></svg><span class="lbl">Operação</span><span class="qt" id="qt-opg" hidden>0</span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>`;
   const sub=document.createElement('div'); sub.className='nav-sub'; op.parentNode.insertBefore(g,op); op.parentNode.insertBefore(sub,op);
   const ct=document.createElement('button'); ct.dataset.tela='conftotal'; ct.innerHTML=`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12l6 4"/></svg><span class="lbl">Conferência total</span><span class="qt" id="qt-ct" hidden>0</span>`;
-  sub.append(op,ct); let ab=true; try{ ab=localStorage.getItem('healthSearch.opGrupo')!=='0'; }catch(e){} const abrir=v=>{ sub.hidden=!v; g.setAttribute('aria-expanded',String(v)); try{ localStorage.setItem('healthSearch.opGrupo',v?'1':'0'); }catch(e){} }; abrir(ab); g.onclick=()=>abrir(sub.hidden);
+  sub.append(op,ct); let ab=true; try{ ab=LS.getItem('healthSearch.opGrupo')!=='0'; }catch(e){} const abrir=v=>{ sub.hidden=!v; g.setAttribute('aria-expanded',String(v)); try{ LS.setItem('healthSearch.opGrupo',v?'1':'0'); }catch(e){} }; abrir(ab); g.onclick=()=>abrir(sub.hidden);
   /* tela Conferência total */
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-conftotal'; sec.hidden=true;
   sec.innerHTML=`<h1>Conferência total</h1><p class="sub">Andamento da conferência do dia: quanto já foi bipado no total, por origem e por romaneio. Os bipes são feitos no <b>NexBip</b>.</p>
@@ -8926,8 +9092,8 @@ function opLinhaBanco(b){ const o={}; for(const c of OP_COLS){ if(b[c]!==undefin
   if(o.tot!=null) o.tot=parseInt(o.tot,10)||null;
   if(o.valor!=null){ const v=Number(String(o.valor).replace(',','.')); o.valor=isFinite(v)?v:null; }
   return o; }
-function opRuinsLer(){ try{ return JSON.parse(localStorage.getItem(OP_RUINS)||'[]'); }catch(e){ return []; } }
-function opRuinsGravar(L){ try{ localStorage.setItem(OP_RUINS,JSON.stringify(L.slice(-500))); }catch(e){} }
+function opRuinsLer(){ try{ return JSON.parse(LS.getItem(OP_RUINS)||'[]'); }catch(e){ return []; } }
+function opRuinsGravar(L){ try{ LS.setItem(OP_RUINS,JSON.stringify(L.slice(-500))); }catch(e){} }
 async function opSubirLote(lote){ /* devolve {ok:[local_id], ruins:[{b,erro}]} */
   if(!lote.length) return {ok:[],ruins:[]};
   const {error}=await NV.cli.from('hs_bipagens').upsert(lote.map(opLinhaBanco),{onConflict:'local_id',ignoreDuplicates:true});
@@ -9064,7 +9230,7 @@ function evaStatusCurto(){ let L=[]; try{ L=opPorRom(); }catch(e){} const tn=L.r
   const p=[]; if(tn) p.push(fn?`faltam <b>${fmtN(fn)}</b> de ${fmtN(tn)} nota(s) para conferir`:`a conferência de hoje está <b>completa</b> 🎉`); else p.push('ainda não há romaneios de hoje carregados'); if(dv) p.push(`${fmtN(dv)} divergência(s) em aberto`); if(cam) p.push(`${fmtN(cam)} caminhão(ões) na base`); return p.join(', '); }
 function evaCumprimento(){ const n=evaNome(), per=evaPeriodo(); return `${per[0].toUpperCase()+per.slice(1)}${n?', '+esc(n):''}! ${evaSorteia(['Hoje','Por aqui','No momento'])} ${evaStatusCurto()}.`; }
 /* cumprimenta ao abrir o app (1x por período do dia) */
-setTimeout(()=>{ try{ const k=hojeISO()+'|'+evaPeriodo(); if(localStorage.getItem('healthSearch.evaOi')===k) return; localStorage.setItem('healthSearch.evaOi',k); evaBalao(evaCumprimento()+' Toque em mim se precisar.',11000); }catch(e){} },6000);
+setTimeout(()=>{ try{ const k=hojeISO()+'|'+evaPeriodo(); if(LS.getItem('healthSearch.evaOi')===k) return; LS.setItem('healthSearch.evaOi',k); evaBalao(evaCumprimento()+' Toque em mim se precisar.',11000); }catch(e){} },6000);
 /* conversa mais humana */
 { const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt).replace(/[?!.]+$/,'').trim(); const n=evaNome();
     const cum=t.match(/^(bom dia|boa tarde|boa noite|oi+|ola|e ai|eai|opa|salve|fala eva|oi eva|ola eva)\b/);
@@ -9169,8 +9335,8 @@ function etqAchouAlgo(p,idx){ if(!p) return false; const ns=[...(p.nfs||[]),...(
 function opBipeHora(b){ const t=parseInt(String(b.local_id||'').slice(0,8),36); return t>1.6e12&&t<4e12?t:null; }
 function opCorrigirDias(){ let mov=0; try{ const hoje=hojeISO(); for(let i=1;i<=3;i++){ const dia=new Date(Date.now()-i*864e5); const k=diaLocal(dia.getTime()); const L=opLocalLer(k); if(!L.length) continue; const fica=[], vai={};
       for(const b of L){ const t=opBipeHora(b); const d=t?diaLocal(t):k; if(d!==k&&d<=hoje){ b.dia=d; (vai[d]=vai[d]||[]).push(b); } else fica.push(b); }
-      if(!Object.keys(vai).length) continue; localStorage.setItem(OP_LOCAL+k,JSON.stringify(fica));
-      for(const [d,bs] of Object.entries(vai)){ const T=opLocalLer(d); const ids=new Set(T.map(b=>b.local_id)); for(const b of bs) if(!ids.has(b.local_id)){ T.push(b); mov++; } T.sort((a,b)=>(opBipeHora(b)||0)-(opBipeHora(a)||0)); localStorage.setItem(OP_LOCAL+d,JSON.stringify(T.slice(0,5000))); } } }catch(e){ console.error(e); }
+      if(!Object.keys(vai).length) continue; LS.setItem(OP_LOCAL+k,JSON.stringify(fica));
+      for(const [d,bs] of Object.entries(vai)){ const T=opLocalLer(d); const ids=new Set(T.map(b=>b.local_id)); for(const b of bs) if(!ids.has(b.local_id)){ T.push(b); mov++; } T.sort((a,b)=>(opBipeHora(b)||0)-(opBipeHora(a)||0)); LS.setItem(OP_LOCAL+d,JSON.stringify(T.slice(0,5000))); } } }catch(e){ console.error(e); }
   if(mov){ try{ if(OP.dia) opAbrirDia(OP.dia); }catch(e){} toast(` Achei ${mov} bipe(s) que tinham ficado no dia anterior (o app estava aberto desde antes da meia-noite) e devolvi para o dia certo.`); }
   return mov; }
 setTimeout(opCorrigirDias,3500);
@@ -9315,11 +9481,11 @@ document.addEventListener('click',async e=>{ const b=e.target.closest('[data-xc]
 /* v9.0.1: BIT intervém sozinho quando XMLs entram pela aba Romaneios (conserta, resume, alerta repetidas, oferece o XML unificado) */
 { const _imp2=importar; importar=async function(files){ const xs=[...(files||[])].filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); const r=await _imp2.apply(this,arguments); if(xs.length){ try{ await evaArquivos(xs,{importado:true}); }catch(e){} } return r; }; }
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
-function apId(){ try{ let id=localStorage.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=localStorage.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
+function apId(){ try{ let id=LS.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=LS.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
-async function apConferir(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; const eu=opEu(); if(!eu) return; let visto=''; try{ visto=localStorage.getItem('healthSearch.apVisto')||''; }catch(e){}
+async function apConferir(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; const eu=opEu(); if(!eu) return; let visto=''; try{ visto=LS.getItem('healthSearch.apVisto')||''; }catch(e){}
   try{ const {data}=await NV.cli.from('hs_sync').select('chave,valor,atualizado_em').like('chave','ap:'+eu+':%').order('atualizado_em',{ascending:false}).limit(20); const meu='ap:'+eu+':'+apId();
-    const novos=(data||[]).filter(r=>r.chave!==meu&&(!visto||r.atualizado_em>visto)); try{ localStorage.setItem('healthSearch.apVisto',(data&&data[0]&&data[0].atualizado_em)||new Date().toISOString()); }catch(e){}
+    const novos=(data||[]).filter(r=>r.chave!==meu&&(!visto||r.atualizado_em>visto)); try{ LS.setItem('healthSearch.apVisto',(data&&data[0]&&data[0].atualizado_em)||new Date().toISOString()); }catch(e){}
     if(!visto) return; /* primeira vez neste aparelho: só marca, não avisa do passado */
     for(const r of novos){ const v=r.valor||{}; const hora=new Date(r.atualizado_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); const msg=`${v.aparelho||'Outro aparelho'} entrou com sua conta às ${hora}.`;
       toast('🔐 '+msg+' (o app guardou um backup da nuvem antes)'); try{ if('Notification' in window&&Notification.permission==='granted') new Notification('Health Search',{body:msg}); }catch(e){}
@@ -9494,10 +9660,10 @@ function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) re
 
 /* ================= v7.9.17 · Atualização nunca tira informação: backup antes, conferência depois e devolve o que faltar ================= */
 const ATU={ant:'',snap:null};
-function atuFoto(){ if(ATU.feita) return; ATU.feita=true; try{ ATU.ant=localStorage.getItem('healthSearch.versaoAnt')||''; const atual=String(HS_VERSAO);
+function atuFoto(){ if(ATU.feita) return; ATU.feita=true; try{ ATU.ant=LS.getItem('healthSearch.versaoAnt')||''; const atual=String(HS_VERSAO);
     if(ATU.ant!==atual){ /* foto do que este aparelho tinha ANTES de qualquer sincronização da versão nova */
       const snap={em:new Date().toISOString(),de:ATU.ant,para:atual,dv:JSON.parse(JSON.stringify(S.divergencias||[])),re:JSON.parse(JSON.stringify((RE.ler().dias)||{})),fora:JSON.parse(JSON.stringify(S.foraReg||[])),ag:JSON.parse(JSON.stringify(S.agendamentos||[])),cadMot:JSON.parse(JSON.stringify(S.cadMot||[])),cadMotivos:JSON.parse(JSON.stringify(S.cadMotivos||[])),opForaInfo:JSON.parse(JSON.stringify(S.opForaInfo||{}))};
-      ATU.snap=snap; try{ localStorage.setItem('healthSearch.preAtualizacao',JSON.stringify(snap)); }catch(e){} localStorage.setItem('healthSearch.versaoAnt',atual); } }catch(e){ console.error(e); } }
+      ATU.snap=snap; try{ LS.setItem('healthSearch.preAtualizacao',JSON.stringify(snap)); }catch(e){} LS.setItem('healthSearch.versaoAnt',atual); } }catch(e){ console.error(e); } }
 function atuDevolver(){ const sn=ATU.snap; if(!sn) return 0; let q=0;
   /* divergências */ const dv=dvS(); const ids=new Set(dv.map(d=>d.id)); for(const d of sn.dv) if(d&&d.id&&!ids.has(d.id)){ dv.push(d); q++; }
   /* reentregas (por dia, por NF+motivo) */ const D=RE.ler(); for(const [dia,ls] of Object.entries(sn.re||{})){ const L=D.dias[dia]=D.dias[dia]||[]; const tem=new Set(L.map(l=>z(l.nf)+'|'+rpNz(l.obs))); for(const l of (ls||[])){ const k=z(l.nf)+'|'+rpNz(l.obs); if(!tem.has(k)){ L.push(l); tem.add(k); q++; } } }
@@ -9505,7 +9671,7 @@ function atuDevolver(){ const sn=ATU.snap; if(!sn) return 0; let q=0;
   junta(S.foraReg=S.foraReg||[],sn.fora,x=>x.id); junta(S.agendamentos=S.agendamentos||[],sn.ag,x=>x.id||JSON.stringify(x)); junta(S.cadMot=S.cadMot||[],sn.cadMot,x=>x.nome); junta(S.cadMotivos=S.cadMotivos||[],sn.cadMotivos,x=>x);
   S.opForaInfo=S.opForaInfo||{}; for(const [k,v] of Object.entries(sn.opForaInfo||{})) if(!S.opForaInfo[k]){ S.opForaInfo[k]=v; q++; }
   if(q){ RE.gravar(); salvar(); try{ renderTudo(); }catch(e){} } return q; }
-{ const _ns=nuvSinc; let feito=false; nuvSinc=async function(){ try{ atuFoto(); }catch(e){} if(!feito&&ATU.snap&&Store.modo==='nuvem'&&opOnline()&&nvAdmin()&&localStorage.getItem('healthSearch.bkDia')!==hojeISO()){ feito=true; localStorage.setItem('healthSearch.bkDia',hojeISO()); try{ await nuvBackupNuvem('antes da atualização '+(ATU.snap.de||'?')+' → '+ATU.snap.para); }catch(e){} }
+{ const _ns=nuvSinc; let feito=false; nuvSinc=async function(){ try{ atuFoto(); }catch(e){} if(!feito&&ATU.snap&&Store.modo==='nuvem'&&opOnline()&&nvAdmin()&&LS.getItem('healthSearch.bkDia')!==hojeISO()){ feito=true; LS.setItem('healthSearch.bkDia',hojeISO()); try{ await nuvBackupNuvem('antes da atualização '+(ATU.snap.de||'?')+' → '+ATU.snap.para); }catch(e){} }
     const r=await _ns.apply(this,arguments); if(ATU.snap&&!ATU.conferido&&!NUV.erro&&NUV.ult){ ATU.conferido=true; const q=atuDevolver(); if(q){ toast('🛡 Atualização: '+q+' informação(ões) que tinham sumido foram devolvidas.'); setTimeout(()=>nuvSinc(),1500); } } return r; }; }
 setTimeout(()=>{ if(Store.modo!=='nuvem'){ if(ATU.snap){ const q=atuDevolver(); if(q) toast('🛡 Atualização: '+q+' informação(ões) devolvidas.'); } } },3000);
 
@@ -9682,8 +9848,8 @@ function rotaLerSemPlaca(rows){ const rot=s=>s.toUpperCase().replace(/\s+/g,' ')
   return out.filter(v=>v.cidades.length||v.volumes).map((v,i)=>Object.assign(v,{placa:'ROTA '+String(i+1).padStart(2,'0')})); }
 async function rotaPublicar(nova){ if(!rotEhRoteirizador()){ toast('Só o administrador ou um roteirizador muda as rotas.'); return; } const R=rotaS(); if(R.atual) R.hist=[R.atual].concat(R.hist||[]).slice(0,15);
   nova.id=Math.random().toString(36).slice(2,10); nova.em=new Date().toISOString(); nova.por=opEu(); R.atual=nova; R.em=nova.em; salvar(); try{ await nuvSinc(); }catch(e){} rotaRender(); toast('🚚 Rota publicada e enviada para todos.'); }
-function rotaNotificar(R){ const a=R&&R.atual; if(!a) return; let visto=''; try{ visto=localStorage.getItem('healthSearch.rotaVista')||''; }catch(e){} if(visto===a.id) return;
-  try{ localStorage.setItem('healthSearch.rotaVista',a.id); }catch(e){} if(!visto) return; const msg=`Nova rota publicada: ${a.titulo} (${a.veiculos.length} veículos) por ${(a.por||'').split(' ')[0]}.`;
+function rotaNotificar(R){ const a=R&&R.atual; if(!a) return; let visto=''; try{ visto=LS.getItem('healthSearch.rotaVista')||''; }catch(e){} if(visto===a.id) return;
+  try{ LS.setItem('healthSearch.rotaVista',a.id); }catch(e){} if(!visto) return; const msg=`Nova rota publicada: ${a.titulo} (${a.veiculos.length} veículos) por ${(a.por||'').split(' ')[0]}.`;
   toast('🚚 '+msg); try{ if('Notification' in window&&Notification.permission==='granted'){ if(navigator.serviceWorker&&navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(r=>r.showNotification('Health Search · Rotas',{body:msg,tag:'rota',renotify:true})).catch(()=>new Notification('Health Search · Rotas',{body:msg})); else new Notification('Health Search · Rotas',{body:msg}); } }catch(e){}
   const bt=document.querySelector('.nav [data-tela="rotadia"]'); if(bt&&!bt.querySelector('.rot-novo')) bt.insertAdjacentHTML('beforeend','<span class="rot-novo" style="margin-left:auto;background:var(--acento);color:#06201f;border-radius:999px;padding:0 7px;font-size:11px;font-weight:700">nova</span>'); }
 { const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ const r=_na.apply(this,arguments); if(chave==='s:rotas'&&!apagado){ setTimeout(()=>{ rotaNotificar(valor); try{ if(!$('#t-rotadia').hidden) rotaRender(); }catch(e){} },200); } return r; }; }
@@ -9770,11 +9936,11 @@ function bxCidade(q){ const c=normCid(q); if(c.length<3) return ''; const hits=[
 { const _c=computar; computar=function(q,forced){ const r=_c(q,forced); try{ if((r.tipo==='txt'&&!r.hits.length)||r.tipo==='nada'){ const c=normCid(q); if(c&&(S.romaneios||[]).some(ro=>(ro.rows||[]).some(x=>normCid(x.cid||'')===c))) return {tipo:'txt',hits:[],v:q,cidade:true}; } }catch(e){} return r; }; }
 document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-bx-copiar]'); if(!b) return; try{ await navigator.clipboard.writeText(b.dataset.bxCopiar); toast('Copiado: '+b.dataset.bxCopiar); }catch(er){ toast(b.dataset.bxCopiar); } });
 /* histórico das últimas 20 buscas */
-function bxHist(){ try{ return JSON.parse(localStorage.getItem('healthSearch.buscas')||'[]'); }catch(e){ return []; } }
+function bxHist(){ try{ return JSON.parse(LS.getItem('healthSearch.buscas')||'[]'); }catch(e){ return []; } }
 function bxHistRender(){ let el=$('#bx-hist'); const ref=document.querySelector('#t-buscar .buscado')||$('#resultado'); if(!el){ const q=$('#q'); const host=q&&q.closest('form,.campo-busca,.busca')||q&&q.parentNode; if(!host) return; host.insertAdjacentHTML('afterend','<div id="bx-hist" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px"></div>'); el=$('#bx-hist'); }
   const L=bxHist(); el.innerHTML=L.length?'<span class="sub" style="margin:0 4px 0 0;font-size:12px">Últimas:</span>'+L.map(q=>`<button type="button" class="btn mini" data-bx-h="${esc(q)}" style="padding:2px 9px;font-size:12px">${esc(q)}</button>`).join('')+'<button type="button" class="btn mini" data-bx-limpa="1" style="padding:2px 9px;font-size:12px;opacity:.7">limpar</button>':''; }
-{ const _ex=executar; executar=function(q,forced){ const t=String(q||'').trim(); if(t){ const L=bxHist().filter(x=>x!==t); L.unshift(t); try{ localStorage.setItem('healthSearch.buscas',JSON.stringify(L.slice(0,20))); }catch(e){} } const r=_ex.apply(this,arguments); try{ bxHistRender(); }catch(e){} return r; }; }
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-bx-h],[data-bx-limpa]'); if(!b) return; if(b.dataset.bxLimpa){ try{ localStorage.removeItem('healthSearch.buscas'); }catch(er){} bxHistRender(); return; } executar(b.dataset.bxH); });
+{ const _ex=executar; executar=function(q,forced){ const t=String(q||'').trim(); if(t){ const L=bxHist().filter(x=>x!==t); L.unshift(t); try{ LS.setItem('healthSearch.buscas',JSON.stringify(L.slice(0,20))); }catch(e){} } const r=_ex.apply(this,arguments); try{ bxHistRender(); }catch(e){} return r; }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-bx-h],[data-bx-limpa]'); if(!b) return; if(b.dataset.bxLimpa){ try{ LS.removeItem('healthSearch.buscas'); }catch(er){} bxHistRender(); return; } executar(b.dataset.bxH); });
 setTimeout(()=>{ try{ bxHistRender(); }catch(e){} },1500);
 /* v8.2.0: clicar no número pequeno do cartão Problemas filtra só aquele tipo */
 document.addEventListener('click',e=>{ const s=e.target.closest&&e.target.closest('#op-cards [data-f2]'); if(!s) return; e.stopPropagation(); OP.filtro=s.dataset.f2; opRender(); },true);
@@ -9789,9 +9955,9 @@ setTimeout(ajudaBotoes,1200); setTimeout(ajudaBotoes,4000);
 
 /* ================= v8.2.0 · Menu: Rotas junto da Operação e grupos que abrem/fecham ================= */
 (function(){ try{ const nav=document.querySelector('.nav'); if(!nav) return; const rot=nav.querySelector('[data-tela="rotadia"]'), ag=nav.querySelector('[data-tela="agenda"]'); if(rot&&ag) ag.insertAdjacentElement('beforebegin',rot);
-  let fech={}; try{ fech=JSON.parse(localStorage.getItem('healthSearch.menuFechado')||'{}'); }catch(e){}
+  let fech={}; try{ fech=JSON.parse(LS.getItem('healthSearch.menuFechado')||'{}'); }catch(e){}
   const grupos=[...nav.querySelectorAll('.nav-grupo')].filter(g=>g.tagName!=='BUTTON'); const aplicar=()=>{ for(const g of grupos){ const k=g.textContent.replace(/[▾▸]/g,'').trim(); const f=!!fech[k]; g.dataset.fechado=f?'1':''; let el=g.nextElementSibling; while(el&&!(el.classList.contains('nav-grupo')&&el.tagName!=='BUTTON')){ if(!el.matches('[aria-current="page"]')) el.style.display=f?'none':''; el=el.nextElementSibling; } g.querySelector('.ng-seta')&&(g.querySelector('.ng-seta').textContent=f?'▸':'▾'); } };
-  for(const g of grupos){ g.style.cursor='pointer'; g.style.userSelect='none'; g.title='Clique para abrir/fechar este grupo'; g.insertAdjacentHTML('beforeend',' <span class="ng-seta" style="opacity:.6;font-size:10px">▾</span>'); g.addEventListener('click',()=>{ const k=g.textContent.replace(/[▾▸]/g,'').trim(); fech[k]=!fech[k]; try{ localStorage.setItem('healthSearch.menuFechado',JSON.stringify(fech)); }catch(e){} aplicar(); }); }
+  for(const g of grupos){ g.style.cursor='pointer'; g.style.userSelect='none'; g.title='Clique para abrir/fechar este grupo'; g.insertAdjacentHTML('beforeend',' <span class="ng-seta" style="opacity:.6;font-size:10px">▾</span>'); g.addEventListener('click',()=>{ const k=g.textContent.replace(/[▾▸]/g,'').trim(); fech[k]=!fech[k]; try{ LS.setItem('healthSearch.menuFechado',JSON.stringify(fech)); }catch(e){} aplicar(); }); }
   const norm=()=>{ const n={}; for(const g of grupos){ const k=g.textContent.replace(/[▾▸]/g,'').trim(); n[k]=fech[k]||fech[g.textContent.trim()]; } fech=n; }; norm(); aplicar(); }catch(e){ console.error(e); } })();
 
 /* ================= v8.2.0 · Celular/tablet: tabelas viram cartões; nada quebra a tela ================= */
@@ -9951,7 +10117,7 @@ document.addEventListener('change',async e=>{ const c=e.target; if(!c.dataset||c
 /* --- Painel de Gestão --- */
 /* v10.0.1 · dia do Painel de Gestão */
 const GS={dia:''};
-function gsDias(){ const out=new Set(); try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||''; if(k.startsWith(OP_LOCAL)){ const d=k.slice(OP_LOCAL.length); if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&(opLocalLer(d)||[]).length) out.add(d); } } }catch(e){}
+function gsDias(){ const out=new Set(); try{ for(let i=0;i<LS.length;i++){ const k=LS.key(i)||''; if(k.startsWith(OP_LOCAL)){ const d=k.slice(OP_LOCAL.length); if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&(opLocalLer(d)||[]).length) out.add(d); } } }catch(e){}
   if((OP&&OP.bipes||[]).length) out.add(OP.dia||hojeISO());
   return [...out].sort().reverse(); }
 function gsDia(){ if(GS.dia) return GS.dia; const h=hojeISO(); const temHoje=((OP&&OP.bipes)||[]).some(b=>diaLocal(new Date(b.criado_em||0).toISOString())===h);
@@ -10155,15 +10321,15 @@ function gsBarras2(t,L,rodape){ return `<div class="gs-box"><h3>${t}</h3>${L.len
    os bipes daquele dia do aparelho. Eles continuam no banco online (hs_bipagens) e voltam
    sozinhos se alguém abrir aquele dia. Isso era metade do espaço ocupado. */
 function gsBipesAntigos(){ const out=[]; try{ const h=hojeISO();
-  for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(!k||k.indexOf(OP_LOCAL)!==0) continue;
+  for(let i=0;i<LS.length;i++){ const k=LS.key(i); if(!k||k.indexOf(OP_LOCAL)!==0) continue;
     const d=k.slice(OP_LOCAL.length); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||d>=h) continue;
-    out.push({dia:d,chave:k,bytes:(localStorage.getItem(k)||'').length}); } }catch(e){}
+    out.push({dia:d,chave:k,bytes:(LS.getItem(k)||'').length}); } }catch(e){}
   return out.sort((a,b)=>a.dia.localeCompare(b.dia)); }
 async function gsEnxugarBipes(forcar){ let n=0,b=0;
   for(const x of gsBipesAntigos()){
     let f=(S.gsSnap||{})[x.dia];
     if(!f||!f.tn){ if(!forcar) continue; try{ f=await gsGarantirFoto(x.dia); }catch(e){} if(!f||!f.tn) continue; }
-    try{ localStorage.removeItem(x.chave); n++; b+=x.bytes; }catch(e){} }
+    try{ LS.removeItem(x.chave); n++; b+=x.bytes; }catch(e){} }
   return {dias:n,bytes:b}; }
 
 /* ================= v10.1.4 · Baixa da divergência na hora do bipe + aviso para quem abriu =================
@@ -10175,8 +10341,8 @@ function dvAvisarDono(d,txt){ try{ const quem=String(d&&d.por||'').trim(); const
   S.dvAvisos.push({id:d.id,para:quem,txt,em:Date.now()}); salvar(); }catch(e){} }
 try{ if(!NUV_CAMPOS.includes('dvAvisos')) NUV_CAMPOS.push('dvAvisos'); }catch(e){}
 const DVAV_VIS='healthSearch.dvAvisosVistos';
-function dvAvisosVistos(){ try{ return JSON.parse(localStorage.getItem(DVAV_VIS)||'{}'); }catch(e){ return {}; } }
-function dvAvisoVisto(id){ try{ const v=dvAvisosVistos(); v[id]=1; localStorage.setItem(DVAV_VIS,JSON.stringify(v)); }catch(e){} }
+function dvAvisosVistos(){ try{ return JSON.parse(LS.getItem(DVAV_VIS)||'{}'); }catch(e){ return {}; } }
+function dvAvisoVisto(id){ try{ const v=dvAvisosVistos(); v[id]=1; LS.setItem(DVAV_VIS,JSON.stringify(v)); }catch(e){} }
 function dvMeusAvisos(){ try{ const eu=N(typeof opEu==='function'?opEu():''), v=dvAvisosVistos();
   return (S.dvAvisos||[]).filter(a=>a&&N(a.para)===eu&&!v[a.id+'|'+a.em]); }catch(e){ return []; } }
 function dvBaixaPeloBipe(d,ondeTxt){ if(!d) return false;
@@ -10225,10 +10391,10 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[d
 (function(){ const st=document.createElement('style'); st.textContent='#grav-falha{position:fixed;left:0;right:0;top:0;z-index:4000;background:#C2255C;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;box-shadow:0 4px 18px rgba(0,0,0,.35)}#grav-falha span{flex:1;min-width:220px}'; document.head.appendChild(st); })();
 Store.salvar=async function(obj){ const s=JSON.stringify(obj);
   if(this.modo==='exe'){ try{ const r=await fetch('/__hr/estado',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},HDR),body:s}); if(!r.ok) throw 0; }catch(e){ toast('Não consegui gravar os dados na pasta do programa.'); } return; }
-  try{ localStorage.setItem(this.chave,s); if(GRAV_FALHOU) gravFaixa(false); return; }catch(e){}
+  try{ LS.setItem(this.chave,s); if(GRAV_FALHOU) gravFaixa(false); return; }catch(e){}
   let liberou=false;
   try{ const r=await gsEnxugarBipes(false); liberou=!!(r&&r.dias); }catch(e){}
-  try{ localStorage.setItem(this.chave,s); if(GRAV_FALHOU) gravFaixa(false);
+  try{ LS.setItem(this.chave,s); if(GRAV_FALHOU) gravFaixa(false);
     toast('O aparelho estava cheio: liberei espaço e consegui gravar.'); return; }catch(e){}
   gravFaixa(true);
   try{ if(typeof nuvSinc==='function') nuvSinc(); }catch(e){}
@@ -10324,7 +10490,7 @@ async function gsBipesDia(dia){ let bs=[]; try{ bs=opLocalLer(dia)||[]; }catch(e
   try{ let todos=[], de=0; for(;;){ const {data,error}=await NV.cli.from('hs_bipagens').select('*').eq('dia',dia).range(de,de+999);
       if(error) throw error; todos=todos.concat(data||[]); if(!data||data.length<1000) break; de+=1000; }
     bs=todos.map(opDoBanco);
-    try{ localStorage.setItem(OP_LOCAL+dia,JSON.stringify(bs)); }catch(e){}
+    try{ LS.setItem(OP_LOCAL+dia,JSON.stringify(bs)); }catch(e){}
   }catch(e){}
   return bs; }
 async function gsFotoDeDiaPassado(dia){
@@ -10449,16 +10615,17 @@ const geoContaV=x=>{ try{ return (x&&x.listas||[]).reduce((t,l)=>t+((l.cidades||
 { const _in=Store.init.bind(Store); Store.init=async function(){ const d=await _in(); try{ const g=await GIDB.ler('geo'); if(g&&Array.isArray(g.listas)&&geoContaV(g)>0){ const dg=d&&d.geo; const velho=!dg||!Array.isArray(dg.listas)||geoContaV(dg)===0||String(g.em||'')>String(dg.em||''); if(velho){ console.warn('mapa recuperado da cópia à parte',geoContaV(g),dg?geoContaV(dg):0); if(d){ d.geo=g; return d; } return {geo:g}; } } }catch(e){} return d; }; }
 /* zoom, posição, tipo (região/base), camadas ocultas e "mostrar automáticas" ficam guardados neste aparelho */
 const GEOV={ch:'healthSearch.geoVista', v:null, ult:''};
-try{ GEOV.v=JSON.parse(localStorage.getItem(GEOV.ch)||'null'); }catch(e){}
+try{ GEOV.v=JSON.parse(LS.getItem(GEOV.ch)||'null'); }catch(e){}
 if(GEOV.v){ try{ if(GEOV.v.tipo) GEO.tipo=GEOV.v.tipo; if(Array.isArray(GEOV.v.oc)) GEO.ocultos=new Set(GEOV.v.oc); }catch(e){} }
 { const _ga=geoAjustar; geoAjustar=function(){ const ok=_ga(); if(ok&&GEO.view&&!GEO._vr){ GEO._vr=1; const v=GEOV.v;
       try{ $$('[data-geo-tipo]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.geoTipo===GEO.tipo))); const ga=$('#geo-auto'); if(ga&&v&&typeof v.auto==='boolean') ga.checked=v.auto; }catch(e){}
       if(v&&isFinite(v.lat)&&isFinite(v.lon)&&v.zr>0){ GEO.view.lat=v.lat; GEO.view.lon=v.lon; GEO.view.z=GEO.view.z0*v.zr; GEO._nx=1; } }
     return ok; }; }
-setInterval(()=>{ try{ if(!GEO._vr||!GEO.view) return; const ga=$('#geo-auto'); const o={lat:+GEO.view.lat.toFixed(4),lon:+GEO.view.lon.toFixed(4),zr:+(GEO.view.z/GEO.view.z0).toFixed(3),tipo:GEO.tipo,oc:[...GEO.ocultos],auto:ga?!!ga.checked:undefined}; const t=JSON.stringify(o); if(t!==GEOV.ult){ GEOV.ult=t; GEOV.v=o; localStorage.setItem(GEOV.ch,t); } }catch(e){} },2000);
+setInterval(()=>{ try{ if(!GEO._vr||!GEO.view) return; const ga=$('#geo-auto'); const o={lat:+GEO.view.lat.toFixed(4),lon:+GEO.view.lon.toFixed(4),zr:+(GEO.view.z/GEO.view.z0).toFixed(3),tipo:GEO.tipo,oc:[...GEO.ocultos],auto:ga?!!ga.checked:undefined}; const t=JSON.stringify(o); if(t!==GEOV.ult){ GEOV.ult=t; GEOV.v=o; LS.setItem(GEOV.ch,t); } }catch(e){} },2000);
 
 /* ---------- início ---------- */
 (async function(){
+  try{ await window.LS.pronto; }catch(e){}
   const salvo=await Store.init(); window.__storeInitFeito=true; if(salvo) S=Object.assign(S,salvo); try{ atuFoto(); }catch(e){}
   const pac=lerPacote(); const chegou=aplicarPacote(pac); if(chegou) salvar();
   montarDicionario(); aplicarTema(); geoInit(); aplicarRegraTodos();
@@ -10808,7 +10975,7 @@ document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&!e.altKey&&(
     catch(e){ toast('⚠ Não consegui salvar na nuvem: '+(e.message||e)+' — os dados continuam guardados neste aparelho.'); }
     finally{ if(b){ b.disabled=false; b.textContent='💾 Salvar'; } } }; }
 function bkSoAdmin(){ const adm=typeof nvAdmin==='function'&&nvAdmin(); for(const id of ['re-bkp','re-rest','bkn-bt','bkn-rest','uso-bt','bkf-bt']){ const el=document.getElementById(id); if(el) el.hidden=!adm; }
-  const a=document.querySelector('.bk-auto'); if(a) a.hidden=!adm; if(!adm){ try{ localStorage.removeItem('healthSearch.bkAuto'); }catch(e){} }
+  const a=document.querySelector('.bk-auto'); if(a) a.hidden=!adm; if(!adm){ try{ LS.removeItem('healthSearch.bkAuto'); }catch(e){} }
   const s=document.getElementById('hs-salvar'); if(s&&!s._v912){ s._v912=1; s.onclick=()=>hsSalvarAgora(); } if(s) s.title=adm?'Salvar na nuvem agora (Ctrl+S) e guardar uma versão permanente. Botão direito: ver as versões salvas.':'Salvar na nuvem agora (Ctrl+S). Tudo também é salvo sozinho a cada mudança.'; }
 setInterval(bkSoAdmin,3000); setTimeout(bkSoAdmin,1500);
 document.addEventListener('contextmenu',e=>{ if(e.target.closest&&e.target.closest('#hs-salvar')&&!(typeof nvAdmin==='function'&&nvAdmin())){ e.preventDefault(); e.stopImmediatePropagation(); } },true);
@@ -10819,13 +10986,13 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 /* ================= v9.2.0 · Mapa publicado: só o admin publica; os outros baixam e guardam ================= */
 const geoConta=x=>{ try{ return (x&&x.listas||[]).reduce((t,l)=>t+((l.cidades||l.itens||[]).length||0),0); }catch(e){ return 0; } };
 const GEOP={ch:'healthSearch.geoPub'};
-function geoPubLer(){ try{ return JSON.parse(localStorage.getItem(GEOP.ch)||'null'); }catch(e){ return null; } }
+function geoPubLer(){ try{ return JSON.parse(LS.getItem(GEOP.ch)||'null'); }catch(e){ return null; } }
 function geoPendente(){ return !!(S.geo&&NUV.h&&NUV.h['s:geo']&&nuvHash(S.geo)!==NUV.h['s:geo']); }
 /* trava: nunca aplicar um mapa vindo de fora que esteja vazio ou muito menor que o deste aparelho */
 { const _ap=nuvAplicar; nuvAplicar=function(chave,valor,apagado){
     if(chave==='s:geo'){ const loc=geoConta(S.geo), rem=apagado?0:geoConta(valor);
       if(loc>0&&(rem===0||rem<loc*0.5)){ console.warn('mapa recusado',loc,rem); toast(`⚠ Chegou um mapa com ${rem} cidades (este aparelho tem ${loc}). Mantive o daqui. Se foi de propósito, o administrador publica de novo.`); NUV.h['s:geo']=apagado?'x':nuvHash(valor); return; }
-      try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:new Date().toISOString(),cid:rem})); }catch(e){} }
+      try{ LS.setItem(GEOP.ch,JSON.stringify({em:new Date().toISOString(),cid:rem})); }catch(e){} }
     return _ap(chave,valor,apagado); }; }
 async function geoPublicar(){ if(!nvAdmin()){ toast('Só o administrador publica o mapa.'); return; } if(!opOnline()){ toast('Sem internet: publique quando a conexão voltar.'); return; }
   const novo=geoConta(S.geo), ant=(geoPubLer()||{}).cid||0;
@@ -10834,7 +11001,7 @@ async function geoPublicar(){ if(!nvAdmin()){ toast('Só o administrador publica
   NUV.publicarGeo=true; const b=$('#geo-pub'); if(b){ b.disabled=true; b.textContent='⏳ Publicando…'; }
   try{ await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro);
     try{ await NV.cli.from('hs_sync').upsert({chave:'bkp:s:geo:'+new Date().toISOString(),tipo:'s',valor:S.geo,apagado:false,atualizado_por:opEu()}); }catch(e){}
-    try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:new Date().toISOString(),cid:novo})); }catch(e){}
+    try{ LS.setItem(GEOP.ch,JSON.stringify({em:new Date().toISOString(),cid:novo})); }catch(e){}
     GEOE.limpar(); try{ vsnBaseGravar('s:geo',JSON.parse(JSON.stringify(S.geo))); }catch(e){}
     toast(`✔ Mapa publicado (${novo} cidades). Todos recebem esta versão.`); }
   catch(e){ toast('⚠ Não publiquei: '+(e.message||e)+' — as mudanças continuam neste aparelho.'); }
@@ -10874,7 +11041,7 @@ async function geoConferir(forcar){ if(geoConferir.r||!opOnline()||NUV.rodando||
     if((GEOE.ler()&&!forcar&&!perdeu)||NUV.publicarGeo) return false; const antes=geoConta(S.geo);
     GEOE.limpar();
     delete rem.prov; await GIDB.gravar('geo',JSON.parse(JSON.stringify(rem))); S.geo=rem; GEO.idx={}; GEO.cls={}; NUV.h['s:geo']=nuvHash(rem); try{ nuvGuardar(); }catch(e){} try{ vsnBaseGravar('s:geo',JSON.parse(JSON.stringify(rem))); }catch(e){}
-    try{ localStorage.setItem(GEOP.ch,JSON.stringify({em:(geoPubLer()||{}).em||new Date().toISOString(),cid:n})); }catch(e){}
+    try{ LS.setItem(GEOP.ch,JSON.stringify({em:(geoPubLer()||{}).em||new Date().toISOString(),cid:n})); }catch(e){}
     salvar(); try{ renderTudo(); }catch(e){} try{ desenharGeo(); }catch(e){} try{ geoPubBarra(); }catch(e){}
     toast(perdeu?`🗺 Este aparelho estava com ${antes} cidades e o mapa publicado tem ${n}. Trouxe o publicado de volta. Nada foi publicado por engano.`
       :`🗺 O mapa deste aparelho estava diferente do publicado (${antes} cidades) sem nenhuma edição sua. Voltei para o mapa publicado: ${n} cidades.`); return true; }
@@ -10892,7 +11059,7 @@ async function geoVoltarPublicado(){ if(!nvAdmin()) return;
   if(!ok) toast('⚠ Não consegui trazer agora (sem internet ou sincronização em andamento). Tente de novo em alguns segundos.');
   if(b){ b.disabled=false; b.textContent='↩ Usar o mapa publicado'; } }
 /* v9.22.1 · diagnóstico do mapa: mostra o registro de quando o mapa de fábrica foi recriado */
-function geoDiagnostico(){ let logs=[]; try{ logs=JSON.parse(localStorage.getItem('healthSearch.geoInitLog')||'[]'); }catch(e){}
+function geoDiagnostico(){ let logs=[]; try{ logs=JSON.parse(LS.getItem('healthSearch.geoInitLog')||'[]'); }catch(e){}
   const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
   const marca=GEOE.ler();
   f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:560px"><h2 style="margin-top:0">🔎 Diagnóstico do mapa</h2>
@@ -10944,12 +11111,12 @@ document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.
 
 /* v9.2.2 · aviso do robô SQL automático (só admin) */
 async function roboSqlChecar(){ try{ if(!nvAdmin()||!opOnline()) return; const {data}=await NV.cli.from('hs_sync').select('valor').eq('chave','robo:sql').maybeSingle(); const v=data&&data.valor; if(!v||!v.em) return;
-  let visto=''; try{ visto=localStorage.getItem('healthSearch.roboSqlVisto')||''; }catch(e){}
+  let visto=''; try{ visto=LS.getItem('healthSearch.roboSqlVisto')||''; }catch(e){}
   if(v.ok&&v.em<=visto) return; let el=$('#robo-sql'); if(!el){ el=document.createElement('div'); el.id='robo-sql'; el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:96px;z-index:1550;color:#fff;padding:8px 14px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center;max-width:94vw;font-size:var(--fs-sm)'; document.body.appendChild(el); }
   el.style.background=v.ok?'#1f6f43':'#8a1c1c';
   el.innerHTML=v.ok?`<span>🛢 <b>Banco atualizado</b> ${esc(new Date(v.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))}: ${(v.aplicados||[]).map(esc).join(' · ')||'ok'}</span><button class="btn mini" type="button" id="robo-sql-ok">OK</button>`
     :`<span>⚠ <b>Robô de SQL falhou</b> ${esc(new Date(v.em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))}: ${esc(String(v.erro||'').slice(0,120))}. Nada foi alterado no banco. Me avise.</span><button class="btn mini" type="button" id="robo-sql-ok">✕</button>`;
-  $('#robo-sql-ok').onclick=()=>{ try{ localStorage.setItem('healthSearch.roboSqlVisto',v.em); }catch(e){} el.remove(); }; }catch(e){} }
+  $('#robo-sql-ok').onclick=()=>{ try{ LS.setItem('healthSearch.roboSqlVisto',v.em); }catch(e){} el.remove(); }; }catch(e){} }
 setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&NV.perfil){ clearInterval(t); roboSqlChecar(); setInterval(()=>{ if(!document.hidden) roboSqlChecar(); },30*60e3); } else if(++n>120) clearInterval(t); },2000); },6000);
 (function(){ const s=MAN.find(x=>x.passos&&x.passos.some(p=>/Quem faz backup/.test(p[0]))); if(s) s.passos.push(['🛢 Banco atualizado','Quando uma atualização precisa mudar o banco, o robô “SQL automático” do GitHub aplica sozinho (ninguém precisa rodar SQL). O administrador vê um aviso verde “Banco atualizado” com o que mudou, ou vermelho se falhar (aí nada é alterado).']); })();
 
@@ -10967,7 +11134,7 @@ setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&
     ['Relatórios',['relatorios','gestor','reldireto']],
     ['Configurações',['chamados','ajustes','eva','manual','ajuda']],
     ['Administração',['correcao','cadastros','usuarios','backups'],true]];
-  let ORD=null; try{ ORD=JSON.parse(localStorage.getItem('healthSearch.menuOrdem')||'null'); }catch(e){}
+  let ORD=null; try{ ORD=JSON.parse(LS.getItem('healthSearch.menuOrdem')||'null'); }catch(e){}
   const GR=Array.isArray(ORD)?[...ORD.map(n=>GR0.find(g=>g[0]===n)).filter(Boolean),...GR0.filter(g=>!ORD.includes(g[0]))]:GR0;
   window.HS_GRUPOS=GR0.map(g=>g[0]);
   { const ba=document.getElementById('bt-adm'); if(ba){ ba.className=''; ba.removeAttribute('id'); ba.dataset.tela='chamados'; const l=ba.querySelector('span:not(.qt)'); if(l){ l.className='lbl'; l.textContent='Falar com o administrador'; } nav.appendChild(ba); } }
@@ -10981,13 +11148,13 @@ setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&
   { const velho=btn('relatorios'); if(velho) velho.remove(); }
   const usados=new Set(GR.flatMap(g=>g[1]));
   const sobras=[...nav.querySelectorAll('[data-tela]')].filter(b=>!usados.has(b.dataset.tela));
-  let fech={}; try{ fech=JSON.parse(localStorage.getItem('healthSearch.menu2')||'{}'); }catch(e){}
+  let fech={}; try{ fech=JSON.parse(LS.getItem('healthSearch.menu2')||'{}'); }catch(e){}
   const frag=document.createDocumentFragment();
   for(const [nome,telas,adm] of GR){ const h=document.createElement('button'); h.type='button'; h.className='ng2'; h.dataset.grupo=nome; if(adm){ h.id='nav-grupo-adm2'; }
     h.innerHTML=`<span>${nome}</span><span class="qt" hidden>0</span><span class="seta">▾</span>`; const box=document.createElement('div'); box.className='ng2-box';
     for(const t of telas){ const b=btn(t); if(b){ b.style.display=''; box.appendChild(b); } }
     const abrir=v=>{ box.hidden=!v; h.querySelector('.seta').textContent=v?'▾':'▸'; h.setAttribute('aria-expanded',String(v)); };
-    abrir(!fech[nome]); h.onclick=()=>{ fech[nome]=!box.hidden; try{ localStorage.setItem('healthSearch.menu2',JSON.stringify(fech)); }catch(e){} abrir(box.hidden); };
+    abrir(!fech[nome]); h.onclick=()=>{ fech[nome]=!box.hidden; try{ LS.setItem('healthSearch.menu2',JSON.stringify(fech)); }catch(e){} abrir(box.hidden); };
     frag.append(h,box); }
   /* esconder o que ficou de fora (Histórico vai para dentro da Busca; telas guardadas) */
   const guard=document.createElement('div'); guard.hidden=true; guard.id='nav-guardados'; sobras.forEach(b=>guard.appendChild(b));
@@ -11159,7 +11326,7 @@ function chAvisar(c){ let el=$('#ch-aviso'); if(!el){ el=document.createElement(
 })();
 /* Ajustes */
 (function(){ for(const [id,h] of [['ajustes','<h1>Ajustes</h1><div id="aj-corpo"></div>'],['eva','<h1>BIT</h1><p class="sub">Converse com o BIT: tire dúvidas sobre o app, peça para ele procurar notas, cidades e ocorrências.</p><div class="eva-centro" id="eva-centro"></div>'],['ajuda','<h1>Ajuda</h1><div id="ajd-corpo"></div>']]){ const sec=document.createElement('section'); sec.className='tela'; sec.id='t-'+id; sec.hidden=true; sec.innerHTML=h; const r=document.getElementById('t-romaneios'); r.parentNode.insertBefore(sec,r); } })();
-function ajTela(){ const el=$('#aj-corpo'); let ord=HS_GRUPOS; try{ const o=JSON.parse(localStorage.getItem('healthSearch.menuOrdem')||'null'); if(Array.isArray(o)) ord=[...o.filter(x=>HS_GRUPOS.includes(x)),...HS_GRUPOS.filter(x=>!o.includes(x))]; }catch(e){}
+function ajTela(){ const el=$('#aj-corpo'); let ord=HS_GRUPOS; try{ const o=JSON.parse(LS.getItem('healthSearch.menuOrdem')||'null'); if(Array.isArray(o)) ord=[...o.filter(x=>HS_GRUPOS.includes(x)),...HS_GRUPOS.filter(x=>!o.includes(x))]; }catch(e){}
   const tema=document.documentElement.dataset.tema||(S.tema||'');
   el.innerHTML=`<div class="aj-card"><h2>🎨 Tema</h2><div class="barra" style="gap:8px"><button class="btn${tema!=='escuro'?' pri':''}" type="button" data-aj-tema="claro">☀ Claro</button><button class="btn${tema==='escuro'?' pri':''}" type="button" data-aj-tema="escuro">🌙 Escuro</button></div></div>
    <div class="aj-card"><h2>🔑 Trocar senha</h2>${Store.modo==='nuvem'&&NV.perfil?`<div style="display:grid;gap:8px;max-width:380px"><input id="aj-s1" type="password" placeholder="Nova senha" autocomplete="new-password"><input id="aj-s2" type="password" placeholder="Repita a nova senha" autocomplete="new-password"><small class="sec">Mínimo 10 caracteres, com maiúscula, minúscula, número e símbolo.</small><button class="btn pri" type="button" id="aj-s-ok">Salvar nova senha</button></div>`:'<p class="sec">Entre com o seu usuário para trocar a senha.</p>'}</div>
@@ -11168,8 +11335,8 @@ function ajTela(){ const el=$('#aj-corpo'); let ord=HS_GRUPOS; try{ const o=JSON
 document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t.closest('#t-ajustes')) return; let b;
   if((b=t.closest('[data-aj-tema]'))){ const want=b.dataset.ajTema, cur=document.documentElement.dataset.tema||''; if((want==='escuro')!==(cur==='escuro')) $('#bt-tema').click(); setTimeout(ajTela,100); return; }
   if((b=t.closest('[data-aj-up],[data-aj-dn]'))){ const o=window._ajOrd, i=+(b.dataset.ajUp??b.dataset.ajDn), j=b.dataset.ajUp!=null?i-1:i+1; [o[i],o[j]]=[o[j],o[i]]; const ol=$('#t-ajustes .aj-ordem'); ol.innerHTML=o.map((g,k)=>`<li><span>${esc(g)}</span><button class="btn mini" type="button" data-aj-up="${k}" ${k?'':'disabled'}>▲</button><button class="btn mini" type="button" data-aj-dn="${k}" ${k<o.length-1?'':'disabled'}>▼</button></li>`).join(''); return; }
-  if(t.id==='aj-ord-ok'){ try{ localStorage.setItem('healthSearch.menuOrdem',JSON.stringify(window._ajOrd)); }catch(x){} toast('Ordem salva. Recarregando o menu…'); setTimeout(()=>location.reload(),700); return; }
-  if(t.id==='aj-ord-pad'){ try{ localStorage.removeItem('healthSearch.menuOrdem'); }catch(x){} toast('Ordem padrão. Recarregando…'); setTimeout(()=>location.reload(),700); return; }
+  if(t.id==='aj-ord-ok'){ try{ LS.setItem('healthSearch.menuOrdem',JSON.stringify(window._ajOrd)); }catch(x){} toast('Ordem salva. Recarregando o menu…'); setTimeout(()=>location.reload(),700); return; }
+  if(t.id==='aj-ord-pad'){ try{ LS.removeItem('healthSearch.menuOrdem'); }catch(x){} toast('Ordem padrão. Recarregando…'); setTimeout(()=>location.reload(),700); return; }
   if(t.id==='aj-s-ok'){ const a=$('#aj-s1').value, c=$('#aj-s2').value; if(a!==c){ toast('As duas senhas não são iguais.'); return; } const fr=senhaFraca(a,NV.perfil&&NV.perfil.usuario); if(fr){ toast(fr); return; } t.disabled=true; const {error}=await NV.cli.auth.updateUser({password:a}); t.disabled=false; toast(error?'Não troquei: '+nvTraduz(error.message):'✔ Senha trocada.'); if(!error){ $('#aj-s1').value=''; $('#aj-s2').value=''; } } });
 /* BIT no centro */
 function evaTela(){ const p=$('#eva-painel'), c=$('#eva-centro'); if(p&&c&&!c.contains(p)){ window._evaCasa=p.parentNode; c.appendChild(p); } if(p) p.hidden=false; const i=$('#eva-in'); if(i&&!TOQUE) setTimeout(()=>i.focus(),50); }
@@ -11711,16 +11878,16 @@ evbReage=function(){ const s=document.querySelector('#t-eva .evb'); if(!s||s.dat
 
 /* ================= v9.16.0 · XMLs: no aparelho só os últimos 7 dias (a nuvem guarda todos) + medidor de espaço ================= */
 const XMLA={ch:'healthSearch.xmlArquivo',dias:7};
-function xmlArqLer(){ try{ return JSON.parse(localStorage.getItem(XMLA.ch)||'{}'); }catch(e){ return {}; } }
+function xmlArqLer(){ try{ return JSON.parse(LS.getItem(XMLA.ch)||'{}'); }catch(e){ return {}; } }
 const xmlLimite=()=>new Date(Date.now()-XMLA.dias*864e5).toISOString().slice(0,10);
 /* tira do aparelho SEM apagar da nuvem: a chave sai da sessão de sincronização, então nada de "apagado" sobe */
 function xmlArquivar(manual){ const lim=xmlLimite(), A=xmlArqLer(); let n=0;
   for(const k of Object.keys(S.opXml||{})){ const x=S.opXml[k]; const em=String(x&&x.em||''); if(em&&em<lim){ A[k]=em.slice(0,10); delete S.opXml[k]; try{ NUV.sessao.delete('xml:'+k); }catch(e){} n++; } }
-  if(n){ try{ localStorage.setItem(XMLA.ch,JSON.stringify(A)); }catch(e){} salvar(); try{ opXmlInfo(); }catch(e){} }
+  if(n){ try{ LS.setItem(XMLA.ch,JSON.stringify(A)); }catch(e){} salvar(); try{ opXmlInfo(); }catch(e){} }
   if(manual) toast(n?`✔ ${fmtN(n)} XML(s) com mais de ${XMLA.dias} dias saíram deste aparelho. Continuam guardados na nuvem.`:`Nenhum XML com mais de ${XMLA.dias} dias neste aparelho.`);
   return n; }
 /* XML antigo que volta da nuvem (aparelho novo) não é gravado de novo no aparelho */
-{ const _ap=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ if(chave.startsWith('xml:')&&!apagado&&valor&&valor.em&&String(valor.em)<xmlLimite()){ const A=xmlArqLer(); A[chave.slice(4)]=String(valor.em).slice(0,10); try{ localStorage.setItem(XMLA.ch,JSON.stringify(A)); }catch(e){} return; } return _ap(chave,valor,apagado); }; }
+{ const _ap=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ if(chave.startsWith('xml:')&&!apagado&&valor&&valor.em&&String(valor.em)<xmlLimite()){ const A=xmlArqLer(); A[chave.slice(4)]=String(valor.em).slice(0,10); try{ LS.setItem(XMLA.ch,JSON.stringify(A)); }catch(e){} return; } return _ap(chave,valor,apagado); }; }
 /* o botão antigo "apagar XMLs antigos" apagava também da nuvem: agora só tira do aparelho */
 (function(){ const b=document.getElementById('op-xml-limpar'); if(b){ b.onclick=()=>xmlArquivar(true); b.title=`Tirar deste aparelho os XMLs com mais de ${XMLA.dias} dias (continuam na nuvem)`; } })();
 /* dia antigo no NexBip: busca na nuvem os XMLs daquele dia, só enquanto ele estiver aberto */
@@ -11735,21 +11902,23 @@ setInterval(()=>{ try{ if(!OP.dia||OP.dia>=xmlLimite()) xmlArquivar(false); }cat
 
 /* ---- medidor de espaço (só o administrador vê) ---- */
 const ESP={lim:5000000, avisado:0, nomes:{opXml:'XMLs das notas (NexBip)',romaneios:'Romaneios',rdXml:'XMLs da Rota do dia',opRel:'Relatórios do dia',geo:'Mapa (regiões)',historico:'Histórico',aprendidos:'Aprendizado de leitura',cerebro:'Cérebro do BIT',divergencias:'Divergências',ferCache:'Feriados',cidAtend:'Cidades atendidas',agendamentos:'Agendamentos',rdHist:'Histórico da Rota do dia',evaEnsino:'Ensino do BIT'}};
-function espMedir(){ let tot=0; const fora=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i), v=localStorage.getItem(k)||''; tot+=k.length+v.length; if(k!=='healthSearch.v1') fora.push([k,k.length+v.length]); }
+function espLim(){ try{ if(window.LS&&LS.diag&&LS.diag.modo==='idb'&&LS.diag.cota>0) return LS.diag.cota/2; }catch(e){} return ESP.lim; }
+function espIDB(){ try{ return !!(window.LS&&LS.diag&&LS.diag.modo==='idb'); }catch(e){ return false; } }
+function espMedir(){ let tot=0; const fora=[]; for(let i=0;i<LS.length;i++){ const k=LS.key(i), v=LS.getItem(k)||''; tot+=k.length+v.length; if(k!=='healthSearch.v1') fora.push([k,k.length+v.length]); }
   const det=[]; for(const f of Object.keys(S)){ let t=0; try{ t=(JSON.stringify(S[f])||'').length; }catch(e){} if(t>2000) det.push([ESP.nomes[f]||f,t,f]); }
   const op=fora.filter(([k])=>/^healthSearch\.op\.|^hs\.op|bipes/i.test(k)).reduce((s,x)=>s+x[1],0); if(op) det.push(['Bipes guardados no aparelho',op,'_bipes']);
   const resto=fora.filter(([k])=>!/^healthSearch\.op\.|^hs\.op|bipes/i.test(k)).reduce((s,x)=>s+x[1],0); if(resto) det.push(['Outros (configurações, cópias)',resto,'_outros']);
-  det.sort((a,b)=>b[1]-a[1]); return {tot,pct:Math.min(100,Math.round(tot/ESP.lim*100)),det}; }
+  det.sort((a,b)=>b[1]-a[1]); return {tot,pct:Math.min(100,Math.round(tot/espLim()*100)),det,idb:espIDB()}; }
 const espMB=n=>(n*2/1048576).toLocaleString('pt-BR',{maximumFractionDigits:1})+' MB';
 function espCor(p){ return p>=90?'var(--no)':p>=75?'#E8590C':'var(--ok)'; }
 function espChip(){ const adm=typeof nvAdmin==='function'&&nvAdmin(); let el=document.getElementById('esp-st');
   if(!adm){ if(el) el.remove(); return; } const ref=document.getElementById('nv-eu')||document.getElementById('nuv-st'); if(!el&&ref){ ref.insertAdjacentHTML('afterend','<button type="button" id="esp-st" style="background:transparent;border:1.5px solid var(--linha);border-radius:999px;padding:1px 8px;margin-left:8px;font-size:var(--fs-sm);cursor:pointer;white-space:nowrap" title="Espaço usado neste aparelho"></button>'); el=document.getElementById('esp-st'); el.onclick=espPainel; }
-  if(!el) return; const m=espMedir(); el.textContent='💾 '+m.pct+'%'; el.style.color=espCor(m.pct); el.style.borderColor=m.pct>=75?espCor(m.pct):'var(--linha)'; el.title=`Espaço usado neste aparelho: ${espMB(m.tot)} de ~${espMB(ESP.lim)}. Clique para ver o que ocupa.`;
+  if(!el) return; const m=espMedir(); el.textContent='💾 '+m.pct+'%'; el.style.color=espCor(m.pct); el.style.borderColor=m.pct>=75?espCor(m.pct):'var(--linha)'; el.title=`Espaço usado neste aparelho: ${espMB(m.tot)} de ~${espMB(espLim())}. Clique para ver o que ocupa.`;
   if(m.pct>=75&&Date.now()-ESP.avisado>3600e3){ ESP.avisado=Date.now(); toast(`⚠ Este aparelho está com ${m.pct}% do espaço ocupado. Clique em 💾 ${m.pct}% no topo para liberar antes que pare de gravar.`); } }
 function espPainel(){ const m=espMedir(); const f=document.createElement('div'); f.className='fundo'; const nArq=Object.keys(xmlArqLer()).length, lim=xmlLimite(); const velhos=Object.values(S.opXml||{}).filter(x=>x&&x.em&&x.em<lim).length;
   f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:520px"><h2>💾 Espaço deste aparelho</h2>
    <div style="height:14px;border-radius:7px;background:var(--linha);overflow:hidden;margin:6px 0"><div style="height:100%;width:${m.pct}%;background:${espCor(m.pct)}"></div></div>
-   <p style="margin:0 0 10px"><b>${m.pct}%</b> usado · ${espMB(m.tot)} de ~${espMB(ESP.lim)}. O navegador para de gravar quando chega a 100%: por isso o aviso a partir de 75%.</p>
+   <p style="margin:0 0 10px"><b>${m.pct}%</b> usado · ${espMB(m.tot)} de ~${espMB(espLim())}.${m.idb?' Agora os dados ficam no armazenamento grande do navegador (IndexedDB), com muito mais espaço — este número dificilmente chega perto do limite.':' O navegador para de gravar quando chega a 100%: por isso o aviso a partir de 75%.'}</p>
    <div style="max-height:260px;overflow:auto">${m.det.slice(0,10).map(([n,t])=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--linha)"><span>${esc(n)}</span><b>${espMB(t)} · ${Math.round(t/m.tot*100)}%</b></div>`).join('')}</div>
    <p class="sub" style="margin-top:10px">XMLs: o aparelho guarda só os dos últimos ${XMLA.dias} dias; os mais antigos ficam na nuvem (${fmtN(nArq)} já guardados lá) e voltam sozinhos quando você abre um dia antigo no NexBip.${velhos?` Há <b>${fmtN(velhos)}</b> XML(s) antigos aqui agora.`:''}</p>
    <p class="sub" style="margin-top:6px">Bipes: de todo dia que já tem a foto no Painel de Gestão (porcentagem, origem, divergências e o que não entrou) o aparelho não precisa guardar o bipe cru — ele fica no banco online e volta sozinho se você abrir aquele dia.</p>
@@ -11771,10 +11940,10 @@ evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
 
 /* ================= v9.16.1 · Espaço dos aparelhos da equipe: acima de 85% o administrador é avisado ================= */
 const ESPE={pre:'ap:~esp:', ch:'healthSearch.espAlto', alto:75, lista:[], avisados:{}}; /* v10.1.7: 85% era tarde demais — o aparelho já estava perdendo gravação */
-async function espReportar(){ try{ if(!opOnline()||!NV.cli||Store.modo!=='nuvem'||!NV.perfil) return; const m=espMedir(); let antes=false; try{ antes=localStorage.getItem(ESPE.ch)==='1'; }catch(e){}
+async function espReportar(){ try{ if(!opOnline()||!NV.cli||Store.modo!=='nuvem'||!NV.perfil) return; const m=espMedir(); let antes=false; try{ antes=LS.getItem(ESPE.ch)==='1'; }catch(e){}
     const alto=m.pct>=ESPE.alto; if(!alto&&!(antes&&m.pct<70)) return; /* só grava quando está alto, ou para avisar que normalizou */
     await NV.cli.from('hs_sync').upsert({chave:ESPE.pre+opEu()+':'+apId(),tipo:'ap',valor:{pct:m.pct,mb:espMB(m.tot),maior:(m.det[0]||[])[0]||'',por:opEu(),aparelho:hsAparelho(),em:new Date().toISOString(),ok:!alto},apagado:false,atualizado_por:opEu()});
-    try{ localStorage.setItem(ESPE.ch,alto?'1':'0'); }catch(e){}
+    try{ LS.setItem(ESPE.ch,alto?'1':'0'); }catch(e){}
     if(alto&&!(typeof nvAdmin==='function'&&nvAdmin())&&Date.now()-(ESPE.ultToast||0)>3*3600e3){ ESPE.ultToast=Date.now(); toast(`⚠ Este aparelho está com ${m.pct}% do espaço ocupado. O administrador já foi avisado.`); } }catch(e){ console.warn('esp reportar',e); } }
 async function espEquipe(){ try{ if(!(typeof nvAdmin==='function'&&nvAdmin())||!opOnline()||!NV.cli) return; const desde=new Date(Date.now()-2*864e5).toISOString();
     const {data,error}=await NV.cli.from('hs_sync').select('chave,valor,atualizado_em').like('chave',ESPE.pre+'%').gt('atualizado_em',desde).limit(200); if(error) throw error;
@@ -11792,8 +11961,8 @@ setTimeout(()=>{ espReportar(); espEquipe(); },30000); setInterval(()=>{ if(!doc
    até ser feito, e o Mural mostra de quando é a última cópia da semana. */
 const SEM={ch:'healthSearch.bkSemana'};
 function semSegunda(d){ const t=d?new Date(d+'T12:00:00'):new Date(); const dia=(t.getDay()+6)%7; t.setDate(t.getDate()-dia); return t.toISOString().slice(0,10); }
-function semBkFeito(){ try{ return localStorage.getItem(SEM.ch)||''; }catch(e){ return ''; } }
-function semBkMarcar(){ try{ localStorage.setItem(SEM.ch,hojeISO()); }catch(e){} }
+function semBkFeito(){ try{ return LS.getItem(SEM.ch)||''; }catch(e){ return ''; } }
+function semBkMarcar(){ try{ LS.setItem(SEM.ch,hojeISO()); }catch(e){} }
 function semBkFalta(){ try{ if(!nvAdmin()) return false;
   const hj=new Date(), dow=(hj.getDay()+6)%7; /* 0=segunda … 4=sexta */
   if(dow<4) return false;                     /* cobra a partir de sexta */

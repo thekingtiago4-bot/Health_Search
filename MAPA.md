@@ -22,7 +22,7 @@ roteirizar, e gerar relatório para a diretoria.
 1. `cat CLAUDE.md` e este `MAPA.md` → terreno, regras e autonomia.
 2. `grep -n '^- \`nome\`' MAPA-FUNCOES.md` → linha da função; `sed -n 'A,Bp' index.html | cut -c1-400` → só o trecho.
 3. Nunca ler o `index.html` inteiro.
-4. Antes de publicar: `node testes/regressao.js`.
+4. Antes de publicar: `node testes/regressao.js` **e** `node testes/idb.js` (os dois têm que passar).
 5. Publicar = `HS_VERSAO` no index + cache no `sw.js` + `version.json` + commit + push. O app avisa sozinho a nova versão em todos os aparelhos.
 6. Precisa mexer no banco? Criar arquivo em `sql/migracoes/` — o robô do GitHub aplica. Nunca SQL à mão.
 7. Terminar dizendo o que foi testado e o que não deu para testar, e com sugestões de melhoria.
@@ -284,3 +284,51 @@ baixava 542 KB**. Era a lentidão do galpão, e piorava todo dia.
 - O **Supabase caiu às 09:23 de 16/11** (HTTP 521). O robô agora tenta 4 vezes antes de desistir.
 - **Custo não é tamanho**: o banco inteiro tem 4,2 MB num plano de 8 GB. Trocar de servidor não
   economizaria nada.
+
+## v10.3.0 (16/11/2026) — Prioridade 1: os dados saem do localStorage para o IndexedDB
+**Quem mexe no app:** a conversa `session_01Gof5gngXKVm7DYTZnqnNpL` (mesma dona desde a v10.2.10).
+Primeira das 4 prioridades que o Tiago autorizou executar em sequência (IndexedDB → sync em tempo real →
+UI de sync simplificada → backup mensal). Causa de fundo: o localStorage do navegador trava em ~9,5 MB
+por site; foi esse teto que fez agendamento/divergência sumirem em 16/11. O IndexedDB cabe centenas de MB.
+
+**Camada HSDB (`window.LS`), um bloco no TOPO do `index.html` (antes de todos os outros scripts):**
+- `LS` tem a MESMA cara do localStorage (`getItem/setItem/removeItem/key/length`). Todas as 163 chamadas
+  `localStorage.*` do app viraram `LS.*`. **Nunca mais escrever `localStorage.` no código do app** — use `LS.`.
+- O que é DADO vai para o IndexedDB (regex `DADO` no bloco): `healthSearch.v1`, `op.*` (bipes/fila),
+  `reentregas*`, `rotas`, `xlNomes`, `romBanco`, `nuvHash/nuvDesde/nuvBase/nuvBaseVal`, `copiaEm`,
+  `xmlArquivo`, `geoPub/geoEdit`, `preAtualizacao`, `healthRomaneio.v1` (e `rt.`/`db.` reservados p/ o futuro).
+- O que é config/flag pequeno (xlAuto, nuvem, perfilCache, aparelho, menus, vistos, datas, `espAlto`…)
+  **continua no localStorage real** — é síncrono e sobrevive se o navegador limpar o IndexedDB.
+- **NUNCA vão para o IndexedDB:** `hs-sessao`, `sb-*-auth-token`, `healthSearch.vivo` (sessão do Supabase
+  e batida de coração entre abas — precisam do `storage` event nativo e do escopo do localStorage).
+- Leitura é síncrona (cópia em memória carregada no início); gravação é assíncrona (uma transação por
+  rodada, a mais nova vence). `LS.assentar()` resolve quando tudo que foi gravado está no disco.
+- **Migração automática e segura (1 vez):** copia o localStorage → IndexedDB, **relê do IndexedDB e
+  confere letra por letra**, e só então apaga do localStorage. Se qualquer coisa falhar, NADA é apagado e
+  o app segue no localStorage (`LS.diag.modo==='ls'`). Marca em `localStorage['healthSearch.idb']`.
+- **Regra de ouro (igual ao s:nex):** ao reencontrar a mesma chave de bipes no localStorage depois de
+  migrar (aba velha), **UNIÃO pelo `local_id`**, nunca substituição. O resto vira `sobras` (cópia de
+  segurança no IndexedDB), nunca apaga.
+- **Boot travado em `await window.LS.pronto`** (primeira linha do IIFE de início): o `Store.init` só lê
+  os dados depois que a memória está carregada. Se o IndexedDB não abrir num aparelho que JÁ migrou, aparece
+  uma tela "tentando de novo" (não inicia com dados vazios, que apagariam a nuvem) com escape manual.
+- **Painel do 💾**: `espLim()`/`espIDB()` — no modo idb mostra a capacidade real (`navigator.storage.estimate`),
+  então a porcentagem fica perto de 0 e some o susto do "navegador para de gravar a 100%".
+- **Cross-tab**: como o `storage` event nativo não dispara para o IndexedDB, o HSDB usa `BroadcastChannel`
+  e re-dispara um `StorageEvent` sintético para as chaves que mudaram — o handler de `window.'storage'` do
+  app (linha ~6750) continua funcionando sem mudança.
+- **Apagar o aparelho** (`blqApagarAparelho`, usuário bloqueado): chama `LS.apagarTudo()` além de limpar o
+  localStorage e deletar os bancos IndexedDB.
+
+**Testes:** `testes/regressao.js` roda forçando o modo localStorage (esconde o `indexedDB` antes do app
+carregar) — prova que a troca para `LS` é transparente. `testes/idb.js` (novo) sobe um servidor local e
+testa o IndexedDB de verdade: migração sem perda, persistência após recarregar, união entre abas, sessão
+intacta, falha de gravação virando erro (e recuperação), apagar-tudo. **Os dois têm que passar.**
+
+**Armadilhas novas:**
+- **O Chromium NÃO dá IndexedDB em `file://`** de forma confiável — por isso o teste do IDB usa http://127.0.0.1.
+- **Ler tudo para a memória no início** é O(tamanho dos dados). Hoje é barato (poucos MB, com faxina
+  automática de bipes/XML). Se um dia crescer para centenas de MB, trocar por leitura preguiçosa por chave
+  com índice — mas aí perde a API síncrona do localStorage. Fica anotado como melhoria futura.
+- Config pequena (nuvem, perfilCache) ficou de propósito no localStorage: se o navegador limpar o IndexedDB,
+  o app ainda acha o banco e baixa tudo de novo depois do login.
