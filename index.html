@@ -4319,7 +4319,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.2.3', HS_DATA='16/11/2026';
+const HS_VERSAO='10.2.4', HS_DATA='16/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9925,6 +9925,22 @@ function gsCartao(f){ if(!f) return '<div class="gs-box"><h3>Conferência do dia
     <div style="margin-top:10px"><button class="btn mini pri" data-gs-pdf="${f.dia}">📄 PDF para projetor</button>${(f.fn&&f.dia<hojeISO())?`<button class="btn mini" data-gs-fechar="${f.dia}" title="As notas que sobraram saem da conta do dia, com o seu nome e a hora">✔ Fechar o dia em 100%</button>`:''}</div></div>`; }
 /* v10.1.2 · escolher o que sai no relatório antes de gerar o PDF */
 const GSR={pct:true,orig:true,falta:true,dv:true,pessoa:false,hora:false,obs:''};
+/* v10.2.4 · divergências do dia no PDF, detalhadas — as mesmas colunas do Excel da aba Divergências */
+function gsTabDv(dia){ try{
+  const L=((typeof dvSo==='function'?dvSo():[])||[]).filter(d=>String(d.d||'').slice(0,10)===dia)
+    .sort((a,b)=>(a.n||0)-(b.n||0));
+  if(!L.length) return '<h2>Divergências do dia</h2><p style="font-size:13pt">Nenhuma divergência registrada neste dia.</p>';
+  const st=d=>{ try{ return (DV_ST[d.st]||{}).t||d.st||'—'; }catch(e){ return d.st||'—'; } };
+  const vol=d=>{ const q=+d.qtd||0, t=+d.tot||0; return q?(t?`faltam <b>${q}</b> de ${t}`:`faltam <b>${q}</b>`):'—'; };
+  const cx=d=>{ try{ return (d.falt&&d.falt.length&&d.tot)?volLista(d.falt,d.tot):''; }catch(e){ return ''; } };
+  const cid=d=>{ try{ return (typeof dvCidade==='function')?(dvCidade(d)||''):(d.cid||''); }catch(e){ return d.cid||''; } };
+  const apar=d=>{ try{ return d.apareceu?(fmtData(d.apareceu.d)+(d.apareceu.rom?' · rom. '+d.apareceu.rom:'')):'—'; }catch(e){ return '—'; } };
+  const baixa=d=>{ const r=d.res||{}; if(!r.d) return '—';
+    return fmtData(r.d)+(r.por?' · '+esc(r.por):'')+(r.obs?'<br><small>'+esc(r.obs)+'</small>':''); };
+  return `<h2>Divergências do dia (${fmtN(L.length)})</h2>
+  <table class="dvt"><thead><tr><th>Nº</th><th>Situação</th><th>Tipo</th><th>Pedido</th><th>NF</th><th>Cliente</th><th>Cidade</th><th>Volumes</th><th>Caixas que faltaram</th><th>Remetente</th><th>Observação</th><th>Registrou</th><th>Apareceu</th><th>Baixa</th></tr></thead><tbody>
+  ${L.map(d=>`<tr><td><b>${esc(dvNum(d))}</b></td><td>${esc(st(d))}</td><td>${esc(d.tipo||'—')}</td><td>${esc(d.ped||'—')}</td><td>${esc(d.nf||'—')}</td><td>${esc(d.cli||'')}</td><td>${esc(cid(d))}</td><td>${vol(d)}</td><td>${esc(cx(d))||'—'}</td><td>${esc(d.rem||'')}</td><td>${esc(d.obs||'')}</td><td>${esc(d.por||'')}</td><td>${esc(apar(d))}</td><td>${baixa(d)}</td></tr>`).join('')}
+  </tbody></table>`; }catch(e){ return ''; } }
 function gsPdfEscolher(dia){ const f=gsFotoLer(dia); if(!f){ toast('Sem foto desse dia.'); return; }
   const it=[['pct','Porcentagem do dia (número grande)'],['orig','Conferência por origem'],
     ['falta','O que não entrou (lista de notas)'],['dv','Divergências do dia'],
@@ -9962,7 +9978,8 @@ function gsPdfProjetor(dia,op){ op=op||{pct:1,orig:1,falta:1,dv:1}; const f=gsFo
   th,td{border:1px solid #bbb;padding:6px 8px;text-align:left}th{background:#f1f3f5}
   h2{font-size:18pt;margin:18px 0 8px}
   footer{margin-top:18px;color:#666;font-size:11pt;border-top:1px solid #ccc;padding-top:8px}
-  tr{break-inside:avoid}</style></head><body>
+  tr{break-inside:avoid}
+  table.dvt{font-size:9.5pt}table.dvt th,table.dvt td{padding:4px 5px}table.dvt small{color:#555}</style></head><body>
   <header><b>Health Search · Conferência da operação</b><span>${f.dia===hojeISO()?'Hoje':''} ${fmtData(f.dia)}</span></header>
   ${op.pct?`<div class="pct">${f.pct}%</div>`:''}
   ${(()=>{ try{ const aj=gsAjLer(f.dia), ks=Object.keys(aj); if(!ks.length) return '';
@@ -9974,7 +9991,7 @@ function gsPdfProjetor(dia,op){ op=op||{pct:1,orig:1,falta:1,dv:1}; const f=gsFo
   ${(f.orig||[]).map(o=>`<tr><td>${esc(o.base)}</td><td>${esc(o.mot||'')}</td><td>${fmtN(o.tn)}</td><td>${fmtN(o.tn-o.fn)}</td><td><b>${o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100}%</b></td><td>${(o.dn||0)?`<b style="color:#B26A00">${fmtN(o.dn)} (${Math.round(100*o.dn/o.tn)}%)</b>`:'—'}</td><td>${fmtN(o.tv)}</td><td>${o.tv?Math.round(100*(o.tv-o.fv)/o.tv):100}%</td></tr>`).join('')}
   </tbody></table>`:''}
   ${op.falta&&f.fn?`<h2>O que não entrou (${fmtN(f.fn)})</h2><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${(f.falta||[]).map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>`:(op.falta?'<h2>Operação 100% conferida</h2>':'')}
-  ${op.dv?gsTab('Divergências do dia ('+fmtN(f.dv||0)+')',((typeof dvSo==='function'?dvSo():[])||[]).filter(d=>String(d.d||'').slice(0,10)===dia).map(d=>[(d.tipo||'—')+' · NF '+(d.nf||'—')+' · '+(d.cli||d.dest||''),d.vol||1]),'Divergência','Vol.'):''}
+  ${op.dv?gsTabDv(dia):''}
   ${op.pessoa?gsTab('Bipes por pessoa',gsPorPessoa(dia),'Pessoa','Bipes'):''}
   ${op.hora?gsTab('Bipes por hora',gsPorHora(dia),'Hora','Bipes'):''}
   ${op.obs?`<h2>Observação</h2><p style="font-size:15pt">${esc(op.obs)}</p>`:''}

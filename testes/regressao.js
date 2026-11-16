@@ -1047,6 +1047,32 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(lr.ign,'desmarcar: as reentregas do romaneio têm que ficar como ignoradas');
     ok(lr.csvTemNF&&lr.csvCab,'desmarcar: a planilha tem que sair antes, com cabeçalho e as notas');
     ok(lr.sobrou===1&&lr.sobrouReal,'desmarcar: só a lançada pelo app sai do controle; a reentrega de verdade fica ('+lr.sobrou+')'); }
+  /* v10.2.4: divergências do dia detalhadas no PDF */
+  { const dt=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      const dia='2026-10-29';
+      const gDv=JSON.stringify(S.divergencias||[]), gSnap=JSON.stringify(S.gsSnap||{});
+      S.divergencias=[{id:'d1',n:3,cat:'dv',st:'aberta',tipo:'Falta de volume',d:dia,ped:'722746',nf:'729009',
+        cli:'LABORATORIO ALPHA DE ANALISES',cid:'GUAXUPE',uf:'MG',rem:'CM HOSPITALAR S.A. CAJAMAR',
+        qtd:1,tot:3,falt:[2],obs:'faltava 1 volume de 3',por:'TIAGO SOUZA'},
+       {id:'d2',n:6,cat:'dv',st:'resolvida',tipo:'Falta de volume',d:dia,ped:'207360',nf:'205420',
+        cli:'UNIMED DE RIBEIRAO PRETO',cid:'RIBEIRAO PRETO',qtd:3,tot:4,falt:[1,2,3],obs:'faltaram as caixas',
+        por:'TIAGO SOUZA',apareceu:{d:'2026-11-13',rom:'0236361'},res:{d:'2026-11-16',por:'TIAGO SOUZA',obs:'O volume que faltou chegou no romaneio 900.'}}];
+      S.gsSnap=S.gsSnap||{}; S.gsSnap[dia]={dia,tn:10,fn:0,tv:10,fv:0,pct:100,pctVol:100,dn:2,dv:2,roms:1,orig:[{base:'CAJ',mot:'',tn:10,fn:0,tv:10,fv:0,dn:2}],falta:[],fora:[],v:GS_REGRA};
+      let html=''; const _open=window.open;
+      window.open=()=>({document:{write:t=>{html+=t;},close(){}},focus(){},print(){}});
+      gsPdfProjetor(dia,{pct:true,orig:false,falta:false,dv:true,pessoa:false,hora:false,obs:''});
+      await w(60); window.open=_open;
+      S.divergencias=JSON.parse(gDv); S.gsSnap=JSON.parse(gSnap);
+      const cols=(html.match(/<th>([^<]*)<\/th>/g)||[]).map(t=>t.replace(/<\/?th>/g,''));
+      return {cols,temCaixas:/Caixas que faltaram/.test(html),temRem:/CM HOSPITALAR/.test(html),
+        temCid:/GUAXUPE/.test(html),temPor:/TIAGO SOUZA/.test(html),temBaixa:/faltou chegou/.test(html),
+        temApar:/0236361/.test(html),temNum:/#003/.test(html),temSit:/Resolvida/i.test(html),
+        temFalta:/faltam/.test(html)}; });
+    ok(dt.cols.length>=12,'divergências no PDF: a tabela tem que sair detalhada ('+dt.cols.length+' colunas)');
+    ok(dt.temNum&&dt.temSit,'divergências no PDF: falta o número e a situação de cada uma');
+    ok(dt.temFalta&&dt.temCaixas,'divergências no PDF: falta quantos volumes e quais caixas faltaram');
+    ok(dt.temCid&&dt.temRem,'divergências no PDF: falta cidade e remetente');
+    ok(dt.temPor&&dt.temApar&&dt.temBaixa,'divergências no PDF: falta quem registrou, onde apareceu e a baixa'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
