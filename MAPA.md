@@ -182,3 +182,6 @@ reentrega** — só avisa.
 - **Volume não derruba mais a porcentagem**: em `gsContar`, volume lido a menos só conta como falta quando `opPorVol()` está ligado (conferência caixa a caixa). A regra do Tiago é "um bipe confere a nota inteira" — era por isso que um dia 100% aparecia como "350 de 1.801 volumes (19%)".
 - `gsGarantirFoto(dia, refazer)`: com `refazer`, remonta e sobrescreve a foto (o "Remontar o histórico" passa `true`), e antes de tudo roda `integConferir(false)` para trazer as divergências que faltam no aparelho.
 - Cartão do dia avisa quando o aparelho está **sem as divergências daquele dia** (`.gs-semdv`) e oferece `[data-gs-puxardv]` para baixar e refazer a conta na hora. Sem as divergências carregadas, nota apontada como falta aparece como "não entrou" e a conta cai.
+
+## v10.1.9 (16/11/2026)
+- **Abertura não se pula**: saíram o `click`/`keydown` que chamavam `sair()` e a dica `.hc-pular` (com o CSS dela). Só o `setTimeout(sair,5600)` continua. Junto com a máscara da v10.1.0, ninguém vê tela antes da hora.
