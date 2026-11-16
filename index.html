@@ -737,6 +737,8 @@ body.so-mapa .app{grid-template-columns:1fr}
 .mural{position:fixed;inset:0;z-index:108;background:var(--papel);overflow:auto;padding:24px 16px}.mural[hidden]{display:none}
 .mural-in{max-width:1100px;margin:0 auto}.mural header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .mural-k{font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.08em;color:var(--acento);font-weight:700}.mural h1{margin:2px 0}
+.gs-dia .gs-pct{font-size:64px;font-weight:800;line-height:1;margin:6px 0}.gs-falta{max-height:300px;overflow:auto}.gs-falta table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}.gs-falta th,.gs-falta td{border-bottom:1px solid var(--linha);padding:4px 6px;text-align:left}
+.mural-topo{grid-column:1/-1}.mural-topo h3{font-size:var(--fs-md)}.mural-topo .big{font-size:46px;font-weight:800}
 .mural-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}.mural-c{border:1px solid var(--linha);border-radius:12px;padding:14px;background:var(--sup);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .mural-c h3{margin:0;font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.06em;color:var(--tinta2)}.mural-c .big{font-size:28px;line-height:1}.mural-c ul{margin:4px 0;padding-left:18px}.mural-c.fer b{color:#C92A2A}
 .mural-c .ok{color:var(--ok)}.mural-c .aten{color:var(--ag)}.mural-dica{margin-top:16px;color:var(--tinta2);font-size:var(--fs-sm)}.marca{cursor:pointer}
@@ -1161,7 +1163,7 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
         <label>Usuário<input id="nv-u-usuario" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="ex.: tiago.souza"></label>
         <label>E-mail (opcional, para recuperar senha)<input id="nv-u-email" type="email" autocomplete="off" placeholder="pode deixar em branco"></label>
         <label>Senha inicial<input id="nv-u-senha" type="text" autocomplete="off" placeholder="qualquer senha (mín. 6) — a pessoa troca no 1º acesso"></label>
-        <label>Perfil<select id="nv-u-papel"><option value="usuario">Usuário</option><option value="admin">Administrador</option><option value="gestor">Gestor</option></select></label>
+        <label>Cargo<select id="nv-u-papel"><option value="usuario">Usuário</option><option value="conferente">Conferente</option><option value="supervisor">Supervisor(a)</option><option value="lider">Líder</option><option value="admin">Administrador</option></select></label>
         <button class="btn pri" id="nv-criar" type="button">Criar usuário</button>
       </div>
       <div id="nv-users"></div>
@@ -3908,9 +3910,21 @@ Store.init=async function(){
     try{ NV.perfil=await nvPerfil(); if(NV.perfil) try{ localStorage.setItem('healthSearch.perfilCache',JSON.stringify(NV.perfil)); }catch(e){} }catch(e){ NV.perfil=null; if(data.session&&nvSemRede(e)) return nvOffline(); }
     if(NV.perfil&&NV.perfil.ativo) break;
     await NV.cli.auth.signOut({scope:'local'}); const f=nvTela(`<h2>Sem acesso</h2><p>Este usuário não está liberado. Peça ao administrador.</p><div class="nv-bts"><button class="btn pri" type="button">Voltar</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
-  if(NV.perfil&&NV.perfil.papel==='admin'&&navigator.onLine) await nvMfa();
+  if(NV.perfil&&NV.perfil.papel==='admin'&&navigator.onLine){ await nvMfa(); NUV._pósMfa=Date.now(); }
   nvFechar(); this.modo='nuvem'; document.documentElement.dataset.nuvem='1'; nvUI();
-  let row=null; try{ row=await nvCarregar(); }catch(e){ if(nvSemRede(e)){ this.modo='local'; return nvOffline(true); } toast('Não consegui ler os dados online: '+nvTraduz(e.message)); }
+  /* v10.0.2 · logo depois das 2 etapas, uma falha de token parece falha de rede: tenta de novo
+     com a sessão renovada antes de cair para o modo sem internet. */
+  let row=null;
+  try{ row=await nvCarregar(); }
+  catch(e){
+    const recente=NUV._pósMfa&&Date.now()-NUV._pósMfa<30000;
+    let salvou=false;
+    if(recente){ try{ await NV.cli.auth.refreshSession(); }catch(er){}
+      await new Promise(r=>setTimeout(r,500));
+      try{ row=await nvCarregar(); salvou=true; }catch(e2){ e=e2; } }
+    if(!salvou){ if(nvSemRede(e)&&navigator.onLine===false){ this.modo='local'; return nvOffline(true); }
+      if(nvSemRede(e)){ this.modo='local'; return nvOffline(true); }
+      toast('Não consegui ler os dados online: '+nvTraduz(e.message)); } }
   let temCopia=false; try{ temCopia=!!localStorage.getItem('healthSearch.copiaEm')&&!!localStorage.getItem('healthSearch.nuvHash'); }catch(e){}
   if(temCopia){ if(row) NV.versao=row.atualizado_em; nvTempoReal(); return await _stInit(); } /* a cópia local + hs_sync trazem o mais novo */
   if(row&&row.dados){ nvAplicarRE(row.dados.re); NV.versao=row.atualizado_em; nvTempoReal(); return row.dados.s||null; }
@@ -4228,7 +4242,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.0.1', HS_DATA='13/11/2026';
+const HS_VERSAO='10.1.0', HS_DATA='15/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4620,7 +4634,7 @@ document.addEventListener('keydown',e=>{ if(e.key!=='Escape'||e.defaultPrevented
 /* --- início: estrutura, bases dos romaneios, só regiões, mural ao abrir --- */
 (function(){ let n=0; const t=setInterval(()=>{ n++; const pronto=S.geo&&S.geo.listas&&!(document.getElementById('nv-tela')&&!document.getElementById('nv-tela').hidden)&&(Store.modo!=='nuvem'||NV.perfil); if(!pronto){ if(n>240) clearInterval(t); return; } clearInterval(t);
   try{ if(!document.documentElement.dataset.restrito) v61Estrutura(); }catch(e){ console.error(e); } try{ v61Rebase(); }catch(e){ console.error(e); } v61SoRegioes(); try{ desenharGeo(); }catch(e){}
-  if(!document.documentElement.dataset.restrito) setTimeout(muralAbrir,400); },400); })();
+  if(!document.documentElement.dataset.restrito) setTimeout(muralAbrir,400); else setTimeout(()=>{ try{ hsSplash(); }catch(e){} },400); },400); })();
 document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-geo-tipo]')) setTimeout(()=>{ v61SoRegioes(); desenharGeo(); },0); });
 /* --- arquivo do WhatsApp leva o mapa (limites das cidades) junto --- */
 function v61Molde(){ try{ const mb=document.getElementById('malha-br'); if(mb&&!MOLDE.querySelector('#malha-br')) (MOLDE.querySelector('body')||MOLDE).appendChild(mb.cloneNode(true)); }catch(e){ console.error(e); } }
@@ -5585,7 +5599,12 @@ const HS_VIVO='healthSearch.vivo', HS_SESS_FECHADO=60*60*1000;
 function hsSplash(msg){ const s=document.getElementById('hs-splash'); if(!s) return; if(msg){ const m=document.getElementById('hs-splash-msg'); if(m) m.textContent=msg; return; } s.style.transition='opacity .25s'; s.style.opacity='0'; setTimeout(()=>s.remove(),260); }
 hsSplash('Conectando…');
 { const _nt=nvTela; nvTela=function(h){ hsSplash(); return _nt(h); }; }
-{ const _ir0=irPara; let pronto=false; irPara=function(t){ _ir0(t); if(!pronto){ pronto=true; hsSplash(); } }; }
+/* v10.1.0 · a tela de carregamento é máscara: nada é espiado antes da hora.
+   Ela só sai quando o mural do dia estiver na frente (ou depois de 25s, para nunca travar). */
+{ const _ir0=irPara; irPara=function(t){ return _ir0(t); }; }
+(function(){ let caiu=false; const tira=()=>{ if(caiu) return; caiu=true; try{ hsSplash(); }catch(e){} };
+  const _ma0=muralAbrir; muralAbrir=function(){ const r=_ma0.apply(this,arguments); setTimeout(tira,60); return r; };
+  setTimeout(tira,12000); })();
 
 /* ================= v6.3.4 · MURAL PERSONALIZÁVEL (por usuário): ordem, mostrar/ocultar, tamanho; texto se adapta ================= */
 const MU={edit:false};
@@ -5638,7 +5657,7 @@ function muSalvarDoDom(){ const g=document.querySelector('#mural .mural-g'); if(
 
 document.addEventListener('click',e=>{ const m=e.target.closest('#mural'); if(!m) return;
   if(e.target.closest('#mu-bt')){ if(MU.edit) muSalvarDoDom(); MU.edit=!MU.edit; muAplicar(); if(!MU.edit) toast('Mural salvo do seu jeito.'); return; }
-  if(e.target.closest('#mu-reset')){ try{ localStorage.removeItem(muChave()); }catch(er){} MU.edit=false; muralAbrir(); toast('Mural voltou ao padrão.'); return; }
+  if(e.target.closest('#mu-reset')){ if(!nvAdmin()){ toast('Só o administrador muda o layout do mural.'); return; } try{ S.muralLay=null; salvar(); nuvSinc(); localStorage.removeItem(muChave()); }catch(er){} MU.edit=false; muralAbrir(); toast('Mural voltou ao padrão.'); return; }
   if(!MU.edit) return; const c=e.target.closest('.mural-c'); if(!c) return;
   const w=e.target.closest('[data-mu-w]'); if(w){ c.dataset.w=w.dataset.muW; muSalvarDoDom(); muAplicar(); return; }
   if(e.target.closest('[data-mu-ver]')){ c.dataset.oculto=c.dataset.oculto==='1'?'0':'1'; muSalvarDoDom(); muAplicar(); return; }
@@ -6650,7 +6669,7 @@ window.addEventListener('focus',()=>nuvSinc()); window.addEventListener('online'
   let n=0; const t=setInterval(()=>{ if(opOnline()){ clearInterval(t); if(!Object.keys(NUV.h||{}).length) NUV.desde=''; nuvSinc(); } /* v9.1.1: só baixa tudo se o aparelho não tem cópia */ else if(++n>120) clearInterval(t); nuvStatus(); },1000); })();
 
 /* ================= v6.8.0 · Tudo online: agendamentos, regiões/Correção, romaneios, XMLs, regras e históricos ================= */
-const NUV_CAMPOS=['agendamentos','historico','aprendidos','geo','geoRuas','cidAlias','cidAtend','clientesReq','ferManual','nex','opFaltas','opPorVolume','reMotoristas','txtFix','simCen','cadMot','cadMotivos','vmChegou','vmPrev','opForaInfo'];
+const NUV_CAMPOS=['agendamentos','historico','aprendidos','geo','geoRuas','cidAlias','cidAtend','clientesReq','ferManual','nex','opFaltas','opPorVolume','reMotoristas','txtFix','simCen','cadMot','cadMotivos','cargos','muralLay','gsSnap','vmChegou','vmPrev','opForaInfo'];
 const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Object.keys(v).length:v==='');
 { const _nl=nuvLocal; nuvLocal=function(){ const m=_nl();
     for(const c of NUV_CAMPOS) if(!nuvVazio(S[c])) m.set('s:'+c,{tipo:'s',valor:S[c]});
@@ -6756,7 +6775,7 @@ const MAN=[
    ['Vários usuários ao mesmo tempo','Os bipes de todos chegam ao vivo. Etiqueta com número da caixa já bipada por outra pessoa dá Duplicado. Etiqueta só com o pedido, já bipado por outra pessoa, mostra “Já bipado por Christian (2 de 4)” e só conta se tocar em “É outra caixa”.'],
    ['Origem com o nome do motorista','Quando a mesma origem tem dois ou mais romaneios no mesmo dia — dois de Cajamar, dois do DF, dois da MESA —, cada um passa a aparecer pelo primeiro nome do motorista (Adriel, Reginaldo…), tanto nos botões “Romaneio:” quanto no bloco “Por romaneio”, cada um com a sua porcentagem. Se a origem tem um romaneio só, continua a sigla de sempre (CAJ, DF, MESA, Via Minas, AQA).'],
    ['Operação por romaneio','Abaixo dos cartões da Operação, “Por romaneio” mostra cada origem (DF, AQA, CAJ, MESA, Via Minas…) com quantas notas já foram bipadas e a barra de progresso; ✅ quando a origem inteira foi bipada. Embaixo, cada romaneio com o que falta. Toque num romaneio para abrir a lista com duas colunas: notas bipadas (e quem bipou) e notas faltando. Acima dos cartões há os botões “Romaneio: Todos · DF 0019486 · CAJ 0235414…”: escolhendo um, os cartões (Bipes, Conferidos, Baixa/Alta volumetria, Alto valor, Duplicados) e as listas passam a contar só aquele romaneio.'],
-   ['Fechamento do turno, desfazer, perfis e painel','Na Operação: “🌙 Fechamento do turno” monta o resumo (bipes, faltando baixa/alta volumetria, fora, sem nota, duplicados, caixas sem chave, reentregas, divergências e andamento por origem) para copiar ou mandar no WhatsApp — avisa antes se ainda houver caixa sem chave. “↩ Desfazer meu último bipe” (também na câmera) apaga o seu último bipe dos últimos 5 minutos. Em Usuários, a coluna Acesso define Completo ou Conferente — Conferente só vê as telas Buscar, Operação (NexBip e câmera), Rotas do Dia e Manual, sem acesso às demais ferramentas. Ferramentas → Painel do gestor mostra reentregas da semana por motivo, motorista e dia, e a conferência de hoje por origem.'],
+   ['Fechamento do turno, desfazer, perfis e painel','Na Operação: “🌙 Fechamento do turno” monta o resumo (bipes, faltando baixa/alta volumetria, fora, sem nota, duplicados, caixas sem chave, reentregas, divergências e andamento por origem) para copiar ou mandar no WhatsApp — avisa antes se ainda houver caixa sem chave. “↩ Desfazer meu último bipe” (também na câmera) apaga o seu último bipe dos últimos 5 minutos. Em Usuários, a coluna Acesso define Completo ou Conferente — Conferente só vê as telas Buscar, Operação (NexBip e câmera), Rotas do Dia e Manual, sem acesso às demais ferramentas. Ferramentas → Painel de Gestão mostra reentregas da semana por motivo, motorista e dia, e a conferência de hoje por origem.'],
    ['Simular sem algumas notas','Ligue “Simular sem algumas notas” e marque o que quer tirar da conta (Agendamentos, reentregas, retiradas, romaneios de uma origem, NFs ou cidades). O resumo grande (romaneios, notas, volumes) muda na hora e fica com a marca 🧪; desligue e tudo volta ao normal. Nada é apagado.']]},
  {id:'buscar-mais',t:'Buscar — resultado completo',intro:'O que mais aparece quando você busca uma nota.',
   passos:[['Buscar completo','O resultado mostra também valor, conteúdo das caixas (XML), se já foi bipada hoje (quantas caixas e por quem), se é reentrega e se tem divergência aberta, com os botões 📋 Copiar (pedido, NF, cliente, cidade) e 🔎 Salesforce. Digite o nome de uma cidade (ex.: Lavras) para ver todas as notas dela hoje. Se não achar hoje, mostra em qual romaneio do Banco a nota estava em outro dia. Embaixo do campo ficam as últimas 20 buscas para repetir com um toque.']]},
@@ -6791,9 +6810,9 @@ const MAN=[
    ['Quais caixas faltaram','Quando a nota tem mais de um volume, na hora de registrar a falta aparece a **grade das caixas** — 1/6, 2/6, 3/6… No bipe você marca **as que chegaram**; na aba Divergências você marca **as que faltaram**. O app conta sozinho quantos volumes faltam e escreve na divergência “faltaram as caixas 2/6 e 6/6”, que é o que você repassa para a equipe. Isso aparece na lista e sai no Excel, numa coluna própria.'],
    ['📋 Checklist Agregados','Em Planejamento. Lista motoristas/agregados com placa e data de realização do checklist; o vencimento é sempre 30 dias depois. A linha fica amarela faltando 4 dias, laranja no último dia (ou no dia do vencimento) e vermelha quando vence. Só o administrador edita motorista, placa, data e o rastreador; “🗑” apaga a linha. A coluna **Rastreador** (Sim · Não · Desativado) é a mesma do Cadastro Agregado: mudar aqui muda lá, e vice-versa. Os botões “📲 Enviar no WhatsApp” e “⬇️ Baixar a de hoje” perguntam antes **o que você quer mandar**: ativos e desativados, somente ativos ou somente desativados. A planilha sai em formato de relatório — cabeçalho, resumo com quantos estão válidos, vencendo, vencidos e desativados, faixa de cor por linha e legenda no rodapé — junto com um texto pronto avisando quem está perto de vencer ou já vencido. A coluna Vencimento mostra a data em negrito e, ao lado, quantos dias faltam, “(hoje!)” ou há quantos dias venceu. O administrador arrasta a alça “⠿” no começo da linha para colocar os motoristas na ordem que quiser, e essa ordem fica salva para todo mundo. O botão “＋ Adicionar” cria a linha no topo já com a data de hoje e o cursor no campo do motorista; motorista e placa sugerem o que já existe na lista. O botão “⬇️ Baixar a de hoje” salva a tabela como imagem JPEG no aparelho e já deixa a legenda copiada, para enviar por qualquer aplicativo quando não houver WhatsApp instalado.'],
    [' BIT — a assistente','O BIT é a corujinha no canto inferior direito, acima do 💾 Salvar. Toque nele e escreva o que precisa: “procura 442872”, “cliente unimed”, “quem atende Itanhandu MG”, “reentregas de hoje”, “bipados hoje”, “divergências”, “o que você aprendeu”, “quais regiões”, “cidades da região Minas Gerais”, “como faço backup físico?” (ele responde pelo Manual), “onde fica Ribeirão Preto?” (responde região e base e abre a cidade na Geolocalização), “notas de Ribeirão Preto origem Cajamar”, “notas da região Minas Gerais”, “notas do cliente Unimed”, “notas de Franca de ontem” ou “de 05/11” (usa o Banco de romaneios), e continua a conversa com “e de Franca?”, “e da MESA?”; “nota 442872” (tudo sobre a nota: romaneio, bipe, reentrega, divergência, XML); “feriado em Franca”, “feriados amanhã”; “reentregas de ontem” (com motivos); “divergências abertas”; “qual placa vai para Franca”; “caminhões na base”; “resumo do dia” ou “ajuda”. Instruções com “sempre…” ele guarda (veja com “minhas instruções”). Ele usa o 🧠 Cérebro: quando não tem certeza numa etiqueta (um QR Code de formato novo, ou um cliente que bate com mais de uma nota), ele anota a dúvida e o administrador responde em “❓ Dúvidas” — a resposta vira aprendizado para todos os aparelhos. Regras fixas do BIT: ele é só um assistente interna, usa apenas os dados da empresa que já estão no app, nunca envia nada para fora (não usa internet, IA externa, e-mail, WhatsApp, link ou arquivo), só mostra o que o usuário logado já pode ver e recusa qualquer pedido de enviar ou compartilhar dados. Escreva “regras” para ele repetir. O número laranja no BIT é a quantidade de dúvidas esperando resposta (qualquer usuário pode responder). Ele também cumprimenta (bom dia/boa tarde/boa noite), fala por um balãozinho sem atrapalhar e acompanha o NexBip: avisa caixa fora do romaneio, sem nota, duplicados seguidos e nota com gelo, comemora 25/50/75/90/100% com a previsão de quanto falta, e responde “o que falta” (começando pelas de alto valor) e “dica”.'],
-   ['📊 Painel mensal da gerência','No Painel do gestor: escolha o mês e toque em “📄 Gerar PDF”. Sai uma página com reentregas por motivo, semana, cidade e motorista; divergências do mês por origem e por tipo; notas fora do romaneio por origem e motivo; e as cidades de MG mais atendidas (do Relatório Minas). Bom para apresentar à gerência.'],
+   ['📊 Painel mensal da gerência','No Painel de Gestão: escolha o mês e toque em “📄 Gerar PDF”. Sai uma página com reentregas por motivo, semana, cidade e motorista; divergências do mês por origem e por tipo; notas fora do romaneio por origem e motivo; e as cidades de MG mais atendidas (do Relatório Minas). Bom para apresentar à gerência.'],
    ['Alerta do robô de backup','Se o backup automático da noite falhar ou passar mais de 30 horas sem backup, aparece um aviso vermelho no topo só para o administrador.'],
-   ['📄 Relatório Minas (Via Minas)','No menu, em Relatórios, logo abaixo do Painel do gestor (antes se chamava “Relatório Direto”). Os XMLs podem ser jogados na aba Romaneios (junto com os PDFs) ou em “📥 Inserir XMLs” aqui; escolha o XML do romaneio LKR × AQA do dia: o relatório do Softlog em planilha XML (uma linha por nota) ou os XMLs de cada nota (com o mesmo nome do romaneio, ex.: “LKR X AQA 09-11.xml”; o dia vem do dd-mm do nome). “📄 Gerar planilha” monta a lista só com destinos em MG e estas cidades de SP: São João da Boa Vista, São José do Rio Pardo, Vargem, Espírito Santo do Pinhal, Caconde, Águas da Prata, Andradas, Cajuru, Santa Rosa de Viterbo, Porto Ferreira, Descalvado, Pirassununga, Tambaú, Santa Cruz das Palmeiras, Divinolândia, Tapiratiba, São Sebastião da Grama, Aguaí, Cássia dos Coqueiros, Santo Antônio da Alegria e Casa Branca. Colunas: destinatário, CEP, endereço, número, bairro, cidade, UF, peso e valor dos produtos. Se ainda não houver XMLs do dia, aparece um aviso. Depois: “🖨 Imprimir / PDF” ou “⬇ Planilha (Excel)”. Cada dia gerado entra no histórico “Cidades de MG que mais atendemos”, no fim da mesma tela (gerar de novo no mesmo dia substitui, não soma em dobro).'],
+   ['📄 Relatório Minas (Via Minas)','No menu, em Relatórios, logo abaixo do Painel de Gestão (antes se chamava “Relatório Direto”). Os XMLs podem ser jogados na aba Romaneios (junto com os PDFs) ou em “📥 Inserir XMLs” aqui; escolha o XML do romaneio LKR × AQA do dia: o relatório do Softlog em planilha XML (uma linha por nota) ou os XMLs de cada nota (com o mesmo nome do romaneio, ex.: “LKR X AQA 09-11.xml”; o dia vem do dd-mm do nome). “📄 Gerar planilha” monta a lista só com destinos em MG e estas cidades de SP: São João da Boa Vista, São José do Rio Pardo, Vargem, Espírito Santo do Pinhal, Caconde, Águas da Prata, Andradas, Cajuru, Santa Rosa de Viterbo, Porto Ferreira, Descalvado, Pirassununga, Tambaú, Santa Cruz das Palmeiras, Divinolândia, Tapiratiba, São Sebastião da Grama, Aguaí, Cássia dos Coqueiros, Santo Antônio da Alegria e Casa Branca. Colunas: destinatário, CEP, endereço, número, bairro, cidade, UF, peso e valor dos produtos. Se ainda não houver XMLs do dia, aparece um aviso. Depois: “🖨 Imprimir / PDF” ou “⬇ Planilha (Excel)”. Cada dia gerado entra no histórico “Cidades de MG que mais atendemos”, no fim da mesma tela (gerar de novo no mesmo dia substitui, não soma em dobro).'],
    ['Etiquetas difíceis (o BIT se esforça)','Se a primeira leitura do texto não achar a nota, o BIT tenta sozinho outras passadas: só a etiqueta amarela, o centro da imagem, a imagem inteira e a leitura invertida (para letra branca em fundo preto, como o número do pedido). Ele junta tudo o que leu, testa cada número como pedido e como NF e, se não bater, procura cliente + cidade no romaneio do dia. Na tela aparece “ O BIT está se esforçando…”: segure a caixa parada. Esse recado só aparece quando há uma etiqueta na frente que ele ainda não conseguiu ler — nunca por cima do resultado de um bipe que acabou de sair. Bilhete escrito à mão não é lido com segurança — use o número impresso ou o código de barras.'],
    ['PDF + XML do romaneio','Todo dia: primeiro os PDFs dos romaneios, depois os XMLs (relatório do Softlog, com o mesmo nome do romaneio) para completar valor, volumes, peso, cidade e chave. Cada romaneio na aba Romaneios mostra dois quadradinhos: 📄 PDF e 🧾 XML. XML em verde = já recebido (pelo mesmo nome do arquivo ou com 90% das notas completadas); em amarelo = ainda falta o XML daquele romaneio.'],
    ['Caixa fora do romaneio','Quando a caixa não está no romaneio do dia, o app lê o texto da própria etiqueta (só o papel branco, ampliado) e já registra a linha completa: pedido e volumes pelo QR Code, cliente e cidade pelo texto. Se não conseguir ler, procura no banco de romaneios e no XML das notas; se ainda faltar, use ✏ para digitar ou 📷 para reler a etiqueta.'],
@@ -6986,7 +7005,18 @@ async function nvMfa(){ const M=NV.cli.auth.mfa; if(!M) return;
       f.querySelector('#nv-mfa-c').focus(); f.querySelector('#nv-mfa-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
       f.querySelector('#nv-mfa').onsubmit=async e=>{ e.preventDefault(); nvMsg(f,'Conferindo…'); const code=f.querySelector('#nv-mfa-c').value.trim();
         const {data:ch,error:ec}=await M.challenge({factorId:fid}); if(ec){ nvMsg(f,nvTraduz(ec.message),1); return; }
-        const {error:ev}=await M.verify({factorId:fid,challengeId:ch.id,code}); if(ev){ nvMsg(f,'Código errado ou vencido. Use o código que está aparecendo agora no app.',1); return; } res(); }; });
+        const {error:ev}=await M.verify({factorId:fid,challengeId:ch.id,code}); if(ev){ nvMsg(f,'Código errado ou vencido. Use o código que está aparecendo agora no app.',1); return; }
+        /* v10.0.2 · ao verificar as 2 etapas o Supabase troca a sessão (o token velho deixa de valer).
+           Sem esperar a sessão nova, o primeiro acesso aos dados ia com o token velho e dava "erro de
+           rede" — era por isso que precisava de F5. Aqui a gente espera a sessão nova chegar. */
+        nvMsg(f,'Confirmando o acesso…');
+        try{ await NV.cli.auth.refreshSession(); }catch(er){}
+        let pronto=false;
+        for(let i=0;i<10&&!pronto;i++){ try{ const {data:al2}=await M.getAuthenticatorAssuranceLevel();
+            if(al2&&al2.currentLevel==='aal2'){ NUV.aal='aal2'; pronto=true; break; } }catch(er){}
+          await new Promise(r=>setTimeout(r,300)); }
+        if(!pronto){ try{ const {data:sx}=await NV.cli.auth.getSession(); if(sx&&sx.session) NUV.aal='aal2'; }catch(er){} }
+        res(); }; });
   }catch(e){ console.error('mfa',e); toast('Verificação em 2 etapas indisponível: '+nvTraduz(e.message||String(e))+'. Ligue o TOTP no Supabase (Authentication → MFA).'); } }
 /* tela de Auditoria (admin) */
 const AUD={dias:7,q:''};
@@ -9565,7 +9595,7 @@ setTimeout(ajudaBotoes,1200); setTimeout(ajudaBotoes,4000);
   const rotular=()=>{ document.querySelectorAll(alvo).forEach(t=>{ const hs=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim()); if(!hs.length) return; t.classList.add('tb-cartao'); t.querySelectorAll('tbody tr').forEach(tr=>{ [...tr.children].forEach((td,i)=>{ if(!td.hasAttribute('data-l')) td.setAttribute('data-l',hs[i]||''); }); }); }); };
   let pend=false; new MutationObserver(()=>{ if(pend) return; pend=true; requestAnimationFrame(()=>{ pend=false; try{ rotular(); }catch(e){} }); }).observe(document.body,{childList:true,subtree:true}); })();
 
-/* ================= v8.3.0 · Fechamento do turno · Desfazer último bipe · Perfil Conferente · Painel do gestor ================= */
+/* ================= v8.3.0 · Fechamento do turno · Desfazer último bipe · Perfil Conferente · Painel de Gestão ================= */
 NUV_CAMPOS.push('perfisAcesso');
 /* --- fechamento do turno --- */
 function turnoResumo(){ const h=hojeISO(); const vis=OP.bipes||[]; const c={}; for(const b of vis) c[b.status]=(c[b.status]||0)+1; let pend=[]; OP._semFiltro=true; try{ pend=opPendentes(); }finally{ OP._semFiltro=false; }
@@ -9590,14 +9620,125 @@ async function opDesfazer(){ const eu=opEu(); const b=(OP.bipes||[]).filter(x=>x
 document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('#op-desf')){ e.stopPropagation(); opDesfazer(); } },true);
 { const _r=opRender; opRender=function(){ const r=_r.apply(this,arguments); try{ const cards=$('#op-cards'); if(cards&&!$('#op-turno')) cards.insertAdjacentHTML('beforebegin','<div id="op-turno" style="display:flex;gap:8px;justify-content:flex-end;margin:0 0 8px;flex-wrap:wrap"><button type="button" class="btn mini" id="op-desf2">↩ Desfazer meu último bipe</button><button type="button" class="btn mini pri" id="op-fechar">🌙 Fechamento do turno</button></div>'); const a=$('#op-fechar'); if(a) a.onclick=turnoFechar; const d=$('#op-desf2'); if(d) d.onclick=opDesfazer; }catch(e){} return r; }; }
 /* --- perfil Conferente: só Buscar, Operação e Rotas (ver) --- */
+/* ================= v10.1.0 · Cargos e acessos (Anexo I) =================
+   Cargos: admin, lider, supervisor, conferente, usuario.
+   - Admin: tudo, fixo, não editável. Só o Admin dá ou tira o cargo de Admin.
+   - Líder e Supervisor: tudo, menos o que é exclusivo do Admin.
+   - Conferente: buscar, geolocalização, rotas, feriados, divergências, registro,
+     conferência total, NexBip e configurações.
+   - Usuário: NexBip, buscar e configurações.
+   - Roteirizador é um acréscimo: só ele (e o Admin) publica a rota do dia. */
+const CARGOS={admin:'Administrador',lider:'Líder',supervisor:'Supervisor(a)',conferente:'Conferente',usuario:'Usuário'};
+const CARGO_SO_ADM=['usuarios','correcao','cadastros','backups','geo','eva'];
+const CARGO_TELAS={
+  conferente:['buscar','geo','rotadia','rotas','feriados','divergencias','registro','conftotal','operacao','manual','chamados','ajustes','ajuda'],
+  usuario:['operacao','buscar','manual','chamados','ajustes','ajuda']
+};
+function cargoMapa(){ return (S.cargos=S.cargos||{}); }
+function cargoDe(id,papel){ if(papel==='admin') return 'admin';
+  const c=cargoMapa()[id]; if(c&&CARGOS[c]) return c;
+  /* quem já existia: gestor virou líder; conferente pelo acesso antigo */
+  try{ if((S.perfisAcesso||{})[id]==='conferente') return 'conferente'; }catch(e){}
+  if(papel==='gestor') return 'lider';
+  if(papel==='conferente') return 'conferente';
+  return 'usuario'; }
+function cargoMeu(){ try{ if(nvAdmin()) return 'admin'; const p=NV&&NV.perfil; return cargoDe(p&&p.id||(NV.user&&NV.user.id),p&&p.papel); }catch(e){ return 'usuario'; } }
+const cargoCompleto=c=>c==='admin'||c==='lider'||c==='supervisor';
+function cargoPodeVer(tela,c){ c=c||cargoMeu();
+  if(c==='admin') return true;
+  if(CARGO_SO_ADM.includes(tela)) return false;
+  if(cargoCompleto(c)) return true;
+  const L=CARGO_TELAS[c]||CARGO_TELAS.usuario;
+  if(L.includes(tela)) return true;
+  /* roteirizador enxerga o mesmo do conferente e publica a rota */
+  if(cargoLogado()&&typeof rotEhRoteirizador==='function'&&rotEhRoteirizador()&&CARGO_TELAS.conferente.includes(tela)) return true;
+  return false; }
+function cargoTelaInicial(){ const c=cargoMeu(); return (c==='admin'||c==='lider'||c==='supervisor'||c==='conferente')?'conftotal':'operacao'; }
+function cargoLogado(){ try{ return !!(NV&&NV.user&&NV.user.id); }catch(e){ return false; } }
+function cargoAplicar(){ try{ if(!cargoLogado()) return; const c=cargoMeu(); document.documentElement.dataset.cargo=c;
+    document.documentElement.dataset.conferente=(c==='conferente'||c==='usuario')?'1':'';
+    for(const b of document.querySelectorAll('.nav button[data-tela]')){ const t=b.dataset.tela; b.hidden=!cargoPodeVer(t,c); }
+    for(const g of document.querySelectorAll('.nav .nav-g,.nav .grupo')){ const vis=[...g.querySelectorAll('button[data-tela]')].some(b=>!b.hidden); g.hidden=!vis; }
+  }catch(e){} }
+/* v10.1.0 · a aba do BIT é só do administrador, e a tela inicial segue o cargo */
+{ const _ip=irPara; irPara=function(t){
+    try{ if(t==='eva'&&cargoLogado()&&!nvAdmin()){ toast('A aba do BIT é só do administrador.'); return; } }catch(e){}
+    return _ip.apply(this,arguments); }; }
+{ const _nc=nvCarregar; nvCarregar=async function(){ const r=await _nc.apply(this,arguments);
+    try{ cargoAplicar();
+      const at=document.querySelector('.nav button[data-tela].on,.nav button[data-tela][aria-current="page"]');
+      const alvo=cargoTelaInicial(), atual=at&&at.dataset.tela;
+      if(!atual||atual==='buscar'||!cargoPodeVer(atual)) irPara(alvo);
+    }catch(e){}
+    return r; }; }
+/* ================= v10.1.0 · Mural do Dia =================
+   O que fica e o que sai está na lista do Tiago. Operação abre o mural, grande,
+   ocupando a primeira linha inteira. Backup só para Admin e Supervisor.
+   Editar layout: só o admin, e o que ele salva vale para todos (regra fixa).
+   O BIT não aparece nesta tela. */
+const MUR_FORA=['cidades sem regiao','via minas','fora romaneio','fora do romaneio','agendadas fora da mesa','agendamentos','pedir fisicamente'];
+const murN=t=>N(t||'').toLowerCase().replace(/\s+/g,' ').trim(); /* N() devolve MAIÚSCULAS sem acento */
+function murTitulo(c){ const h=c.querySelector('h3'); return murN(h?h.textContent:''); }
+function murPodeBackup(){ try{ if(!cargoLogado()) return true; const c=cargoMeu(); return c==='admin'||c==='supervisor'; }catch(e){ return false; } }
+function murArrumar(){ try{
+  const m=$('#mural'); if(!m||m.hidden) return;
+  const g=m.querySelector('.mural-g'); if(!g) return;
+  let op=null;
+  for(const c of [...g.querySelectorAll('.mural-c')]){
+    const t=murTitulo(c);
+    if(!t){ continue; }
+    if(t.indexOf('backup')===0){ if(!murPodeBackup()) c.remove(); continue; }
+    if(MUR_FORA.some(x=>t.indexOf(murN(x))>=0)&&t.indexOf('agendados que seguem rota')<0){ c.remove(); continue; }
+    const h=c.querySelector('h3');
+    if(h&&/agendados que seguem rota/i.test(h.textContent)) h.textContent='Agendados que seguem rota hoje';
+    if(t.indexOf('operacao')===0) op=c;
+  }
+  if(op){ op.classList.add('mural-topo'); op.style.gridColumn='1 / -1'; op.dataset.w='3'; if(g.firstElementChild!==op) g.prepend(op); }
+  /* editar layout: só o admin */
+  try{ const bt=$('#mu-bt'), rs=$('#mu-reset'), adm=(nvAdmin()||!cargoLogado());
+    if(bt) bt.hidden=!adm; if(rs) rs.hidden=!adm;
+    if(!adm&&MU.edit){ MU.edit=false; } }catch(e){}
+  try{ const b=$('#eva-bt'); if(b) b.hidden=true; }catch(e){}
+}catch(e){} }
+{ const _mab=muralAbrir; muralAbrir=function(){ const r=_mab.apply(this,arguments); murArrumar(); setTimeout(murArrumar,0); requestAnimationFrame(murArrumar); return r; }; }
+{ const _mfe=muralFechar; muralFechar=function(){ const r=_mfe.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=evaNoBip(); }catch(e){} return r; }; }
+{ const _map=muAplicar; muAplicar=function(){ const r=_map.apply(this,arguments); murArrumar(); return r; }; }
+/* layout publicado pelo admin, igual para todos (não é mais por aparelho) */
+muLer=function(){ try{ const c=S.muralLay; if(c&&typeof c==='object') return {ordem:c.ordem||[],oculto:c.oculto||[],tam:c.tam||{}}; }catch(e){}
+  return {ordem:[],oculto:[],tam:{}}; };
+muGravar=function(c){ try{ if(!(nvAdmin()||!cargoLogado())){ toast('Só o administrador muda o layout do mural.'); return; }
+  S.muralLay=c; salvar(); try{ nuvSinc(); }catch(e){} }catch(e){} };
 function perfilAcesso(){ try{ if(nvAdmin()) return 'admin'; const id=NV&&NV.user&&NV.user.id; return (S.perfisAcesso||{})[id]||'completo'; }catch(e){ return 'completo'; } }
 function perfilAplicar(){ const conf=perfilAcesso()==='conferente'; document.documentElement.dataset.conferente=conf?'1':''; }
-(function(){ const st=document.createElement('style'); st.textContent=':root[data-conferente="1"] .nav button[data-tela]:not([data-tela="buscar"]):not([data-tela="operacao"]):not([data-tela="rotadia"]):not([data-tela="manual"]){display:none!important}:root[data-conferente="1"] .nav-sub{display:none!important}'; document.head.appendChild(st); setInterval(perfilAplicar,3000); setTimeout(perfilAplicar,2000); })();
-{ const _ru2=renderUsuarios; renderUsuarios=async function(){ await _ru2.apply(this,arguments); try{ const tab=$('#nv-users table'); if(!tab||!NV.lista) return; tab.querySelector('thead tr').children[3].insertAdjacentHTML('afterend','<th>Acesso</th>');
-    tab.querySelectorAll('tbody tr').forEach((tr,i)=>{ const u=NV.lista[i]; const adm=u.papel==='admin'; const v=(S.perfisAcesso||{})[u.id]||'completo'; tr.children[3].insertAdjacentHTML('afterend',`<td>${adm?'Tudo':`<select data-nv-ac="${u.id}" ${nvAdmin()?'':'disabled'}><option value="completo" ${v==='completo'?'selected':''}>Completo</option><option value="conferente" ${v==='conferente'?'selected':''}>Conferente (Buscar, Operação, Rotas e Manual)</option></select>`}</td>`); }); }catch(e){ console.error(e); } }; }
-document.addEventListener('change',e=>{ const c=e.target; if(!c.dataset||c.dataset.nvAc==null||!nvAdmin()) return; S.perfisAcesso=Object.assign({},S.perfisAcesso||{},{[c.dataset.nvAc]:c.value}); salvar(); nuvSinc(); toast('Acesso alterado para '+(c.value==='conferente'?'Conferente':'Completo')+'.'); });
-/* --- painel do gestor --- */
-/* v10.0.1 · dia do Painel do gestor */
+(function(){ /* v10.1.0 · quem decide o que aparece no menu agora é o cargo (cargoAplicar) */
+  setInterval(()=>{ try{ perfilAplicar(); }catch(e){} try{ cargoAplicar(); }catch(e){} },3000);
+  setTimeout(()=>{ try{ perfilAplicar(); }catch(e){} try{ cargoAplicar(); }catch(e){} },1500); })();
+/* v10.1.0 · a coluna "Perfil" vira "Cargo", editável. Só o Admin dá ou tira o cargo de Admin. */
+{ const _ru2=renderUsuarios; renderUsuarios=async function(){ await _ru2.apply(this,arguments);
+  try{ const tab=$('#nv-users table'); if(!tab||!NV.lista) return;
+    const th=tab.querySelector('thead tr').children[3]; if(th) th.textContent='Cargo';
+    tab.querySelectorAll('tbody tr').forEach((tr,i)=>{ const u=NV.lista[i]; if(!u) return;
+      const adm=u.papel==='admin', c=cargoDe(u.id,u.papel), eu=NV.user&&NV.user.id===u.id;
+      const podeMexer=nvAdmin()||(cargoCompleto(cargoMeu())&&!adm);
+      const opts=Object.entries(CARGOS).filter(([k])=>k!=='admin'||nvAdmin())
+        .map(([k,t])=>`<option value="${k}" ${c===k?'selected':''}>${t}</option>`).join('');
+      tr.children[3].innerHTML=(adm&&!nvAdmin())
+        ? '<b>Administrador</b>'
+        : `<select data-nv-cargo="${u.id}" ${podeMexer&&!eu?'':'disabled'} title="${eu?'Você não muda o seu próprio cargo':''}">${opts}</select>`;
+    });
+  }catch(e){ console.error(e); } }; }
+document.addEventListener('change',async e=>{ const c=e.target; if(!c.dataset||c.dataset.nvCargo==null) return;
+  const id=c.dataset.nvCargo, novo=c.value, u=(NV.lista||[]).find(x=>x.id===id);
+  if(!(nvAdmin()||cargoCompleto(cargoMeu()))){ toast('Só Admin, Líder ou Supervisor mudam cargo.'); return; }
+  if((novo==='admin'||(u&&u.papel==='admin'))&&!nvAdmin()){ toast('Só o Administrador dá ou tira o cargo de Admin.'); c.value=cargoDe(id,u&&u.papel); return; }
+  S.cargos=Object.assign({},S.cargos||{},{[id]:novo});
+  if(novo==='admin'||((u&&u.papel==='admin')&&novo!=='admin')){
+    try{ const {error}=await NV.cli.from('perfis').update({papel:novo==='admin'?'admin':'usuario'}).eq('id',id);
+      if(error) throw error; renderUsuarios(); }
+    catch(er){ toast('Não consegui mudar no servidor: '+(er&&er.message||er)); } }
+  salvar(); nuvSinc(); cargoAplicar(); toast('Cargo alterado para '+CARGOS[novo]+'.'); });
+/* --- Painel de Gestão --- */
+/* v10.0.1 · dia do Painel de Gestão */
 const GS={dia:''};
 function gsDias(){ const out=new Set(); try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||''; if(k.startsWith(OP_LOCAL)){ const d=k.slice(OP_LOCAL.length); if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&(opLocalLer(d)||[]).length) out.add(d); } } }catch(e){}
   if((OP&&OP.bipes||[]).length) out.add(OP.dia||hojeISO());
@@ -9624,10 +9765,88 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
    ${gestorBarras('Reentregas por motivo (7 dias)',d.mot,null,'#B197FC')}${gestorBarras('Reentregas por motorista (7 dias)',d.mtr,null,'#74C0FC')}${gestorBarras('Reentregas por dia',d.dia.map(([k,v])=>[fmtData(k),v]),null,'#63E6BE')}
    ${gestorBarras('Conferência por origem ('+gsDiaNome()+') (%)',d.orig.map(([b,a])=>[b,a.t?Math.round(100*(a.t-a.f)/a.t):100]),v=>v+'%','#20C997')}</div>`; }
 (function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
-  const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return; ref.insertAdjacentHTML('beforebegin','<button data-tela="gestor"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span class="lbl">Painel do gestor</span></button>');
-  const sec=document.createElement('section'); sec.className='tela'; sec.id='t-gestor'; sec.hidden=true; sec.innerHTML='<h1>Painel do gestor</h1><p class="sub">Reentregas da semana por motivo, motorista e dia, e o andamento da conferência de hoje por origem.</p><div id="gs-corpo"></div>'; const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
+  const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return; ref.insertAdjacentHTML('beforebegin','<button data-tela="gestor"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span class="lbl">Painel de Gestão</span></button>');
+  const sec=document.createElement('section'); sec.className='tela'; sec.id='t-gestor'; sec.hidden=true; sec.innerHTML='<h1>Painel de Gestão</h1><p class="sub">Reentregas da semana por motivo, motorista e dia, e o andamento da conferência de hoje por origem.</p><div id="gs-corpo"></div>'; const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
   const _ir=irPara; irPara=function(t){ _ir(t); const bt=document.querySelector('.nav [data-tela="gestor"]'); if(t==='gestor'){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-gestor'); $$('.nav button').forEach(b=>{ if(b.dataset.tela===t) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); }); gestorRender(); } else if(bt) bt.removeAttribute('aria-current'); };
   document.querySelector('.nav [data-tela="gestor"]').addEventListener('click',()=>irPara('gestor')); })();
+
+/* ================= v10.1.0 · Painel de Gestão =================
+   O painel deixa de mostrar só o dia de hoje: a cada bipe o app guarda a FOTO do dia
+   (total de notas, conferidas, divergências, % por origem e a lista do que não entrou).
+   É essa foto que prova, depois, que a operação conferiu tudo. O PDF sai em tamanho de
+   projetor, para a reunião da diretoria. */
+function gsFotoMontar(){ try{
+  const dia=hojeISO(); let L=[]; try{ L=opPorRom(); }catch(e){ L=[]; }
+  if(!L.length) return null;
+  let tn=0,fn=0,tv=0,fv=0; const orig=[];
+  for(const x of L){ tn+=x.tn; fn+=x.fn; tv+=x.tv; fv+=x.fv;
+    orig.push({base:x.base,mot:(x.r&&x.r.motorista)||'',tn:x.tn,fn:x.fn,tv:x.tv,fv:x.fv}); }
+  let falta=[]; try{ OP._semFiltro=true; const p=opPendentes(); OP._semFiltro=false;
+    const vis=new Set();
+    for(const it of p){ const x=it.x||{}; const k=opNotaK(x)||''; if(k&&vis.has(k)) continue; if(k) vis.add(k);
+      falta.push({nf:x.nf||'',ped:x.ped||'',cli:x.cli||x.cliente||'',cid:x.cid||x.cidade||'',base:x.base||'',vol:(it.esp||1),lidos:(it.lidos||0)});
+      if(falta.length>=300) break; } }catch(e){ try{ OP._semFiltro=false; }catch(e2){} }
+  const bs=((OP&&OP.bipes)||[]).filter(b=>b.dia===dia);
+  const dvs=(typeof dvLer==='function')?(()=>{ try{ return (dvLer().dias||{})[dia]||[]; }catch(e){ return []; } })():[];
+  return {dia,ts:Date.now(),tn,fn,tv,fv,pct:tn?Math.round(100*(tn-fn)/tn):100,
+    pctVol:tv?Math.round(100*(tv-fv)/tv):100,bipes:bs.length,dv:dvs.length,orig,falta,
+    roms:L.length,quem:((NV&&NV.perfil&&NV.perfil.nome)||'')};
+}catch(e){ return null; } }
+function gsFotoGravar(){ const f=gsFotoMontar(); if(!f) return null;
+  try{ S.gsSnap=S.gsSnap||{}; S.gsSnap[f.dia]=f;
+    const ds=Object.keys(S.gsSnap).sort(); while(ds.length>120) delete S.gsSnap[ds.shift()];
+    salvar(); }catch(e){} return f; }
+let _gsT=null; function gsFotoAgendar(){ if(_gsT) return; _gsT=setTimeout(()=>{ _gsT=null; gsFotoGravar(); },8000); }
+function gsFotoLer(dia){ try{ if(dia===hojeISO()){ const f=gsFotoMontar(); if(f) return f; } return (S.gsSnap||{})[dia]||null; }catch(e){ return null; } }
+let gsDiasFoto=function(){ return []; };
+function gsCartao(f){ if(!f) return '<div class="gs-box"><h3>Conferência do dia</h3><p class="sub">Sem foto deste dia. A partir de agora o app guarda sozinho, a cada bipe.</p></div>';
+  const cor=f.pct>=100?'var(--ok)':(f.pct>=90?'var(--ag)':'var(--ruim)');
+  return `<div class="gs-box gs-dia"><h3>Conferência de ${f.dia===hojeISO()?'hoje':fmtData(f.dia)}</h3>
+    <div class="gs-pct" style="color:${cor}">${f.pct}%</div>
+    <p class="sub"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> nota(s) conferida(s) · ${fmtN(f.tv-f.fv)} de ${fmtN(f.tv)} volume(s) (${f.pctVol}%) · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</p>
+    ${f.fn?`<details><summary><b>${fmtN(f.fn)}</b> nota(s) que não entraram</summary><div class="gs-falta"><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${f.falta.map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>${f.fn>f.falta.length?`<p class="sub">Mostrando as primeiras ${f.falta.length}.</p>`:''}</div></details>`:'<p class="ok"><b>Operação 100% conferida.</b></p>'}
+    <div style="margin-top:10px"><button class="btn mini pri" data-gs-pdf="${f.dia}">📄 PDF para projetor</button></div></div>`; }
+function gsPdfProjetor(dia){ const f=gsFotoLer(dia); if(!f){ toast('Sem foto desse dia.'); return; }
+  const cor=f.pct>=100?'#099268':(f.pct>=90?'#E8A33D':'#C92A2A');
+  const w=window.open('','_blank'); if(!w){ toast('Libere as janelas (pop-up) para gerar o PDF.'); return; }
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Conferência ${f.dia}</title>
+  <style>@page{size:A4 landscape;margin:12mm}
+  *{box-sizing:border-box}body{font:16pt/1.35 system-ui,Arial,sans-serif;color:#111;margin:0}
+  header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #111;padding-bottom:10px;margin-bottom:18px}
+  header b{font-size:26pt}header span{color:#555;font-size:14pt}
+  .pct{font-size:120pt;font-weight:800;line-height:1;color:${cor};text-align:center;margin:10px 0}
+  .lin{font-size:20pt;text-align:center;margin-bottom:18px}
+  table{width:100%;border-collapse:collapse;font-size:13pt}
+  th,td{border:1px solid #bbb;padding:6px 8px;text-align:left}th{background:#f1f3f5}
+  h2{font-size:18pt;margin:18px 0 8px}
+  footer{margin-top:18px;color:#666;font-size:11pt;border-top:1px solid #ccc;padding-top:8px}
+  tr{break-inside:avoid}</style></head><body>
+  <header><b>Health Search · Conferência da operação</b><span>${f.dia===hojeISO()?'Hoje':''} ${fmtData(f.dia)}</span></header>
+  <div class="pct">${f.pct}%</div>
+  <div class="lin"><b>${fmtN(f.tn-f.fn)}</b> de <b>${fmtN(f.tn)}</b> notas conferidas · <b>${fmtN(f.tv-f.fv)}</b> de <b>${fmtN(f.tv)}</b> volumes · ${fmtN(f.roms)} romaneio(s) · ${fmtN(f.dv||0)} divergência(s)</div>
+  <h2>Por origem</h2>
+  <table><thead><tr><th>Origem</th><th>Motorista</th><th>Notas</th><th>Conferidas</th><th>%</th><th>Volumes</th><th>%</th></tr></thead><tbody>
+  ${(f.orig||[]).map(o=>`<tr><td>${esc(o.base)}</td><td>${esc(o.mot||'')}</td><td>${fmtN(o.tn)}</td><td>${fmtN(o.tn-o.fn)}</td><td><b>${o.tn?Math.round(100*(o.tn-o.fn)/o.tn):100}%</b></td><td>${fmtN(o.tv)}</td><td>${o.tv?Math.round(100*(o.tv-o.fv)/o.tv):100}%</td></tr>`).join('')}
+  </tbody></table>
+  ${f.fn?`<h2>O que não entrou (${fmtN(f.fn)})</h2><table><thead><tr><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>Origem</th><th>Caixas</th></tr></thead><tbody>${(f.falta||[]).map(x=>`<tr><td>${esc(x.nf)}</td><td>${esc(x.ped)}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.base)}</td><td>${x.lidos||0}/${x.vol||1}</td></tr>`).join('')}</tbody></table>`:'<h2>Operação 100% conferida</h2>'}
+  <footer>Gerado em ${new Date().toLocaleString('pt-BR')} · © 2026 Health Log · Grupo VIVEO — uso interno</footer>
+  </body></html>`);
+  w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },400); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-pdf]'); if(b){ e.preventDefault(); gsPdfProjetor(b.dataset.gsPdf); } });
+/* v10.1.0 · o cartão da conferência do dia abre o Painel de Gestão */
+{ const _gr10=gestorRender; gestorRender=function(){ const r=_gr10.apply(this,arguments);
+  try{ const el=$('#gs-corpo'); if(el){ const f=gsFotoLer(gsDia()); el.insertAdjacentHTML('afterbegin',gsCartao(f)); } }catch(e){}
+  return r; }; }
+/* a cada bipe o app guarda a foto do dia, sem o conferente precisar fazer nada */
+{ const _ol10=opLer; opLer=function(){ const r=_ol10.apply(this,arguments); try{ gsFotoAgendar(); }catch(e){} return r; }; }
+{ const _gd10=gsDias; gsDiasFoto=function(){ try{ const a=new Set(Object.keys(S.gsSnap||{})); for(const d of _gd10()) a.add(d); return [...a].sort().reverse(); }catch(e){ return _gd10(); } }; }
+/* o seletor passa a listar também os dias que só têm foto guardada (sem bipe no aparelho) */
+{ const _gse=gsSeletor; gsSeletor=function(){ const d=gsDia(); const html=_gse.apply(this,arguments);
+  try{ const extra=gsDiasFoto().filter(x=>html.indexOf('value="'+x+'"')<0);
+    if(!extra.length) return html;
+    const opts=extra.map(x=>`<option value="${esc(x)}">${fmtData(x)}${x===hojeISO()?' (hoje)':''}</option>`).join('');
+    return html.replace('</select>',opts+'</select>');
+  }catch(e){ return html; } }; }
 
 /* v8.3.1: PC — as telas usam a largura toda (texto explicativo continua em largura confortável) */
 (function(){ const st=document.createElement('style'); st.textContent='@media (min-width:1200px){ .tela{max-width:1900px!important} .tela > p.sub{max-width:900px} #t-romaneios .rom-lista, .tela .rolagem{max-width:none} }'; document.head.appendChild(st); })();
@@ -9658,7 +9877,7 @@ setInterval(()=>{ try{ if(!GEO._vr||!GEO.view) return; const ga=$('#geo-auto'); 
   const pac=lerPacote(); const chegou=aplicarPacote(pac); if(chegou) salvar();
   montarDicionario(); aplicarTema(); geoInit(); aplicarRegraTodos();
   if(!Object.keys(S.cidAtend||{}).length && S.romaneios.length){ for(const r of S.romaneios) registrarCidades(r); FER_NOVAS=[]; salvar(); }
-  renderTudo(); irPara('buscar'); atualizarFeriados();
+  renderTudo(); irPara((typeof cargoTelaInicial==='function')?cargoTelaInicial():'buscar'); atualizarFeriados();
   /* v8.6.1: pop-up de legenda ao abrir desligado */
   if(chegou) toast(`Romaneios recebidos (${fmtQuando(pac.geradoEm)}): ${S.pacoteInfo.rom} romaneio(s), ${S.pacoteInfo.notas} notas. Já pode buscar.`);
   if(Store.modo==='exe'){ setInterval(()=>fetch('/__hr/ping',{headers:HDR}).catch(()=>{}),4000);
@@ -10165,7 +10384,7 @@ setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&
   /* telas novas: Backups e Relatórios */
   const mk=(id,html)=>{ const b=document.createElement('button'); b.dataset.tela=id; b.innerHTML=html; return b; };
   if(!btn('backups')) nav.appendChild(mk('backups','<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg><span class="lbl">Backups</span>'));
-  /* v10.0.1 · a aba "Relatórios" saiu: o que vale vai para o Painel do gestor (e o Relatório Minas continua). */
+  /* v10.0.1 · a aba "Relatórios" saiu: o que vale vai para o Painel de Gestão (e o Relatório Minas continua). */
   { const velho=btn('relatorios'); if(velho) velho.remove(); }
   const usados=new Set(GR.flatMap(g=>g[1]));
   const sobras=[...nav.querySelectorAll('[data-tela]')].filter(b=>!usados.has(b.dataset.tela));
@@ -10277,7 +10496,7 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[d
 /* ---- Manual / BIT ---- */
 (function(){ MAN.unshift({id:'menu2026',t:'Como o menu está organizado',img:'mural',intro:'O menu segue o dia de trabalho. Clique no nome do grupo para abrir ou fechar.',
   passos:[['Operação do dia','Buscar, Romaneios, NexBip, Conferência total, Rotas, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências, Avarias e Fora do romaneio. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],
-   ['Planejamento','Agendamentos, Feriados e Geolocalização.'],['Relatórios e ajuda','Relatórios (todos os PDFs num lugar), Painel do gestor, Relatório Minas e este Manual.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups (todos os backups e restaurações num lugar só).'],
+   ['Planejamento','Agendamentos, Feriados e Geolocalização.'],['Relatórios e ajuda','Relatórios (todos os PDFs num lugar), Painel de Gestão, Relatório Minas e este Manual.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups (todos os backups e restaurações num lugar só).'],
    ['Romaneios','Em cima só o carregar. Excel, planilha e “Remover todos” ficam em ⋯ Mais. O Banco de romaneios é a 3ª sub-aba. O arquivo de WhatsApp saiu: o app é online para todos.'],['Excel','Todo botão de planilha agora se chama ⬇ Excel.'],['Histórico','As últimas buscas ficam dentro da própria Busca.']]}); })();
 { const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/onde (fica|esta|está)|cade|cadê/.test(t)){ const M={backup:'Administração → Backups',relatorio:'Relatórios e ajuda → Relatórios',divergen:'Ocorrências → Divergências (para registrar: bipe no NexBip e marque o quadrado)',avaria:'Ocorrências → Avarias',banco:'Romaneios → sub-aba Banco de romaneios',excel:'botão ⬇ Excel em cada tela',historico:'dentro da Busca (últimas buscas)'}; for(const [k,v] of Object.entries(M)) if(t.includes(k)) return `Fica em <b>${v}</b>.`; } return _ee(txt); }; }
 
@@ -10367,7 +10586,7 @@ function ajudaTela(){ $('#ajd-corpo').innerHTML=`<div class="aj-card"><h2>🚀 C
   <div class="aj-card"><h2>⌨ Atalhos</h2><p style="margin:0;line-height:1.8"><b>Ctrl+K</b> buscar de qualquer tela · <b>Ctrl+S</b> salvar · <b>Esc</b> voltar · <b>?</b> em cada tela abre o Manual daquela tela.</p></div>
   <div class="aj-card"><h2>🙋 Precisa de ajuda?</h2><div class="barra" style="gap:8px"><button class="btn" type="button" onclick="irPara('eva')"> Perguntar ao BIT</button><button class="btn" type="button" onclick="irPara('manual')">📘 Abrir o Manual</button><button class="btn pri" type="button" onclick="irPara('chamados')">💬 Falar com o administrador</button></div></div>
   <div class="aj-card"><h2>☁ Símbolos do topo</h2><p style="margin:0;line-height:1.8"><b>☁⚡ salvo online</b>: tudo sincronizado e ao vivo · <b>☁ salvo online</b>: sincronizado (confere a cada pouco) · <b>☁ ↑</b>: enviando · <b>☁ offline</b>: sem internet, guardado no aparelho · <b>☁ erro</b>: o banco não respondeu (toque para ver o motivo).</p></div>`; }
-(function(){ const m=MAN.find(x=>x.id==='menu2026'); if(m){ m.t='Como o menu está organizado'; m.passos=[['Operacional','NexBip, Conferência total, Buscar, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências e Avarias. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],['Planejamento','Rotas, Agendamentos, Feriados, Romaneios e Geolocalização.'],['Relatórios','Relatórios (gera os PDFs), Painel do gestor (gráficos ao vivo) e Relatório Minas.'],['Configurações','Falar com o administrador, Ajustes (tema claro/escuro, trocar senha, ordem dos títulos do menu), BIT, Manual e Ajuda.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups.'],['Rodapé do menu','Seu nome e função, o botão Deslogar, a versão e os direitos.'],['Símbolos do topo','☁⚡ salvo online (ao vivo) · ☁ salvo online · ☁ ↑ enviando · ☁ offline (guardado no aparelho) · ☁ erro (toque para ver o motivo).'],...m.passos.filter(p=>/Grupo da operação|Romaneios|Excel|Histórico/.test(p[0]))]; } })();
+(function(){ const m=MAN.find(x=>x.id==='menu2026'); if(m){ m.t='Como o menu está organizado'; m.passos=[['Operacional','NexBip, Conferência total, Buscar, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências e Avarias. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],['Planejamento','Rotas, Agendamentos, Feriados, Romaneios e Geolocalização.'],['Relatórios','Relatórios (gera os PDFs), Painel de Gestão (gráficos ao vivo) e Relatório Minas.'],['Configurações','Falar com o administrador, Ajustes (tema claro/escuro, trocar senha, ordem dos títulos do menu), BIT, Manual e Ajuda.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups.'],['Rodapé do menu','Seu nome e função, o botão Deslogar, a versão e os direitos.'],['Símbolos do topo','☁⚡ salvo online (ao vivo) · ☁ salvo online · ☁ ↑ enviando · ☁ offline (guardado no aparelho) · ☁ erro (toque para ver o motivo).'],...m.passos.filter(p=>/Grupo da operação|Romaneios|Excel|Histórico/.test(p[0]))]; } })();
 
 /* ---- v9.5.0 · Layout por aparelho: cada coisa no seu lugar, nada sobrepõe ---- */
 (function(){ const st=document.createElement('style'); st.textContent=`
@@ -10455,7 +10674,7 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest) re
 /* ---- Romaneios: só Carregados e Banco de dados ---- */
 (function(){ const seg=document.querySelector('.rom-sub'); if(!seg) return; const x=seg.querySelector('[data-rom-sub="excel"]'); if(x) x.style.display='none'; const bd=seg.querySelector('[data-rom-sub="banco"]'); if(bd) bd.textContent='Banco de dados'; const bt=$('#t-excel'); if(bt) bt.hidden=true; })();
 
-/* ================= v9.5.2 · Painel do gestor ao vivo · Rotas com histórico por dia · BIT que aprende ================= */
+/* ================= v9.5.2 · Painel de Gestão ao vivo · Rotas com histórico por dia · BIT que aprende ================= */
 { const _g=gestorRender; gestorRender=function(){ _g.apply(this,arguments); try{ const g=$('#t-gestor .gs-grid'); if(!g) return;
     /* v10.0.1 · o painel passa a olhar o dia escolhido, e começa no último dia que teve bipe
        (antes só mostrava "hoje" e, de manhã cedo, aparecia tudo vazio mesmo com o dia anterior cheio) */
@@ -10504,7 +10723,7 @@ document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.close
 { const _et=evaTela; evaTela=function(){ _et(); evaEnsinoRender(); }; }
 (function(){ const st=document.createElement('style'); st.textContent='.ee-f{display:grid;grid-template-columns:1fr 2fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--linha)}@media(max-width:600px){.ee-f{grid-template-columns:1fr auto}}'; document.head.appendChild(st);
   MAN.push({id:'eva-ensino',t:'BIT — conversar e ensinar',img:'mural',intro:'Configurações → BIT abre o BIT no centro da tela.',passos:[['Conversar','Todos podem tirar dúvidas, pedir para procurar notas, cidades, ocorrências e rotas.'],['Ensinar (admin)','O administrador escreve regras (“o que ela deve saber”) e perguntas com a resposta certa, com foto se quiser. O BIT passa a responder isso para todos.'],['Perguntar o que ele aprendeu','Pergunte “quais são suas regras?”.']]});
-  const g=MAN.find(x=>/gestor/i.test(x.t)); if(g&&g.passos) g.passos.unshift(['Ao vivo','O Painel do gestor atualiza sozinho a cada 30 segundos: % conferido, bipes por hora e por pessoa (em “por pessoa” o bipe duplicado não conta, só o válido), ocorrências abertas, avarias por tipo, reentregas por motivo, motorista e dia.']);
+  const g=MAN.find(x=>/gestor/i.test(x.t)); if(g&&g.passos) g.passos.unshift(['Ao vivo','O Painel de Gestão atualiza sozinho a cada 30 segundos: % conferido, bipes por hora e por pessoa (em “por pessoa” o bipe duplicado não conta, só o válido), ocorrências abertas, avarias por tipo, reentregas por motivo, motorista e dia.']);
   const r=MAN.find(x=>/^Rotas|ROTAS/i.test(x.t)); if(r&&r.passos) r.passos.push(['Histórico por dia','O último upload de cada dia fica guardado. À meia-noite a rota do dia vai para o histórico; escolha o dia na lista “Último upload de cada dia”.']); })();
 
 /* ================= v9.5.3 · BIT animada na aba BIT (expressões, gestos, interação) ================= */

@@ -589,7 +589,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!/Vazio/.test(bt.ent),'dúvida: campo vazio não aparece no que ele entendeu'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
-      const ont=new Date(Date.now()-864e5).toISOString().slice(0,10);
+      const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */
       const bs=[]; for(let i=0;i<12;i++) bs.push({nf:String(900+i),status:'ok',usuario:'TIAGO SOUZA',criado_em:ont+'T1'+(i%2?'4':'0')+':00:00.000Z'});
       bs.push({nf:'999',status:'ok',usuario:'CHRISTIAN L',criado_em:ont+'T15:00:00.000Z'});
       localStorage.setItem(OP_LOCAL+ont,JSON.stringify(bs));
@@ -604,6 +604,52 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(gs.sel&&gs.val===gs.ont,'gestor: falta o seletor de dia ('+gs.val+')');
     ok(gs.nBip===13,'gestor: tinha que ler os 13 bipes gravados naquele dia ('+gs.nBip+')');
     ok(gs.pessoa&&gs.hora,'gestor: bipes por hora e por pessoa precisam sair do dia escolhido'); }
+  /* v10.1.0: cargos (Anexo I), tela inicial por cargo, mural do dia e Painel de Gestão */
+  { const cg=await p.evaluate(()=>{
+      const r={};
+      r.cfVe=cargoPodeVer('conftotal','conferente'); r.cfNao=cargoPodeVer('usuarios','conferente');
+      r.cfRe=cargoPodeVer('reentregas','conferente');
+      r.usVe=cargoPodeVer('operacao','usuario'); r.usNao=cargoPodeVer('conftotal','usuario');
+      r.supVe=cargoPodeVer('reentregas','supervisor'); r.supNao=cargoPodeVer('usuarios','supervisor');
+      r.ldVe=cargoPodeVer('romaneios','lider'); r.admEva=cargoPodeVer('eva','admin'); r.supEva=cargoPodeVer('eva','supervisor');
+      r.cargos=Object.keys(CARGOS).join(',');
+      return r; });
+    ok(cg.cfVe&&!cg.cfNao&&!cg.cfRe,'cargo: o Conferente vê Conferência total e não vê Usuários nem Reentregas');
+    ok(cg.usVe&&!cg.usNao,'cargo: o Usuário só chega no NexBip, não na Conferência total');
+    ok(cg.supVe&&!cg.supNao,'cargo: o Supervisor vê tudo menos o que é só do Admin');
+    ok(cg.ldVe,'cargo: o Líder vê os romaneios');
+    ok(cg.admEva&&!cg.supEva,'cargo: a aba do BIT é só do administrador');
+    ok(cg.cargos==='admin,lider,supervisor,conferente,usuario','cargo: faltam cargos do Anexo I ('+cg.cargos+')'); }
+  { const mu=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      muralAbrir(); await w(350); murArrumar();
+      const g=document.querySelector('#mural .mural-g');
+      const tit=[...g.querySelectorAll('.mural-c h3')].map(h=>h.textContent.trim());
+      const pri=g.firstElementChild;
+      return {tit,topo:!!(pri&&pri.classList.contains('mural-topo')),
+        primeiro:(pri&&pri.querySelector('h3')||{}).textContent||'',
+        larg:pri?getComputedStyle(pri).gridColumn:'',
+        bit:(document.getElementById('eva-bt')||{}).hidden}; });
+    const fora=t=>mu.tit.some(x=>new RegExp(t,'i').test(x));
+    ok(/Opera/i.test(mu.primeiro)&&mu.topo,'mural: Operação tem que abrir o mural, grande, na primeira linha ('+mu.primeiro+')');
+    ok(/1 \/ -1|1\/-1/.test(mu.larg),'mural: o quadro da Operação tem que ocupar a linha toda ('+mu.larg+')');
+    ok(!fora('sem regi'),'mural: "Cidades sem região" tinha que sair');
+    ok(!fora('via minas'),'mural: "Via Minas" tinha que sair');
+    ok(!fora('fora.*romaneio'),'mural: "Fora do Romaneio" tinha que sair');
+    ok(!mu.tit.some(x=>/^Agendamentos$/i.test(x.trim())),'mural: o quadro "Agendamentos" tinha que sair (já tem o da mesa)');
+    ok(!mu.tit.some(x=>/MESA/i.test(x)),'mural: tirar o "(MESA)" do título dos agendados');
+    ok(fora('feriados'),'mural: "Feriados (próximos 3 dias)" tinha que ficar');
+    ok(mu.bit===true,'mural: o BIT não aparece nessa tela'); }
+  { const gp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
+      muralFechar&&muralFechar(); irPara('gestor'); await w(400);
+      const tit=(document.querySelector('#t-gestor h1')||{}).textContent||'';
+      const txt=(document.getElementById('gs-corpo')||{}).innerText||'';
+      const f=gsFotoMontar();
+      return {tit,temCartao:/Confer(ê|e)ncia de/i.test(txt),pdf:!!document.querySelector('[data-gs-pdf]'),
+        foto:f?{pct:f.pct,tn:f.tn,falta:Array.isArray(f.falta)}:null}; });
+    ok(/Painel de Gest(ã|a)o/i.test(gp.tit),'painel: o nome tem que ser "Painel de Gestão" ('+gp.tit+')');
+    ok(gp.temCartao,'painel: falta o cartão com a porcentagem real do dia');
+    ok(gp.pdf,'painel: falta o botão do PDF para projetor');
+    ok(!gp.foto||(typeof gp.foto.pct==='number'&&gp.foto.falta),'painel: a foto do dia precisa ter porcentagem e a lista do que não entrou'); }
   /* v10.0.1: a aba Relatórios saiu e os blocos de XML/diagnóstico não aparecem no NexBip */
   { const lp=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       irPara('operacao'); await w(200);
