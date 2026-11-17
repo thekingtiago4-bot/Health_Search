@@ -379,3 +379,28 @@ camadas) nem no chip 💾 (espaço, outra coisa). Só o indicador ficou direto.
   abertura **sem internet**.
 - `sql/` antigos foram para `sql/historico/` (só registro).
 - **Endereço oficial: GitHub Pages.** A Vercel é cópia sobrando — cada endereço guarda dados separados no aparelho.
+
+## v10.6.01 (17/11/2026) — cortes pedidos pelo Tiago (código apagado, conceito guardado aqui)
+Regra dele: "apagar completamente mas deixar na memória o conceito quando formos remontar um dia".
+**Os dados de todos eles continuam na nuvem e no aparelho** (os campos seguem em `NUV_CAMPOS`), só não
+são mais usados nem alterados. O código antigo está no histórico do git (commit da v10.6.00 para trás).
+
+| módulo | o que fazia | onde mora o dado |
+|---|---|---|
+| **Cérebro do BIT** (`cer*`, v8.6.0) | aprendia sozinho com cada bipe: formato de QR (`C.qr` por assinatura `cerSig`: números→N{tam}, letras→a), posição do número em cada modelo de etiqueta (`C.mod[chave].pos` com texto antes + altura relativa), trocas de letra por dígito (`C.troca`), apelido de cliente (`C.ali`), vínculos fora→nota (`C.vinc`), dúvidas que o admin respondia (`C.duv`) e instruções "sempre…" (`C.evaNotas`). Resetar fazia backup `bkp:cer:*`. | `S.cerebro` (`s:cerebro`) |
+| **Ensinar o BIT** (`evaEnsino*`) | admin cadastrava regras e pares pergunta→resposta (com foto); o BIT respondia pelo fato mais parecido | `S.evaEnsino` (admin) |
+| **Treino por foto** (`fot*`, `etqDados`) | arrastar fotos de etiqueta na aba do BIT: lia todos os campos, admin aprovava (ensinava o Cérebro) ou lançava a caixa como fora do romaneio | — |
+| **Falar com o ADM** (`ch*`) | chamados (sugestão, bug, dúvida) com conversa, status Aberto/Em análise/Feito/Recusado, aviso de resposta e badge | tabela `hs_chamados` (intacta) e `S.chamados` |
+| **Relatório Minas** (`rd*`) | XMLs do romaneio "ROMANEIO - LKR X AQA" → planilha/PDF só com destinos MG + cidades de SP da rota (`RD_SP`), ranking das cidades mais atendidas | `S.rdXml`, `S.rdHist` |
+| **Avarias** (`av*`, `AV_ST`) | aba própria: registro pela Busca/bipe com foto, volumes avariados (grade), 3 status (aguardando/tratativa/resolvido), solução (ressalva, devolvida, reposta, descartada, reentrega) | dentro de `S.divergencias` com `cat:'av'` — `dvSo()` esconde |
+| **Registro** (`rg*`) | foto de Recebimento (chegada) / Expedição (saída) de carreta + formulário (motorista, CPF, placas, romaneios, paletes, lacre) → WhatsApp | `S.registros` |
+| **Rotas** (`rota*`, `rot*`) | folha de rota do dia em PDF (placa/motorista/cidades por veículo, "CARRO 10" = motorista), publicada por admin ou Roteirizador (papel por usuário com gravação confirmada em `s:rotMarcas`), histórico por dia | `S.rotas`, `S.roteirizadores`, `S.rotMarcas` |
+
+**Ficou (não é aprendizado):** `etqPorCliente` — regra fixa: etiqueta cujo número não achou nada vira a nota do
+romaneio de hoje se cliente+cidade baterem com UMA só. `evaEtqSug`/`ores*` (sugestão e "Resolver" de bipe fora) ficam,
+sem gravar vínculo. `cpfFmt` (Cadastros) e a leitura de XML (`rdTexto`, `rdLerXml`, `rdN`…) ficaram porque a Operação usa.
+**Teste novo:** `testes/abas.js` passa por todas as abas como admin e conferente e acusa qualquer erro de código.
+**Bugs antigos achados pelo verificador (ESLint no-undef) e corrigidos:** `hora` não existia (cartão "✅ Resolvidos"
+quebrava; agora é função global), `OCR` em vez de `HS_OCR` na chave da DANFE por texto (nunca funcionava em aparelho
+sem leitor de código de barras — iPhone e computador), `nvAud` (não existe; auditoria é no banco), `geoDesenhar`→`desenharGeo`.
+**Verificador:** ESLint 8 com `no-undef` sobre os scripts do index (ver v10.6.01 nesta conversa) — rodar depois de cortar código.

@@ -23,6 +23,7 @@ O `index.html` tem ~2,3 MB (as partes pesadas ficam em `a/`, desde a v10.6.00). 
 - `node testes/idb.js` também tem que passar: valida a camada HSDB (IndexedDB) de verdade, subindo um
   servidor local (o Chromium só dá IndexedDB em http/https, não em `file://`). Cobre migração sem perda,
   persistência, união entre abas, sessão intacta e falha de gravação virando erro.
+- `node testes/abas.js` também: passa por todas as abas e acusa erro de código.
 - `node testes/partes.js` também: leitor de PDF, OCR, manual, malha e abertura sem internet (pasta `a/`).
 - Versão: `10.6.NN` — só os dois últimos dígitos sobem; o do meio só quando o Tiago pedir.
 - Antes dos testes, checar a sintaxe do script (um `\n` dentro de string quebra o app inteiro):
