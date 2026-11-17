@@ -1533,7 +1533,15 @@ root.LS=LS;
       res.push({o, x0:Math.min(...xs), x1:Math.max(...xs), y0:vp.height-Math.max(...ys), y1:vp.height-Math.min(...ys)}); }
     return res;
   }
-  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\uFFFD/g,'?');
+  /* v10.5.14: estas funcoes limpam/normalizam texto e sao chamadas dezenas de milhares de
+   vezes por bipe, sempre com os MESMOS valores (NF, pedido, horario). Guardar o resultado
+   ja calculado tira quase metade do tempo da bipagem. So guarda quando a entrada e texto,
+   para nao mudar em nada o comportamento com numero, nulo ou objeto. */
+function hsMemo1(f,maxLen){ const m=new Map(); const LIM=maxLen||160;
+  return function(v){ if(typeof v!=='string'||v.length>LIM) return f(v);
+    const t=m.get(v); if(t!==undefined||m.has(v)) return t;
+    const r=f(v); if(m.size>60000) m.clear(); m.set(v,r); return r; }; }
+const norm=hsMemo1(s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\uFFFD/g,'?'));
   const BASES={'001':'CAJ','002':'AQA','004':'DF'};
 
   async function parsePdf(pdfjs,data,dict,onProgress){
@@ -2352,8 +2360,14 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 const MOLDE=document.documentElement.cloneNode(true); // cópia limpa do próprio programa, usada para gerar o arquivo do WhatsApp
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const z=s=>String(s||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');
-const N=s=>RomEngine.norm(s).replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+/* v10.5.14: mesmo guardador de resultado do motor de romaneios, aqui no escopo global
+   para as funcoes de texto chamadas a cada bipe. */
+function hsMemo1(f,maxLen){ const m=new Map(); const LIM=maxLen||160;
+  return function(v){ if(typeof v!=='string'||v.length>LIM) return f(v);
+    const t=m.get(v); if(t!==undefined||m.has(v)) return t;
+    const r=f(v); if(m.size>60000) m.clear(); m.set(v,r); return r; }; }
+const z=hsMemo1(s=>String(s||'').replace(/\D/g,'').replace(/^0+(?=\d)/,''));
+const N=hsMemo1(s=>RomEngine.norm(s).replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim());
 const ICO={
   ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   no:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>',
@@ -4499,7 +4513,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.13', HS_DATA='17/11/2026';
+const HS_VERSAO='10.5.14', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4953,7 +4967,7 @@ const OP_FILA='healthSearch.op.fila', OP_LOCAL='healthSearch.op.dia.';
 const opOnline=()=>!!(NV&&NV.cli&&NV.user);
 const opAdmin=()=>!!(NV&&NV.perfil&&NV.perfil.papel==='admin');
 const opEu=()=>(NV&&NV.perfil&&(NV.perfil.nome||nvExibe(NV.user&&NV.user.email)))||'Este aparelho';
-const opK=v=>String(v||'').replace(/\D/g,'').replace(/^0+/,'');
+const opK=hsMemo1(v=>String(v||'').replace(/\D/g,'').replace(/^0+/,''));
 const OP_ST={ok:{t:'Conferido',c:'var(--ok)'},semnota:{t:'Sem nota',c:'var(--amar)'},fora:{t:'Fora do romaneio',c:'var(--no)'},dup:{t:'Duplicado',c:'#4F7CF7'}};
 
 /* ---------- tela ---------- */
@@ -5608,14 +5622,29 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 
 /* ---------- painel ---------- */
 function opEntrar(){ opXmlInfo(); $('#op-modo').checked=opPorVol(); if(OP.dia!==($('#op-dia').value||hojeISO())||!OP.bipes.length) opAbrirDia($('#op-dia').value||hojeISO()); else opRender(); opFila(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
+/* v10.5.14: antes, para CADA linha de CADA romaneio se varria a lista inteira de bipes.
+   Com milhares de linhas e milhares de bipes isso e multiplicacao, e o app travava a cada
+   bipe. Agora os bipes sao indexados por pedido e por NF uma vez, e a busca e direta.
+   O resultado e o mesmo: os bipes daquele pedido OU daquela NF, na ordem original. */
+function opBipIx(bs){ const P=new Map(), N=new Map();
+  for(let i=0;i<bs.length;i++){ const b=bs[i]; if(!b) continue;
+    if(b.ped){ let a=P.get(b.ped); if(!a) P.set(b.ped,a=[]); a.push(i); }
+    if(b.nf){ let a=N.get(b.nf); if(!a) N.set(b.nf,a=[]); a.push(i); } }
+  return {P,N,bs}; }
+function opBipsDe(ix,ped,nf){ const a=ped?ix.P.get(ped):null, c=nf?ix.N.get(nf):null;
+  if(!a&&!c) return [];
+  if(!c) return a.map(i=>ix.bs[i]);
+  if(!a) return c.map(i=>ix.bs[i]);
+  const u=new Set(a); for(const i of c) u.add(i);
+  return [...u].sort((x,y)=>x-y).map(i=>ix.bs[i]); }
 function opVisiveis(){ return OP.usuario?OP.bipes.filter(b=>b.usuario===OP.usuario):OP.bipes; }
 /* v9.26.1 · uma nota conta uma vez só: repetida em dois romaneios conta no primeiro,
    e o que foi tirado da operação (checkbox dos romaneios) ou pela simulação não conta. */
  const opNotaK=x=>{ const nf=opK(x&&x.nf), ped=opK(x&&x.ped); return nf?('N'+nf):(ped?('P'+ped):''); };
  function opForaFiltro(x){ try{ if(simFora(x)) return true; }catch(e){} try{ const k=nexK(x); if(k&&nexS().fora[k]) return true; }catch(e){} return false; }
- function opPendentes(){ if(OP.dia!==hojeISO()) return []; const opVistoK=new Set(); const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[];
+ function opPendentes(){ if(OP.dia!==hojeISO()) return []; const opVistoK=new Set(); const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const _bix=opBipIx(bs); const out=[];
   for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; const esp=volNum(x.vol); if(esp===0) continue; if(opForaFiltro(x)) continue; const _nk=opNotaK(x); if(_nk){ if(opVistoK.has(_nk)) continue; opVistoK.add(_nk); }
-    const lidos=opLidosBips(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf))); const fa=opFaltaAnt(ped,nf); const espF=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
+    const lidos=opLidosBips(opBipsDe(_bix,ped,nf)); const fa=opFaltaAnt(ped,nf); const espF=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
     if(lidos<espF) out.push({r,x,ped,nf,esp:espF,lidos,valor:opValor(ped,nf,x),falta:fa}); }
   return out.sort((a,b)=>b.valor-a.valor); }
 /* falta de volume: nota conferida pela metade hoje fica registrada; se voltar outro dia, é a caixa que faltou */
@@ -5623,7 +5652,7 @@ const opFk=(ped,nf)=>z(nf)||(ped?'P'+z(ped):'');
 const opPorVol=()=>S.opPorVolume===true; /* v7.9.18: desligado de fábrica — 1 bipe já tira a nota da lista de falta (as caixas continuam contando 1/4, 2/4…) */
 function opFaltaAnt(ped,nf){ if(!opPorVol()) return null; const F=S.opFaltas||{}; const e=F[z(nf)]||(ped&&F['P'+z(ped)])||(ped&&Object.values(F).find(x=>x.ped&&x.ped===z(ped)))||null; return e&&e.d<hojeISO()?e:null; }
 function opRegFaltas(){ if(OP.dia!==hojeISO()||!opPorVol()) return; S.opFaltas=S.opFaltas||{}; const antes=JSON.stringify(S.opFaltas), hoje=hojeISO();
-  const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'); const lidosDe=(ped,nf)=>opLidosBips(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)));
+  const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'); const _bix=opBipIx(bs); const lidosDe=(ped,nf)=>opLidosBips(opBipsDe(_bix,ped,nf));
   for(const r of S.romaneios||[]) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf), k=opFk(ped,nf); if(!k) continue; const esp=volNum(x.vol)||1, lidos=lidosDe(ped,nf), ant=opFaltaAnt(ped,nf);
     if(ant){ const falt=Math.max(1,ant.esp-ant.lidos); if(lidos>=falt){ delete S.opFaltas[opFk(ant.ped,ant.nf)]; toast(`✔ NF ${nf||'—'}: chegaram os ${falt} volume(s) que faltavam. Nota completa.`); } continue; }
     if(lidos>0&&lidos<esp) S.opFaltas[k]={d:hoje,nf,ped,esp,lidos,dest:x.dest||'',rem:x.rem||''}; else if(S.opFaltas[k]&&S.opFaltas[k].d===hoje) delete S.opFaltas[k]; }
@@ -5643,8 +5672,13 @@ function opRenderLista(){ const el=$('#op-lista'); if(!el) return; const q=($('#
     return; }
   const lista=opVisiveis().filter(b=>OP.filtro==='todos'||(OP.filtro==='prob'?['semnota','fora','dup'].includes(b.status):b.status===OP.filtro)).filter(b=>cas([b.ped,b.nf,b.dest,b.cid,b.usuario,b.romaneio,b.codigo].join(' ')));
   $('#op-tit-lista').textContent=OP.filtro==='todos'?'Bipes':OP.filtro==='prob'?'Problemas: sem nota, fora do romaneio e duplicados':OP_ST[OP.filtro].t;
-  const hora=iso=>{ const d=new Date(iso); return isNaN(d)?'':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
-  el.innerHTML=lista.length?`<table class="op-tab"><thead><tr><th>Hora</th><th>Situação</th><th>Pedido</th><th>NF</th><th>Vol.</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Romaneio</th><th class="m-oc">Cliente / cidade</th><th>Usuário</th>${opAdmin()?'<th></th>':''}</tr></thead><tbody>${lista.slice(0,1500).map(b=>`<tr data-lid="${esc(b.local_id||b.id||'')}"><td>${hora(b.criado_em)}</td><td class="st" style="color:${(OP_ST[b.status]||OP_ST.fora).c}">${(OP_ST[b.status]||OP_ST.fora).t}</td><td>${esc(b.ped||'')}</td><td>${esc(b.nf||'—')}</td><td>${b.vol&&b.tot?b.vol+'/'+b.tot:(b.tot?b.tot+' vol.':'')}</td><td>${opCtHtml(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod)}</td><td>${opValHtml(+b.valor||opValor(b.ped,b.nf))}</td><td class="m-oc">${esc(b.romaneio||'')}</td><td class="m-oc">${esc([b.dest,b.cid].filter(Boolean).join(' · '))}</td><td>${esc(b.usuario||'')}</td>${opAdmin()?`<td><button class="op-x" type="button" title="Apagar" data-del="${esc(b.id||b.local_id)}">✕</button></td>`:''}</tr>`).join('')}</tbody></table>`:`<div class="vazio-lista">${OP.carregando?'Carregando…':'Nenhum bipe aqui ainda.'}</div>`; }
+  const hora=hsMemo1(iso=>{ const d=new Date(iso); return isNaN(d)?'':d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); });
+  el.innerHTML=lista.length?`<table class="op-tab"><thead><tr><th>Hora</th><th>Situação</th><th>Pedido</th><th>NF</th><th>Vol.</th><th>Conteúdo</th><th>Valor</th><th class="m-oc">Romaneio</th><th class="m-oc">Cliente / cidade</th><th>Usuário</th>${opAdmin()?'<th></th>':''}</tr></thead><tbody>${lista.slice(0,opListaMax()).map(b=>`<tr data-lid="${esc(b.local_id||b.id||'')}"><td>${hora(b.criado_em)}</td><td class="st" style="color:${(OP_ST[b.status]||OP_ST.fora).c}">${(OP_ST[b.status]||OP_ST.fora).t}</td><td>${esc(b.ped||'')}</td><td>${esc(b.nf||'—')}</td><td>${b.vol&&b.tot?b.vol+'/'+b.tot:(b.tot?b.tot+' vol.':'')}</td><td>${opCtHtml(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod)}</td><td>${opValHtml(+b.valor||opValor(b.ped,b.nf))}</td><td class="m-oc">${esc(b.romaneio||'')}</td><td class="m-oc">${esc([b.dest,b.cid].filter(Boolean).join(' · '))}</td><td>${esc(b.usuario||'')}</td>${opAdmin()?`<td><button class="op-x" type="button" title="Apagar" data-del="${esc(b.id||b.local_id)}">✕</button></td>`:''}</tr>`).join('')}</tbody></table>${lista.length>opListaMax()?`<div class="op-mais"><button class="btn mini" type="button" id="op-ver-tudo">Mostrando os ${opListaMax()} bipes mais recentes de ${fmtN(lista.length)} — ver todos</button></div>`:''}`:`<div class="vazio-lista">${OP.carregando?'Carregando…':'Nenhum bipe aqui ainda.'}</div>`;
+  const vt=$('#op-ver-tudo'); if(vt) vt.onclick=()=>{ OP.verTudo=true; opRenderLista(); }; }
+/* v10.5.14: a tela redesenhava a lista INTEIRA de bipes a cada bipe. No fim do turno,
+   com centenas de bipes, era esse desenho que fazia o bipe demorar. Mostra os mais
+   recentes e deixa o resto a um clique — a exportacao e os relatorios usam tudo. */
+function opListaMax(){ return OP.verTudo?3000:120; }
 function opCSV(){ const linhas=[['Data','Hora','Situação','Pedido','NF','Volume','Total','Pallet','Romaneio','Cliente','Cidade','Usuário','Código lido','Conteúdo','Valor (R$)']];
   for(const b of opVisiveis()){ const d=new Date(b.criado_em); linhas.push([b.dia,d.toLocaleTimeString('pt-BR'),(OP_ST[b.status]||OP_ST.fora).t,b.ped,b.nf,b.vol||'',b.tot||'',b.pallet||'',b.romaneio,b.dest,b.cid,b.usuario,b.codigo,opCtTexto(b.conteudo||(opConteudo(b.ped,b.nf)||{}).cod),String((+b.valor||opValor(b.ped,b.nf)).toFixed(2)).replace('.',',')]); }
   if(OP.dia===hojeISO()) for(const it of opPendentes()) linhas.push([OP.dia,'','Não bipado',it.ped,it.nf,it.lidos,it.esp,'',it.r.numero,it.x.dest,it.x.cid,'','',opCtTexto((opConteudo(it.ped,it.nf)||{}).cod),String(it.valor.toFixed(2)).replace('.',',')]);
@@ -6588,9 +6622,9 @@ opIndice=function(){ const ped=new Map(), nf=new Map();
   for(const r of opRomsDoDia()) for(const x of r.rows||[]){ const it={r,x};
     const p=opK(x.ped), n=opK(x.nf); if(p){ if(!ped.has(p)) ped.set(p,[]); ped.get(p).push(it); } if(n){ if(!nf.has(n)) nf.set(n,[]); nf.get(n).push(it); } }
   return {ped,nf}; };
-opPendentes=function(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const out=[], visto=new Set(), vistoN=new Set();
+opPendentes=function(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filter(b=>b.status==='ok'||b.status==='semnota'||b.status==='dup'); const _bix=opBipIx(bs); const out=[], visto=new Set(), vistoN=new Set();
   for(const r of opRomsDoDia()) for(const x of r.rows||[]){ const ped=opK(x.ped), nf=opK(x.nf); if(!ped&&!nf) continue; if(r.numero==='XML'&&visto.has(nf)) continue; if(nf) visto.add(nf); const esp=volNum(x.vol); if(esp===0) continue; if(opForaFiltro(x)) continue; const _nk=opNotaK(x); if(_nk){ if(vistoN.has(_nk)) continue; vistoN.add(_nk); }
-    const lidos=opLidosBips(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf))); const fa=opFaltaAnt(ped,nf); const espF=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
+    const lidos=opLidosBips(opBipsDe(_bix,ped,nf)); const fa=opFaltaAnt(ped,nf); const espF=!opPorVol()?1:fa?Math.max(1,fa.esp-fa.lidos):(esp||1);
     if(lidos<espF) out.push({r,x,ped,nf,esp:espF,lidos,valor:opValor(ped,nf,x),falta:fa}); }
   return out.sort((a,b)=>b.valor-a.valor); };
 
@@ -10263,8 +10297,8 @@ function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestor
 function gsFotoMontar(){ try{
   const dia=hojeISO(); const roms=(typeof opRomsDoDia==='function')?opRomsDoDia():((S.romaneios||[]).filter(r=>opDiaRom(r)===dia));
   if(!roms.length) return null;
-  const bs=((OP&&OP.bipes)||[]).filter(b=>b&&(b.status==='ok'||b.status==='semnota'||b.status==='dup'));
-  const lidosDe=(ped,nf)=>opLidosBips(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)));
+  const bs=((OP&&OP.bipes)||[]).filter(b=>b&&(b.status==='ok'||b.status==='semnota'||b.status==='dup')); const _bix=opBipIx(bs);
+  const lidosDe=(ped,nf)=>opLidosBips(opBipsDe(_bix,ped,nf));
   const c=gsContar(roms,lidosDe,gsDvDoDia(dia),gsAjLer(dia),((S.gsSnap||{})[dia]||{}).fora);
   if(!c.tn) return null;
   let dvs=0; try{ dvs=(dvSo()||[]).filter(d=>String(d.d||'').slice(0,10)===dia).length; }catch(e){}
@@ -10608,7 +10642,8 @@ async function gsFotoDeDiaPassado(dia){
     const madr=(await gsBipesDia(dp)).filter(b=>{ if(!b||!(b.status==='ok'||b.status==='semnota'||b.status==='dup')) return false;
       const t=new Date(b.criado_em||0); return !isNaN(t)&&t.getHours()<6; });
     if(madr.length) bs=bs.concat(madr); }catch(e){}
-  const lidosDe=(ped,nf)=>opLidosBips(bs.filter(b=>(ped&&b.ped===ped)||(nf&&b.nf===nf)));
+  const _bix=opBipIx(bs);
+  const lidosDe=(ped,nf)=>opLidosBips(opBipsDe(_bix,ped,nf));
   const c=gsContar(roms,lidosDe,gsDvDoDia(dia),gsAjLer(dia),((S.gsSnap||{})[dia]||{}).fora);
   if(!c.tn) return null;
   let dvs=0; try{ dvs=(dvSo()||[]).filter(d=>String(d.d||'').slice(0,10)===dia).length; }catch(e){}
@@ -12649,6 +12684,29 @@ setInterval(()=>{ try{ simAvisos(); }catch(e){} },5000);
   /* o botão guardava a função antiga, amarrada no início */
   try{ const b=document.getElementById('rb-zerar'); if(b) b.onclick=()=>rbZerarTudo(); }catch(e){}
 })();
+/* v10.5.14: durante UM desenho de tela, opPendentes/opPorRom eram recalculados varias
+   vezes (cartoes, lista, chips de romaneio, painel por romaneio) — cada vez varrendo
+   todas as linhas de todos os romaneios. Dentro de um mesmo desenho nada muda, entao o
+   resultado e reaproveitado e o cache morre no fim da tarefa atual. Nunca atravessa um
+   bipe: na duvida, recalcula. */
+(function(){ try{
+  let ativo=false, pend=new Map(), porRom=null;
+  /* limpa SEMPRE que um desenho comeca: o reaproveitamento vale dentro de um desenho so,
+     nunca de um bipe para o outro (ja apanhei por isso aqui mesmo). */
+  const abrir=()=>{ pend.clear(); porRom=null; ativo=true;
+    Promise.resolve().then(()=>{ ativo=false; pend.clear(); porRom=null; }); };
+  const _pend=opPendentes;
+  opPendentes=function(){ if(!ativo) return _pend.apply(this,arguments);
+    const k=OP&&OP._semFiltro?'s':'n'; let r=pend.get(k);
+    if(!r){ r=_pend.apply(this,arguments); pend.set(k,r); }
+    return Array.isArray(r)?r.slice():r; };
+  const _porRom=opPorRom;
+  opPorRom=function(){ if(!ativo) return _porRom.apply(this,arguments);
+    if(!porRom) porRom=_porRom.apply(this,arguments);
+    return Array.isArray(porRom)?porRom.slice():porRom; };
+  const _render=opRender;
+  opRender=function(){ abrir(); return _render.apply(this,arguments); };
+}catch(e){ console.error('cache de desenho:',e); } })();
 </script>
 
 <!-- Leitor de fotos (OCR) embutido para funcionar sem internet:
