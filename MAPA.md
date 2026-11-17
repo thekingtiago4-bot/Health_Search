@@ -435,3 +435,23 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   apagada; o aviso "Reentregas detectadas" e a reentrega rápida da Busca não preenchem mais o motivo com a divergência
   nem marcam `d.reent`; `nexParaReentrega` recusa motivo de divergência (devolve `null`); digitar divergência na tabela
   é recusado na fase de captura. Regra única: `reEhDivergencia(l)` = /DIVERGENCIA|ERA DIVERG|AVARIA AV\W?\d/ em obs/motivo ("AVARIA" sozinho continua motivo normal).
+
+## v10.6.04 (17/11/2026) — segurança e o fluxo "caixa d'água" sem goteira
+- **Cargo protegido no banco**: migração `2026-11-17-001-cargos-so-admin.sql` põe `s:cargos` (e `s:zapGrupo`,
+  `s:evaEnsino`, `s:evaVisual`, que o app já tratava como só-admin) em `hs_chave_admin`. A regra de escrita do
+  `hs_sync` (blindagem v7.0.0) já usa essa função; a migração confere e falha se a regra não existir.
+  No app, `NUV_SO_ADMIN` faz o não-admin nem tentar subir `s:cargos` (senão a bolinha ficava vermelha).
+- **Recarregar seguro** (`hsRecarregar`, bloco HSDB): os 12 `location.reload()` esperam o IndexedDB confirmar
+  (`LS.assentar`, máx. 4 s) e avisam o `beforeunload` (`__hsRecarregando`). Antes, "internet voltou → recarrega"
+  podia levar o último bipe/registro que ainda estava sendo gravado.
+- **Prazo no banco** (`hsFetchComPrazo`, 60 s, no `createClient` via `global.fetch`): rede "pendurada" deixava
+  `opEnviando` (fila de bipes) e `NUV.rodando` (sincronização) presos para sempre.
+- **Divergência mexida em dois aparelhos**: `nuvJuntar('dv:*')` continua com o estado mais novo, mas junta o
+  **histórico** dos dois lados e avisa quando houve mexida simultânea.
+- **Foto de avaria no aparelho**: deixou de ser problema — a aba Avarias saiu (v10.6.01) e o armazenamento é
+  IndexedDB desde a v10.3.0 (centenas de MB). Nada novo grava foto em `S`.
+- **Caixa d'água (revisado)**: bipe → fila no aparelho (IndexedDB) → `opFila` no `online`, a cada rodada e no
+  `visibilitychange`; banco não duplica (`local_id` único + `ignoreDuplicates`). Cadastro → `nuvSujo` → `nuvSinc`
+  no `online`/30 s/`visibilitychange`/`pagehide`; o que mudou é achado por hash (`NUV.h`, guardado), então até com o
+  app fechado sem internet sobe na próxima abertura. Depois de subir: `nuvPing` + canais ao vivo com religação
+  (v10.2.6/v10.4.0) e `opPuxarDia` de 45 s atualizam a porcentagem em todos.

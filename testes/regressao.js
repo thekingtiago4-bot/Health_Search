@@ -641,6 +641,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(z3.espelho===0,'reentregas: a lista velha de motivos voltou pela junção ('+z3.espelho+')');
     ok(z3.obrig&&z3.aindaObrig,'reentregas: a janela de motivos novos tem que aparecer e não fechar no Esc');
     ok(z3.motivos==='CLIENTE AUSENTE'&&z3.fechou,'reentregas: motivo novo grava e "divergência" não entra como motivo ('+z3.motivos+')'); }
+  /* v10.6.04: divergência mexida em dois aparelhos — histórico dos dois lados fica; recarregar espera o disco */
+  { const c4=await p.evaluate(()=>{ const a={id:'x',n:7,st:'aberta',d:'2026-11-10',hist:[{em:'2026-11-10T10:00:00Z',t:'Criada',por:'A'},{em:'2026-11-10T11:00:00Z',t:'Mudou o dia',por:'A'}]};
+      const b={id:'x',n:7,st:'resolvida',d:'2026-11-09',hist:[{em:'2026-11-10T10:00:00Z',t:'Criada',por:'A'},{em:'2026-11-10T12:00:00Z',t:'Resolvida',por:'B'}]};
+      const j=nuvJuntar('dv:x',a,b); return {st:j.st,n:j.hist.length,t:j.hist.map(x=>x.t).join('>'),rec:typeof hsRecarregar,prazo:typeof hsFetchComPrazo}; });
+    ok(c4.st==='resolvida'&&c4.n===3&&c4.t==='Criada>Mudou o dia>Resolvida','conflito: o histórico dos dois aparelhos tinha que ficar ('+c4.st+' · '+c4.t+')');
+    ok(c4.rec==='function'&&c4.prazo==='function','recarregar seguro / prazo do banco não existem'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */

@@ -1333,7 +1333,7 @@ async function migrar(d){ const ks=[]; for(let i=0;i<real.length;i++){ const k=r
 function telaTravada(msg){ try{ if(document.getElementById('hsdb-trava')) return; const f=document.createElement('div'); f.id='hsdb-trava';
     f.style.cssText='position:fixed;inset:0;z-index:99999;background:#0b1220;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;font:16px/1.5 system-ui,sans-serif;text-align:center';
     f.innerHTML='<div style="max-width:460px"><h2 style="margin:0 0 10px">Não consegui abrir os dados deste aparelho</h2><p>'+msg+'</p><p><b>Nada foi apagado.</b> Feche o Health Search por completo e abra de novo. Estou tentando sozinho enquanto isso.</p><p><button type="button" id="hsdb-de-novo" style="font:inherit;padding:10px 18px;border-radius:10px;border:0;background:#2f9e44;color:#fff;cursor:pointer">Tentar de novo</button></p><p style="margin-top:22px;font-size:13px;opacity:.8">Se não voltar de jeito nenhum: <a href="#" id="hsdb-sem" style="color:#9ec5fe">continuar sem os dados guardados aqui</a> — o app baixa tudo de novo do banco online depois do login.</p></div>';
-    (document.body||document.documentElement).appendChild(f); f.querySelector('#hsdb-de-novo').onclick=()=>location.reload(); }catch(e){} }
+    (document.body||document.documentElement).appendChild(f); f.querySelector('#hsdb-de-novo').onclick=()=>hsRecarregar(); }catch(e){} }
 async function iniciar(){
   if(!real){ modo='ls'; return; }
   const atraso=+root.__HSDB_ATRASO||0; if(atraso) await new Promise(r=>setTimeout(r,atraso)); /* só para teste */
@@ -1375,6 +1375,17 @@ function depois(){ pronto=true; diag.modo=modo; uniao=null;
 }
 LS.pronto=iniciar().catch(e=>{ diag.erro='início: '+(e&&e.message||e); if(modo!=='idb'){ modo=temMarca?'idb':'ls'; } }).then(depois);
 root.LS=LS;
+/* v10.6.04: recarregar SEM perder a última gravação. A gravação no IndexedDB é assíncrona: recarregar a página
+   no meio dela (internet voltou, versão nova, botão) podia levar o último bipe/registro junto. Aqui espera o disco
+   confirmar (no máximo 4 s) e só então recarrega; e avisa o "beforeunload" que é o próprio app recarregando. */
+root.hsRecarregar=function(){ if(root.__hsRecarregando) return; root.__hsRecarregando=true;
+  const fim=()=>{ try{ location.reload(); }catch(e){} };
+  Promise.race([LS.assentar().catch(()=>{}),new Promise(r=>setTimeout(r,4000))]).then(fim,fim); };
+/* v10.6.04: prazo em toda conversa com o banco. Celular com sinal ruim às vezes deixa o envio "pendurado" para
+   sempre: a fila de bipes (opEnviando) e a sincronização (NUV.rodando) ficavam presas e nunca mais tentavam.
+   Com o prazo, a tentativa é cancelada em 60 s, cai no erro e a próxima rodada (30–45 s) tenta de novo. */
+root.hsFetchComPrazo=function(url,op){ op=op||{}; if(op.signal) return fetch(url,op); const c=new AbortController(); const t=setTimeout(()=>c.abort(),60000);
+  return fetch(url,Object.assign({},op,{signal:c.signal})).finally(()=>clearTimeout(t)); };
 })(window);
 
 </script>
@@ -4123,7 +4134,7 @@ async function nvOffline(){ const r=await _stInit(); let em=''; try{ em=LS.getIt
   setTimeout(()=>{ const b=document.createElement('span'); b.id='nv-offline'; b.style.cssText='display:inline-block;margin:2px 0 0;background:#B45309;color:#fff;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;cursor:help';
     b.textContent='📴 Sem internet — mostrando a última cópia'+(em?' de '+new Date(em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'. Mapa e consultas funcionam; o que os colegas mudaram chega quando a conexão voltar.';
     b.title=b.textContent; b.textContent='📴 sem internet'+(em?' · cópia de '+new Date(em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''); const ns=document.getElementById('nuv-st'); if(ns&&ns.parentNode){ ns.insertAdjacentElement('afterend',b); b.style.marginLeft='6px'; } else { b.style.cssText+=';position:fixed;left:12px;bottom:12px;z-index:1300'; document.body.appendChild(b); } },800);
-  window.addEventListener('online',()=>{ toast('Internet de volta: atualizando…'); setTimeout(()=>location.reload(),1200); },{once:true});
+  window.addEventListener('online',()=>{ toast('Internet de volta: atualizando…'); setTimeout(()=>hsRecarregar(),1200); },{once:true});
   return r; }
 /* v7.1.0: senha forte */
 function senhaFraca(sn,usuario){ sn=String(sn||''); if(sn.length<10) return 'A senha precisa ter pelo menos 10 caracteres.'; if(!/[a-z]/.test(sn)||!/[A-Z]/.test(sn)) return 'Use letras maiúsculas e minúsculas na senha.'; if(!/\d/.test(sn)) return 'Coloque pelo menos um número na senha.'; if(!/[^A-Za-z0-9]/.test(sn)) return 'Coloque pelo menos um símbolo na senha (ex.: ! @ # $).';
@@ -4134,7 +4145,7 @@ Store.init=async function(){
   if(lerPacote()){ const r=await _stInit(); try{ await nvEntrarPacote(); }catch(e){ console.error(e); } return r; } // cópia do WhatsApp: dados do arquivo, mas entra com usuário liberado
   let cfg=nvCfg(); if(!cfg) cfg=await nvConfigurar(); if(!cfg) return _stInit();
   try{ await nvLib(); }catch(e){ return nvOffline(); }
-  NV.cli=window.supabase.createClient(cfg.url,cfg.chave,{auth:{persistSession:true,storageKey:'hs-sessao'}}); NV.cfg=cfg;
+  NV.cli=window.supabase.createClient(cfg.url,cfg.chave,{auth:{persistSession:true,storageKey:'hs-sessao'},global:{fetch:(...a)=>hsFetchComPrazo(...a)}}); NV.cfg=cfg;
   if(/type=recovery/.test(location.hash)) await nvNovaSenha();
   for(;;){ const {data}=await NV.cli.auth.getSession(); NV.user=data.session?data.session.user:await nvLogin();
     if(!data.session&&!navigator.onLine) return nvOffline();
@@ -4194,7 +4205,7 @@ function atualizarBotoesAdmin(){
 }
 
 function nvUI(){ const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||NV.user.email)}</b><small>${NV.perfil.papel==='admin'?'Administrador':NV.perfil.papel==='gestor'?'Gestor':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
-  $('#nv-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
+  $('#nv-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); hsRecarregar(); };
   const nb=document.querySelector('.nav [data-tela="usuarios"]'); if(nb) nb.hidden=NV.perfil.papel!=='admin'; const ng=document.getElementById('nav-grupo-adm'); if(ng) ng.hidden=NV.perfil.papel!=='admin';
   atualizarBotoesAdmin();
   const _r=renderResumo; renderResumo=function(){ _r(); nvSelo('Salvo online'); }; }
@@ -4502,7 +4513,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.03', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.04', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4518,7 +4529,7 @@ const HS_VERSAO='10.6.03', HS_DATA='17/11/2026';
     }catch(e){}
     /* endereco novo a cada vez: o aparelho nao tem como servir uma copia velha dele */
     try{ const u=new URL(location.href); u.searchParams.set('v',Date.now().toString(36)); location.replace(u.toString()); return; }catch(e){}
-    location.reload(); }
+    hsRecarregar(); }
   $('#app-att-ok').onclick=atualizarAgora;
   document.addEventListener('click',async e=>{ if(!(e.target.closest&&e.target.closest('#app-ver-bt'))) return;
     const b=e.target.closest('#app-ver-bt'); b.disabled=true; const t=b.textContent; b.textContent='Procurando…';
@@ -4690,12 +4701,12 @@ async function nvCopias(){ const el=$('#nv-bk'); if(!el||Store.modo!=='nuvem') r
 document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t.closest('#t-usuarios')) return; let b;
   if(t.id==='nv-bk-ver') return nvCopias();
   if((b=t.closest('[data-nv-rest]'))){ if(!await confirmar('Restaurar a cópia de '+b.dataset.em+'?','Todos os dados (romaneios, reentregas, agendamentos, regiões) voltam como estavam nesse momento, para todos os usuários. O estado atual vira uma cópia, então dá para voltar.','Restaurar')) return;
-    const {error}=await NV.cli.rpc('hs_restaurar_copia',{p_id:+b.dataset.nvRest}); if(error){ toast('Não restaurei: '+nvTraduz(error.message)); return; } toast('Cópia restaurada. Recarregando…'); setTimeout(()=>location.reload(),900); } });
+    const {error}=await NV.cli.rpc('hs_restaurar_copia',{p_id:+b.dataset.nvRest}); if(error){ toast('Não restaurei: '+nvTraduz(error.message)); return; } toast('Cópia restaurada. Recarregando…'); setTimeout(()=>hsRecarregar(),900); } });
 { const _ru=renderUsuarios; renderUsuarios=async function(){ await _ru(); nvCopias(); }; }
 
 /* sai sozinho depois de 4 horas sem uso (computador compartilhado) */
 (function(){ const LIM=Infinity; /* v6.3.4: com o app aberto fica logado; fechado, sai após 1 hora */ let ult=Date.now(); ['click','keydown','pointermove','touchstart'].forEach(ev=>addEventListener(ev,()=>{ ult=Date.now(); },{passive:true}));
-  setInterval(async()=>{ if(Store.modo==='nuvem'&&NV.cli&&Date.now()-ult>LIM){ await NV.cli.auth.signOut({scope:'local'}); location.reload(); } },60000); })();
+  setInterval(async()=>{ if(Store.modo==='nuvem'&&NV.cli&&Date.now()-ult>LIM){ await NV.cli.auth.signOut({scope:'local'}); hsRecarregar(); } },60000); })();
 
 /* não deixa outro site abrir o Health Search escondido dentro dele */
 if(/github\.io$/.test(location.hostname)&&window.top!==window.self){ try{ window.top.location=location.href; }catch(e){ document.body.innerHTML=''; } }
@@ -5680,7 +5691,7 @@ function opCSV(){ const linhas=[['Data','Hora','Situação','Pedido','NF','Volum
 async function nvEntrarPacote(){
   const cfg=nvCfg(); if(!cfg) return;
   for(;;){ try{ await nvLib(); break; }catch(e){ const f=nvTela(`<h2>Sem internet</h2><p>Para usar o Health Search é preciso entrar com seu usuário. Conecte-se à internet e tente de novo.</p><div class="nv-bts"><button class="btn pri" type="button">Tentar de novo</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); } }
-  NV.cli=window.supabase.createClient(cfg.url,cfg.chave,{auth:{persistSession:true,storageKey:'hs-sessao'}}); NV.cfg=cfg;
+  NV.cli=window.supabase.createClient(cfg.url,cfg.chave,{auth:{persistSession:true,storageKey:'hs-sessao'},global:{fetch:(...a)=>hsFetchComPrazo(...a)}}); NV.cfg=cfg;
   for(;;){ const {data}=await NV.cli.auth.getSession(); NV.user=data.session?data.session.user:await nvLogin();
     /* v9.26.8 · antes, qualquer tropeço aqui virava "Aguardando liberação" e escondia o motivo de verdade */
     let erroPerfil=null; try{ NV.perfil=await nvPerfil(); }catch(e){ NV.perfil=null; erroPerfil=e; }
@@ -5698,7 +5709,7 @@ async function nvEntrarPacote(){
     const f=nvTela(`<h2>${tit}</h2><p>${txt}</p>${det?`<p class="sub" style="font-size:.82rem;opacity:.8">${det}</p>`:''}<div class="nv-bts"><button class="btn pri" type="button">Tentar de novo</button></div>`); await new Promise(r=>f.querySelector('button').onclick=r); }
   nvFechar(); NV.pacote=true;
   const box=$('.resumo'); if(box&&!$('#nv-eu')) box.insertAdjacentHTML('afterbegin',`<div id="nv-eu"><span><b>${esc(NV.perfil.nome||nvExibe(NV.user.email))}</b><small>${NV.perfil.papel==='admin'?'Administrador':NV.perfil.papel==='gestor'?'Gestor':'Usuário'}</small></span><button type="button" id="nv-sair" title="Sair">Sair</button></div>`);
-  const s=$('#nv-sair'); if(s) s.onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
+  const s=$('#nv-sair'); if(s) s.onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); hsRecarregar(); };
   atualizarBotoesAdmin(); }
 
 /* ================= v6.3.1 · histórico por PEDIDO e por reentrega lançada → alerta de reentrega (romaneio, bipe e mural) ================= */
@@ -6953,7 +6964,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     /* 2) sobe o que mudou aqui */
     const sobe=[]; const eu=opEu(); const agora=nuvLocal();
     if(nvAdmin()&&NUV.aal==null){ try{ const {data:al}=await NV.cli.auth.mfa.getAuthenticatorAssuranceLevel(); NUV.aal=al&&al.currentLevel||''; }catch(e){ NUV.aal=''; } }
-    const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>(k==='s:geo'&&!NUV.publicarGeo)||(!admOk&&NUV_ADMIN.has(k)); /* v9.2.0: mapa só sobe pelo 📤 Publicar mapa */
+    const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>(k==='s:geo'&&!NUV.publicarGeo)||(!admOk&&NUV_ADMIN.has(k))||(!nvAdmin()&&NUV_SO_ADMIN.has(k)); /* v10.6.04: cargo só o admin sobe (o banco recusa dos outros) */ /* v9.2.0: mapa só sobe pelo 📤 Publicar mapa */
     if(nvAdmin()&&!admOk&&[...agora.keys()].some(k=>NUV_ADMIN.has(k)&&NUV.h[k]!==nuvHash(agora.get(k).valor))) NUV.avisoAal='Suas alterações em regiões/Correção estão guardadas neste aparelho, mas só vão para o banco depois que você entrar com a verificação em 2 etapas (saia e entre de novo).'; for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
     for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)&&(!k.startsWith('dv:')||(NUV.apagar&&NUV.apagar.has(k)))) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
     if(NUV.temAp) for(const r of sobe) r.ap=nuvApTab();
@@ -7023,6 +7034,8 @@ function nuvMesclar(l,r){ if(Array.isArray(l)&&Array.isArray(r)){ const ch=x=>x&
 { const NM=window.HS_NOMES, _ns=NM&&NM.salvar; if(typeof _ns==='function') NM.salvar=function(...a){ const r=_ns.apply(NM,a); nuvAgendar(); return r; }; }
 
 /* v6.9.0: chaves que só o admin grava + atualização ao vivo */
+/* v10.6.04: só o admin grava, mesmo sem a verificação em 2 etapas (o banco confere por hs_chave_admin) */
+const NUV_SO_ADMIN=new Set(['s:cargos']);
 const NUV_ADMIN=new Set(['s:geo','s:aprendidos','s:cidAlias','s:cidAtend','s:geoRuas','s:txtFix','ls:xlNomes']);
 /* v10.4.0: o canal do ping (avisa os outros aparelhos ao vivo sobre divergência/reentrega/ajuste) agora
    RELIGA sozinho quando cai — igual ao canal de bipes na v10.2.6. Antes, se o canal caísse (tela bloqueada,
@@ -7341,7 +7354,7 @@ async function nvMfa(){ const M=NV.cli.auth.mfa; if(!M) return;
       const {data:en,error:ee}=await M.enroll({factorType:'totp',friendlyName:'Health Search '+new Date().toISOString().slice(0,16)}); if(ee) throw ee; fid=en.id; qr=en.totp.qr_code; seg=en.totp.secret; }
     await new Promise(res=>{ const f=nvTela(`<h2>🔐 Verificação em 2 etapas</h2>${qr?`<p>Administrador precisa de uma segunda proteção. Instale o <b>Google Authenticator</b> ou <b>Microsoft Authenticator</b> no celular, toque em “+” e leia este QR Code:</p><div style="text-align:center;margin:10px 0"><img src="${qr}" alt="QR Code" style="width:200px;height:200px;background:#fff;padding:8px;border-radius:10px"></div><p style="font-size:13px">Sem câmera? Digite a chave: <code style="user-select:all;word-break:break-all">${esc(seg)}</code></p>`:'<p>Abra o app autenticador no celular e digite o código de 6 dígitos do Health Search.</p>'}
       <form id="nv-mfa"><label>Código de 6 dígitos<input id="nv-mfa-c" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></label><div class="nv-msg"></div><div class="nv-bts"><button class="btn mini" type="button" id="nv-mfa-sair">Sair</button><button class="btn pri grande" type="submit">Confirmar</button></div></form>`);
-      f.querySelector('#nv-mfa-c').focus(); f.querySelector('#nv-mfa-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
+      f.querySelector('#nv-mfa-c').focus(); f.querySelector('#nv-mfa-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); hsRecarregar(); };
       f.querySelector('#nv-mfa').onsubmit=async e=>{ e.preventDefault(); nvMsg(f,'Conferindo…'); const code=f.querySelector('#nv-mfa-c').value.trim();
         const {data:ch,error:ec}=await M.challenge({factorId:fid}); if(ec){ nvMsg(f,nvTraduz(ec.message),1); return; }
         const {error:ev}=await M.verify({factorId:fid,challengeId:ch.id,code}); if(ev){ nvMsg(f,'Código errado ou vencido. Use o código que está aparecendo agora no app.',1); return; }
@@ -10059,7 +10072,7 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[d
 setInterval(()=>{ try{ pendFaixa(); if(NUV.sujo&&opOnline()&&!NUV.rodando) nuvSinc(); }catch(e){} },30000);
 document.addEventListener('visibilitychange',()=>{ try{ if(document.visibilityState==='hidden'&&NUV.sujo&&opOnline()) nuvSinc(); }catch(e){} });
 window.addEventListener('pagehide',()=>{ try{ if(NUV.sujo&&opOnline()) nuvSinc(); }catch(e){} });
-window.addEventListener('beforeunload',e=>{ try{ if(NUV.sujo||GRAV_FALHOU){ e.preventDefault(); e.returnValue=''; return ''; } }catch(er){} });
+window.addEventListener('beforeunload',e=>{ try{ if(window.__hsRecarregando) return; if(NUV.sujo||GRAV_FALHOU){ e.preventDefault(); e.returnValue=''; return ''; } }catch(er){} });
 
 /* v10.1.5 · cadastro que não pode esperar: sobe na hora, sem esperar o agrupamento */
 function nuvJa(){ try{ nuvSujo(true); clearTimeout(NUV.timer); if(opOnline()&&!NUV.rodando) nuvSinc(); else nuvAgendar(); }catch(e){} }
@@ -10800,7 +10813,7 @@ async function nvTrocaPrimeiroAcesso(){ if(_trocaMostrada) return; _trocaMostrad
   await new Promise(res=>{ const f=nvTela(`<h2>Crie a sua senha</h2><p>Este é o seu primeiro acesso (ou o administrador redefiniu a sua senha). Crie uma senha só sua para continuar.</p>
     <label>Nova senha<input id="nv-p1" type="password" autocomplete="new-password"></label><label>Repita a nova senha<input id="nv-p2" type="password" autocomplete="new-password"></label>
     <p class="sec" style="font-size:.85rem;margin:4px 0 0">Mínimo 10 caracteres, com maiúscula, minúscula, número e símbolo.</p><div class="nv-msg"></div><div class="nv-bts"><button class="btn mini" type="button" id="nv-p-sair">Sair</button><button class="btn pri grande" type="button" id="nv-p-ok">Salvar e entrar</button></div>`);
-    f.querySelector('#nv-p1').focus(); f.querySelector('#nv-p-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); location.reload(); };
+    f.querySelector('#nv-p1').focus(); f.querySelector('#nv-p-sair').onclick=async()=>{ await NV.cli.auth.signOut({scope:'local'}); hsRecarregar(); };
     const ok=async()=>{ const a=f.querySelector('#nv-p1').value, b=f.querySelector('#nv-p2').value; if(a!==b){ nvMsg(f,'As duas senhas não são iguais.',1); return; } const fr=senhaFraca(a,NV.perfil&&NV.perfil.usuario); if(fr){ nvMsg(f,fr,1); return; }
       nvMsg(f,'Salvando…'); const {error}=await NV.cli.auth.updateUser({password:a}); if(error){ nvMsg(f,nvTraduz(error.message),1); return; }
       const r=await NV.cli.rpc('hs_senha_trocada'); if(r.error){ nvMsg(f,nvTraduz(r.error.message),1); return; } NV.perfil.trocar_senha=false; nvFechar(); toast('✔ Senha criada. Bem-vindo(a)!'); res(); };
@@ -10827,7 +10840,7 @@ setInterval(()=>{ try{ if(Store.modo==='nuvem'&&NV.perfil&&NV.perfil.trocar_senh
   const resumo=document.querySelector('.resumo'); if(!resumo) return;
   const u=document.createElement('div'); u.className='rail-user'; u.innerHTML='<span class="av" id="ru-av">?</span><div><b id="ru-nome">—</b><small id="ru-papel"></small></div><button type="button" id="ru-sair">Deslogar</button>';
   const aut=resumo.querySelector('.autoria'); resumo.insertBefore(u,aut);
-  $('#ru-sair').onclick=async()=>{ if(!await confirmar('Deslogar','Sair do Health Search neste aparelho?','Deslogar')) return; try{ if(typeof hsSalvarAgora==='function'&&opOnline()) await nuvSinc(); }catch(e){} try{ await NV.cli.auth.signOut({scope:'local'}); }catch(e){} location.reload(); };
+  $('#ru-sair').onclick=async()=>{ if(!await confirmar('Deslogar','Sair do Health Search neste aparelho?','Deslogar')) return; try{ if(typeof hsSalvarAgora==='function'&&opOnline()) await nuvSinc(); }catch(e){} try{ await NV.cli.auth.signOut({scope:'local'}); }catch(e){} hsRecarregar(); };
   const pinta=()=>{ const p=NV&&NV.perfil; const nome=p&&p.nome||'Este aparelho'; $('#ru-nome').textContent=nome; $('#ru-papel').textContent=p?(p.papel==='admin'?'Administrador':(p.conferente?'Conferente':'Usuário')):'sem login'; $('#ru-av').textContent=nome.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase(); $('#ru-sair').hidden=!(p&&Store.modo==='nuvem'); };
   pinta(); setInterval(pinta,3000);
 })();
@@ -10842,8 +10855,8 @@ function ajTela(){ const el=$('#aj-corpo'); let ord=HS_GRUPOS; try{ const o=JSON
 document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t.closest('#t-ajustes')) return; let b;
   if((b=t.closest('[data-aj-tema]'))){ const want=b.dataset.ajTema, cur=document.documentElement.dataset.tema||''; if((want==='escuro')!==(cur==='escuro')) $('#bt-tema').click(); setTimeout(ajTela,100); return; }
   if((b=t.closest('[data-aj-up],[data-aj-dn]'))){ const o=window._ajOrd, i=+(b.dataset.ajUp??b.dataset.ajDn), j=b.dataset.ajUp!=null?i-1:i+1; [o[i],o[j]]=[o[j],o[i]]; const ol=$('#t-ajustes .aj-ordem'); ol.innerHTML=o.map((g,k)=>`<li><span>${esc(g)}</span><button class="btn mini" type="button" data-aj-up="${k}" ${k?'':'disabled'}>▲</button><button class="btn mini" type="button" data-aj-dn="${k}" ${k<o.length-1?'':'disabled'}>▼</button></li>`).join(''); return; }
-  if(t.id==='aj-ord-ok'){ try{ LS.setItem('healthSearch.menuOrdem',JSON.stringify(window._ajOrd)); }catch(x){} toast('Ordem salva. Recarregando o menu…'); setTimeout(()=>location.reload(),700); return; }
-  if(t.id==='aj-ord-pad'){ try{ LS.removeItem('healthSearch.menuOrdem'); }catch(x){} toast('Ordem padrão. Recarregando…'); setTimeout(()=>location.reload(),700); return; }
+  if(t.id==='aj-ord-ok'){ try{ LS.setItem('healthSearch.menuOrdem',JSON.stringify(window._ajOrd)); }catch(x){} toast('Ordem salva. Recarregando o menu…'); setTimeout(()=>hsRecarregar(),700); return; }
+  if(t.id==='aj-ord-pad'){ try{ LS.removeItem('healthSearch.menuOrdem'); }catch(x){} toast('Ordem padrão. Recarregando…'); setTimeout(()=>hsRecarregar(),700); return; }
   if(t.id==='aj-s-ok'){ const a=$('#aj-s1').value, c=$('#aj-s2').value; if(a!==c){ toast('As duas senhas não são iguais.'); return; } const fr=senhaFraca(a,NV.perfil&&NV.perfil.usuario); if(fr){ toast(fr); return; } t.disabled=true; const {error}=await NV.cli.auth.updateUser({password:a}); t.disabled=false; toast(error?'Não troquei: '+nvTraduz(error.message):'✔ Senha trocada.'); if(!error){ $('#aj-s1').value=''; $('#aj-s2').value=''; } } });
 /* BIT no centro */
 function evaTela(){ const p=$('#eva-painel'), c=$('#eva-centro'); if(p&&c&&!c.contains(p)){ window._evaCasa=p.parentNode; c.appendChild(p); } if(p) p.hidden=false; const i=$('#eva-in'); if(i&&!TOQUE) setTimeout(()=>i.focus(),50); }
@@ -12059,6 +12072,21 @@ function reMotivosJanela(){ if(!reMotivosObrigado()||document.querySelector('#re
     if(e.target.closest('[data-rmo="ok"]')&&L.length){ S.cadMotivos=L.slice(); S.motivos2=Object.assign({},S.motivos2,{em:new Date().toISOString(),l:L.slice()}); cadMudou(); try{ nuvJa(); }catch(er){}
       f.remove(); toast('✔ '+L.length+' motivo(s) cadastrado(s).'); } });
   f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); } },true); }
+/* ================= v10.6.04 · Divergência mexida em dois aparelhos ao mesmo tempo =================
+   Antes: ficava o objeto inteiro do lado mais novo e o outro sumia sem aviso (inclusive do histórico).
+   Agora: continua valendo o estado mais novo (status, dia, quantidade), mas o HISTÓRICO dos dois lados é
+   juntado — nenhuma ação some — e, se os dois lados tinham mudanças que o outro não viu, aparece o aviso. */
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){
+    if(!String(chave).startsWith('dv:')||!local||!remoto||typeof local!=='object'||typeof remoto!=='object'||Array.isArray(local)) return _nj.apply(this,arguments);
+    const ganha=_nj.apply(this,arguments);
+    try{ const kh=x=>[x&&x.em,x&&x.t,x&&x.por].join('|'); const hl=local.hist||[], hr=remoto.hist||[];
+      const sl=new Set(hl.map(kh)), sr=new Set(hr.map(kh)); const vis=new Set(), h=[];
+      for(const x of [...hl,...hr]){ const k=kh(x); if(vis.has(k)) continue; vis.add(k); h.push(x); }
+      h.sort((a,b)=>String(a&&a.em||'').localeCompare(String(b&&b.em||'')));
+      const soAqui=hl.some(x=>!sr.has(kh(x))), soLa=hr.some(x=>!sl.has(kh(x)));
+      if(soAqui&&soLa){ const nome=(typeof dvNum==='function')?dvNum(ganha):'uma divergência';
+        setTimeout(()=>toast(`⚠ ${nome} foi mexida em dois aparelhos ao mesmo tempo. Ficou a mudança mais nova; as duas estão no histórico dela.`),300); }
+      return Object.assign({},ganha,{hist:h}); }catch(e){ return ganha; } }; }
 /* digitado na tabela de reentregas: motivo de divergência é recusado antes de qualquer gravação (fase de captura) */
 document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.matches('#re-tab [data-f="obs"]')) return;
   if(reEhDivergencia({obs:el.value})){ el.value=''; toast('Divergência não é reentrega: esse motivo não pode ser usado aqui.'); } },true);

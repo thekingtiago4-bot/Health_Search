@@ -1,1 +1,1 @@
-{"versao":"10.6.03","data":"2026-11-17","novidades":"Divergencia nao vira mais reentrega. O administrador baixa a planilha de backup, os motivos antigos e as reentregas que eram divergencia saem, e os motivos novos sao cadastrados na hora."}
+{"versao":"10.6.04","data":"2026-11-17","novidades":"Mais seguro: so o administrador muda cargo. Internet que volta ou trava no meio nao perde mais o ultimo bipe nem prende a fila. Divergencia mexida em dois aparelhos guarda o historico dos dois."}
