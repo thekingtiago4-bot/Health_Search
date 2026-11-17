@@ -25,6 +25,21 @@ const srv=http.createServer((q,r)=>{ let u=decodeURIComponent(q.url.split('?')[0
     const juntado=Object.keys(nuvJuntar('s:gsSnap',{'2026-11-16':{pct:1}},JSON.parse(JSON.stringify(daNuvem)))||{});
     const sobe=Object.keys((nuvLocal().get('s:gsSnap')||{valor:{}}).valor||{});
     return {lista, chaves, escolhido, fotoLixo:foto, aposNuvem, juntado, sobe};
+
+  });
+  /* caminho do botao "Puxar tudo da nuvem": o banco devolve o lixo e o app nao pode aceitar */
+  const puxou=await pg.evaluate(async()=>{
+    const linha={chave:'s:gsSnap',tipo:'s',apagado:false,atualizado_em:'2026-11-17T05:00:00.000Z',
+      valor:{'2026-11-10':{dia:'2026-11-10',pct:91},em:'2026-11-17T05:00:00.000Z'}};
+    const resp={data:[linha],error:null};
+    const cadeia={select:()=>cadeia,order:()=>cadeia,range:async()=>resp};
+    if(!NV.cli) NV.cli={};
+    const _from=NV.cli.from; NV.cli.from=t=>t==='hs_sync'?cadeia:(_from?_from.call(NV.cli,t):cadeia);
+    const _cf=window.confirmar; window.confirmar=async()=>true;
+    const _on=window.opOnline; window.opOnline=()=>true;
+    try{ await nuvPuxarTudo(); }catch(e){ return {erro:String(e)}; }
+    finally{ NV.cli.from=_from; window.confirmar=_cf; window.opOnline=_on; }
+    return {chaves:Object.keys(S.gsSnap||{}), lista:gsDiasFoto()};
   });
   const ok=d=>/^\d{4}-\d{2}-\d{2}$/.test(d);
   const falhas=[];
@@ -35,6 +50,9 @@ const srv=http.createServer((q,r)=>{ let u=decodeURIComponent(q.url.split('?')[0
   if(r.aposNuvem.some(k=>!ok(k))) falhas.push('o lixo voltou da nuvem: '+JSON.stringify(r.aposNuvem));
   if(r.juntado.some(k=>!ok(k))) falhas.push('o lixo voltou no merge com a nuvem: '+JSON.stringify(r.juntado));
   if(r.sobe.some(k=>!ok(k))) falhas.push('o aparelho ainda sobe lixo para a nuvem: '+JSON.stringify(r.sobe));
+  if(puxou.erro) falhas.push('Puxar tudo da nuvem quebrou: '+puxou.erro);
+  else { if((puxou.chaves||[]).some(k=>!ok(k))) falhas.push('Puxar tudo da nuvem trouxe lixo: '+JSON.stringify(puxou.chaves));
+         if((puxou.lista||[]).some(k=>!ok(k))) falhas.push('depois de Puxar tudo, a lista tem lixo: '+JSON.stringify(puxou.lista)); }
   await b.close(); srv.close();
   if(falhas.length){ console.error('FALHOU:\n- '+falhas.join('\n- ')); process.exit(1); }
   console.log('OK: o Painel de Gestão só aceita dia de verdade (lista: '+r.lista.join(', ')+')');
