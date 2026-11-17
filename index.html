@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.7', HS_DATA='17/11/2026';
+const HS_VERSAO='10.5.8', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6943,9 +6943,18 @@ const NUV_CAMPOS=['agendamentos','historico','aprendidos','geo','geoRuas','cidAl
 /* v10.5.7: campos que sao MAPA por dia — nunca carimbar 'em' dentro deles,
    senao o 'em' vira uma chave e aparece como um dia na lista do Painel de Gestao. */
 const NUV_MAPA_DIA=new Set(['s:gsSnap']);
+/* v10.5.8: mapa por dia so pode ter chave AAAA-MM-DD. Limpa na ENTRADA (o que vem da
+   nuvem) e na SAIDA (o que sobe), senao o lixo que ja esta no banco volta a cada
+   sincronizacao pelo merge, que junta as chaves dos dois lados. */
+function nuvSoDias(v){ try{ if(!v||typeof v!=='object'||Array.isArray(v)) return v;
+    const ks=Object.keys(v), ok=ks.filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k));
+    if(ok.length===ks.length) return v;
+    const o={}; for(const k of ok) o[k]=v[k];
+    try{ console.warn('mapa por dia: ignorei chave(s) que nao sao dia:',ks.filter(k=>!/^\d{4}-\d{2}-\d{2}$/.test(k))); }catch(e){}
+    return o; }catch(e){ return v; } }
 const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Object.keys(v).length:v==='');
 { const _nl=nuvLocal; nuvLocal=function(){ const m=_nl();
-    for(const c of NUV_CAMPOS) if(!nuvVazio(S[c])) m.set('s:'+c,{tipo:'s',valor:S[c]});
+    for(const c of NUV_CAMPOS) if(!nuvVazio(S[c])) m.set('s:'+c,{tipo:'s',valor:NUV_MAPA_DIA.has('s:'+c)?nuvSoDias(S[c]):S[c]});
     for(const r of S.romaneios||[]) if(r&&r.id) m.set('rom:'+r.id,{tipo:'rom',valor:r});
     for(const [k,v] of Object.entries(S.opXml||{})) m.set('xml:'+k,{tipo:'xml',valor:v});
     for(const [d,v] of Object.entries(S.opRel||{})) m.set('rel:'+d,{tipo:'rel',valor:v});
@@ -6953,7 +6962,7 @@ const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Obje
     return m; }; }
 { const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _na(chave,valor,apagado);
   NUV.aplicando=true; try{ const p=chave.indexOf(':'), tp=chave.slice(0,p), id=chave.slice(p+1);
-    if(tp==='s'){ S[id]=apagado?null:valor; if(id==='geo'){ try{ GEO.idx={}; GEO.cls={}; }catch(e){} } if(id==='aprendidos'){ try{ montarDicionario(); }catch(e){} } }
+    if(tp==='s'){ if(!apagado&&NUV_MAPA_DIA.has(chave)) valor=nuvSoDias(valor); S[id]=apagado?null:valor; if(id==='geo'){ try{ GEO.idx={}; GEO.cls={}; }catch(e){} } if(id==='aprendidos'){ try{ montarDicionario(); }catch(e){} } }
     else if(tp==='rom'){ const L=S.romaneios=S.romaneios||[]; const i=L.findIndex(r=>r.id===id); if(apagado){ if(i>=0) L.splice(i,1); } else if(i>=0) L[i]=valor; else L.push(valor); L.sort((a,b)=>String(a.numero).localeCompare(String(b.numero))); }
     else if(tp==='xml'){ S.opXml=S.opXml||{}; if(apagado) delete S.opXml[id]; else S.opXml[id]=valor; }
     else if(tp==='rel'){ S.opRel=S.opRel||{}; if(apagado) delete S.opRel[id]; else S.opRel[id]=valor; }
@@ -6961,7 +6970,7 @@ const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Obje
     salvar(); }finally{ NUV.aplicando=false; } }; }
 function nuvMesclar(l,r){ if(Array.isArray(l)&&Array.isArray(r)){ const ch=x=>x&&typeof x==='object'?(x.id||x.chave||JSON.stringify(x)):JSON.stringify(x); const m=new Map(); for(const x of l) m.set(ch(x),x); for(const x of r) m.set(ch(x),x); return [...m.values()]; }
   if(l&&r&&typeof l==='object'&&typeof r==='object'){ const o=Object.assign({},l); for(const k of Object.keys(r)) o[k]=(o[k]&&typeof o[k]==='object'&&r[k]&&typeof r[k]==='object')?nuvMesclar(o[k],r[k]):r[k]; return o; } return r; }
-{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')){ const tl=local&&local.em, tr=remoto&&remoto.em; const base=nuvBase(chave); if(tr&&(!base||String(tr)>base)){ if(chave==='s:geo') setTimeout(()=>toast('O mapa deste aparelho estava desatualizado: usei a versão online.'),300); return remoto; } if(tl&&tr) return String(tl)>String(tr)?local:remoto; return nuvMesclar(local,remoto); } return remoto; }; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')){ const tl=local&&local.em, tr=remoto&&remoto.em; const base=nuvBase(chave); if(tr&&(!base||String(tr)>base)){ if(chave==='s:geo') setTimeout(()=>toast('O mapa deste aparelho estava desatualizado: usei a versão online.'),300); return NUV_MAPA_DIA.has(chave)?nuvSoDias(remoto):remoto; } if(tl&&tr) return NUV_MAPA_DIA.has(chave)?nuvSoDias(String(tl)>String(tr)?local:remoto):(String(tl)>String(tr)?local:remoto); const j=nuvMesclar(local,remoto); return NUV_MAPA_DIA.has(chave)?nuvSoDias(j):j; } return remoto; }; }
 { const NM=window.HS_NOMES, _ns=NM&&NM.salvar; if(typeof _ns==='function') NM.salvar=function(...a){ const r=_ns.apply(NM,a); nuvAgendar(); return r; }; }
 
 /* v6.9.0: chaves que só o admin grava + atualização ao vivo */
