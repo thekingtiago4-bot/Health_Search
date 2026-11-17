@@ -1,1 +1,1 @@
-{"versao":"10.5.6","data":"2026-11-17","novidades":"Abertura fluida: tirados os filtros de desfoque que obrigavam o navegador a repintar o logo a cada quadro. A animacao continua inteira e ficou ~85% mais leve."}
+{"versao":"10.5.7","data":"2026-11-17","novidades":"Painel de Gestao: sumiu o dia falso \"em\" da lista (vinha do Restaurar backup, que carimbava a data dentro do mapa de fotos) e acabou o \"undefined%\". Abertura continua fluida."}

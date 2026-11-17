@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.6', HS_DATA='17/11/2026';
+const HS_VERSAO='10.5.7', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6940,6 +6940,9 @@ window.addEventListener('focus',()=>nuvSinc()); window.addEventListener('online'
 
 /* ================= v6.8.0 · Tudo online: agendamentos, regiões/Correção, romaneios, XMLs, regras e históricos ================= */
 const NUV_CAMPOS=['agendamentos','historico','aprendidos','geo','geoRuas','cidAlias','cidAtend','clientesReq','ferManual','nex','opFaltas','opPorVolume','reMotoristas','txtFix','simCen','cadMot','cadMotivos','cargos','muralLay','gsSnap','vmChegou','vmPrev','opForaInfo'];
+/* v10.5.7: campos que sao MAPA por dia — nunca carimbar 'em' dentro deles,
+   senao o 'em' vira uma chave e aparece como um dia na lista do Painel de Gestao. */
+const NUV_MAPA_DIA=new Set(['s:gsSnap']);
 const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Object.keys(v).length:v==='');
 { const _nl=nuvLocal; nuvLocal=function(){ const m=_nl();
     for(const c of NUV_CAMPOS) if(!nuvVazio(S[c])) m.set('s:'+c,{tipo:'s',valor:S[c]});
@@ -8063,7 +8066,7 @@ async function nuvBackups(){ const {data,error}=await NV.cli.from('hs_sync').sel
 async function nuvRestaurarBkp(chave){ if(!nvAdmin()){ toast('Só o administrador restaura.'); return; } const {data,error}=await NV.cli.from('hs_sync').select('valor').eq('chave',chave).maybeSingle(); if(error||!data){ toast('Não achei esse backup.'); return; }
   const b=data.valor; if(!(await confirmar('Restaurar backup',`Voltar regiões, cadastros, reentregas e divergências para como estavam em ${new Date(b.em).toLocaleString('pt-BR')} (${esc(b.motivo||'')}, ${esc(b.aparelho||'')})? Antes disso eu guardo um backup do estado atual.`,'Restaurar'))) return;
   await nuvBackupNuvem('antes de restaurar '+new Date(b.em).toLocaleString('pt-BR')); const agora=new Date().toISOString(); let q=0;
-  for(const it of b.itens){ let v=it.valor; if(it.chave.startsWith('s:')&&v&&typeof v==='object'&&!Array.isArray(v)) v=Object.assign({},v,{em:agora}); nuvAplicar(it.chave,v,false); q++; }
+  for(const it of b.itens){ let v=it.valor; if(it.chave.startsWith('s:')&&!NUV_MAPA_DIA.has(it.chave)&&v&&typeof v==='object'&&!Array.isArray(v)) v=Object.assign({},v,{em:agora}); nuvAplicar(it.chave,v,false); q++; }
   try{ const bs=nuvBases(); for(const it of b.itens) if(it.chave.startsWith('s:')) bs[it.chave]=agora; LS.setItem('healthSearch.nuvBase',JSON.stringify(bs)); }catch(e){}
   salvar(); try{ RE.gravar(); }catch(e){} try{ renderTudo(); }catch(e){} await nuvSinc(); toast('✔ Backup restaurado ('+q+' itens) e enviado para a nuvem.'); }
 async function nuvTelaBackups(){ let L=[]; try{ L=await nuvBackups(); }catch(e){ toast('Não consegui listar: '+e.message); return; }
@@ -8151,7 +8154,7 @@ async function vsnRestaurar(id){ if(!nvAdmin()){ toast('Só o administrador volt
   const soMapa=data.chave==='s:geo'; if(!(await confirmar('Voltar versão',`${soMapa?'Voltar o MAPA (regiões)':'Voltar TUDO (regiões, reentregas, divergências, cadastros, romaneios)'} para como estava em ${new Date(data.em).toLocaleString('pt-BR')}? Antes eu salvo uma versão do estado atual, então dá para desfazer.`,'Voltar'))) return;
   await vsnGravar('manual','antes de voltar para '+new Date(data.em).toLocaleString('pt-BR')); const agora=new Date().toISOString();
   const itens=soMapa?[{chave:'s:geo',valor:data.valor}]:((data.valor&&data.valor.itens)||[]); let q=0;
-  for(const it of itens){ let v=it.valor; if(it.chave.startsWith('s:')&&v&&typeof v==='object'&&!Array.isArray(v)) v=Object.assign({},v,{em:agora}); nuvAplicar(it.chave,v,false); q++; }
+  for(const it of itens){ let v=it.valor; if(it.chave.startsWith('s:')&&!NUV_MAPA_DIA.has(it.chave)&&v&&typeof v==='object'&&!Array.isArray(v)) v=Object.assign({},v,{em:agora}); nuvAplicar(it.chave,v,false); q++; }
   try{ const bs=nuvBases(); for(const it of itens) if(it.chave.startsWith('s:')) bs[it.chave]=agora; LS.setItem('healthSearch.nuvBase',JSON.stringify(bs)); }catch(e){}
   if(soMapa) vsnBaseGravar('s:geo',null); try{ GEO.idx={}; GEO.cls={}; }catch(e){}
   salvar(); try{ RE.gravar(); }catch(e){} try{ renderTudo(); }catch(e){} await nuvSinc(); toast('✔ Versão restaurada ('+q+' itens) e enviada para todos.'); }
@@ -10146,7 +10149,8 @@ const GS={dia:''};
 function gsDias(){ const out=new Set(); try{ for(let i=0;i<LS.length;i++){ const k=LS.key(i)||''; if(k.startsWith(OP_LOCAL)){ const d=k.slice(OP_LOCAL.length); if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&(opLocalLer(d)||[]).length) out.add(d); } } }catch(e){}
   if((OP&&OP.bipes||[]).length) out.add(OP.dia||hojeISO());
   return [...out].sort().reverse(); }
-function gsDia(){ if(GS.dia) return GS.dia; const h=hojeISO(); const temHoje=((OP&&OP.bipes)||[]).some(b=>diaLocal(new Date(b.criado_em||0).toISOString())===h);
+function gsDia(){ if(GS.dia&&!gsDiaOk(GS.dia)) GS.dia=null; /* v10.5.7: dia invalido guardado nao volta */
+  if(GS.dia) return GS.dia; const h=hojeISO(); const temHoje=((OP&&OP.bipes)||[]).some(b=>diaLocal(new Date(b.criado_em||0).toISOString())===h);
   if(temHoje) return h; const ds=gsDias(); return ds[0]||h; }
 function gsDiaNome(){ const d=gsDia(); return d===hojeISO()?'hoje':fmtData(d); }
 function gsBipes(dia){ const h=hojeISO();
@@ -10194,11 +10198,11 @@ function gsFotoMontar(){ try{
     roms:c.orig.length,quem:((NV&&NV.perfil&&NV.perfil.nome)||'')};
 }catch(e){ return null; } }
 function gsFotoGravar(){ const f=gsFotoMontar(); if(!f) return null;
-  try{ S.gsSnap=S.gsSnap||{}; S.gsSnap[f.dia]=f;
+  try{ if(!gsDiaOk(f.dia)) return null; S.gsSnap=S.gsSnap||{}; S.gsSnap[f.dia]=f;
     const ds=Object.keys(S.gsSnap).sort(); while(ds.length>120) delete S.gsSnap[ds.shift()];
     salvar(); }catch(e){} return f; }
 let _gsT=null; function gsFotoAgendar(){ if(_gsT) return; _gsT=setTimeout(()=>{ _gsT=null; gsFotoGravar(); },8000); }
-function gsFotoLer(dia){ try{ if(dia===hojeISO()){ const f=gsFotoMontar(); if(f) return f; } return (S.gsSnap||{})[dia]||null; }catch(e){ return null; } }
+function gsFotoLer(dia){ try{ if(dia===hojeISO()){ const f=gsFotoMontar(); if(f) return f; } const f2=(S.gsSnap||{})[dia]; return (f2&&typeof f2==='object'&&!Array.isArray(f2))?f2:null; }catch(e){ return null; } }
 let gsDiasFoto=function(){ return []; };
 function gsCartao(f){ if(!f) return '<div class="gs-box"><h3>Conferência do dia</h3><p class="sub">Sem foto deste dia. A partir de agora o app guarda sozinho, a cada bipe.</p></div>';
   const cor=f.pct>=100?'var(--ok)':(f.pct>=90?'var(--ag)':'var(--ruim)');
@@ -10617,7 +10621,14 @@ function gsTrocarOrigem(f,dia){ try{ const el=$('#gs-corpo'); if(!el) return;
   return r; }; }
 /* a cada bipe o app guarda a foto do dia, sem o conferente precisar fazer nada */
 { const _ol10=opLer; opLer=function(){ const r=_ol10.apply(this,arguments); try{ gsFotoAgendar(); }catch(e){} return r; }; }
-{ const _gd10=gsDias; gsDiasFoto=function(){ try{ const a=new Set(Object.keys(S.gsSnap||{})); for(const d of _gd10()) a.add(d); return [...a].sort().reverse(); }catch(e){ return _gd10(); } }; }
+/* v10.5.7: so entra na lista o que e dia de verdade (AAAA-MM-DD), e o lixo antigo sai de vez. */
+const gsDiaOk=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x);
+function gsSnapFaxina(){ try{ const m=S&&S.gsSnap; if(!m||typeof m!=='object') return 0;
+    const ruins=Object.keys(m).filter(k=>!gsDiaOk(k)); if(!ruins.length) return 0;
+    for(const k of ruins) delete m[k];
+    try{ console.warn('gsSnap: tirei '+ruins.length+' chave(s) que nao sao dia:',ruins); }catch(e){}
+    try{ salvar(); }catch(e){} return ruins.length; }catch(e){ return 0; } }
+{ const _gd10=gsDias; gsDiasFoto=function(){ try{ gsSnapFaxina(); const a=new Set(Object.keys(S.gsSnap||{}).filter(gsDiaOk)); for(const d of _gd10()) if(gsDiaOk(d)) a.add(d); return [...a].sort().reverse(); }catch(e){ return _gd10(); } }; }
 /* o seletor passa a listar também os dias que só têm foto guardada (sem bipe no aparelho) */
 { const _gse=gsSeletor; gsSeletor=function(){ const d=gsDia(); const html=_gse.apply(this,arguments);
   try{ const extra=gsDiasFoto().filter(x=>html.indexOf('value="'+x+'"')<0);
