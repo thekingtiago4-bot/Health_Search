@@ -2841,7 +2841,8 @@ async function gerarPacote(){
   rs.textContent='.nav button:not([data-tela=buscar]):not([data-tela=operacao]):not([data-tela=geo]):not([data-tela=romaneios]):not([data-tela=feriados]),.tela:not(#t-buscar):not(#t-operacao):not(#t-geo):not(#t-romaneios):not(#t-feriados),#bt-zap,#bt-reset,#bt-xl-todos,#geo-bt-alim,#geo-bt-orig{display:none!important}';
   doc.querySelector('head').appendChild(rs); doc.setAttribute('data-restrito','1');
   let html='<!DOCTYPE html>\n'+doc.outerHTML; const k=(RE.ler().apiKey||'').trim(); if(k) html=html.split(k).join('');
-  html=html.split('7eae73f9-f404-4cc2-a5a2-5139a52695b2').join('');
+  /* v10.5.13: a Api-Key nao fica mais escrita aqui — o repositorio e publico.
+     A linha acima ja tira a chave que estiver gravada neste aparelho. */
   const hoje=hojeISO(), [aa,mm,dd]=hoje.split('-'); if(!S.geracoes || S.geracoes.dia!==hoje) S.geracoes={dia:hoje,nomes:[]};
   const ag=new Date(), hh=String(ag.getHours()).padStart(2,'0'), mi=String(ag.getMinutes()).padStart(2,'0');
   let base=`Search ${dd}-${mm}`; if(S.geracoes.nomes.length){ base+=` ${hh}h`; if(S.geracoes.nomes.includes(base)) base=`Search ${dd}-${mm} ${hh}h${mi}`; }
@@ -2916,8 +2917,17 @@ function reTela(novaIdx){
   $('#re-tot').innerHTML=`<div>Notas<b>${linhas.length}</b></div><div>Quantidade<b>${qt.toLocaleString('pt-BR')}</b></div><div>Valor<b>${reMoeda(vt)}</b></div><div>Perecíveis<b>${pe}</b></div>`;
 }
 async function reApi(metodo,url){
-  const r=await fetch(url,{method:metodo,headers:{'Api-Key':RE.ler().apiKey,'Content-Type':'application/json'}});
-  if(r.status===401||r.status===403) throw new Error('Api-Key recusada pelo Meu Danfe.');
+  /* v10.5.13: antes, qualquer falha de rede virava "Failed to fetch" na tela e ninguem
+     sabia se era internet, bloqueio da empresa ou problema do Meu Danfe. */
+  const chaveApi=(RE.ler().apiKey||'').trim();
+  if(!chaveApi) throw new Error('Falta a Api-Key do Meu Danfe neste aparelho (Reentregas → Api-Key). Ela nao e compartilhada entre aparelhos.');
+  let r; try{ r=await fetch(url,{method:metodo,headers:{'Api-Key':chaveApi,'Content-Type':'application/json'}}); }
+  catch(e){ throw new Error(navigator.onLine===false
+      ? 'Sem internet agora — nao da para consultar o Meu Danfe. Digite a nota a mao ou arraste o XML.'
+      : 'Nao consegui falar com o Meu Danfe (api.meudanfe.com.br). Pode ser a internet ou a rede da empresa bloqueando o endereco. Digite a nota a mao ou arraste o XML.'); }
+  if(r.status===401||r.status===403) throw new Error('O Meu Danfe recusou a Api-Key deste aparelho (Reentregas → Api-Key).');
+  if(r.status===402) throw new Error('O Meu Danfe respondeu que a consulta nao foi liberada (saldo ou plano). Confira na conta do Meu Danfe.');
+  if(r.status===429) throw new Error('Muitas consultas seguidas no Meu Danfe. Espere alguns segundos e bipe de novo.');
   const t=await r.text(); if(!r.ok) throw new Error(r.status===400?'Meu Danfe recusou a chave (confira se foi bipada inteira).':r.status===404?'Nota não encontrada no Meu Danfe.':'Meu Danfe respondeu erro '+r.status+'.'); try{ return JSON.parse(t); }catch(e){ return {data:t}; }
 }
 async function reBuscarChave(chave){
@@ -4489,7 +4499,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.12', HS_DATA='17/11/2026';
+const HS_VERSAO='10.5.13', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7393,7 +7403,7 @@ function redRender(){ const f=$('#rx'), r=RED.r; if(!f||!r) return; const adm=nv
    <table><thead><tr><th></th><th>NF</th><th>Pedido</th><th>Cliente</th><th>Cidade</th><th>UF</th><th class="r">Vol.</th><th class="r">Valor</th><th>Quem</th><th></th></tr></thead><tbody>${todas.slice().reverse().map(o=>`<tr style="${o.nova?'background:color-mix(in srgb,var(--ok) 12%,transparent)':''}"><td>${o.nova?'<b style="color:var(--ok)">nova</b>':o.x._add?'<small>acrescentada</small>':''}</td><td><b>${esc(o.x.nf||'')}</b></td><td>${esc(o.x.ped||'')}</td><td>${esc(o.x.dest||'')}</td><td>${esc(o.x.cid||'')}</td><td>${esc(o.x.uf||'')}</td><td class="r">${esc(o.x.vol||'')}</td><td class="r">${esc(o.x.valor||'')}</td><td><small>${esc((o.x._add&&o.x._add.por)||o.x._por||'')}</small></td><td>${o.nova?`<button class="btn mini" data-red-tira="n${o.i}">Desfazer</button>`:adm?`<button class="btn mini perigo" data-red-tira="r${o.i}">Retirar</button>`:''}</td></tr>`).join('')}</tbody></table></div></div>`;
   const bip=$('#red-bip'); bip.focus();
   bip.onkeydown=async e=>{ if(e.key!=='Enter') return; const v=bip.value.replace(/\D/g,''); bip.value=''; if(v.length!==44){ $('#red-st').textContent='Bipe a chave inteira de 44 dígitos (código de barras da DANFE).'; return; }
-    $('#red-st').textContent='Buscando no Meu Danfe…'; try{ redAdicionar(await redPelaChave(v),'danfe'); }catch(er){ $('#red-st').textContent=er.message; opSom('fora'); } };
+    $('#red-st').textContent='Buscando no Meu Danfe…'; try{ redAdicionar(await redPelaChave(v),'danfe'); $('#red-st').textContent=''; }catch(er){ $('#red-st').textContent=er.message; toast(er.message); opSom('fora'); } };
   $('#red-arq').onchange=async e=>{ for(const fl of e.target.files){ try{ redAdicionar(nfDoXml(await fl.text()),'xml'); }catch(er){ toast(fl.name+': '+er.message); } } e.target.value=''; };
   const sz=$('#red-soltar'); sz.ondragover=e=>e.preventDefault(); sz.ondrop=async e=>{ e.preventDefault(); for(const fl of e.dataTransfer.files){ try{ redAdicionar(nfDoXml(await fl.text()),'xml'); }catch(er){ toast(fl.name+': '+er.message); } } };
   $('#red-mao').onsubmit=e=>{ e.preventDefault(); const d=Object.fromEntries(new FormData(e.target)); for(const k of Object.keys(d)) d[k]=String(d[k]).trim().toUpperCase(); if(d.valor&&!/,/.test(d.valor)) d.valor=(+d.valor.replace('.',',').replace(',','.')||0).toFixed(2).replace('.',','); redAdicionar(d,'manual'); }; }
