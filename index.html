@@ -652,7 +652,7 @@ tr.nx-fora td.nx-c{opacity:1;text-decoration:none}
 .nav button:hover .ico{color:#fff}
 .resumo{padding:12px 8px 0}
 .resumo dl{gap:3px 10px;margin:0 0 10px}
-.autoria{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);font-size:.6875rem;line-height:1.4;color:rgba(195,226,224,.6)}
+.autoria{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);font-size:.6875rem;line-height:1.6;color:rgba(195,226,224,.55)}
 .autoria b{color:#D5ECEA;font-weight:600}
 @media (max-height:760px){.nav button{padding:6px 10px}.nav-grupo{padding:10px 10px 4px}.resumo dl{display:none}}
 .rom-sub{margin:4px 0 14px}
@@ -700,7 +700,12 @@ body.so-mapa .app{grid-template-columns:1fr}
 .fer-map{display:flex;align-items:center;gap:5px;font-size:var(--fs-sm)}.fer-map i{width:12px;height:12px;border-radius:3px;background:#E03131;display:inline-block}
 #fer-map-ate{border:1px solid var(--linha);border-radius:var(--r);padding:4px 6px;background:var(--sup);font-size:var(--fs-sm)}
 .fundo{z-index:110}
-.app-ver{margin-bottom:4px;color:rgba(195,226,224,.75)}.app-ver b{color:#fff}
+.app-ver{display:flex;flex-direction:column;align-items:stretch;gap:2px;margin:0 0 14px;color:rgba(195,226,224,.75)}
+.app-ver-num{font-size:.75rem}
+.app-ver-data{font-size:.6875rem;color:rgba(195,226,224,.45);margin-bottom:10px}
+#app-ver-bt{width:100%;justify-content:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.22);color:#E7F5F3;font-size:.75rem;font-weight:600}
+#app-ver-bt:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.4);color:#fff}
+#app-ver-bt[disabled]{opacity:.55;cursor:default}.app-ver b{color:#fff}
 #app-att{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:12px;background:var(--teal);color:#fff;padding:10px 12px 10px 16px;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.3);max-width:calc(100vw - 32px);font-size:var(--fs-sm)}
 #app-att[hidden]{display:none}
 #app-att .btn{background:#fff;color:var(--teal);border-color:#fff;white-space:nowrap}
@@ -4484,8 +4489,8 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.11', HS_DATA='17/11/2026';
-(function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA} <button type="button" id="app-ver-bt" class="btn mini" style="margin-left:8px">Buscar atualização</button></div>`);
+const HS_VERSAO='10.5.12', HS_DATA='17/11/2026';
+(function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
   if(!web) return;
