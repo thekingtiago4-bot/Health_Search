@@ -116,7 +116,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       return {todos:ckLista('todos').map(x=>x.mot).join(','),ativos:ckLista('ativos').map(x=>x.mot).join(','),
               des:ckLista('desativados').map(x=>x.mot).join(','),st:ckStatus(ckS().find(x=>x.mot==='BETO')).txt,
               novo:(()=>{ S.cadMot.push({nome:'NOVATO',alias:'',cpf:'',tipo:'agregado',rast:'sim'}); ckSincronizar(); return ckS().some(x=>x.mot==='NOVATO'); })(),
-              cpf:cadMotCPF('GIOVANNI')}; });
+              cpf:((S.cadMot||[]).find(m=>m.nome===motCanon('GIOVANNI'))||{}).cpf||''}; });
     ok(k.todos==='ADRIEL,BETO','checklist: rastreador Não deveria tirar o motorista da planilha ('+k.todos+')');
     ok(k.ativos==='ADRIEL'&&k.des==='BETO','checklist: filtro de ativos/desativados errado ('+k.ativos+' | '+k.des+')');
     ok(k.st==='DESATIVADO','checklist: rastreador desativado não deixou a linha como DESATIVADO ('+k.st+')');

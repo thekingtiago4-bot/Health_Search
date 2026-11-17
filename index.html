@@ -1396,7 +1396,9 @@ root.hsFetchComPrazo=function(url,op){ op=op||{}; if(op.signal) return fetch(url
    Mudou algum arquivo da pasta a/? Suba o V aqui E o PARTES no sw.js. */
 (function(root){
 const V='1', P={};
-const url=n=>'a/'+n+'?v='+V;
+/* versão por arquivo: mudou só um arquivo de a/? suba só a dele aqui (o resto continua guardado no aparelho) */
+const VERS={'manual.js':'2'};
+const url=n=>'a/'+n+'?v='+(VERS[n]||V);
 function js(n){ return new Promise((ok,er)=>{ const s=document.createElement('script'); s.src=url(n); s.async=false;
   s.onload=()=>ok(); s.onerror=()=>{ s.remove(); er(new Error('não carregou '+n+' (sem internet na primeira vez?)')); }; document.head.appendChild(s); }); }
 /* tenta 3 vezes; se falhar, a próxima chamada tenta de novo do zero */
@@ -4513,7 +4515,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.04', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.05', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6035,7 +6037,7 @@ function dvBadge(){ const q=$('#qt-dv'); if(!q) return; const n=dvS().filter(d=>
   if(ref) ref.insertAdjacentHTML('afterend',`<button data-tela="divergencias"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17.5v.5"/></svg><span class="lbl">Divergências</span><span class="qt" id="qt-dv" hidden>0</span></button>`);
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-divergencias'; sec.hidden=true; sec.setAttribute('aria-labelledby','h-dv');
   sec.innerHTML=`<h1 id="h-dv">Divergências</h1>
-  <p class="sub">Registre falta, sobra, avaria ou troca. Quando o pedido ou a NF aparecer de novo num romaneio, na busca ou no bipe, o programa avisa a qual divergência ele pertence.</p>
+  <p class="sub">Registre falta ou sobra de volume. Quando o pedido ou a NF aparecer de novo num romaneio, na busca ou no bipe, o programa avisa a qual divergência ele pertence.</p>
   <div class="op-bip"><button class="btn pri grande" type="button" id="dv-bt-cam">📷 Bipar pela câmera</button><input id="dv-bip" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="Bipe a nota ou a etiqueta: abre a janela para informar a falta" aria-label="Bipar nota com divergência" style="flex:1;min-width:220px;font-size:1.1rem;padding:12px 14px;border:2px solid #C2255C;border-radius:var(--r);background:var(--sup);color:inherit"></div>
   <details style="margin:4px 0 8px"><summary style="cursor:pointer;font-size:var(--fs-sm);color:var(--tinta2)">Ou preencher à mão</summary>
   <form class="dv-form" id="dv-form" autocomplete="off"><input type="hidden" id="dv-id">
@@ -6622,7 +6624,6 @@ opPendentes=function(){ if(OP.dia!==hojeISO()) return []; const bs=OP.bipes.filt
   return out.sort((a,b)=>b.valor-a.valor); };
 
 /* ---- relatório XML do Softlog (Relatório de notas fiscais para conferência) ---- */
-function relEhSoftlog(txt){ return /urn:schemas-microsoft-com:office:spreadsheet/.test(txt)&&/MERO\s*NF/i.test(txt); }
 function relLer(txt){ const d=new DOMParser().parseFromString(txt,'text/xml'); const rows=[...d.getElementsByTagName('Row')].map(r=>[...r.getElementsByTagName('Cell')].map(c=>c.textContent.trim()));
   const h=rows.findIndex(r=>/MERO\s*NF/i.test(r[0]||'')); if(h<0) throw new Error('não achei o cabeçalho NÚMERO NF');
   const H=rows[h].map(t=>t.normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase()); const ix=n=>H.findIndex(t=>t.includes(n));
@@ -7731,7 +7732,6 @@ function cadTipo(m){ return m&&m.tipo==='transf'?'transf':'agregado'; }
 function cadRastDe(m){ return cadTipo(m)==='agregado'?(m.rast||'sim'):''; }
 /* rastreador de um motorista pelo nome (ou apelido): 'sim' · 'nao' · 'desativado' · '' quando não está no cadastro */
 function cadRastNome(n){ const canon=motCanon(n); if(!canon) return ''; const m=(S.cadMot||[]).find(x=>x.nome===canon&&cadTipo(x)==='agregado'); return m?cadRastDe(m):''; }
-function cadMotCPF(n){ const canon=motCanon(n); if(!canon) return ''; const m=(S.cadMot||[]).find(x=>x.nome===canon); return (m&&m.cpf)||''; }
 function cadDatalists(){ let d=$('#cad-dl'); if(!d){ d=document.createElement('div'); d.id='cad-dl'; d.hidden=true; document.body.appendChild(d); }
   d.innerHTML=`<datalist id="cad-mot-dl">${(S.cadMot||[]).map(m=>`<option value="${esc(m.nome)}">`).join('')}</datalist><datalist id="cad-motivos-dl">${(S.cadMotivos||[]).map(m=>`<option value="${esc(m)}">`).join('')}</datalist>`; }
 /* motorista: campo próprio da reentrega > nome da observação; sempre pelo cadastro (apelidos juntam) */
@@ -10228,10 +10228,6 @@ function gsOrigemBox(f,dia){ const nome=dia===hojeISO()?'hoje':fmtData(dia);
   return gsBarras2(`Conferência por origem (${nome}) (%)`,L,
     temDv?'<p class="gs-leg"><i style="background:var(--ok)"></i> conferido · <i style="background:#F59F00"></i> conferido em divergência</p>':'');
 }
-function gsTrocarOrigem(f,dia){ try{ const el=$('#gs-corpo'); if(!el) return;
-  for(const b of el.querySelectorAll('.gs-box')){ const h=b.querySelector('h3');
-    if(h&&/^Confer(ê|e)ncia por origem/i.test(h.textContent)){ b.outerHTML=gsOrigemBox(f,dia); return; } }
-}catch(e){} }
 /* a cada bipe o app guarda a foto do dia, sem o conferente precisar fazer nada */
 { const _ol10=opLer; opLer=function(){ const r=_ol10.apply(this,arguments); try{ gsFotoAgendar(); }catch(e){} return r; }; }
 /* v10.5.7: so entra na lista o que e dia de verdade (AAAA-MM-DD), e o lixo antigo sai de vez. */
@@ -10286,12 +10282,9 @@ function fotoSegura(u){ u=String(u||'');
   return /^(data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+|https:\/\/[^"'<>\s]+)$/.test(u)?u:''; }
 const DV_COR={'Falta de volume':'#E8590C','Sobra de volume':'#8B5A2B','Avaria':'#7048E8','Outro':'#868E96'};
 const AV_COR='#7048E8';
-const AV_TIPOS=['Caixa amassada','Caixa molhada','Caixa violada/aberta','Produto quebrado','Gelo derretido/temperatura','Outro'];
-const AV_SOL=['Entregue com ressalva','Devolvida ao remetente','Reposta pelo remetente','Descartada','Volta como reentrega'];
 const avEh=d=>!!d&&d.cat==='av';
 const dvCor=d=>avEh(d)?AV_COR:(DV_COR[d&&d.tipo]||'#C2255C');
 const avNum=d=>'AV-'+String(d.n||0).padStart(3,'0');
-const dvavNum=d=>avEh(d)?avNum(d):dvNum(d);
 function dvSo(){ return dvS().filter(d=>!avEh(d)); }
 /* ================= v10 · Parte 2 · Divergências e Avarias: duas colunas fixas + banco por dia =================
    Pendentes = ainda faltam volumes. Solucionadas = já saíram, com o dia da baixa.
@@ -11416,7 +11409,6 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 (function(){ try{ const s=MAN.find(x=>x.id==='operacao'); if(s&&s.passos) s.passos.push(['Espaço do aparelho e XMLs (v9.16.0)',`O administrador vê no topo o 💾 com a porcentagem do espaço usado neste aparelho. A partir de 75% aparece um aviso; clique no 💾 para ver o que ocupa mais. Os XMLs das notas ficam no aparelho só por ${XMLA.dias} dias e depois saem sozinhos, mas continuam na nuvem: ao abrir um dia antigo no NexBip, os XMLs daquele dia voltam para consulta. O botão de limpar XMLs também não apaga mais da nuvem.`]); }catch(e){} })();
 
 /* ================= v9.16.1 · BIT é CORUJA em todo lugar (personagem grande, canto, chat) ================= */
-function corujar(s){ return s; } /* v9.17.1: coruja removida */
 
 evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
 
@@ -11926,7 +11918,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
   GS.per=b.dataset.gsPer; try{ LS.setItem('healthSearch.gsPer',GS.per); }catch(er){} gestorRender(); });
 /* cartão do dia: cada informação na sua linha */
 gsCartao=(function(_c){ return function(f){ if(!f) return _c(f);
-  const pdv=(typeof f.pctDv==='number')?f.pctDv:0; const lin=(t,v)=>`<div class="gs-li"><span>${t}</span><b>${v}</b></div>`;
+  const lin=(t,v)=>`<div class="gs-li"><span>${t}</span><b>${v}</b></div>`;
   const html=_c(f); const i=html.indexOf('<p class="sub"><b>'); const j=i>=0?html.indexOf('</p>',i):-1; if(i<0||j<0) return html;
   const lista=`<div class="gs-lista">${lin('Notas conferidas',`${fmtN(f.tn-f.fn)} de ${fmtN(f.tn)}`)}${lin('Volumes',`${fmtN(f.tv-f.fv)} de ${fmtN(f.tv)} (${f.pctVol}%)`)}${lin('Romaneios',fmtN(f.roms))}${lin('Divergências',fmtN(f.dv||0))}${(f.fora||[]).length?lin('Notas tiradas da conta',fmtN(f.fora.length)):''}${f.fn?'':`<p class="gs-okdia">✔ Operação ${f.pct}% conferida.</p>`}</div>`;
   return (html.slice(0,i)+lista+html.slice(j+4)); }; })(gsCartao);
@@ -12094,6 +12086,47 @@ document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.m
 { let n=0; const t=setInterval(()=>{ n++; try{ reVarrerTirados(); }catch(e){}
     const pronto=n>=3&&(Store.modo!=='nuvem'||(typeof NUV!=='undefined'&&NUV.ult)||n>=8);
     if(!pronto) return; clearInterval(t); try{ if(!S.motivos2) reZerarJanela(); else reMotivosJanela(); }catch(e){ console.error(e); } },5000); }
+
+/* ================= v10.6.05 · Manual em dia com a v10.6 =================
+   Roda depois de todos os blocos que montam o MAN: tira o que saiu do app e reescreve o que mudou. */
+(function(){ try{
+  const sec=id=>MAN.find(x=>x.id===id);
+  const tira=id=>{ const i=MAN.findIndex(x=>x.id===id); if(i>=0) MAN.splice(i,1); };
+  const passo=(id,titRe,txt)=>{ const s=sec(id); if(!s||!s.passos) return; const p=s.passos.find(p=>titRe.test(p[0])); if(!p) return; if(txt===null) s.passos.splice(s.passos.indexOf(p),1); else p[1]=txt; };
+  tira('rotas'); tira('eva-reset');
+  passo('menu2026',/^Operacional/,'NexBip, Conferência total, Buscar e Via Minas.');
+  passo('menu2026',/^Ocorr/,'Reentregas e Divergências. Para registrar divergência, bipe no NexBip (ou busque a nota) e marque o quadrado “Divergência”.');
+  passo('menu2026',/^Planejamento/,'Agendamentos, Feriados, Romaneios, Geolocalização e Checklist Agregados.');
+  passo('menu2026',/^Relat/,'Painel de Gestão: conferência do dia em destaque, painel mensal em PDF e os quadros com filtro Hoje, 7, 15 ou 30 dias.');
+  passo('menu2026',/^Configura/,'Ajustes (tema claro/escuro, trocar senha, ordem dos títulos do menu), BIT, Manual e Ajuda.');
+  passo('menu2026',/Grupo da opera/,'O administrador cadastra o link do grupo em Cadastros → 📲 Grupo da operação. Ao enviar qualquer texto pelo WhatsApp (fechamento do turno, divergência, Via Minas…), aparece o botão do grupo: o texto vai copiado e o grupo abre; é só colar e enviar.');
+  passo('inicio',/^Mural/,'Ao entrar aparece o Mural do dia: data, saudação e os números do dia (romaneios, notas, volumes, fora do romaneio, reentregas, divergências e agendados). No meio, a bússola do Health Search. Toque em “Entrar no programa” para seguir; clique no logo para abrir o mural de novo; Esc fecha.');
+  const dv=sec('divergencias'); if(dv) dv.intro='Registre faltas e sobras de volume e seja avisado quando a nota voltar. Divergência NÃO é reentrega: ela nunca entra nas Reentregas nem nos gráficos de reentrega.';
+  passo('divergencias',/Pela Busca/,'Pesquise a NF ou o pedido. Acima do resultado aparece o quadrado “Divergência”: marque, diga quantos volumes faltam, o tipo e a observação. Ao salvar, ela entra em Dados → Divergências e o quadrado fica com o número (ex.: #004 · 5 vol.).');
+  passo('divergencias',/Tipos e cores/,'🟠 Falta de volume, 🟤 Sobra de volume, cinza = Outro. A mesma cor aparece na Busca, nas listas e no aviso de reentregas.');
+  passo('divergencias',/Reentrega colorida/,'Se a nota com divergência voltar num romaneio, no aviso “Reentregas detectadas” a linha vem na cor da divergência, só para avisar — ela não é lançada como reentrega. Dá para dar baixa na divergência ali mesmo.');
+  passo('divergencias',/^Registrar$/,'Bipe a nota ou preencha à mão: tipo (falta, sobra ou outro), volumes envolvidos, cliente e observação.');
+  passo('atalhos',/Ações na nota/,'Na Busca, cada nota encontrada mostra: Divergência, 🔁 Reentrega (lança nas Reentregas de hoje com o motivo) e 🕘 Linha do tempo (romaneios em que a nota esteve, bipes, divergências e reentregas, em ordem de data).');
+  passo('atalhos',/Desfazer/,'Depois de salvar uma divergência ou lançar uma reentrega pela Busca, aparece embaixo “↶ Desfazer” por 10 segundos. Clicou sem querer? Desfaça.');
+  passo('agenda',/^Avisos/,'Agendados que vierem em outros romaneios aparecem na lista para serem pedidos fisicamente, e no sino.');
+  passo('agenda',/^Exigências e exclusão/,'Depois de salvar, clique em Editar para colocar as exigências de entrega (PBR, altura máxima, horário, observações). O cliente fica cadastrado para sempre; só o administrador vê o botão Excluir. Quando ele aparece nos romaneios, o aviso sai no sino e no bipe da Operação.');
+  passo('semanal',/Alerta por origem/,'Quando uma origem (ex.: Cajamar, Brasília) passa do limite de notas fora do romaneio no dia, o sino avisa.');
+  passo('eva-observar',/O que o BIT analisa/,'O BIT verifica: percentual de conferência do dia, reentregas pendentes e os remetentes com mais ocorrências.');
+  passo('op-recursos',/Fechamento do turno/,'Na Operação: “🌙 Fechamento do turno” monta o resumo (bipes, faltando, fora, sem nota, duplicados, caixas sem chave, reentregas, divergências e andamento por origem) para copiar ou mandar no WhatsApp. “↩ Desfazer meu último bipe” apaga o seu último bipe dos últimos 5 minutos. O cargo de cada pessoa (definido pelo administrador em Usuários) escolhe as telas que ela vê.');
+  passo('sistema',/Edição ao mesmo tempo/,'Se duas pessoas mexerem na mesma divergência quase juntas, fica a mudança mais nova, as duas ações ficam no histórico dela e aparece um aviso. Tudo fica também na Auditoria (antes e depois).');
+  passo('sistema',/Cérebro/,null);
+  passo('sistema',/Layout e ajuda/,'Cada tela tem o botão (?) ao lado do título, que abre a parte certa do Manual. Os grupos do menu abrem e fecham clicando no nome. Sem internet aparece só um selo pequeno. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam no cartão “Problemas”. No celular e no tablet as tabelas viram cartões.');
+  passo('operacao',/Registro \(Recebimento/,null); passo('operacao',/Relatório Minas/,null);
+  passo('operacao',/Painel mensal/,'No Painel de Gestão: escolha o mês e toque em “📄 Gerar PDF”, logo ao lado. Sai a página do mês com reentregas por motivo (sem as que eram divergência), divergências por origem e notas fora do romaneio.');
+  const e=sec('eva-ensino'); if(e){ e.t='BIT — conversar'; e.intro='Configurações → BIT abre o BIT no centro da tela. Ele procura notas, pedidos, clientes e cidades e responde sobre o dia. Desde a v10.6.01 ele não aprende sozinho nem recebe ensino.';
+    e.passos=(e.passos||[]).filter(p=>!/ensin|aprend|treino|d[uú]vida|m[aã]o levantada|foto/i.test(p.join(' '))); }
+  if(!sec('gestao-v106')) MAN.splice(Math.max(0,MAN.findIndex(x=>x.id==='op-recursos')+1),0,{id:'gestao-v106',t:'Painel de Gestão',
+    img:'gestor', intro:'Relatórios → Painel de Gestão. A conferência do dia vem grande no topo; abaixo, o painel mensal e os quadros do período.',
+    passos:[['Conferência do dia','Porcentagem grande e, uma por linha: notas conferidas, volumes, romaneios, divergências e notas tiradas da conta. “PDF para projetor” gera a folha para a reunião.'],
+      ['Dia da operação e período','Escolha o dia em “Dia da operação”. Em “Período dos quadros” toque em Hoje, 7, 15 ou 30 dias: todos os quadros mudam e o título mostra o período, ex.: “Reentregas (por motivo / 7 dias)”.'],
+      ['Bipes sem repetição','“Bipes (por hora)” e “Bipes (por pessoa)” contam NOTA: a mesma nota bipada duas vezes conta uma, na hora e na pessoa do primeiro bipe. Repetido e fora do romaneio não contam.'],
+      ['Divergência não é reentrega','Os quadros de reentrega nunca mostram divergência. A conferência por origem mostra onde faltou conferir quando o dia não fecha 100%.']]});
+}catch(e){ console.error('manual v10.6',e); } })();
 </script>
 
 </body>

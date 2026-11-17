@@ -455,3 +455,14 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   no `online`/30 s/`visibilitychange`/`pagehide`; o que mudou é achado por hash (`NUV.h`, guardado), então até com o
   app fechado sem internet sobe na próxima abertura. Depois de subir: `nuvPing` + canais ao vivo com religação
   (v10.2.6/v10.4.0) e `opPuxarDia` de 45 s atualizam a porcentagem em todos.
+
+## v10.6.05 (17/11/2026) — Manual em dia e varredura
+- **Manual**: bloco "Manual em dia com a v10.6" no fim do script (roda depois de todos que montam o `MAN`):
+  tira as seções Rotas e Resetar o BIT, reescreve os passos que citavam Avarias/Registro/Rotas/Relatório Minas/
+  chamados/Cérebro/mural antigo e cria a seção "Painel de Gestão" (`gestao-v106`). Fotos novas de Mural,
+  Divergências, Via Minas e Painel de Gestão; a de chamados saiu. **`HSA` ganhou versão por arquivo** (`VERS`):
+  só `manual.js` subiu para `?v=2` — os outros 5 MB continuam guardados nos aparelhos.
+- **Varredura**: apagados `gsTrocarOrigem`, `AV_TIPOS`, `AV_SOL`, `dvavNum`, `cadMotCPF`, `corujar`, `relEhSoftlog`
+  (sem uso). ESLint (`no-undef`) limpo, salvo `conferirRomaneio` (protegido por `typeof`, de propósito).
+- **Ainda não feito (item 2 do Tiago):** juntar os ~190 remendos (`{ const _x=f; f=function(){…} }`) módulo a módulo.
+  Só o Painel de Gestão foi consolidado nesta rodada.
