@@ -415,19 +415,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(/880011:ok/.test(bq.bip),'busca: o botão Batida tinha que conferir a NF 880011 ('+bq.bip+')');
     ok(/conferida/.test(bq.depois),'busca: depois de marcar, a nota tem que aparecer como conferida ('+bq.depois.slice(0,120)+')');
     ok(String(bq.dvNf)==='880012'&&bq.dvQtd===1,'busca: o botão Divergência tinha que abrir divergência da NF 880012 ('+bq.dvNf+' '+bq.dvQtd+')'); }
-  /* 9.26.6: na aba NexBip o BIT não abre balão — só o número na cabeça dele */
-  { const bb=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
-      irPara('operacao'); await w(150); EVA.naoLidas=0; EVA.aberta=false;
-      const antes=(document.getElementById('eva-qt')||{}).textContent;
-      evaBalao('teste de recado na operação',4000); await w(150);
-      const bal=document.getElementById('eva-balao'); const naOp={bal:!bal||bal.hidden,qt:(document.getElementById('eva-qt')||{}).textContent,esc:(document.getElementById('eva-qt')||{}).hidden};
-      irPara('conftotal'); await w(150); evaBalao('recado fora da operação',4000); await w(150);
-      const b2=document.getElementById('eva-balao'); const fora=!!b2&&!b2.hidden;
-      if(b2) b2.hidden=true; EVA.naoLidas=0; irPara('operacao');
-      return {antes,naOp,fora}; });
-    ok(bb.naOp.bal,'BIT: na aba NexBip não pode abrir balão de recado');
-    ok(bb.naOp.esc===false&&+bb.naOp.qt>0,'BIT: o recado da aba NexBip tem que virar número na cabeça dele ('+bb.naOp.qt+')');
-    ok(bb.fora,'BIT: fora da aba NexBip o balão continua aparecendo'); }
+  /* 9.26.6 (balão do BIT no NexBip) saiu na v10.6.06 junto com o BIT */
   /* 9.26.7: nota com todos os volumes confirmados — as outras caixas têm que dar duplicidade */
   { const du=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       S.romaneios=[{id:'du1',numero:'0236363',base:'CAJ',arquivo:a,rows:[{nf:'660055',ped:'770055',vol:'5',dest:'CLIENTE CINCO',cid:'FRANCA',uf:'SP'}]}];
@@ -536,15 +524,14 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       opMsgTrocar(el,'<b>primeiro</b>'); const vazio=el.innerHTML;
       opMsgTrocar(el,'<b>segundo</b>'); const naTroca=el.className+'|'+el.innerHTML;
       await w(260); const depois=el.innerHTML; el.remove();
-      irPara('operacao'); await w(120); const noBip=(document.getElementById('eva-bt')||{}).hidden;
+      irPara('operacao'); await w(120); const noBip=!document.getElementById('eva-bt');
       irPara('conftotal'); await w(120); const fora=(document.getElementById('eva-bt')||{}).hidden;
       irPara('operacao');
       return {vazio,naTroca,depois,noBip,fora}; });
     ok(/primeiro/.test(tr.vazio),'faixa: o primeiro texto entra na hora quando a faixa está vazia');
     ok(/saindo/.test(tr.naTroca)&&/primeiro/.test(tr.naTroca),'faixa: o texto antigo tem que sair antes do novo entrar ('+tr.naTroca.slice(0,60)+')');
     ok(/segundo/.test(tr.depois),'faixa: depois da saída o texto novo entra ('+tr.depois+')');
-    ok(tr.noBip===true,'BIT: o boneco não pode aparecer na tela do NexBip');
-    ok(tr.fora===false,'BIT: fora do NexBip o boneco continua no canto'); }
+    ok(tr.noBip===true,'BIT: o boneco não pode aparecer na tela do NexBip'); }
   /* v10: chave da DANFE pela câmera — confere os dados e acrescenta a nota no romaneio */
   { const cv=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
       const ch='35261112345678000199550010000000251000000025';
@@ -572,21 +559,15 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(cv.nf==='900123'&&cv.vol==='3'&&cv.cid==='ARARAQUARA','chave: a nota tinha que entrar no romaneio com os dados certos ('+cv.nf+'/'+cv.vol+'/'+cv.cid+')');
     ok(cv.por,'chave: a nota acrescentada tem que registrar quem acrescentou');
     ok(cv.linhas===2,'chave: o romaneio tinha que ficar com 2 notas ('+cv.linhas+')'); }
-  /* v10: aba do BIT — boneco grande à esquerda, chat limpo. v10.6.01: sem Cérebro, sem treino por foto e sem "ensinar" */
-  { const bt=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
-      try{ NV.perfil={papel:'admin',ativo:true}; }catch(e){}
-      irPara('eva'); await w(500);
-      const bon=document.querySelector('#t-eva .evb'); const r=bon?bon.getBoundingClientRect():null;
-      const chat=document.getElementById('eva-painel'); const rc=chat?chat.getBoundingClientRect():null;
-      const resp=evaEntender('quantos bipes hoje');
-      return {larg:r?Math.round(r.width):0, bonEsq:r?Math.round(r.left):0, chatEsq:rc?Math.round(rc.left):0,
-        treino:!!document.getElementById('fot-solta')||!!document.getElementById('eva-fotos')||!!document.getElementById('eva-ens'),
-        semCer:typeof window.cer==='undefined'&&typeof window.FOT==='undefined', resp:String(resp||'') }; });
-    ok(bt.larg>=300,'BIT: o boneco tem que ficar grande na aba dele ('+bt.larg+'px)');
-    ok(bt.bonEsq<bt.chatEsq,'BIT: o boneco fica à esquerda do chat ('+bt.bonEsq+' vs '+bt.chatEsq+')');
-    ok(!bt.treino,'BIT: treino por foto e "ensinar" tinham que ter saído da aba');
-    ok(bt.semCer,'BIT: o Cérebro (cer/FOT) tinha que ter saído do código');
-    ok(/bipe/i.test(bt.resp),'BIT: continua respondendo pergunta simples ('+bt.resp.slice(0,80)+')'); }
+  /* v10.6.06: o BIT saiu inteiro (aba, boneco no canto, balões, chat) e a aba Ajuda também */
+  { const bt=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); try{ NV.perfil={papel:'admin',ativo:true}; }catch(e){}
+      await w(200); return {aba:!!document.querySelector('.nav [data-tela="eva"]'),ajuda:!!document.querySelector('.nav [data-tela="ajuda"]'),
+        tela:!!document.getElementById('t-eva')||!!document.getElementById('t-ajuda'),boneco:!!document.getElementById('eva-bt'),
+        painel:!!document.getElementById('eva-painel'),fn:typeof window.evaFala+typeof window.evaEntender, manual:!!document.querySelector('.nav [data-tela="manual"]')}; });
+    ok(!bt.aba&&!bt.ajuda&&!bt.tela,'BIT/Ajuda: as abas tinham que ter saído do menu');
+    ok(!bt.boneco&&!bt.painel,'BIT: o boneco do canto e o chat tinham que ter saído');
+    ok(bt.fn==='undefinedundefined','BIT: o código dele ainda existe ('+bt.fn+')');
+    ok(bt.manual,'o Manual tem que continuar no menu'); }
   /* v10.6.02: Painel de Gestão — nota bipada duas vezes conta uma, fora não conta, período nos títulos, divergência não é reentrega */
   { const g2=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO();
       const guarda=localStorage.getItem(OP_LOCAL+h); const D=RE.ler(); const guardaRe=JSON.stringify(D.dias||{});
@@ -678,7 +659,6 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(cg.usVe&&!cg.usNao,'cargo: o Usuário só chega no NexBip, não na Conferência total');
     ok(cg.supVe&&!cg.supNao,'cargo: o Supervisor vê tudo menos o que é só do Admin');
     ok(cg.ldVe,'cargo: o Líder vê os romaneios');
-    ok(cg.admEva&&!cg.supEva,'cargo: a aba do BIT é só do administrador');
     ok(cg.cargos==='admin,lider,supervisor,conferente,usuario','cargo: faltam cargos do Anexo I ('+cg.cargos+')'); }
   { const mu=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       muralAbrir(); await w(350); murArrumar();
@@ -688,7 +668,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       return {tit,topo:!!(pri&&pri.classList.contains('mural-topo')),
         primeiro:(pri&&pri.querySelector('h3')||{}).textContent||'',
         larg:pri?getComputedStyle(pri).gridColumn:'',
-        bit:(document.getElementById('eva-bt')||{}).hidden}; });
+        bit:!document.getElementById('eva-bt')}; });
     const fora=t=>mu.tit.some(x=>new RegExp(t,'i').test(x));
     ok(/Opera/i.test(mu.primeiro)&&mu.topo,'mural: Operação tem que abrir o mural, grande, na primeira linha ('+mu.primeiro+')');
     ok(/1 \/ -1|1\/-1/.test(mu.larg),'mural: o quadro da Operação tem que ocupar a linha toda ('+mu.larg+')');

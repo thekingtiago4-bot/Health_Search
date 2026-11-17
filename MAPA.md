@@ -466,3 +466,18 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   (sem uso). ESLint (`no-undef`) limpo, salvo `conferirRomaneio` (protegido por `typeof`, de propósito).
 - **Ainda não feito (item 2 do Tiago):** juntar os ~190 remendos (`{ const _x=f; f=function(){…} }`) módulo a módulo.
   Só o Painel de Gestão foi consolidado nesta rodada.
+
+## v10.6.06 (17/11/2026) — BIT fora de vez, celular arrumado
+- **BIT removido inteiro** (aba, boneco do canto, balões, chat, cumprimento, observação do dia, recados no NexBip,
+  ensino/cérebro já tinham saído). Ficaram, porque não dependiam dele: leitura de etiqueta em várias passadas
+  (mensagem agora é "Leitura em andamento…"), "Resolver" do NexBip (`evaEtqSug`/`ores*`, nome antigo mantido) e o
+  conversor de XML (`xc*`) — o resumo dos XMLs agora abre numa janela própria (`xmlResumo`).
+  **Armadilha paga:** blocos do BIT tinham regras de outros assuntos dentro (Salvar escondido com a câmera aberta,
+  `#op-xml/#op-diag` escondidos no NexBip, passos do manual da câmera). Foram recuperadas num bloco próprio. Ao apagar
+  bloco grande, comparar as linhas apagadas que NÃO citam o módulo (script de diff usado nesta versão).
+- **Aba Ajuda removida**; o (?) de cada tela leva ao Manual. Manual sem as seções do BIT.
+- **Celular (≤860 px)**: topo `[☰][status] · logo no centro (abre o Mural) · [💾 %][🔔]`; título da aba saiu do topo;
+  número do sino preso no sino (regra antiga `#mb-bar #nx-sino{position:static}` era mais forte — usar `#mb-bar` no seletor).
+  Menu aberto: só as abas desde o topo; trava a tela de trás (`html.mb-trava`).
+- **Zoom**: só na Geolocalização (meta viewport muda no `irPara` + `touch-action:pan-x pan-y` + `gesturestart` no iPhone).
+- **Mural**: bússola saiu; "Entrar no programa" (`#mural-x`) ocupa a linha toda no celular.

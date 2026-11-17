@@ -4515,7 +4515,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.05', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.06', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8267,33 +8267,6 @@ function confDiasReg(){ try{
   salvar();
 }catch(e){} }
 setInterval(confDiasReg, 5*60*1000);
-/* v9.10.0 — Task #17: BIT observa a operação e gera sugestões */
-function evaObservar(){ try{
-  const h=hojeISO(); const obs='evaObs:'+h;
-  try{ if(LS.getItem(obs)) return; }catch(e){}
-  const insights=[];
-  /* conferência */
-  const L=opPorRom(); const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0);
-  if(tn){ const pct=Math.floor(100*(tn-fn)/tn);
-    if(pct<70) insights.push('⚠️ Conferência em <b>'+pct+'%</b> hoje — faltam <b>'+fn+'</b> notas. Hora de acelerar a bipagem!');
-    else if(pct>=100) insights.push('🏆 Meta de conferência <b>100%</b> atingida hoje! Excelente trabalho da equipe.');
-    else insights.push('📊 Conferência em <b>'+pct+'%</b> hoje — faltam <b>'+fn+'</b> de <b>'+tn+'</b> notas.'); }
-  /* reentregas */
-  try{ const re=S.nex&&S.nex.reent; if(re){
-    const pend=(re.list||[]).filter(r=>!r.ok&&!r.can);
-    if(pend.length>5) insights.push('🔄 <b>'+pend.length+'</b> reentregas pendentes hoje. Vale checar prioridades.');
-    /* remetentes mais frequentes */
-    const freq={}; (re.list||[]).forEach(r=>{ if(r.rem) freq[r.rem]=(freq[r.rem]||0)+1; });
-    const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,2);
-    if(top.length) insights.push('📦 Remetentes com mais ocorrências: <b>'+top.map(t=>t[0]+' ('+t[1]+')').join('</b>, <b>')+'</b>.');
-  }}catch(e){}
-  if(!insights.length) return;
-  setTimeout(()=>{ evaFala('<b>🔍 Observação do dia ('+h.split('-').reverse().join('/')+')</b><br>'+insights.join('<br>'),'eva'); },3000);
-  try{ LS.setItem(obs,'1'); }catch(e){}
-}catch(e){ console.error('[evaObservar]',e); } }
-/* roda ao carregar (com delay) e a cada hora */
-setTimeout(evaObservar, 10000);
-setInterval(evaObservar, 60*60*1000);
 /* v10.6.01: sem o Cérebro, fica só a regra fixa (nada é aprendido): etiqueta cujo número não achou nada →
    cliente + cidade, se UMA única nota do romaneio de hoje bater. */
 const etqNz=s=>rpNz(s).replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
@@ -8360,65 +8333,6 @@ function rdDiaDoNome(nome,padrao){ const m=String(nome||'').match(/(\d{2})[-_.](
 { const _imp=importar; importar=async function(files){ const fs=[...(files||[])]; const xs=fs.filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)), ps=fs.filter(f=>!xs.includes(f));
     if(xs.length){ try{ await opXmlImportar(xs); toast(xs.length+' XML(s) lido(s) para a Operação.'); }catch(e){ toast('XML: '+(e.message||e)); } }
     if(ps.length) return _imp.call(this,ps); }; }
-/* ================= v8.8.0 · BIT — a assistente do Health Search (procura e responde; sem aprendizado desde a v10.6.01) ================= */
-const EVA={aberta:false,msgs:[]};
-const EVA_SVG='<svg class="evb evb-mini"></svg>';
-
-/* ---- conversa: entende pedidos simples em português ---- */
-function evaN(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
-function evaBuscar(txt){ irPara('buscar'); const q=$('#q'); q.value=txt; q.dispatchEvent(new Event('input')); try{ $('#f-busca').requestSubmit(); }catch(e){ $('#f-busca').dispatchEvent(new Event('submit',{cancelable:true})); } }
-function evaCidade(nome){ try{ const t=nome.toUpperCase().replace(/\s*[-\/]\s*([A-Z]{2})$/,' $1'); const m=t.match(/^(.*?)\s+([A-Z]{2})$/); const r=m?resolverCidade(m[1],m[2]):resolverCidade(t,''); if(!r||!r.o) return null;
-    const cod=r.o.c; const rg=geoClass(cod,'regiao'), bs=geoClass(cod,'base'); const nm=ids=>(ids&&ids.ids||[]).map(i=>(geoLista(i)||{}).nome).filter(Boolean).join(', ');
-    return {cidade:r.o.n+'/'+(r.o.u||''),regiao:nm(rg),base:nm(bs)}; }catch(e){ return null; } }
-/* REGRAS DA BIT (fixas, não podem ser desligadas):
-   1) O BIT é só um assistente interna do Health Search, para ajudar a operação com os dados da empresa que já estão no app.
-   2) Ele NUNCA envia dados para fora: não faz nenhuma chamada de internet, não usa serviço externo de IA, não manda e-mail, WhatsApp, link nem arquivo.
-   3) Ela só mostra o que o usuário logado já pode ver no app; não abre nada que o perfil dele não permite.
-   4) Pedidos para enviar, compartilhar, exportar ou copiar dados para fora são recusados. */
-const EVA_REGRAS='Minhas regras: sou o BIT, um assistente <b>interna</b> do Health Search. Uso só os dados da empresa que já estão no app, para ajudar a operação. <b>Nunca</b> envio dados para fora — não uso internet, não mando e-mail, WhatsApp, link nem arquivo — e só mostro o que o seu usuário já pode ver.';
-function evaEntender(txt){ const t=evaN(txt); const num=(txt.match(/\d{4,12}/g)||[]);
-  if(/regras|privacidade|seguranca|vaza|sigilo/.test(t)) return EVA_REGRAS;
-  if(/\b(envi|mand|compartilh|export|encaminh|transfer|copi|baix|upload|post|public)\w*\b.*\b(whats|zap|e-?mail|gmail|link|fora|externo|internet|arquivo|planilha|pdf|site|grupo|telegram|drive|nuvem)/.test(t)||/\b(whats(app)?|e-?mail|telegram)\b/.test(t)) return 'Não posso enviar nem compartilhar dados para fora do app. '+EVA_REGRAS;
-  if(/^(oi|ola|bom dia|boa tarde|boa noite|e ai)\b/.test(t)) return `Oi${NV&&NV.perfil&&NV.perfil.nome?', '+esc(String(NV.perfil.nome).split(' ')[0]):''}! Sou o BIT. Me peça uma nota, um pedido, um cliente, uma cidade, ou "reentregas de hoje".`;
-  if(/ajuda|o que voce faz|comandos/.test(t)) return `Posso:<br>• <b>procurar</b> NF, pedido ou cliente (ex.: "procura 442872", "cliente unimed")<br>• dizer <b>qual região/base atende</b> uma cidade (ex.: "quem atende Itanhandu MG")<br>• abrir <b>reentregas</b>, <b>divergências</b>, <b>fora do romaneio</b>, <b>rotas</b>, <b>relatório direto</b><br>• contar o que foi <b>bipado hoje</b><br>• listar <b>regiões e bases</b> e as <b>cidades de cada uma</b> (ex.: "cidades da região Minas Gerais")<br>• responder <b>como usar o app</b> (ex.: "como faço o backup físico?")<br>• <b>notas filtradas</b> por cidade, região, origem, cliente e <b>dia</b> (ex.: "notas de Franca de ontem", "e da MESA?")<br>• tudo sobre <b>uma nota</b> (ex.: "nota 442872")<br>• <b>feriados</b> (ex.: "feriado em Franca", "feriados amanhã")<br>• <b>reentregas</b> e motivos (ex.: "reentregas de ontem", "reentregas de Franca")<br>• <b>divergências abertas</b>, <b>rotas</b> ("qual placa vai para Franca"), <b>caminhões na base</b> e o <b>resumo do dia</b><br>• e, quando eu tiver dúvida numa etiqueta, eu te pergunto aqui.`;
-  if(/(quem atende|qual base|qual regiao|atende|regiao de|base de)/.test(t)){ const nome=txt.replace(/.*?(quem atende|qual (a )?base|qual (a )?regi[aã]o|atende|regi[aã]o de|base de)\s*(a cidade de|a cidade|de|do|da)?\s*/i,'').replace(/[?.!]+$/,'').trim(); const c=nome&&evaCidade(nome);
-    if(c) return `<b>${esc(c.cidade)}</b><br>Região: <b>${esc(c.regiao||'sem região marcada')}</b>${c.base?'<br>Base: <b>'+esc(c.base)+'</b>':''}`; return nome?`Não achei a cidade "${esc(nome)}". Tente com a UF, ex.: "quem atende Itanhandu MG".`:'Qual cidade?'; }
-  if(/reentrega/.test(t)){ irPara('reentregas'); const n=+($('#qt-re')||{}).textContent||0; return `Abri as <b>Reentregas</b>. Hoje tem <b>${fmtN(n)}</b> lançada(s).`; }
-  if(/divergen/.test(t)){ irPara('divergencias'); const n=+($('#qt-dv')||{}).textContent||0; return `Abri as <b>Divergências</b>: <b>${fmtN(n)}</b> em aberto.`; }
-  if(/fora do romaneio|\bfora\b/.test(t)){ irPara('fora'); return 'Abri as notas <b>fora do romaneio</b>.'; }
-  if(/checklist|agregad/.test(t)&&typeof ckS==='function'){ irPara('checklist'); const L=ckS().filter(r=>r.ativo!==false&&r.data).map(r=>({r,st:ckStatus(r)})); const v=L.filter(x=>x.st.cor==='vermelho'), q=L.filter(x=>x.st.cor==='laranja'||x.st.cor==='amarelo'); const nomes=a=>a.map(x=>esc(x.r.mot||'-')).join(', ');
-    return `Abri o <b>Checklist Agregados</b>: <b>${fmtN(v.length)}</b> vencido(s)${v.length?' ('+nomes(v)+')':''} e <b>${fmtN(q.length)}</b> vencendo em até 4 dias${q.length?' ('+nomes(q)+')':''}. O checklist vale 30 dias.`; }
-  if(/bipad|bipe|conferid|operacao/.test(t)){ const bs=(OP.bipes||[]).filter(b=>b.dia===hojeISO()); const c=s=>bs.filter(b=>b.status===s).length; irPara('operacao');
-    return `Hoje: <b>${fmtN(bs.length)}</b> bipe(s) — ${fmtN(c('ok'))} conferido(s), ${fmtN(c('semnota'))} sem nota, ${fmtN(c('fora'))} fora do romaneio, ${fmtN(c('dup'))} duplicado(s).`; }
-  if(num.length){ evaBuscar(num.join(' ')); return `Procurei <b>${esc(num.join(', '))}</b> na Busca. O resultado está na tela.`; }
-  const alvo=txt.replace(/^(procura(r)?|busca(r)?|acha(r)?|encontra(r)?|cliente|me (mostra|acha)|onde (esta|está))\s*(o|a|os|as|pelo|pela|nota|pedido|nf)?\s*/i,'').trim();
-  if(alvo.length>=3){ evaBuscar(alvo); return `Procurei <b>${esc(alvo)}</b> na Busca.`; }
-  return 'Não entendi. Escreva "ajuda" para ver o que eu sei fazer ou "regras" para ver minhas regras.'; }
-/* ---- interface ---- */
-function evaBadge(){ const n=0; const b=$('#eva-qt'); if(b){ b.textContent=n; b.hidden=!n; } }
-function evaFala(html,quem){ EVA.msgs.push({html,quem,ts:Date.now()}); if(EVA.msgs.length>60) EVA.msgs.shift(); evaDesenhar(); }
-function evaDesenhar(){ const c=$('#eva-msgs'); if(!c) return; const ft=ts=>{ const d=new Date(ts); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }; c.innerHTML=EVA.msgs.map(m=>`<div class="eva-m ${m.quem==='eu'?'eu':''}">${m.html}<span class="eva-ts">${m.ts?ft(m.ts):''}</span></div>`).join(''); c.scrollTop=c.scrollHeight; }
-function evaAbrir(v){ EVA.aberta=v; const p=$('#eva-painel'); if(!p) return; p.hidden=!v; if(v){ if(!EVA.msgs.length){ evaFala(`Oi! Eu sou a <b>BIT</b>, a assistente do Health Search. Me pergunte uma nota, um pedido, um cliente ou uma cidade.`); } setTimeout(()=>$('#eva-in').focus(),50); } }
-(function(){ const st=document.createElement('style'); st.textContent=`#eva-bt{position:fixed;right:20px;bottom:64px;z-index:1500;width:54px;height:68px;border-radius:0;border:0;padding:0;background:transparent;cursor:pointer;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));transition:transform .15s}#eva-bt:hover{transform:scale(1.07)}
- #eva-qt{position:absolute;top:0;right:-4px;background:#E8590C;color:#fff;border-radius:10px;min-width:20px;height:20px;font:700 12px/20px system-ui;text-align:center;padding:0 5px}
- #eva-painel{position:fixed;right:14px;bottom:140px;z-index:1550;width:min(380px,calc(100vw - 28px));height:min(520px,calc(100vh - 120px));background:var(--fundo,#0F2027);color:var(--tinta,#fff);border:1px solid var(--linha);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
- #eva-painel[hidden]{display:none}.eva-cab{display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(90deg,#DB2777,#9D174D);color:#fff}.eva-cab .av{width:34px;height:42px}.eva-cab b{font-size:1.05em}.eva-cab small{opacity:.8;display:block}
- #eva-msgs{flex:1;overflow:auto;padding:8px 10px;display:flex;flex-direction:column;gap:4px;background:rgba(0,0,0,.12)}.eva-m{background:#1e2d3a;border-radius:0 10px 10px 10px;padding:7px 10px 4px;max-width:85%;font-size:var(--fs-sm);line-height:1.45;position:relative;margin-left:8px}.eva-m::before{content:'';position:absolute;left:-7px;top:0;border:7px solid transparent;border-right-color:#1e2d3a;border-top:0;border-left:0;width:0;height:0}.eva-m.eu{align-self:flex-end;background:#005c4b;color:#e9edef;border-radius:10px 0 10px 10px;margin-left:0;margin-right:8px}.eva-m.eu::before{display:none}.eva-m.eu::after{content:'';position:absolute;right:-7px;top:0;border:7px solid transparent;border-left-color:#005c4b;border-top:0;border-right:0;width:0;height:0}.eva-ts{display:block;text-align:right;font-size:10px;opacity:.6;margin-top:2px}
- .eva-m code{word-break:break-all;font-size:.85em}.eva-duv{border-top:1px solid var(--linha);padding-top:6px;margin-top:6px}.eva-duv:first-child{border:0;margin:0;padding:0}.eva-ops{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
- .eva-chips{display:flex;gap:6px;overflow-x:auto;padding:6px 10px;border-top:1px solid var(--linha)}.eva-chips button{white-space:nowrap}
- .eva-f{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--linha)}.eva-f input{flex:1;min-width:0}`; document.head.appendChild(st);
-  const b=document.createElement('button'); b.id='eva-bt'; b.type='button'; b.title='BIT — assistente'; b.setAttribute('aria-label','Abrir o BIT'); b.innerHTML=EVA_SVG+'<span id="eva-qt" hidden>0</span>'; b.onclick=()=>irPara('eva'); document.body.appendChild(b);
-  const p=document.createElement('div'); p.id='eva-painel'; p.hidden=true; p.setAttribute('role','dialog'); p.setAttribute('aria-label','BIT');
-  p.innerHTML=`<div class="eva-cab"><span class="av">${EVA_SVG}</span><div style="flex:1"><b>BIT</b><small>assistente do Health Search</small></div><button type="button" id="eva-x" aria-label="Fechar" style="background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px">✕</button></div><div id="eva-msgs" aria-live="polite"></div>
-   <div class="eva-chips"><button class="btn mini" data-eva-c="dúvidas">❓ Dúvidas</button><button class="btn mini" data-eva-c="reentregas de hoje">Reentregas</button><button class="btn mini" data-eva-c="bipados hoje">Bipados hoje</button><button class="btn mini" data-eva-c="divergências">Divergências</button><button class="btn mini" data-eva-c="o que você aprendeu">🧠 Aprendizado</button><button class="btn mini" data-eva-c="ajuda">Ajuda</button><button class="btn mini" data-eva-c="regras">🔒 Regras</button><button class="btn mini" data-eva-c="etiquetas">🏷 Etiquetas</button></div>
-   <form class="eva-f" id="eva-f"><input id="eva-in" type="text" placeholder="Ex.: procura 442872 · quem atende Itanhandu MG" autocomplete="off"><button class="btn pri">Enviar</button></form>`;
-  document.body.appendChild(p);
-  const falar=txt=>{ if(!txt.trim()) return; evaFala(esc(txt),'eu'); let r; try{ r=evaEntender(txt); }catch(e){ r='Tive um problema para entender isso.'; console.error(e); } setTimeout(()=>evaFala(r),180); };
-  $('#eva-f').addEventListener('submit',e=>{ e.preventDefault(); const i=$('#eva-in'); falar(i.value); i.value=''; });
-  p.addEventListener('click',e=>{ const c=e.target.closest('[data-eva-c]'); if(c){ falar(c.dataset.evaC); return; } if(e.target.closest('#eva-x')) evaAbrir(false); });
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&EVA.aberta){ evaAbrir(false); e.stopPropagation(); } },true);
-  setInterval(evaBadge,5000); setTimeout(evaBadge,3000); })();
-
 /* ================= v8.8.0 · Painel mensal da gerência (PDF) ================= */
 function mensalHTML(mes){ const ini=mes+'-01', fimD=new Date(+mes.slice(0,4),+mes.slice(5,7),0), fim=mes+'-'+String(fimD.getDate()).padStart(2,'0'), dentro=d=>d&&d>=ini&&d<=fim;
   const nomeMes=new Date(ini+'T12:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
@@ -8452,69 +8366,9 @@ async function roboChecar(){ try{ if(!nvAdmin()||!opOnline()) return; const {dat
     el.innerHTML=`<span>⚠ <b>Robô de backup</b>: ${v.ok===false?'o backup da noite <b>falhou</b>'+(v.erro?' ('+esc(String(v.erro).slice(0,80))+')':''):'sem backup há '+Math.round(h)+' h'}. Confira a aba Actions do repositório Health_Search_Backups ou faça o backup físico.</span><button class="btn mini" type="button" onclick="this.parentNode.remove()">✕</button>`;
   }catch(e){} }
 (function(){ let n=0; const t=setInterval(()=>{ if(!(typeof NV!=='undefined'&&NV.perfil)){ if(++n>180) clearInterval(t); return; } clearInterval(t); roboChecar(); setInterval(()=>{ if(!document.hidden) roboChecar(); },3*3600e3); },1000); })();
-/* ================= v8.8.3 · BIT sabe o Manual inteiro e as regiões/bases do mapa ================= */
-const EVA_PARE=new Set('a o as os um uma de da do das dos e em no na nos nas para pra por com como que qual quais onde quando eu me meu minha voce tem ter faz fazer fica ficar e eh ser esta isso essa esse app aplicativo health search eva ajuda funciona usar uso sobre ao aos'.split(' '));
-function evaPalavras(t){ return evaN(t).replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!EVA_PARE.has(w)).map(w=>w.replace(/(oes|aes|ais|eis|s)$/,'')); }
-function evaManual(txt){ const ws=evaPalavras(txt); if(!ws.length) return null; const res=[];
-  for(const sec of (typeof MAN!=='undefined'?MAN:[])) for(const [ti,tx] of (sec.passos||[])){ const T=evaN(ti), X=evaN(String(tx).replace(/<[^>]+>/g,'')); let sc=0;
-    for(const w of ws){ if(T.includes(w)) sc+=3; else if(evaN(sec.t).includes(w)) sc+=1.5; if(X.includes(w)) sc+=1; } if(sc>0) res.push({sc:sc/Math.sqrt(ws.length),sec,ti,tx}); }
-  res.sort((a,b)=>b.sc-a.sc); return res[0]&&res[0].sc>=1.6?res.slice(0,2).filter((r,i)=>i===0||r.sc>=res[0].sc*0.8):null; }
-function evaManualHtml(rs){ return rs.map(r=>`<b>${esc(r.ti)}</b> <small style="opacity:.7">(${esc(r.sec.t)})</small><br>${String(r.tx).replace(/<(?!\/?(b|i|br)\b)[^>]*>/g,'').slice(0,520)}${String(r.tx).length>520?'…':''}<br><button type="button" class="btn mini" data-eva-man="${esc(r.sec.id)}" style="margin-top:6px">📖 Abrir no Manual</button>`).join('<hr style="border:0;border-top:1px solid var(--linha);margin:8px 0">'); }
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-eva-man]'); if(b){ ajudaAbrir(b.dataset.evaMan); } });
-/* regiões e bases do mapa */
-function evaListas(tipo){ return ((S.geo&&S.geo.listas)||[]).filter(l=>!tipo||l.tipo===tipo); }
-function evaAcharLista(nome){ const n=evaN(nome).replace(/^(regiao|base|da|de|do)\s+/g,'').trim(); if(n.length<2) return null; const L=evaListas(); const cmp=l=>[l.nome,...(l.alias||[])].map(evaN);
-  return L.find(l=>cmp(l).some(x=>x===n))||L.find(l=>cmp(l).some(x=>x.includes(n)||n.includes(x)))||L.find(l=>cmp(l).some(x=>n.split(' ').filter(w=>w.length>2).every(w=>x.includes(w))))||null; }
-function evaCidadesDa(l){ const I=ibge(); return (l.cidades||[]).map(c=>I.cod.get(+c)).filter(Boolean).map(o=>o.n+'/'+o.u).sort((a,b)=>a.localeCompare(b,'pt-BR')); }
-function evaListaHtml(l){ const cs=evaCidadesDa(l); const tp=l.tipo==='base'?'Base':'Região'; if(!cs.length) return `${tp} <b>${esc(l.nome)}</b> ainda não tem cidades marcadas no mapa.`;
-  const ufs={}; for(const c of cs){ const u=c.split('/').pop(); ufs[u]=(ufs[u]||0)+1; }
-  return `${tp} <b>${esc(l.nome)}</b>: <b>${fmtN(cs.length)}</b> cidade(s) (${Object.entries(ufs).map(([u,n])=>u+' '+n).join(' · ')}).<details style="margin-top:6px"${cs.length<=40?' open':''}><summary style="cursor:pointer">Ver as cidades</summary><div style="max-height:220px;overflow:auto;margin-top:4px">${cs.map(esc).join(', ')}</div></details>`; }
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt);
-    /* regras e sigilo continuam valendo antes de tudo */
-    if(/regras|privacidade|seguranca|vaza|sigilo|whats|e-?mail|telegram/.test(t)) return _ee(txt);
-    if(/^(quais|quantas|lista|listar|mostra)\b.*\b(regioes|regiao|bases)\b$/.test(t)||/^(regioes|bases)\??$/.test(t)){ const R=evaListas('regiao'), B=evaListas('base');
-      return `<b>Regiões</b> (${R.length}): ${R.map(l=>esc(l.nome)+' <small>('+fmtN((l.cidades||[]).length)+')</small>').join(' · ')||'nenhuma'}<br><b>Bases</b> (${B.length}): ${B.map(l=>esc(l.nome)+' <small>('+fmtN((l.cidades||[]).length)+')</small>').join(' · ')||'nenhuma'}<br><small>Peça "cidades da região X" para ver a lista.</small>`; }
-    const m=t.match(/(?:cidades?|municipios?|quantas cidades)\s+(?:que\s+)?(?:a\s+|o\s+)?(?:da|de|do|na|no|atendid[ao]s?\s+pel[ao]|pertencem\s+a|tem\s+(?:a|na|no)?)\s*(?:regiao|base)?\s*(?:de|do|da)?\s*(.+)$/)||t.match(/(?:regiao|base)\s+(.+?)\s+(?:tem\s+)?(?:quais|quantas)?\s*cidades/)||t.match(/^(?:quais|que)\s+cidades\s+(?:a\s+|o\s+)?(.+?)\s+atende/);
-    if(m){ const l=evaAcharLista(m[1].replace(/[?.!]+$/,'')); if(l) return evaListaHtml(l); return `Não achei uma região ou base chamada "${esc(m[1])}". `+evaEntender('quais regioes'); }
-    const l1=/^(regiao|base)\s+/.test(t)&&evaAcharLista(t); if(l1) return evaListaHtml(l1);
-    /* perguntas sobre o app: resposta do Manual */
-    const pergunta=/^(como|onde|o que|oque|pra que|para que|qual a funcao|explica|me explica|me ensina|tem como|da pra|posso|consigo|existe|serve)\b/.test(t)||/\?$/.test(txt.trim());
-    if(pergunta&&!/(quem atende|qual base|qual regiao)/.test(t)){ const rs=evaManual(txt); if(rs) return evaManualHtml(rs); }
-    const r=_ee(txt);
-    if(/^Procurei <b>/.test(r)&&!/\d{4,}/.test(txt)){ const rs=evaManual(txt); if(rs&&rs[0].sc>=2.5) return evaManualHtml(rs)+'<br><small>(Também procurei na Busca.)</small>'; }
-    return r; }; }
-/* ================= v8.8.5 · BIT: perguntas de cidade vão sempre para a Geolocalização + aprende instruções ("sempre…") ================= */
-function evaAcharCidade(txt){ const I=ibge(); let s=String(txt||'').toUpperCase().replace(/[?!.]+$/,'').trim(); let uf=''; const mu=s.match(/^(.*?)[\s\-\/,]+([A-Z]{2})$/); if(mu&&I.uf[mu[2]]){ s=mu[1]; uf=mu[2]; }
-  const k=normCid(s); if(!k||k.length<3) return null; const ordem=uf?[uf]:['SP','MG',...Object.keys(I.uf).filter(u=>u!=='SP'&&u!=='MG')];
-  for(const u of ordem){ const o=I.uf[u]&&(I.uf[u].get(k)||(I.comp[u]&&I.comp[u].get(k.replace(/ /g,'')))); if(o) return o; } return null; }
-function evaCidadeResp(o){ const cod=o.c; const nm=r=>(r&&r.ids||[]).map(i=>(geoLista(i)||{}).nome).filter(Boolean).join(', '); const rg=nm(geoClass(cod,'regiao')), bs=nm(geoClass(cod,'base'));
-  irPara('geo'); setTimeout(()=>{ try{ geoEscolher(cod,true); }catch(e){} },350);
-  return `📍 <b>${esc(o.n)}/${esc(o.u)}</b><br>Região: <b>${esc(rg||'sem região marcada')}</b>${bs?'<br>Base: <b>'+esc(bs)+'</b>':''}<br><small>Abri na Geolocalização, com a cidade marcada no mapa.</small>`; }
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt);
-    if(/regras|privacidade|seguranca|vaza|sigilo|whats|e-?mail|telegram/.test(t)) return _ee(txt);
-    /* cidade: "onde fica X", "X fica onde", "X é de qual região", "qual base atende X", "cidade X", ou só o nome da cidade */
-    const pads=[/^(?:onde (?:fica|e|esta)|em que regiao (?:fica|esta|e)|qual (?:a )?(?:regiao|base) (?:de|do|da|que atende)|quem atende|qual base atende|qual regiao atende|cidade(?: de)?|e a cidade)\s+(?:a cidade de\s+|o municipio de\s+)?(.+)$/,/^(.+?)\s+(?:fica onde|e de qual (?:regiao|base)|e de que regiao|pertence a qual (?:regiao|base)|e atendida por quem|quem atende)\??$/];
-    for(const re of pads){ const m=t.match(re); if(m){ const o=evaAcharCidade(m[1]); if(o) return evaCidadeResp(o); } }
-    if(t.split(' ').length<=5&&!/\d/.test(t)){ const o=evaAcharCidade(txt); if(o) return evaCidadeResp(o); }
-    return _ee(txt); }; }
-/* ================= v8.8.6 · Personalizar BIT (colete refletivo, capacete, laço) — cada usuário escolhe o seu ================= */
-function evaVis(){ try{ return Object.assign({colete:false,capacete:false,laco:true,cor:'#EC4899'},JSON.parse(LS.getItem('healthSearch.evaVisual')||'{}')); }catch(e){ return {colete:false,capacete:false,laco:true,cor:'#EC4899'}; } }
-function evaSvgVestida(v){ return EVA_SVG; }
-function evaAplicarVisual(){ const v=evaVis(); const b=$('#eva-bt'); if(b){ const qt=b.querySelector('#eva-qt'); b.innerHTML=evaSvgVestida(v); if(qt) b.appendChild(qt); } const a=document.querySelector('#eva-painel .eva-cab .av'); if(a) a.innerHTML=evaSvgVestida(v); }
-function evaPersonalizar(){ const v=evaVis(); const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1700';
-  const cores=[['#EC4899','Rosa'],['#8B5CF6','Lilás'],['#0EA5E9','Azul'],['#EF4444','Vermelho'],['#22C55E','Verde'],['#F59E0B','Amarelo']];
-  f.innerHTML=`<div class="modal" role="dialog" style="max-width:440px"><h2 style="margin-top:0">Personalizar BIT</h2><div style="display:flex;gap:16px;align-items:center"><div id="ep-prev" style="width:110px;height:138px;flex:none"></div>
-   <div style="display:flex;flex-direction:column;gap:10px"><label><input type="checkbox" id="ep-colete" ${v.colete?'checked':''}> 🦺 Colete refletivo</label><label><input type="checkbox" id="ep-capacete" ${v.capacete?'checked':''}> ⛑ Capacete</label><label><input type="checkbox" id="ep-laco" ${v.laco?'checked':''}> 🎀 Laço e coleira</label>
-   <label>Cor do laço <select id="ep-cor">${cores.map(([c,n])=>`<option value="${c}" ${c===v.cor?'selected':''}>${n}</option>`).join('')}</select></label><small class="sub">Com capacete, o laço fica guardado.</small></div></div>
-   <div style="display:flex;justify-content:space-between;margin-top:14px"><button class="btn" type="button" data-ep="pad">Voltar ao padrão</button><button class="btn pri" type="button" data-ep="ok">Salvar</button></div></div>`;
-  const ler=()=>({colete:$('#ep-colete').checked,capacete:$('#ep-capacete').checked,laco:$('#ep-laco').checked,cor:$('#ep-cor').value}); const prev=()=>{ $('#ep-prev').innerHTML=evaSvgVestida(ler()); };
-  f.addEventListener('change',prev); f.addEventListener('click',e=>{ const b=e.target.closest('[data-ep]'); if(e.target===f){ f.remove(); return; } if(!b) return;
-    if(b.dataset.ep==='pad'){ $('#ep-colete').checked=false; $('#ep-capacete').checked=false; $('#ep-laco').checked=true; $('#ep-cor').value='#EC4899'; prev(); return; }
-    try{ LS.setItem('healthSearch.evaVisual',JSON.stringify(ler())); }catch(er){} evaAplicarVisual(); f.remove(); toast('BIT personalizada!'); });
-  document.body.appendChild(f); prev(); }
-(function(){ const cab=document.querySelector('#eva-painel .eva-cab'); const x=$('#eva-x'); if(cab&&x) x.insertAdjacentHTML('beforebegin','<button type="button" id="eva-cfg" title="Personalizar BIT" aria-label="Personalizar BIT" style="background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:4px 6px">🎨</button>'); const c=$('#eva-cfg'); if(c) c.onclick=evaPersonalizar; evaAplicarVisual(); })();
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/personaliz|colete|capacete|roupa|vestir|lacinho|laco/.test(t)){ setTimeout(evaPersonalizar,200); return 'Abri o <b>Personalizar BIT</b> 🎨 — escolha colete refletivo, capacete e a cor do laço.'; } return _ee(txt); }; }
-/* v10.6.01: Registro de carretas (rg*, foto de Recebimento/Expedição → WhatsApp) saiu do app. Conceito no MAPA.md; S.registros continua sincronizado e guardado. */
+/* v10.6.06: o BIT (assistente, boneco, balões, aba) saiu do app inteiro. A leitura de etiqueta em várias passadas, o "Resolver"
+   do NexBip e o conversor de XML ficaram (não dependiam dele). Conceito no MAPA.md. */
+/* v10.6.01: Registro de carretas saiu do app. S.registros continua sincronizado e guardado. */
 if(!NUV_CAMPOS.includes('registros')) NUV_CAMPOS.push('registros');
 /* respiro no fim de toda tela (vinha junto com o CSS do Registro) */
 (function(){ const st=document.createElement('style'); st.textContent='.tela{padding-bottom:150px!important}'; document.head.appendChild(st); })();
@@ -8735,96 +8589,6 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; try{ ckSincronizar
     r[campo]=campo==='ativo'?inp.checked:(campo==='placa'?inp.value.toUpperCase():inp.value); salvar();
     /* v9.19.17: só redesenha quando muda a cor/status da linha — assim não rouba o foco de quem está digitando */
     if(campo==='data'||campo==='ativo') ckRender(); else if(campo==='placa') inp.value=inp.value.toUpperCase(); }); })();
-/* ================= v8.9.1 · BIT mais inteligente: filtra as notas dos romaneios (cidade, região, origem, cliente) e entende frases ================= */
-const EVA_ORIG=[[/\b(caj|cajamar|matriz)\b/,'CAJ'],[/\b(mesa|integracao|agendad[ao]s?)\b/,'MESA'],[/\b(df|brasilia|distrito federal)\b/,'DF'],[/\bvia ?minas\b|\bgiovan/,'VIA MINAS'],[/\b(aqa|araraquara)\b/,'AQA'],[/\blkr\b/,'LKR'],[/\bcremer\b/,'CREMER']];
-const EVA_NAO_CIDADE=new Set(['notas','nota','todas','todos','puxe','puxa','mostra','mostre','lista','liste','quais','quantas','quantos','me','de','da','do','das','dos','origem','cliente','romaneio','romaneios','hoje','pedidos','pedido','nfs','nf','volumes','entregas','que','vieram','veio','para','pra','em','na','no','e','com','sem','regiao','base','cidade','as','os','a','o','ver','buscar','busca','abrir','abre']);
-function evaOrigemRom(r){ try{ aplicarRegraBase(r); }catch(e){} const b=String(r.base||'').toUpperCase(); const a=evaN(r.arquivo||r.numero||''); if(/lkr/.test(a)) return 'LKR'; if(/cremer/.test(a)) return 'CREMER'; return b||'?'; }
-function evaFiltros(txt){ let t=' '+evaN(txt).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ')+' '; const f={};
-  /* origem: "origem cajamar", "vindas de CAJ", "romaneio da MESA" — ou a palavra sozinha (caj, mesa, df, via minas, lkr, cremer) */
-  const mo=t.match(/\b(?:origem|de origem|vind[oa]s? d[eao]|que vieram d[eao]|veio d[eao]|romaneios? d[eao]|do romaneio|da transferencia d[eao])\s+([a-z ]{2,20}?)(?= (?:para|pra|de|da|do|em|na|no|com|e)\b| $)/);
-  const zonaO=mo?mo[1]:t; for(const [re,o] of EVA_ORIG){ const m2=zonaO.match(re); if(m2){ f.orig=o; t=mo?t.replace(mo[0],' '):t.replace(m2[0],' '); break; } }
-  /* região ou base: "da região minas gerais" */ const mr=t.match(/\b(?:regiao|base)\s+(?:de |da |do )?([a-z ]{3,40}?)(?= (?:de|da|do|com|origem|que|e)\b| $)/); if(mr){ const l=evaAcharLista(mr[1]); if(l){ f.lista=l; t=t.replace(mr[0],' '); } }
-  /* cliente */ const mc=t.match(/\bcliente\s+([a-z0-9 ]{3,40}?)(?= (?:de|da|do|em|na|no|com|origem|que)\b| $)/); if(mc){ f.cli=mc[1].trim(); t=t.replace(mc[0],' '); }
-  /* cidade: maior pedaço de 1 a 5 palavras que é uma cidade (SP/MG primeiro) */
-  if(!f.lista){ const w=t.trim().split(' ').filter(Boolean); let best=null; for(let n=5;n>=1&&!best;n--) for(let i=0;i+n<=w.length&&!best;i++){ const seg=w.slice(i,i+n); if(seg.every(x=>EVA_NAO_CIDADE.has(x))||EVA_NAO_CIDADE.has(seg[0])&&n===1) continue; if(n===1&&seg[0].length<4) continue; const ph=normCid(seg.join(' ')); const naRom=[...EVA_CIDS_ROM()].find(([k])=>k===ph)||[...EVA_CIDS_ROM()].find(([k])=>ph.length>=4&&k.startsWith(ph+' ')); if(naRom){ const o2=evaAcharCidade(naRom[1].cid+' '+(naRom[1].uf||'')); if(o2){ best=o2; break; } } const o=evaAcharCidade(seg.join(' ')); if(o&&(o.u==='SP'||o.u==='MG'||n>1)) best=o; } if(best) f.cid=best; }
-  if(/\breentrega/.test(t)) f.re=true; return f; }
-function EVA_CIDS_ROM(){ const m=new Map(); for(const r of (S.romaneios||[])) for(const x of (r.rows||[])) if(x.cid){ const k=normCid(x.cid); if(!m.has(k)) m.set(k,{cid:x.cid,uf:x.uf}); } return m; }
-function evaNotasFiltradas(f){ const out=[]; const nc=x=>normCid(x||''); const cidK=f.cid?normCid(f.cid.n):null; const membros=f.lista?new Set((f.lista.cidades||[]).map(Number)):null;
-  for(const r of (S.romaneios||[])){ const o=evaOrigemRom(r); if(f.orig&&o!==f.orig) continue;
-    for(const x of (r.rows||[])){ if(cidK&&nc(x.cid)!==cidK) continue; if(f.cid&&x.uf&&f.cid.u&&x.uf!==f.cid.u) continue;
-      if(membros){ let c=0; try{ c=geoCodLinha(x); }catch(e){} if(!membros.has(c)) continue; }
-      if(f.cli&&!evaN(x.dest||'').includes(f.cli)) continue; out.push({x,r,o}); } }
-  return out; }
-function evaNum(v){ const n=parseFloat(String(v??'').replace(/\./g,'').replace(',','.')); return isFinite(n)?n:0; }
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt);
-    if(/regras|privacidade|seguranca|vaza|sigilo|whats|e-?mail|telegram/.test(t)) return _ee(txt);
-    /* "no buscar", "abre na busca", "joga na busca" → usa o último resultado */
-    if(EVA.ultNfs&&/\b(busca|buscar|na busca|no buscar|abre|abrir|joga|mostra la|manda pra busca)\b/.test(t)&&t.split(' ').length<=6){ evaBuscar(EVA.ultNfs.join(' ')); return `Pronto, coloquei as <b>${fmtN(EVA.ultNfs.length)}</b> nota(s) na <b>Busca</b>.`; }
-    const pedeNotas=/\b(notas?|nfs?|pedidos?|entregas?|volumes?|cargas?)\b/.test(t)&&(/\b(puxe|puxa|puxar|todas?|quais|quantas?|lista|liste|mostra|mostre|ver|tem|existe|me de|traz|traga|filtra|filtre)\b/.test(t)||/^(as |os )?(notas?|nfs?|pedidos?|entregas?|volumes?)\b/.test(t));
-    if(pedeNotas){ const f=evaFiltros(txt); if(f.orig||f.cid||f.lista||f.cli){
-        if(!(S.romaneios||[]).length) return 'Ainda não há romaneios carregados hoje. Coloque os PDFs na aba <b>Romaneios</b> e me pergunte de novo.';
-        const L=evaNotasFiltradas(f); const desc=[f.cid&&('cidade <b>'+esc(f.cid.n)+'/'+esc(f.cid.u)+'</b>'),f.lista&&((f.lista.tipo==='base'?'base ':'região ')+'<b>'+esc(f.lista.nome)+'</b>'),f.orig&&('origem <b>'+esc(f.orig)+'</b>'),f.cli&&('cliente <b>'+esc(f.cli.toUpperCase())+'</b>')].filter(Boolean).join(' · ');
-        if(!L.length){ EVA.ultNfs=null; return `Não achei notas nos romaneios carregados com ${desc}.`; }
-        const nfs=[...new Set(L.map(i=>opK(i.x.nf)).filter(Boolean))]; EVA.ultNfs=nfs; const vol=L.reduce((s,i)=>s+(volNum?volNum(i.x.vol):evaNum(i.x.vol)),0), val=L.reduce((s,i)=>s+evaNum(i.x.valor),0);
-        return `Achei <b>${fmtN(nfs.length)}</b> nota(s) com ${desc}: <b>${fmtN(vol)}</b> volume(s)${val?' · '+opMoeda(val):''}.<div style="max-height:220px;overflow:auto;margin:6px 0;font-size:.92em">${L.slice(0,40).map(i=>`<div style="border-bottom:1px solid var(--linha);padding:3px 0"><b>NF ${esc(i.x.nf||'—')}</b> · ${esc(i.x.dest||'')} · ${esc(i.x.cid||'')}${i.x.vol?' · '+esc(i.x.vol)+' vol':''} <small style="opacity:.7">(${esc(i.o)})</small></div>`).join('')}${L.length>40?'<div class="sub">… e mais '+(L.length-40)+'</div>':''}</div><button type="button" class="btn mini pri" data-eva-busca="1">🔎 Abrir todas na Busca</button>`; } }
-    const r=_ee(txt);
-    /* frase longa que ela não entendeu: não joga a frase na Busca */
-    if(/^Procurei <b>/.test(r)&&!/\d{4,}/.test(txt)&&t.split(' ').length>=4&&!/^(procura|busca|acha|encontra|cliente)/.test(t)){ try{ document.querySelector('#q').value=''; }catch(e){} return 'Não entendi bem. Tente assim:<br>• "notas de Ribeirão Preto origem Cajamar"<br>• "notas da região Minas Gerais"<br>• "notas do cliente Unimed"<br>• "onde fica Franca?"<br>• "como faço o backup físico?"'; }
-    return r; }; }
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-eva-busca]'); if(b&&EVA.ultNfs){ evaBuscar(EVA.ultNfs.join(' ')); } });
-/* ================= v8.9.2 · BIT completa: datas (banco de romaneios), continuação de conversa, nota por número, feriados, reentregas, divergências, rotas, registro e resumo do dia ================= */
-function evaDia(t){ const h=hojeISO(), d=n=>new Date(Date.now()+n*864e5).toISOString().slice(0,10);
-  if(/\banteontem\b/.test(t)) return d(-2); if(/\bontem\b/.test(t)) return d(-1); if(/\bamanha\b/.test(t)) return d(1); if(/\bhoje\b/.test(t)) return h;
-  const m=t.match(/\b(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?\b/)||t.match(/\bdia (\d{1,2})\b/); if(m){ const a=m[3]?(m[3].length===2?'20'+m[3]:m[3]):h.slice(0,4); const mm=m[2]?String(m[2]).padStart(2,'0'):h.slice(5,7); const iso=`${a}-${mm}-${String(m[1]).padStart(2,'0')}`; if(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(iso)) return iso; }
-  return null; }
-function evaRomDoDia(dia){ if(!dia||dia===hojeISO()) return S.romaneios||[]; const L=rbLocalLer()[dia]||{}; return Object.values(L).map(g=>({id:g.id,base:g.base,numero:g.numero,motorista:g.motorista,arquivo:'',rows:g.rows||[]})); }
-function evaComDia(dia,fn){ const bak=S.romaneios; S.romaneios=evaRomDoDia(dia); try{ return fn(); }finally{ S.romaneios=bak; } }
-const evaDataTxt=d=>d===hojeISO()?'hoje':(d===new Date(Date.now()-864e5).toISOString().slice(0,10)?'ontem':fmtData(d));
-function evaNotaStatus(n){ const k=opK(n); const out=[]; const ach=(rs,quando)=>{ for(const r of rs) for(const x of (r.rows||[])) if(opK(x.nf)===k||opK(x.ped)===k) out.push(`📄 ${quando}: NF <b>${esc(x.nf||'-')}</b>${x.ped?' · ped. '+esc(x.ped):''} · ${esc(x.dest||'')} · ${esc(x.cid||'')}${x.vol?' · '+esc(x.vol)+' vol':''} <small>(${esc(evaOrigemRom(r))})</small>`); };
-  ach(S.romaneios||[],'Romaneio de hoje'); const B=rbLocalLer(); for(const dia of Object.keys(B).sort().reverse().slice(0,30)) if(dia!==hojeISO()) ach(Object.values(B[dia]).map(g=>({base:g.base,numero:g.numero,arquivo:'',rows:g.rows||[]})),'Banco '+fmtData(dia));
-  const bs=(OP.bipes||[]).filter(b=>opK(b.nf)===k||opK(b.ped)===k); if(bs.length){ const b=bs[0]; out.push(`📷 Bipada ${fmtN(bs.length)}x · última ${esc(fmtData(b.dia||''))} — <b>${esc((OP_ST[b.status]||{}).t||b.status)}</b>${b.por?' por '+esc(b.por):''}`); } else out.push('📷 Ainda não bipada neste aparelho.');
-  try{ const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias||{})) for(const l of ls) if(opK(l.nf)===k||opK(l.ped)===k) out.push(`🔁 Reentrega em ${esc(fmtData(d))}${l.obs?' · '+esc(l.obs):''}`); }catch(e){}
-  for(const d of dvS()) if(opK(d.nf)===k||opK(d.ped)===k) out.push(`⚠ Divergência ${esc(dvNum(d))} · ${esc(d.tipo||'')} · ${esc((DV_ST[d.st]||{}).t||d.st)}`);
-  const x=(S.opXml||{})[k]; if(x) out.push(`🧾 XML: ${x.valor?opMoeda(x.valor):''}${x.g?' · tem gelo':''}${x.med?' · medicamento':''}`);
-  return out; }
-function evaResumoDia(){ const R=S.romaneios||[]; let notas=0,vol=0; for(const r of R) for(const x of (r.rows||[])){ notas++; vol+=(typeof volNum==='function'?volNum(x.vol):+x.vol||0); }
-  const h=hojeISO(), bs=(OP.bipes||[]).filter(b=>b.dia===h), c=s=>bs.filter(b=>b.status===s).length; const re=((RE.ler().dias||{})[h]||[]).length, dv=dvS().filter(d=>d.st!=='resolvida').length, cam=0;
-  return `<b>Resumo de hoje</b><br>📄 ${fmtN(R.length)} romaneio(s) · ${fmtN(notas)} nota(s) · ${fmtN(vol)} volume(s)<br>📷 ${fmtN(bs.length)} bipe(s): ${fmtN(c('ok'))} ok · ${fmtN(c('semnota'))} sem nota · ${fmtN(c('fora'))} fora · ${fmtN(c('dup'))} duplicados<br>🔁 ${fmtN(re)} reentrega(s) · ⚠ ${fmtN(dv)} divergência(s) em aberto<br>🚛 ${fmtN(cam)} caminhão(ões) na base`; }
-function evaFeriados(t,txt){ const f=evaFiltros(txt); const quando=evaDia(t);
-  if(f.cid){ let L=[]; try{ L=feriadosCidade(f.cid.n,f.cid.u); }catch(e){} if(quando) L=L.filter(x=>x.iso===quando); if(!L.length) return `Não há feriado ${quando?evaDataTxt(quando):'nos próximos dias'} em <b>${esc(f.cid.n)}/${esc(f.cid.u)}</b>.`;
-    return `Feriados em <b>${esc(f.cid.n)}/${esc(f.cid.u)}</b>:<br>`+L.slice(0,8).map(x=>`• ${esc(fmtData(x.iso))} — ${esc(x.n)} <small>(${esc(x.tipo)})</small>`).join('<br>'); }
-  let J=[]; try{ J=janelaFeriados(); }catch(e){} if(quando) J=J.filter(d=>d.iso===quando); const linhas=J.filter(d=>d.nac.length||d.est.size||d.mun.length).slice(0,7).map(d=>`• <b>${esc(fmtData(d.iso))}</b>: ${[...d.nac.map(x=>esc(x.n)+' (nacional)'),...[...d.est.values()].map(x=>esc(x.n)+' ('+x.uf+')'),d.mun.length?fmtN(d.mun.length)+' feriado(s) municipal(is): '+d.mun.slice(0,6).map(m=>esc(m.e.nome)).join(', ')+(d.mun.length>6?'…':''):''].filter(Boolean).join(' · ')}`);
-  return linhas.length?(quando?'Feriados '+evaDataTxt(quando)+':<br>':'Próximos feriados nas cidades que atendemos:<br>')+linhas.join('<br>')+'<br><small>Pergunte "feriado em Franca" para uma cidade.</small>':`Nenhum feriado ${quando?evaDataTxt(quando):'nos próximos dias'} nas cidades que atendemos.`; }
-function evaReentregas(t,txt){ const dia=evaDia(t); const f=evaFiltros(txt); let L=[]; try{ L=rpTodas(); }catch(e){} if(dia) L=L.filter(x=>x.d===dia); else if(!/\b(mes|semana|todas)\b/.test(t)) L=L.filter(x=>x.d>=new Date(Date.now()-6*864e5).toISOString().slice(0,10));
-  if(f.cid) L=L.filter(x=>normCid(x.l.cid||'')===normCid(f.cid.n)); if(f.cli) L=L.filter(x=>evaN(x.l.cli||'').includes(f.cli));
-  const per=dia?evaDataTxt(dia):(/\bmes\b/.test(t)?'no total':'nos últimos 7 dias'); if(!L.length) return `Nenhuma reentrega ${per}${f.cid?' em '+esc(f.cid.n):''}.`;
-  const mot=new Map(); for(const x of L){ const k=rpMotivo(x)||'(sem motivo)'; mot.set(k,(mot.get(k)||0)+1); }
-  return `<b>${fmtN(L.length)}</b> reentrega(s) ${per}${f.cid?' em <b>'+esc(f.cid.n)+'</b>':''}.<br><b>Motivos:</b> ${[...mot].sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,v])=>esc(k)+' ('+v+')').join(' · ')}<div style="max-height:180px;overflow:auto;margin-top:6px;font-size:.92em">${L.slice(0,30).map(x=>`<div style="border-bottom:1px solid var(--linha);padding:3px 0">${esc(fmtData(x.d))} · NF ${esc(x.l.nf||'—')} · ${esc(x.l.cli||'')} · ${esc(x.l.cid||'')}${x.l.obs?' · <i>'+esc(x.l.obs)+'</i>':''}</div>`).join('')}</div>`; }
-function evaDivergencias(t){ const A=dvS().filter(d=>d.st!=='resolvida').sort((a,b)=>String(a.d).localeCompare(String(b.d))); if(!A.length) return 'Nenhuma divergência em aberto. 🎉';
-  return `<b>${fmtN(A.length)}</b> divergência(s) em aberto (mais antigas primeiro):<div style="max-height:200px;overflow:auto;margin-top:6px;font-size:.92em">${A.slice(0,30).map(d=>`<div style="border-bottom:1px solid var(--linha);padding:3px 0"><b>${esc(dvNum(d))}</b> · ${esc(d.tipo||'')} · ${esc(d.cli||'')}${d.nf?' · NF '+esc(d.nf):''}${d.qtd?' · '+esc(d.qtd)+' vol':''} · desde ${esc(fmtData(String(d.d||'').slice(0,10)))}</div>`).join('')}</div>`; }
-{ const _ee=evaEntender; evaEntender=function(txt){ let t=evaN(txt).replace(/[?!.]+$/,'').trim();
-    if(/regras|privacidade|seguranca|vaza|sigilo|whats|e-?mail|telegram/.test(t)) return _ee(txt);
-    if(/^(obrigad[oa]|valeu|vlw|brigad[oa]|show|top|perfeito|otimo|massa)\b/.test(t)) return 'Por nada! Estou aqui sempre que precisar.';
-    if(/^(tchau|ate mais|ate logo|falou|boa noite e)\b/.test(t)) return 'Até mais! Bom trabalho.';
-    if(/(quem e voce|quem voce e|o que voce e|seu nome|como voce chama)/.test(t)) return 'Sou a <b>BIT</b>, a assistente interna do Health Search. Ajudo a achar notas, cidades, rotas, reentregas, divergências e a usar o app. '+EVA_REGRAS;
-    if(/(resumo|como esta|como estamos|status) (do dia|de hoje|hoje|a operacao|da operacao)|^resumo$/.test(t)) return evaResumoDia();
-    if(/\bferiad/.test(t)) return evaFeriados(t,txt);
-    if(/\bdivergen/.test(t)&&!/\d{4,}/.test(t)&&/\b(aberta|abertas|quais|lista|pendente|em aberto|tem)\b/.test(t)) return evaDivergencias(t);
-    if(/\breentrega/.test(t)&&!/\d{4,}/.test(t)&&(evaDia(t)||/\b(de|em|motivo|motivos|semana|mes|quais|lista|cliente)\b/.test(t))&&!/^abr/.test(t)) return evaReentregas(t,txt);
-    /* número de nota ou pedido: diz tudo o que se sabe dela */
-    const nums=/\b(nota|nf|nfe|pedido|ped)\b/.test(t)?txt.match(/\b\d{3,9}\b/g):txt.match(/\b\d{4,9}\b/g); if(nums&&nums.length<=5&&!/\b\d{1,2}[\/\-]\d{1,2}\b/.test(txt)){ const blocos=nums.map(n=>{ const L=evaNotaStatus(n); return `<b>${esc(n)}</b><br>`+(L.length?L.join('<br>'):'Não achei nada sobre esse número nos romaneios, bipes, reentregas ou divergências.'); }); evaBuscar(nums.join(' ')); EVA.ultNfs=nums; return blocos.join('<hr style="border:0;border-top:1px solid var(--linha);margin:8px 0">')+'<br><small>Também abri na Busca.</small>'; }
-    /* continuação: "e de Franca?", "e ontem?", "e da MESA?" */
-    if(/^e\s/.test(t)&&EVA.ultF){ const f2=evaFiltros(txt), d2=evaDia(t); const f=Object.assign({},EVA.ultF); if(f2.cid){ f.cid=f2.cid; delete f.lista; } if(f2.lista){ f.lista=f2.lista; delete f.cid; } if(f2.orig) f.orig=f2.orig; if(f2.cli) f.cli=f2.cli; return evaListar(f,d2||EVA.ultDia); }
-    /* notas filtradas com data */
-    const pedeNotas=/\b(notas?|nfs?|pedidos?|entregas?|volumes?|cargas?)\b/.test(t); const dia=evaDia(t);
-    if(pedeNotas){ const f=evaFiltros(txt); if(f.orig||f.cid||f.lista||f.cli||(dia&&dia!==hojeISO())) return evaListar(f,dia||hojeISO()); }
-    return _ee(txt); }; }
-function evaListar(f,dia){ EVA.ultF=f; EVA.ultDia=dia; const rs=evaRomDoDia(dia); if(!rs.length) return dia===hojeISO()?'Ainda não há romaneios carregados hoje. Coloque os PDFs na aba <b>Romaneios</b>.':`Não há romaneios de <b>${esc(fmtData(dia))}</b> no Banco de romaneios deste aparelho.`;
-  const L=evaComDia(dia,()=>evaNotasFiltradas(f)); const desc=[f.cid&&('<b>'+esc(f.cid.n)+'/'+esc(f.cid.u)+'</b>'),f.lista&&((f.lista.tipo==='base'?'base ':'região ')+'<b>'+esc(f.lista.nome)+'</b>'),f.orig&&('origem <b>'+esc(f.orig)+'</b>'),f.cli&&('cliente <b>'+esc(f.cli.toUpperCase())+'</b>')].filter(Boolean).join(' · ')||'todas';
-  if(!L.length){ EVA.ultNfs=null; return `Não achei notas de ${evaDataTxt(dia)} com ${desc}.`; }
-  const nfs=[...new Set(L.map(i=>opK(i.x.nf)).filter(Boolean))]; EVA.ultNfs=nfs; const vol=L.reduce((s,i)=>s+(typeof volNum==='function'?volNum(i.x.vol):evaNum(i.x.vol)),0), val=L.reduce((s,i)=>s+evaNum(i.x.valor),0);
-  const porO=new Map(); for(const i of L) porO.set(i.o,(porO.get(i.o)||0)+1);
-  return `${evaDataTxt(dia)[0].toUpperCase()+evaDataTxt(dia).slice(1)}: <b>${fmtN(nfs.length)}</b> nota(s) · ${desc} · <b>${fmtN(vol)}</b> vol${val?' · '+opMoeda(val):''}${porO.size>1?'<br><small>'+[...porO].map(([o,n])=>esc(o)+' '+n).join(' · ')+'</small>':''}<div style="max-height:220px;overflow:auto;margin:6px 0;font-size:.92em">${L.slice(0,40).map(i=>`<div style="border-bottom:1px solid var(--linha);padding:3px 0"><b>NF ${esc(i.x.nf||'—')}</b> · ${esc(i.x.dest||'')} · ${esc(i.x.cid||'')}${i.x.vol?' · '+esc(i.x.vol)+' vol':''} <small style="opacity:.7">(${esc(i.o)})</small></div>`).join('')}${L.length>40?'<div class="sub">… e mais '+(L.length-40)+'</div>':''}</div><button type="button" class="btn mini pri" data-eva-busca="1">🔎 Abrir todas na Busca</button><br><small>Dica: continue com "e de Franca?", "e ontem?", "e da MESA?"</small>`; }
 /* ================= v8.9.3 · Operação vira grupo: NexBip (bipar) + Conferência total (porcentagens, por romaneio, ferramentas) ================= */
 (function(){ const nav=document.querySelector('.nav'); const op=nav&&nav.querySelector('[data-tela="operacao"]'); if(!op) return;
   const lb=op.querySelector('.lbl'); if(lb) lb.textContent='NexBip';
@@ -9005,65 +8769,6 @@ function opDiaAviso(){ const topo=document.querySelector('#t-operacao .op-topo')
 { const _cm=ctMontar; ctMontar=function(){ _cm.apply(this,arguments); const g=$('#ct-geral'); if(!g) return; if(OP.dia&&OP.dia!==hojeISO()){
       g.innerHTML=`<div style="background:#FEF3C7;color:#78350F;border:1px solid #F59E0B;border-radius:14px;padding:14px;margin:10px 0"><b>⚠ A conferência total é sempre do dia de hoje (${esc(fmtData(hojeISO()))}).</b><br>No NexBip está aberto o dia ${esc(fmtData(OP.dia))}, por isso a porcentagem não pode ser calculada agora. <button class="btn mini pri" type="button" onclick="opVoltarHoje()" style="margin-left:6px">Voltar para hoje</button></div>`;
       const q=$('#qt-ct'); if(q) q.hidden=true; } }; }
-/* ================= v8.9.5 · BIT mais humana: cumprimenta, fala por balão, acompanha o NexBip, comemora e avisa ================= */
-const EVAH={ult:{},marcos:new Set(),seq:[],ini:null};
-const evaSorteia=a=>a[Math.floor(Math.random()*a.length)];
-function evaNome(){ try{ const n=String((NV.perfil&&NV.perfil.nome)||'').trim().split(/\s+/)[0]; return n?n[0].toUpperCase()+n.slice(1).toLowerCase():''; }catch(e){ return ''; } }
-function evaPeriodo(){ const h=new Date().getHours(); return h<5?'boa noite':h<12?'bom dia':h<18?'boa tarde':'boa noite'; }
-/* balão de fala em cima da pandinha (não atrapalha: some sozinho; tocar abre o chat) */
-function evaBalao(html,ms,tipo){ if(EVA.aberta){ evaFala(html); return; } if(tipo){ const t=Date.now(); if(EVAH.ult[tipo]&&t-EVAH.ult[tipo]<45000) return; EVAH.ult[tipo]=t; }
-  let b=$('#eva-balao'); if(!b){ b=document.createElement('div'); b.id='eva-balao'; b.setAttribute('role','status'); document.body.appendChild(b); b.onclick=()=>{ b.hidden=true; evaAbrir(true); }; }
-  b.innerHTML=html+'<span class="eva-bx" aria-label="Fechar">✕</span>'; b.hidden=false; b.querySelector('.eva-bx').onclick=e=>{ e.stopPropagation(); b.hidden=true; };
-  EVA.msgs.push({html}); clearTimeout(evaBalao.t); evaBalao.t=setTimeout(()=>{ b.hidden=true; },ms||9000); try{ const bt=$('#eva-bt'); bt.animate([{transform:'translateY(0)'},{transform:'translateY(-8px)'},{transform:'translateY(0)'}],{duration:500,iterations:2}); }catch(e){} }
-/* v10 · na tela do NexBip o BIT não aparece: nem balão, nem boneco no canto. O que ele faz lá é só ler etiqueta. */
-function evaNoBip(){ try{ const op=document.getElementById('t-operacao'); return !!(op&&!op.hidden); }catch(e){ return false; } }
-{ const _ev=evaAplicarVisual; evaAplicarVisual=function(){ const r=_ev.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=evaNoBip(); }catch(e){} return r; }; }
-{ const _ir10=irPara; irPara=function(t){ const r=_ir10.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=evaNoBip(); }catch(e){} return r; }; }
-/* v9.26.6 · na tela do NexBip o BIT não abre balão: fica só o botão do canto com o número na cabeça */
-{ const _eb=evaBalao; evaBalao=function(html,ms,tipo){ try{ const op=document.getElementById('t-operacao');
-      if(op&&!op.hidden&&!EVA.aberta){ EVA.msgs.push({html}); EVA.naoLidas=(EVA.naoLidas||0)+1; try{ evaBadge(); }catch(e){} return; } }catch(e){}
-    return _eb.apply(this,arguments); }; }
-{ const _ea=evaAbrir; evaAbrir=function(){ EVA.naoLidas=0; try{ evaBadge(); }catch(e){} return _ea.apply(this,arguments); }; }
-{ const _ir9=irPara; irPara=function(t){ if(t==='eva'){ EVA.naoLidas=0; setTimeout(()=>{ try{ evaBadge(); }catch(e){} },50); } return _ir9.apply(this,arguments); }; }
-(function(){ const st=document.createElement('style'); st.textContent=`#eva-balao{position:fixed;left:50%;right:auto;top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;transform:translateX(-50%);z-index:1520;max-width:min(300px,calc(100vw - 110px));background:#fff;color:#1f2937;border-radius:14px 14px 4px 14px;padding:10px 26px 10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:var(--fs-sm);line-height:1.35;cursor:pointer;animation:evaIn .25s ease}
- body:has(#op-cam) #eva-balao{top:calc(176px + env(safe-area-inset-top,0px))} /* 9.19.11: com a câmera aberta, o recado fica abaixo do aviso do bipe, sem tampar */
- body:has(#op-cam) #hs-salvar{display:none!important} /* 9.20.1: o 💾 Salvar tampava o botão Fechar da câmera */
- #eva-balao[hidden]{display:none}#eva-balao{max-width:min(560px,calc(100vw - 24px))!important;border-radius:14px!important;animation:none!important}#eva-balao .eva-bx{position:absolute;top:4px;right:8px;opacity:.5;cursor:pointer}@keyframes evaIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`; document.head.appendChild(st); })();
-/* resumo curto do dia para cumprimentar */
-function evaStatusCurto(){ let L=[]; try{ L=opPorRom(); }catch(e){} const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0); const dv=dvS().filter(d=>d.st!=='resolvida').length; const cam=0;
-  const p=[]; if(tn) p.push(fn?`faltam <b>${fmtN(fn)}</b> de ${fmtN(tn)} nota(s) para conferir`:`a conferência de hoje está <b>completa</b> 🎉`); else p.push('ainda não há romaneios de hoje carregados'); if(dv) p.push(`${fmtN(dv)} divergência(s) em aberto`); if(cam) p.push(`${fmtN(cam)} caminhão(ões) na base`); return p.join(', '); }
-function evaCumprimento(){ const n=evaNome(), per=evaPeriodo(); return `${per[0].toUpperCase()+per.slice(1)}${n?', '+esc(n):''}! ${evaSorteia(['Hoje','Por aqui','No momento'])} ${evaStatusCurto()}.`; }
-/* cumprimenta ao abrir o app (1x por período do dia) */
-setTimeout(()=>{ try{ const k=hojeISO()+'|'+evaPeriodo(); if(LS.getItem('healthSearch.evaOi')===k) return; LS.setItem('healthSearch.evaOi',k); evaBalao(evaCumprimento()+' Toque em mim se precisar.',11000); }catch(e){} },6000);
-/* conversa mais humana */
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt).replace(/[?!.]+$/,'').trim(); const n=evaNome();
-    const cum=t.match(/^(bom dia|boa tarde|boa noite|oi+|ola|e ai|eai|opa|salve|fala eva|oi eva|ola eva)\b/);
-    if(cum&&t.split(' ').length<=4){ const per=evaPeriodo(); const disse=cum[1]; const brinca=(/^(bom dia|boa tarde|boa noite)$/.test(disse)&&disse!==per)?` (por aqui já é ${per} 😄)`:'';
-      return `${disse.startsWith('b')?disse[0].toUpperCase()+disse.slice(1):per[0].toUpperCase()+per.slice(1)}${n?', '+esc(n):''}!${brinca} ${evaSorteia(['Que bom te ver.','Tudo certo por aí?','Pronta para ajudar.','Bora trabalhar!'])}<br>${evaStatusCurto()}.<br><small>Quer que eu mostre o que falta conferir? Escreva "o que falta".</small>`; }
-    if(/^(tudo bem|tudo bom|como vai|como voce esta|td bem|blz|beleza)\b/.test(t)) return evaSorteia(['Tudo ótimo por aqui, obrigado por perguntar! E com você?','Tudo certo! Com você também, espero.','Estou bem! Pronta para ajudar na operação.'])+' Precisa de alguma coisa?';
-    if(/^(to|estou|tô) (cansad|com sono|morto|exaust)/.test(t)) return 'Puxado, né? Respira um pouco e bebe uma água. 💧 Se quiser, te digo exatamente o que falta para fechar o dia: escreva "o que falta".';
-    if(/(o que falta|falta o que|quanto falta|quantas faltam|o que ainda falta|pendente)/.test(t)&&!/\breentrega/.test(t)){ let P=[]; try{ OP._semFiltro=true; P=opPendentes(); }catch(e){}finally{ OP._semFiltro=false; }
-      if(OP.dia&&OP.dia!==hojeISO()) return 'O NexBip está aberto em outro dia. Toque em <b>Voltar para hoje</b> lá e me pergunte de novo.';
-      if(!P.length) return (S.romaneios||[]).length?'Nada faltando! Toda a conferência de hoje está feita. 🎉':'Ainda não há romaneios de hoje carregados.';
-      const alto=P.filter(i=>i.valor>=(typeof opAlto==='function'?opAlto():5000)); const vol=P.reduce((s,i)=>s+Math.max(0,(i.esp||1)-(i.lidos||0)),0); EVA.ultNfs=P.map(i=>i.nf||i.ped).filter(Boolean);
-      return `Faltam <b>${fmtN(P.length)}</b> nota(s) · ${fmtN(vol)} volume(s).${alto.length?` Começa pelas <b>${fmtN(alto.length)}</b> de alto valor 💰:`:' As primeiras:'}<div style="max-height:200px;overflow:auto;margin:6px 0;font-size:.92em">${(alto.length?alto:P).slice(0,25).map(i=>`<div style="border-bottom:1px solid var(--linha);padding:3px 0"><b>NF ${esc(i.nf||i.ped||'—')}</b> · ${esc(i.x.dest||'')} · ${esc(i.x.cid||'')} · ${esc(String(i.esp))} vol${i.valor?' · '+opMoeda(i.valor):''} <small>(${esc(evaOrigemRom(i.r))})</small></div>`).join('')}</div><button type="button" class="btn mini pri" data-eva-busca="1">🔎 Abrir na Busca</button>`; }
-    if(/(dica|me ajuda|ajuda no nexbip|como bipar melhor|bipar mais rapido)/.test(t)) return evaSorteia(['💡 Dica: mantenha a etiqueta inteira dentro da moldura e segure firme meio segundo — a câmera lê os três QR de uma vez.','💡 Dica: com pouca luz, use a 🔦 lanterna da câmera; a leitura fica bem mais rápida.','💡 Dica: comece pelas notas de alto valor e pelas de gelo (isopor) — são as que mais dão problema se ficarem para trás.','💡 Dica: bipou errado? Use "↩ Desfazer meu último bipe" no NexBip.']);
-    const r=_ee(txt); return r; }; }
-/* ---- acompanhando o NexBip ---- */
-function evaNoNexBip(b){ if(!b) return; const t=Date.now(); EVAH.seq.push({t,s:b.status}); EVAH.seq=EVAH.seq.filter(x=>t-x.t<120000); if(!EVAH.ini) EVAH.ini=t;
-  if(b.status==='fora') evaBalao(evaSorteia(['Essa caixa não está nos romaneios de hoje. Separe essa caixa, por favor 📦','Opa, essa ficou fora do romaneio. Deixa separada que depois a gente vê.']),7000,'fora');
-  if(b.status==='dup'){ const d=EVAH.seq.filter(x=>x.s==='dup').length; if(d>=3) evaBalao('Três duplicados seguidos… será que está passando a mesma caixa? 🤔 Confere a pilha.',8000,'dup'); }
-  if(b.status==='semnota') evaBalao('Essa caixa está sem nota. Separa e avisa o administrador — quando a chave chegar eu ajudo a casar.',8000,'semnota');
-  try{ const x=b.nf&&(S.opXml||{})[opK(b.nf)]; if(x&&x.g) evaBalao('🧊 Essa nota tem item <b>gelado</b>: confere se a caixa de isopor está junto!',7000,'gelo'); }catch(e){}
-  try{ if(b.status==='ok'&&b.valor&&b.valor>=(typeof opAlto==='function'?opAlto():5000)) evaBalao(`💰 Alto valor conferido (${opMoeda(b.valor)}). Ótimo!`,5000,'alto'); }catch(e){}
-  /* marcos da conferência */ try{ const L=opPorRom(); const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0); if(tn){ const p=Math.floor(100*(tn-fn)/tn); for(const m of [100,90,75,50,25]) if(p>=m&&!EVAH.marcos.has(hojeISO()+m)){ for(const m2 of [25,50,75,90,100]) if(m2<=m) EVAH.marcos.add(hojeISO()+m2);
-      const min=(t-EVAH.ini)/60000, feitas=EVAH.seq.filter(x=>x.s==='ok').length, ritmo=min>2?feitas/Math.min(min,2):0, prev=ritmo>0&&fn?Math.round(fn/ritmo):0;
-      evaBalao(m===100?'🎉 <b>100%!</b> Toda a conferência de hoje está feita. Mandou muito bem!':` <b>${m}%</b> conferido! Faltam ${fmtN(fn)} nota(s)${prev?` — nesse ritmo, uns <b>${prev} min</b>`:''}. ${evaSorteia(['Bora!','Tá voando!','Continua assim!'])}`,9000); break; } } }catch(e){} }
-{ const _ol=opLer; opLer=function(){ const n0=OP.bipes.length; const r=_ol.apply(this,arguments); try{ if(OP.bipes.length>n0) evaNoNexBip(OP.bipes[0]); }catch(e){} return r; }; }
-/* ao abrir o NexBip: dica do que fazer primeiro */
-{ const _ir=irPara; irPara=function(t){ _ir(t); if(t==='operacao'){ try{ if(EVAH.ult.entrou&&Date.now()-EVAH.ult.entrou<30*60e3) return; EVAH.ult.entrou=Date.now(); let P=[]; OP._semFiltro=true; try{ P=opPendentes(); }finally{ OP._semFiltro=false; } if(!P.length) return;
-      const alto=P.filter(i=>i.valor>=(typeof opAlto==='function'?opAlto():5000)).length; setTimeout(()=>evaBalao(`${evaPeriodo()[0].toUpperCase()+evaPeriodo().slice(1)}${evaNome()?', '+esc(evaNome()):''}! Faltam <b>${fmtN(P.length)}</b> nota(s) hoje${alto?`, ${fmtN(alto)} de alto valor 💰 — começa por elas`:''}. Precisa de algo, é só me chamar.`,10000),800); }catch(e){} } }; }
-/* dúvidas: qualquer usuário pode responder (fica registrado quem respondeu) */
 /* ================= v8.9.6 · Conferência total: tocar num cartão abre a lista das notas logo abaixo ================= */
 function ctLista(){ const sec=$('#t-conftotal'); if(!sec||sec.hidden) return; const cards=$('#op-cards'); if(!cards) return; let el=$('#ct-lista');
   if(!el){ cards.insertAdjacentHTML('afterend','<div id="ct-lista"></div>'); el=$('#ct-lista'); } else if(el.previousElementSibling!==cards) cards.insertAdjacentElement('afterend',el);
@@ -9116,7 +8821,7 @@ function etqAchouAlgo(p,idx){ if(!p) return false; const ns=[...(p.nfs||[]),...(
       const msg=document.querySelector('#op-cam .msg'); const ant=msg&&msg.innerHTML; let escreveu=false;
       const diz=t=>{ if(msg&&!OP.espera&&Date.now()>(OP.resultadoAte||0)){ opMsgTrocar(msg,t); escreveu=true; } };
       OCRK.ocupado=true; let linhas=[]; const t0=Date.now();
-      let wsUlt=[]; for(const [nome,R,inv,gir,aut] of passes){ if(Date.now()-t0>4500) break; diz(`<b> O BIT está se esforçando…</b>lendo de novo (${nome}). Segure firme.`);
+      let wsUlt=[]; for(const [nome,R,inv,gir,aut] of passes){ if(Date.now()-t0>4500) break; diz(`<b>Leitura em andamento…</b>lendo de novo (${nome}). Segure firme.`);
         try{ const ws=await OCR.ler(etqQuadro(v,R,inv,gir,aut)); wsUlt=ws.filter(w=>w.conf>30); const L=etqLinhas(ws.filter(w=>w.conf>30)); linhas=linhas.concat(L); const pp=etqInterpretar(linhas); if(etqAchouAlgo(pp,idx)||(pp.dest&&pp.cid&&etqPorCliente(pp,idx))){ linhas=linhas; break; } }catch(e){} }
       OCRK.ocupado=false; OCRK.ult=Date.now(); if(msg&&ant&&escreveu&&!OP.espera) opMsgTrocar(msg,ant); if(!linhas.length) return p;
       const q=etqInterpretar(linhas); const base=p||{nfs:[],nums:[]}; /* junta: números de todas as passadas (inclusive números soltos de 6+ dígitos) */
@@ -9267,20 +8972,18 @@ ${lin}
 function xcLatin1(t){ const u=new Uint8Array(t.length); for(let i=0;i<t.length;i++){ const c=t.charCodeAt(i); u[i]=c<256?c:63; } return u; }
 function xcBaixar(L){ const b=new Blob([xcLatin1(xcXml(L))],{type:'application/xml'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='Romaneios_unificados_'+(L[0]&&L[0].dia||hojeISO())+'.XML'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
 const XC={L:[],files:[]};
-async function evaArquivos(files,op){ op=op||{}; const fs=[...files]; if(!fs.length) return; evaAbrir(true); evaFala(op.importado?'📂 Vi que você carregou '+fs.length+' XML(s) em Romaneios. Deixa comigo:':'📎 '+fs.length+' arquivo(s)',op.importado?'':'eu'); const {out,erros}=await xcLer(fs); XC.L=out; XC.files=fs.filter(f=>!erros.some(e=>e.startsWith(f.name+':')));
-  if(!out.length){ evaFala('Não consegui ler nenhuma nota desses arquivos. 😕<br>'+erros.map(esc).join('<br>')); return; }
-  const g={}; for(const n of out){ const k=n.rom; g[k]=g[k]||{n:0,v:0,p:0}; g[k].n++; g[k].v+=+n.vol||0; g[k].p+=+n.peso||0; }
-  const cnt={}; out.forEach(n=>cnt[n.nf]=(cnt[n.nf]||0)+1); const dup=Object.keys(cnt).filter(k=>cnt[k]>1);
-  const T=Object.values(g).reduce((a,x)=>({n:a.n+x.n,v:a.v+x.v,p:a.p+x.p}),{n:0,v:0,p:0}); const f=x=>x.toLocaleString('pt-BR',{maximumFractionDigits:1});
-  evaFala(`Converti tudo para um formato limpo ✅<br>${Object.entries(g).map(([k,x])=>`• <b>${esc(k)}</b>: ${x.n} notas · ${x.v} vol · ${f(x.p)} kg`).join('<br>')}<br><b>Total: ${T.n} notas · ${T.v} volumes · ${f(T.p)} kg</b>${dup.length?`<br>⚠ Nota em mais de um romaneio: <b>${dup.map(esc).join(', ')}</b>`:''}${erros.length?'<br>⚠ '+erros.map(esc).join('<br>⚠ '):''}
-   <br><button type="button" class="btn mini" data-xc="csv" style="margin-top:6px">⬇ Baixar XML unificado</button> ${op.importado?'<br>✔ Já importei tudo no Relatório Minas e na Operação.':'<button type="button" class="btn mini pri" data-xc="imp" style="margin-top:6px">📥 Importar no app</button>'}`); }
-document.addEventListener('click',async e=>{ const b=e.target.closest('[data-xc]'); if(!b) return; if(b.dataset.xc==='csv'){ xcBaixar(XC.L); return; }
-  if(b.dataset.xc==='imp'&&XC.files.length){ b.disabled=true; try{ await opXmlImportar(XC.files); }catch(_){} evaFala('Pronto, importei na Operação. 👍'); } });
-(function(){ const f=$('#eva-f'); if(!f) return; f.insertAdjacentHTML('afterbegin','<button type="button" class="btn" id="eva-clip" title="Enviar XML para o BIT converter" aria-label="Enviar arquivos">📎</button><input type="file" id="eva-arq" accept=".xml,text/xml" multiple hidden>');
-  $('#eva-clip').onclick=()=>$('#eva-arq').click(); $('#eva-arq').onchange=e=>{ evaArquivos(e.target.files); e.target.value=''; };
-  const p=$('#eva-painel'); if(p){ p.addEventListener('dragover',e=>e.preventDefault()); p.addEventListener('drop',e=>{ e.preventDefault(); e.stopPropagation(); evaArquivos(e.dataTransfer.files); }); } })();
-/* v9.0.1: BIT intervém sozinho quando XMLs entram pela aba Romaneios (conserta, resume, alerta repetidas, oferece o XML unificado) */
-{ const _imp2=importar; importar=async function(files){ const xs=[...(files||[])].filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); const r=await _imp2.apply(this,arguments); if(xs.length){ try{ await evaArquivos(xs,{importado:true}); }catch(e){} } return r; }; }
+/* v10.6.06: sem o BIT, o resumo dos XMLs lidos aparece numa janela própria (conserta acento, soma por romaneio, avisa nota repetida e oferece o XML unificado) */
+async function xmlResumo(files){ const fs=[...files]; if(!fs.length) return; const {out,erros}=await xcLer(fs); XC.L=out; XC.files=fs.filter(f=>!erros.some(e=>e.startsWith(f.name+':')));
+  let html; if(!out.length) html='Não consegui ler nenhuma nota desses arquivos.<br>'+erros.map(esc).join('<br>');
+  else { const g={}; for(const n of out){ const k=n.rom; g[k]=g[k]||{n:0,v:0,p:0}; g[k].n++; g[k].v+=+n.vol||0; g[k].p+=+n.peso||0; }
+    const cnt={}; out.forEach(n=>cnt[n.nf]=(cnt[n.nf]||0)+1); const dup=Object.keys(cnt).filter(k=>cnt[k]>1);
+    const T=Object.values(g).reduce((a,x)=>({n:a.n+x.n,v:a.v+x.v,p:a.p+x.p}),{n:0,v:0,p:0}); const f=x=>x.toLocaleString('pt-BR',{maximumFractionDigits:1});
+    html=`${Object.entries(g).map(([k,x])=>`• <b>${esc(k)}</b>: ${x.n} notas · ${x.v} vol · ${f(x.p)} kg`).join('<br>')}<br><b>Total: ${T.n} notas · ${T.v} volumes · ${f(T.p)} kg</b>${dup.length?`<br>⚠ Nota em mais de um romaneio: <b>${dup.map(esc).join(', ')}</b>`:''}${erros.length?'<br>⚠ '+erros.map(esc).join('<br>⚠ '):''}<br>✔ Já entraram na Operação (valor e conteúdo).`; }
+  const m=document.createElement('div'); m.className='fundo'; m.id='xml-resumo'; m.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:540px"><h2 style="margin-top:0">📂 ${fmtN(fs.length)} XML(s) lido(s)</h2><p style="line-height:1.6">${html}</p>
+    <div class="botoes">${out.length?'<button type="button" class="btn" data-xc="csv">⬇ Baixar XML unificado</button>':''}<button type="button" class="btn pri" data-xc-x="1">Fechar</button></div></div>`;
+  document.body.appendChild(m); m.addEventListener('click',ev=>{ if(ev.target===m||ev.target.closest('[data-xc-x]')) m.remove(); }); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-xc="csv"]'); if(b) xcBaixar(XC.L); });
+{ const _imp2=importar; importar=async function(files){ const xs=[...(files||[])].filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); const r=await _imp2.apply(this,arguments); if(xs.length){ try{ await xmlResumo(xs); }catch(e){} } return r; }; }
 /* ================= v7.9.7 · Aviso quando sua conta entra em outro aparelho ================= */
 function apId(){ try{ let id=LS.getItem('healthSearch.aparelho'); if(!id){ hsAparelho(); id=LS.getItem('healthSearch.aparelho'); } return id; }catch(e){ return 'x'; } }
 async function apRegistrar(){ if(!opOnline()||!NV.cli||Store.modo!=='nuvem') return; try{ await NV.cli.from('hs_sync').upsert({chave:'ap:'+opEu()+':'+apId(),tipo:'ap',valor:{aparelho:hsAparelho(),por:opEu(),em:new Date().toISOString(),ua:navigator.userAgent.slice(0,140)},apagado:false,atualizado_por:opEu()}); }catch(e){} }
@@ -9480,22 +9183,6 @@ setTimeout(()=>{ if(Store.modo!=='nuvem'){ if(ATU.snap){ const q=atuDevolver(); 
 /* v10.6.01: Rotas (folha de rota do dia, funções rota e rot) e o papel "Roteirizador" saíram do app. Conceito no MAPA.md; S.rotas/S.roteirizadores/S.rotMarcas continuam sincronizados e guardados. */
 NUV_CAMPOS.push('rotas','roteirizadores','rotMarcas');
 
-/* v9.9.1: com a câmera aberta, o personagem do BIT sai da frente (o botão flutuante e o balão ficavam em cima da tela da câmera).
-   As falas dele não se perdem: viram uma tarja discreta dentro da própria câmera e continuam no histórico do chat. */
-{ const _ca9=opCamAbrir; opCamAbrir=async function(){ const r=await _ca9.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=true; const bl=$('#eva-balao'); if(bl) bl.hidden=true; if(typeof EVA!=='undefined'&&EVA.aberta) evaAbrir(false);
- }catch(e){} return r; }; }
-{ const _cf9=opCamFechar; opCamFechar=function(){ const r=_cf9.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=false; }catch(e){} return r; }; }
-{ const _bal9=evaBalao; evaBalao=function(html,ms,tipo){ const cam=document.querySelector('#op-cam'); if(!cam) return _bal9.apply(this,arguments);
-    if(tipo){ const t=Date.now(); if(EVAH.ult[tipo]&&t-EVAH.ult[tipo]<45000) return; EVAH.ult[tipo]=t; }
-    try{ EVA.msgs.push({html}); }catch(e){}
-    /* v9.20.0: com o resultado de um bipe na tela, o recado do BIT espera a resposta (nunca cobre o aviso) */
-    if(OP.espera){ try{ if(tipo) EVAH.ult[tipo]=0; }catch(e){} return; }
-    let d=cam.querySelector('.eva-dica'); if(!d){ d=document.createElement('div'); d.className='eva-dica'; d.style.cssText='position:absolute;left:12px;right:12px;top:92px;z-index:4;color:#fff;background:rgba(0,0,0,.62);border-radius:12px;padding:8px 12px;font-size:.86rem;line-height:1.35'; cam.appendChild(d); }
-    d.innerHTML=html; d.hidden=false;
-    /* fica sempre abaixo do aviso do bipe e da faixa VOLUMES */
-    try{ const baixo=[cam.querySelector('.msg'),cam.querySelector('.vtot')].filter(e=>e&&!e.hidden).reduce((m,e)=>Math.max(m,e.getBoundingClientRect().bottom),0);
-      if(baixo) d.style.top=Math.round(baixo-cam.getBoundingClientRect().top+8)+'px'; }catch(e){}
-    clearTimeout(d._t); d._t=setTimeout(()=>{ d.hidden=true; },ms||9000); }; }
 
 /* ================= v9.9.0 · Resolver: o BIT sugere a nota certa para quem ficou fora do romaneio/sem nota ================= */
 function oresUmDigito(a,b){ a=String(a||''); b=String(b||''); if(!a||!b||a.length!==b.length) return false; let d=0; for(let i=0;i<a.length;i++) if(a[i]!==b[i]) d++; return d===1; }
@@ -9524,7 +9211,7 @@ function oresAbrir(lid){ const b=OP.bipes.find(x=>String(x.id||x.local_id)===Str
   const f=document.createElement('div'); f.className='fundo';
   f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:580px;text-align:left">
     <h2> Resolver · pedido ${esc(b.ped||b.nf||'(sem pedido)')}</h2>
-    <p class="sec">O BIT procurou notas que podem ser esta caixa. Escolha uma, busque manualmente ou confirme se já bipou.</p>
+    <p class="sec">O app procurou notas que podem ser esta caixa. Escolha uma, busque manualmente ou confirme se já bipou.</p>
     <div id="ores-cands">${cands.length?cands.map((c,i)=>`<div class="card" data-ores-pick="${i}" style="padding:8px 10px;margin-bottom:6px;cursor:pointer;border:1.5px solid var(--linha)"><b>${esc(c.ped||c.nf||'?')}</b> ${esc(c.row.cli||c.row.dest||'')} ${c.row.cid||c.row.cidade?'· '+esc(c.row.cid||c.row.cidade):''}<br><small class="sec">${esc(c.motivos.join(', '))}</small></div>`).join(''):'<p class="sec">Nenhuma sugestão por enquanto — busque manualmente abaixo.</p>'}</div>
     <input id="ores-busca" class="filtro" placeholder="Buscar por NF, pedido, cliente ou cidade" autocomplete="off" style="width:100%;margin-top:6px">
     <div id="ores-busca-res" style="max-height:180px;overflow:auto;margin-top:6px"></div>
@@ -9566,16 +9253,6 @@ function oresResolvidosRender(){ const cards=$('#op-cards'); if(!cards) return; 
   el.innerHTML=`<details class="op-xml"><summary><b>✅ Resolvidos</b> <span class="tag">${L.length}</span></summary><div class="rolagem" style="max-height:40vh;overflow:auto">${L.map(([lid,r])=>`<div class="card" style="padding:6px 10px;margin:4px 0;display:flex;align-items:center;gap:8px"><div style="flex:1"><b>${esc(r.ped||r.nf||'?')}</b> ${esc(r.dest||'')} ${r.cid?'· '+esc(r.cid):''}<br><small class="sec">por ${esc(r.por||'')} · ${hora(r.quando)}</small></div><button type="button" class="btn mini" data-ores-desf="${esc(lid)}">↩ Desfazer</button></div>`).join('')}</div></details>`; }
 document.addEventListener('click',e=>{ const d=e.target.closest&&e.target.closest('[data-ores-desf]'); if(d){ oresDesfazer(d.dataset.oresDesf); } });
 { const _r2=opRender; opRender=function(){ const r=_r2.apply(this,arguments); try{ oresResolvidosRender(); }catch(e){ console.error(e); } return r; }; }
-
-/* ================= v9.9.0 · BIT ligada às etiquetas: chip no chat, contador e aviso na hora do bipe ================= */
-function evaEtqPendentes(){ try{ return OP.bipes.filter(b=>['fora','pit','semnota'].includes(b.status)&&evaEtqSug(b).some(c=>c.score>=50)); }catch(e){ return []; } }
-function evaEtqHtml(){ const P=evaEtqPendentes(); if(!P.length) return 'Não tenho nenhuma etiqueta pendente agora. 🙂';
-  return P.slice(0,8).map(b=>{ const c=evaEtqSug(b)[0]; if(!c) return ''; return `<div class="eva-duv">Pedido <b>${esc(b.ped||b.nf||'?')}</b>: acho que é <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''}<br><small class="sec">${esc(c.motivos.join(', '))}</small><div class="eva-ops"><button type="button" class="btn mini" data-eva-etq-sim="${esc(String(b.id||b.local_id))}">É esta</button></div></div>`; }).join(''); }
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-eva-etq-sim]'); if(!b) return; const lid=b.dataset.evaEtqSim; const bip=OP.bipes.find(x=>String(x.id||x.local_id)===lid); if(!bip) return; const c=evaEtqSug(bip)[0]; if(!c){ toast('Essa sugestão não existe mais.'); return; } oresResolver(lid,c); try{ evaFala(evaEtqHtml()); }catch(e){} });
-{ const _ee2=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/etiqueta/.test(t)) return evaEtqHtml(); return _ee2(txt); }; }
-{ const _eb2=evaBadge; evaBadge=function(){ _eb2(); try{ const n=evaEtqPendentes().length; const b=$('#eva-qt'); if(b&&n){ b.textContent=(+b.textContent||0)+n; b.hidden=false; } }catch(e){} }; }
-{ const _ebd=evaBadge; evaBadge=function(){ _ebd(); try{ const n=EVA.naoLidas||0; const b=$('#eva-qt'); if(b&&n){ b.textContent=(+b.textContent||0)+n; b.hidden=false; } }catch(e){} }; }
-{ const _enb=evaNoNexBip; evaNoNexBip=function(b){ const r=_enb(b); try{ if(b&&['fora','pit','semnota'].includes(b.status)){ const c=evaEtqSug(b)[0]; if(c&&c.score>=60) evaBalao(`🏷 Acho que essa caixa é o pedido <b>${esc(c.ped||c.nf||'?')}</b>${c.row.cli||c.row.dest?' ('+esc(c.row.cli||c.row.dest)+')':''} — ${esc(c.motivos.join(', '))}. Toque em Resolver para confirmar.`,9000,'etqpalpite'); } }catch(e){} return r; }; }
 
 /* ================= v8.1.0 · Buscar completo: valor, conteúdo, bipe, reentrega, divergência, copiar, Salesforce, cidade, outro dia, histórico ================= */
 function bxBipes(ped,nf){ const h=hojeISO(); let L=(OP.dia===h&&OP.bipes&&OP.bipes.length)?OP.bipes:[]; if(!L.length){ try{ L=opLocalLer(h)||[]; }catch(e){} } const P=opK(ped), N=opK(nf); return L.filter(b=>b.status!=='fora'&&((P&&b.ped===P)||(N&&b.nf===N))); }
@@ -9670,7 +9347,7 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('#o
    - Usuário: NexBip, buscar e configurações.
    - Roteirizador é um acréscimo: só ele (e o Admin) publica a rota do dia. */
 const CARGOS={admin:'Administrador',lider:'Líder',supervisor:'Supervisor(a)',conferente:'Conferente',usuario:'Usuário'};
-const CARGO_SO_ADM=['usuarios','correcao','cadastros','backups','geo','eva'];
+const CARGO_SO_ADM=['usuarios','correcao','cadastros','backups','geo'];
 const CARGO_TELAS={
   conferente:['buscar','geo','feriados','divergencias','conftotal','operacao','manual','ajustes','ajuda'],
   usuario:['operacao','buscar','manual','ajustes','ajuda']
@@ -9701,7 +9378,6 @@ function cargoAplicar(){ try{ if(!cargoLogado()) return; const c=cargoMeu(); doc
   }catch(e){} }
 /* v10.1.0 · a aba do BIT é só do administrador, e a tela inicial segue o cargo */
 { const _ip=irPara; irPara=function(t){
-    try{ if(t==='eva'&&cargoLogado()&&!nvAdmin()){ toast('A aba do BIT é só do administrador.'); return; } }catch(e){}
     return _ip.apply(this,arguments); }; }
 { const _nc=nvCarregar; nvCarregar=async function(){ const r=await _nc.apply(this,arguments);
     setTimeout(()=>{ try{ integConferir(); }catch(e){} },6000);
@@ -9742,7 +9418,6 @@ function murArrumar(){ try{
   try{ const b=$('#eva-bt'); if(b) b.hidden=true; }catch(e){}
 }catch(e){} }
 { const _mab=muralAbrir; muralAbrir=function(){ const r=_mab.apply(this,arguments); murArrumar(); setTimeout(murArrumar,0); requestAnimationFrame(murArrumar); return r; }; }
-{ const _mfe=muralFechar; muralFechar=function(){ const r=_mfe.apply(this,arguments); try{ const b=$('#eva-bt'); if(b) b.hidden=evaNoBip(); }catch(e){} return r; }; }
 { const _map=muAplicar; muAplicar=function(){ const r=_map.apply(this,arguments); murArrumar(); return r; }; }
 /* layout publicado pelo admin, igual para todos (não é mais por aparelho) */
 muLer=function(){ try{ const c=S.muralLay; if(c&&typeof c==='object') return {ordem:c.ordem||[],oculto:c.oculto||[],tam:c.tam||{}}; }catch(e){}
@@ -10432,13 +10107,6 @@ function dvavDaNota(k,re){ const ped=z(re&&re.ped||(String(k).startsWith('P')?St
   return r; }; }
 
 /* ---- BIT ---- */
-evaDivergencias=(function(_f){ return function(t){ const L=S.divergencias; S.divergencias=dvSo(); try{ return _f(t); } finally{ S.divergencias=L; } }; })(evaDivergencias);
-function evaNotaOcorr(t){ const m=t.match(/\d{5,}/); if(!m) return null; const k=z(m[0]); const L=dvS().filter(d=>z(d.nf)===k||z(d.ped)===k); if(!L.length) return null;
-  return L.map(d=>`${avEh(d)?'🟣 Avaria '+avNum(d)+' · '+esc(d.sub||''):'🟠 Divergência '+dvNum(d)+' · '+esc(d.tipo)}${d.qtd?(avEh(d)?' · '+d.qtd+' vol.':' · faltam '+d.qtd+' vol.'):''} · ${DV_ST[d.st].t}${d.reent?' · virou reentrega em '+fmtData(d.reent.d):''}${d.obs?'<br>'+esc(d.obs):''}`).join('<br><br>'); }
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt).replace(/[?!.]+$/,'').trim();
-  if(/\b(divergen|avaria|ocorrenc)/.test(t)&&/\d{5,}/.test(t)){ const r=evaNotaOcorr(t); if(r) return r; }
-  if(/(virou|viraram|voltaram|voltou).*(reentrega)|(divergen|avaria).*(reentrega)/.test(t)){ const L=dvS().filter(d=>d.reent); return L.length?`<b>${L.length}</b> ocorrência(s) que voltaram como reentrega:<br>`+L.slice(-30).reverse().map(d=>`${avEh(d)?'🟣 '+avNum(d):'🟠 '+dvNum(d)} · NF ${esc(d.nf||'—')} · ${fmtData(d.reent.d)} · ${esc(d.reent.motivo||'')}`).join('<br>'):'Nenhuma divergência ou avaria voltou como reentrega até agora.'; }
-  return _ee(txt); }; }
 
 /* ---- Manual ---- */
 (function(){ const i=MAN.findIndex(s=>s.id==='divergencias');
@@ -10500,7 +10168,6 @@ document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&!e.altKey&&(
   passos:[['Ações na nota','Na Busca, cada nota encontrada mostra: Divergência, Avaria, 🔁 Reentrega (lança nas Reentregas de hoje com o motivo) e 🕘 Linha do tempo (romaneios em que a nota esteve, bipes, divergências, avarias e reentregas, em ordem de data).'],
    ['Desfazer em 10 segundos','Depois de salvar uma divergência, uma avaria ou lançar uma reentrega pela Busca, aparece embaixo “↶ Desfazer” por 10 segundos. Clicou sem querer? Desfaça.'],
    ['Ctrl+K','De qualquer tela, aperte Ctrl+K: o app abre a Busca com o cursor pronto para digitar NF, pedido, cidade ou cliente.']]}); })();
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/(linha do tempo|historico|historia).*\d{5,}/.test(t)){ const m=t.match(/\d{5,}/); setTimeout(()=>linhaTempo({nf:m[0],ped:m[0]}),200); return `Abrindo a linha do tempo da nota <b>${esc(z(m[0]))}</b>.`; } if(/\b(ctrl ?k|atalho)/.test(t)) return 'Aperte <b>Ctrl+K</b> em qualquer tela para buscar uma NF, pedido, cidade ou cliente. Na Busca, cada nota tem Divergência, Avaria, Reentrega e Linha do tempo, e tudo pode ser desfeito em 10 segundos.'; return _ee(txt); }; }
 
 /* ================= v9.1.2 · backup só do administrador; os demais só salvam ================= */
 { const _vd=vsnDiaria; vsnDiaria=async function(){ if(!(typeof nvAdmin==='function'&&nvAdmin())) return; return _vd(); }; }
@@ -10652,13 +10319,13 @@ setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&
     ['Ocorrências',['reentregas','divergencias']],
     ['Planejamento',['agenda','feriados','romaneios','geo','checklist']],
     ['Relatórios',['relatorios','gestor']],
-    ['Configurações',['ajustes','eva','manual','ajuda']],
+    ['Configurações',['ajustes','manual']],
     ['Administração',['correcao','cadastros','usuarios','backups'],true]];
   let ORD=null; try{ ORD=JSON.parse(LS.getItem('healthSearch.menuOrdem')||'null'); }catch(e){}
   const GR=Array.isArray(ORD)?[...ORD.map(n=>GR0.find(g=>g[0]===n)).filter(Boolean),...GR0.filter(g=>!ORD.includes(g[0]))]:GR0;
   window.HS_GRUPOS=GR0.map(g=>g[0]);
   const ic=d=>`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-  for(const [t,l,d] of [['ajustes','Ajustes','<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'],['eva','BIT','<rect x="5" y="7" width="14" height="9" rx="1"/><path d="M3 11h2M19 11h2M7 16v3M10 16v3M14 16v3M17 16v3M9.5 10.5v1.5M14.5 10.5v1.5"/>'],['ajuda','Ajuda','<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>']]){ if(!nav.querySelector(`[data-tela="${t}"]`)){ const b=document.createElement('button'); b.dataset.tela=t; b.innerHTML=ic(d)+`<span class="lbl">${l}</span>`; nav.appendChild(b); } }
+  for(const [t,l,d] of [['ajustes','Ajustes','<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>']]){ if(!nav.querySelector(`[data-tela="${t}"]`)){ const b=document.createElement('button'); b.dataset.tela=t; b.innerHTML=ic(d)+`<span class="lbl">${l}</span>`; nav.appendChild(b); } }
   const btn=t=>nav.querySelector(`[data-tela="${t}"]`);
   /* telas novas: Backups e Relatórios */
   const mk=(id,html)=>{ const b=document.createElement('button'); b.dataset.tela=id; b.innerHTML=html; return b; };
@@ -10681,9 +10348,9 @@ setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(typeof NV!=='undefined'&&
   const admVis=()=>{ const h=document.getElementById('nav-grupo-adm2'); if(!h) return; const a=typeof nvAdmin==='function'&&nvAdmin(); h.hidden=!a; h.nextElementSibling.hidden=!a||h.getAttribute('aria-expanded')==='false';
     for(const t of ['correcao','usuarios','backups']){ const b=btn(t); if(b) b.hidden=!a; } };
   setInterval(()=>{ try{ admVis(); for(const h of nav.querySelectorAll('.ng2')){ const box=h.nextElementSibling; let n=0; box.querySelectorAll('.qt').forEach(q=>{ if(!q.hidden) n+=+q.textContent||0; }); const q=h.querySelector('.qt'); q.hidden=!n||h.getAttribute('aria-expanded')!=='false'; q.textContent=n; } }catch(e){} },1500); admVis();
-  nav.addEventListener('click',e=>{ const b=e.target.closest('[data-tela]'); if(b&&['backups','relatorios','ajustes','eva','ajuda'].includes(b.dataset.tela)) irPara(b.dataset.tela); });
+  nav.addEventListener('click',e=>{ const b=e.target.closest('[data-tela]'); if(b&&['backups','relatorios','ajustes'].includes(b.dataset.tela)) irPara(b.dataset.tela); });
   const _ir=irPara; irPara=function(t){ _ir(t); try{ const b=btn(t); const box=b&&b.closest('.ng2-box'); if(box&&box.hidden){ box.hidden=false; const h=box.previousElementSibling; h.setAttribute('aria-expanded','true'); h.querySelector('.seta').textContent='▾'; }
-      if(['backups','relatorios','ajustes','eva','ajuda'].includes(t)){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-'+t); $$('.nav [data-tela]').forEach(x=>{ if(x.dataset.tela===t) x.setAttribute('aria-current','page'); else x.removeAttribute('aria-current'); }); ({backups:bkTela,relatorios:relTela,ajustes:()=>ajTela(),eva:()=>evaTela(),ajuda:()=>ajudaTela()})[t](); } }catch(e){ console.error(e); } };
+      if(['backups','relatorios','ajustes'].includes(t)){ $$('.tela').forEach(s=>s.hidden=s.id!=='t-'+t); $$('.nav [data-tela]').forEach(x=>{ if(x.dataset.tela===t) x.setAttribute('aria-current','page'); else x.removeAttribute('aria-current'); }); ({backups:bkTela,relatorios:relTela,ajustes:()=>ajTela()})[t](); } }catch(e){ console.error(e); } };
 }catch(e){ console.error('menu 9.3',e); } })();
 
 /* ---- Administração → Backups (só admin) ---- */
@@ -10777,7 +10444,6 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[d
   passos:[['Operação do dia','Buscar, Romaneios, NexBip, Conferência total, Rotas, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências, Avarias e Fora do romaneio. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],
    ['Planejamento','Agendamentos, Feriados e Geolocalização.'],['Relatórios e ajuda','Relatórios (todos os PDFs num lugar), Painel de Gestão, Relatório Minas e este Manual.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups (todos os backups e restaurações num lugar só).'],
    ['Romaneios','Em cima só o carregar. Excel, planilha e “Remover todos” ficam em ⋯ Mais. O Banco de romaneios é a 3ª sub-aba. O arquivo de WhatsApp saiu: o app é online para todos.'],['Excel','Todo botão de planilha agora se chama ⬇ Excel.'],['Histórico','As últimas buscas ficam dentro da própria Busca.']]}); })();
-{ const _ee=evaEntender; evaEntender=function(txt){ const t=evaN(txt); if(/onde (fica|esta|está)|cade|cadê/.test(t)){ const M={backup:'Administração → Backups',relatorio:'Relatórios e ajuda → Relatórios',divergen:'Ocorrências → Divergências (para registrar: bipe no NexBip e marque o quadrado)',avaria:'Ocorrências → Avarias',banco:'Romaneios → sub-aba Banco de romaneios',excel:'botão ⬇ Excel em cada tela',historico:'dentro da Busca (últimas buscas)'}; for(const [k,v] of Object.entries(M)) if(t.includes(k)) return `Fica em <b>${v}</b>.`; } return _ee(txt); }; }
 
 /* ================= v9.3.1 · 📲 Grupo da operação (WhatsApp) ================= */
 try{ NUV_CAMPOS.push('zapGrupo'); NUV_ADMIN.add('s:zapGrupo'); }catch(e){}
@@ -10838,7 +10504,7 @@ setInterval(()=>{ try{ if(Store.modo==='nuvem'&&NV.perfil&&NV.perfil.trocar_senh
   pinta(); setInterval(pinta,3000);
 })();
 /* Ajustes */
-(function(){ for(const [id,h] of [['ajustes','<h1>Ajustes</h1><div id="aj-corpo"></div>'],['eva','<h1>BIT</h1><p class="sub">Converse com o BIT: tire dúvidas sobre o app, peça para ele procurar notas, cidades e ocorrências.</p><div class="eva-centro" id="eva-centro"></div>'],['ajuda','<h1>Ajuda</h1><div id="ajd-corpo"></div>']]){ const sec=document.createElement('section'); sec.className='tela'; sec.id='t-'+id; sec.hidden=true; sec.innerHTML=h; const r=document.getElementById('t-romaneios'); r.parentNode.insertBefore(sec,r); } })();
+(function(){ for(const [id,h] of [['ajustes','<h1>Ajustes</h1><div id="aj-corpo"></div>']]){ const sec=document.createElement('section'); sec.className='tela'; sec.id='t-'+id; sec.hidden=true; sec.innerHTML=h; const r=document.getElementById('t-romaneios'); r.parentNode.insertBefore(sec,r); } })();
 function ajTela(){ const el=$('#aj-corpo'); let ord=HS_GRUPOS; try{ const o=JSON.parse(LS.getItem('healthSearch.menuOrdem')||'null'); if(Array.isArray(o)) ord=[...o.filter(x=>HS_GRUPOS.includes(x)),...HS_GRUPOS.filter(x=>!o.includes(x))]; }catch(e){}
   const tema=document.documentElement.dataset.tema||(S.tema||'');
   el.innerHTML=`<div class="aj-card"><h2>🎨 Tema</h2><div class="barra" style="gap:8px"><button class="btn${tema!=='escuro'?' pri':''}" type="button" data-aj-tema="claro">☀ Claro</button><button class="btn${tema==='escuro'?' pri':''}" type="button" data-aj-tema="escuro">🌙 Escuro</button></div></div>
@@ -10851,14 +10517,7 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t
   if(t.id==='aj-ord-ok'){ try{ LS.setItem('healthSearch.menuOrdem',JSON.stringify(window._ajOrd)); }catch(x){} toast('Ordem salva. Recarregando o menu…'); setTimeout(()=>hsRecarregar(),700); return; }
   if(t.id==='aj-ord-pad'){ try{ LS.removeItem('healthSearch.menuOrdem'); }catch(x){} toast('Ordem padrão. Recarregando…'); setTimeout(()=>hsRecarregar(),700); return; }
   if(t.id==='aj-s-ok'){ const a=$('#aj-s1').value, c=$('#aj-s2').value; if(a!==c){ toast('As duas senhas não são iguais.'); return; } const fr=senhaFraca(a,NV.perfil&&NV.perfil.usuario); if(fr){ toast(fr); return; } t.disabled=true; const {error}=await NV.cli.auth.updateUser({password:a}); t.disabled=false; toast(error?'Não troquei: '+nvTraduz(error.message):'✔ Senha trocada.'); if(!error){ $('#aj-s1').value=''; $('#aj-s2').value=''; } } });
-/* BIT no centro */
-function evaTela(){ const p=$('#eva-painel'), c=$('#eva-centro'); if(p&&c&&!c.contains(p)){ window._evaCasa=p.parentNode; c.appendChild(p); } if(p) p.hidden=false; const i=$('#eva-in'); if(i&&!TOQUE) setTimeout(()=>i.focus(),50); }
-{ const _ir=irPara; irPara=function(t){ if(t!=='eva'){ const p=$('#eva-painel'); if(p&&$('#eva-centro')&&$('#eva-centro').contains(p)&&window._evaCasa){ window._evaCasa.appendChild(p); p.hidden=true; } } _ir(t); }; }
 /* Ajuda */
-function ajudaTela(){ $('#ajd-corpo').innerHTML=`<div class="aj-card"><h2>🚀 Começo rápido</h2><ol style="margin:0;padding-left:20px;line-height:1.8"><li><b>Planejamento → Romaneios</b>: carregue os PDFs do dia e depois os XMLs.</li><li><b>Operacional → NexBip</b>: bipe as caixas (câmera ou leitor).</li><li><b>Operacional → Conferência total</b>: acompanhe a % do dia.</li><li><b>Ocorrências</b>: reentregas, divergências e avarias.</li></ol></div>
-  <div class="aj-card"><h2>⌨ Atalhos</h2><p style="margin:0;line-height:1.8"><b>Ctrl+K</b> buscar de qualquer tela · <b>Ctrl+S</b> salvar · <b>Esc</b> voltar · <b>?</b> em cada tela abre o Manual daquela tela.</p></div>
-  <div class="aj-card"><h2>🙋 Precisa de ajuda?</h2><div class="barra" style="gap:8px"><button class="btn" type="button" onclick="irPara('eva')"> Perguntar ao BIT</button><button class="btn" type="button" onclick="irPara('manual')">📘 Abrir o Manual</button></div></div>
-  <div class="aj-card"><h2>☁ Símbolos do topo</h2><p style="margin:0;line-height:1.8"><b>☁⚡ salvo online</b>: tudo sincronizado e ao vivo · <b>☁ salvo online</b>: sincronizado (confere a cada pouco) · <b>☁ ↑</b>: enviando · <b>☁ offline</b>: sem internet, guardado no aparelho · <b>☁ erro</b>: o banco não respondeu (toque para ver o motivo).</p></div>`; }
 (function(){ const m=MAN.find(x=>x.id==='menu2026'); if(m){ m.t='Como o menu está organizado'; m.passos=[['Operacional','NexBip, Conferência total, Buscar, Via Minas e Registro.'],['Ocorrências','Reentregas, Divergências e Avarias. Para registrar divergência ou avaria, bipe no NexBip (ou busque a nota) e marque o quadrado.'],['Planejamento','Rotas, Agendamentos, Feriados, Romaneios e Geolocalização.'],['Relatórios','Relatórios (gera os PDFs), Painel de Gestão (gráficos ao vivo) e Relatório Minas.'],['Configurações','Falar com o administrador, Ajustes (tema claro/escuro, trocar senha, ordem dos títulos do menu), BIT, Manual e Ajuda.'],['Administração (só admin)','Correção, Cadastros, Usuários e Backups.'],['Rodapé do menu','Seu nome e função, o botão Deslogar, a versão e os direitos.'],['Símbolos do topo','☁⚡ salvo online (ao vivo) · ☁ salvo online · ☁ ↑ enviando · ☁ offline (guardado no aparelho) · ☁ erro (toque para ver o motivo).'],...m.passos.filter(p=>/Grupo da operação|Romaneios|Excel|Histórico/.test(p[0]))]; } })();
 
 /* ---- v9.5.0 · Layout por aparelho: cada coisa no seu lugar, nada sobrepõe ---- */
@@ -10958,164 +10617,6 @@ try{ NUV_CAMPOS.push('evaEnsino'); NUV_ADMIN.add('s:evaEnsino'); }catch(e){}
   MAN.push({id:'eva-ensino',t:'BIT — conversar e ensinar',img:'mural',intro:'Configurações → BIT abre o BIT no centro da tela.',passos:[['Conversar','Todos podem tirar dúvidas, pedir para procurar notas, cidades, ocorrências e rotas.'],['Ensinar (admin)','O administrador escreve regras (“o que ela deve saber”) e perguntas com a resposta certa, com foto se quiser. O BIT passa a responder isso para todos.'],['Perguntar o que ele aprendeu','Pergunte “quais são suas regras?”.']]});
   const g=MAN.find(x=>/gestor/i.test(x.t)); if(g&&g.passos) g.passos.unshift(['Ao vivo','O Painel de Gestão atualiza sozinho a cada 30 segundos: % conferido, bipes por hora e por pessoa (em “por pessoa” o bipe duplicado não conta, só o válido), ocorrências abertas, avarias por tipo, reentregas por motivo, motorista e dia.']);
   const r=MAN.find(x=>/^Rotas|ROTAS/i.test(x.t)); if(r&&r.passos) r.passos.push(['Histórico por dia','O último upload de cada dia fica guardado. À meia-noite a rota do dia vai para o histórico; escolha o dia na lista “Último upload de cada dia”.']); })();
-
-/* ================= v9.5.3 · BIT animada na aba BIT (expressões, gestos, interação) ================= */
-const EVA_BIG='<svg class="evb"></svg>';
-(function(){ const st=document.createElement('style'); st.textContent=`
-#t-eva .eva-palco{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:22px;align-items:start;max-width:1240px;margin:0 auto}
-#t-eva .eva-centro{max-width:none}
-/* v10 · a aba do BIT: ele grande à esquerda, conversa limpa no meio */
-#t-eva .eva-balao{max-width:330px;font-size:1rem;line-height:1.35;padding:12px 16px}
-#t-eva .eva-boneca{gap:14px}
-#t-eva .eva-expr{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:330px}
-#t-eva #eva-painel{height:min(74vh,700px)!important;border-radius:16px}
-#t-eva #eva-painel{background:var(--sup);border:1.5px solid var(--linha);box-shadow:0 10px 30px rgba(0,0,0,.10)}
-#t-eva #eva-msgs{padding:16px 18px;gap:12px;background:transparent}
-#t-eva #eva-msgs:empty::before{content:"Pode perguntar. Eu procuro notas, cidades, romaneios e ocorrências — e aviso quando não tiver certeza.";display:block;margin:auto;max-width:34ch;text-align:center;color:var(--mudo);font-size:.95rem;line-height:1.5}
-#t-eva #eva-painel>div:has(>button){display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border-top:1px solid var(--linha);background:transparent}
-#t-eva #eva-painel>div:has(>button) button{flex:0 0 auto;white-space:nowrap;border-radius:999px;padding:6px 12px;font-size:.86rem}
-#t-eva .eva-cab{border-radius:16px 16px 0 0}
-#t-eva .eva-m{max-width:88%;padding:10px 14px;border-radius:4px 14px 14px 14px;font-size:1rem;line-height:1.45;box-shadow:0 2px 10px rgba(0,0,0,.18)}
-#t-eva .eva-m.eu{border-radius:14px 4px 14px 14px}
-.eva-duv{border:1.5px solid #FFD43B;border-radius:14px;padding:12px 14px;margin:8px 0;background:color-mix(in srgb,#FFD43B 8%,transparent)}
-.eva-duv-t{font-weight:800;color:#FFD43B;margin-bottom:4px}
-.eva-duv-x{margin-bottom:8px;line-height:1.4}
-.eva-ent{margin:8px 0 10px}
-.eva-ent>small{display:block;color:var(--mudo);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;font-size:.72rem}
-.eva-ent-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px}
-.eva-ent-g>div{border:1px solid var(--linha);border-radius:9px;padding:6px 9px;background:var(--sup)}
-.eva-ent-g small{display:block;color:var(--mudo);font-size:.72rem}
-.eva-ent-g b{font-size:.95rem;word-break:break-word}
-.eva-ops{display:flex;flex-wrap:wrap;gap:6px}
-.eva-ign{opacity:.75}
-/* v10 · treino do BIT */
-.bit-card{border:1.5px solid var(--linha);border-radius:18px;padding:18px;margin-top:16px;background:var(--sup)}
-.bit-h{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
-.bit-ic{width:46px;height:46px;flex:0 0 46px;border-radius:14px;display:grid;place-items:center;font-size:1.4rem;background:color-mix(in srgb,var(--ag) 18%,transparent)}
-.bit-h h2{margin:0 0 4px;font-size:1.12rem}
-.bit-h p{margin:0;color:var(--mudo);font-size:.9rem;line-height:1.45;max-width:72ch}
-.bit-solta{border:2px dashed var(--linha);border-radius:16px;padding:26px 18px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
-.bit-solta:hover,.bit-solta:focus-visible,.bit-solta.on{border-color:var(--ag);background:color-mix(in srgb,var(--ag) 7%,transparent);outline:none}
-.bit-solta-i{font-size:2rem;margin-bottom:6px}
-.bit-solta b{display:block;font-size:1.02rem}
-.bit-solta span{display:block;color:var(--mudo);font-size:.86rem;margin-top:3px}
-.bit-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0}
-.bit-nums>div{border:1.5px solid var(--linha);border-radius:12px;padding:10px 12px}
-.bit-nums b{display:block;font-size:1.35rem;line-height:1.1}
-.bit-nums small{color:var(--mudo);font-size:.78rem}
-.bit-barra{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-.bit-chip{border:1.5px solid var(--linha);border-radius:999px;padding:3px 11px;font-size:.82rem;font-weight:600;color:var(--mudo)}
-.bit-chip.ok{border-color:var(--ok);color:var(--ok)}
-.bit-chip.at{border-color:#FFD43B;color:#FFD43B}
-.bit-chip.fo{border-color:#E8590C;color:#E8590C}
-.bit-bts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
-/* v10.0.1 · a tela do NexBip não mostra mais o XML das notas nem o diagnóstico de reentrega */
-#op-xml,#op-diag{display:none!important}
-.bit-s{font-size:.82rem;margin:18px 0 8px;color:var(--mudo);text-transform:uppercase;letter-spacing:.05em}
-.bit-card input,.bit-card textarea,.bit-card select{border:1.5px solid var(--linha);border-radius:10px;padding:9px 12px;background:transparent;color:var(--tinta);font:inherit}
-.bit-card input:focus,.bit-card textarea:focus{border-color:var(--ag);outline:none}
-.bit-card ol{line-height:1.7}
-.eva-boneca{position:sticky;top:16px;display:flex;flex-direction:column;align-items:center;gap:10px;user-select:none}
-.eva-balao{position:relative;background:var(--sup);border:1.5px solid var(--linha);border-radius:16px;padding:10px 14px;font-size:.95rem;max-width:280px;min-height:42px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.12)}
-.eva-balao::after{content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);border:9px solid transparent;border-top-color:var(--linha);border-bottom:0}
-.evb{width:min(260px,100%);height:auto;cursor:pointer;overflow:visible}
-.evb .corpo,.evb .cabeca{transform-origin:100px 230px;transform-box:view-box}
-.evb .corpo{animation:evbResp 3.2s ease-in-out infinite}
-.evb .cabeca{animation:evbCab 4s ease-in-out infinite}
-.evb .olho{transform-box:fill-box;transform-origin:center;animation:evbPisca 5s infinite}
-.evb .braco-d{transform-box:view-box;transform-origin:146px 156px}
-.evb .braco-e{transform-box:view-box;transform-origin:58px 160px}
-.evb .boca,.evb .olhos,.evb .olhos-feliz,.evb .pensa,.evb .sobr path{transition:opacity .2s,transform .25s}
-.evb .pupila{transition:transform .3s}
-@keyframes evbResp{50%{transform:translateY(-3px) scale(1.01)}}
-@keyframes evbCab{0%,100%{transform:rotate(0)}30%{transform:rotate(-2deg)}70%{transform:rotate(2deg)}}
-@keyframes evbPisca{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.08)}}
-@keyframes evbAceno{0%,100%{transform:rotate(0)}20%{transform:rotate(-28deg)}40%{transform:rotate(6deg)}60%{transform:rotate(-28deg)}80%{transform:rotate(6deg)}}
-@keyframes evbFala{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1.2)}}
-@keyframes evbPulo{0%,100%{transform:translateY(0)}40%{transform:translateY(-22px)}60%{transform:translateY(-18px)}}
-@keyframes evbPensa{0%,100%{opacity:.35}50%{opacity:1}}
-@keyframes evbNao{0%,100%{transform:rotate(0)}25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
-.evb[data-st="acenando"] .braco-d{animation:evbAceno 1.6s ease-in-out}
-.evb[data-st="falando"] .b-sorriso{opacity:0}.evb[data-st="falando"] .b-fala{opacity:1;transform-box:fill-box;transform-origin:center;animation:evbFala .22s infinite}
-.evb[data-st="feliz"] .olhos{opacity:0}.evb[data-st="feliz"] .olhos-feliz{opacity:1}.evb[data-st="feliz"] .corpo,.evb[data-st="feliz"] .cabeca{animation:evbPulo .7s ease-out}
-.evb[data-st="triste"] .b-sorriso{opacity:0}.evb[data-st="triste"] .b-triste{opacity:1}.evb[data-st="triste"] .s1{transform:rotate(14deg) translate(2px,-2px)}.evb[data-st="triste"] .s2{transform:rotate(-14deg) translate(-2px,-2px)}.evb[data-st="triste"] .cabeca{animation:evbNao .9s}
-.evb[data-st="pensando"] .pensa{opacity:1;animation:evbPensa 1s infinite}.evb[data-st="pensando"] .pupila{transform:translate(3px,-4px)}.evb[data-st="pensando"] .braco-e{transform:rotate(38deg) translate(10px,-24px)}.evb[data-st="pensando"] .sobr .s2{transform:translateY(-5px)}
-.evb[data-st="ouvindo"] .pupila{transform:translate(-3px,3px)}.evb[data-st="ouvindo"] .cabeca{animation:none;transform:rotate(-5deg)}
-body:has(#t-eva:not([hidden])) :is(#eva-bt,#eva-balao){display:none!important}
-#t-eva #eva-x{display:none!important}
-#t-eva .eva-centro{min-width:0;width:100%;max-width:100%;overflow:hidden}#t-eva #eva-painel{width:100%!important;max-width:100%!important;min-width:0!important}#t-eva #eva-painel *{min-width:0}#t-eva .eva-cab small{white-space:normal}
-@media (max-width:860px){#t-eva .eva-palco{grid-template-columns:minmax(0,1fr)}#t-eva #eva-painel{height:62vh!important}#t-eva #eva-painel>div:has(>button){flex-wrap:nowrap;overflow-x:auto}.eva-boneca{position:static;flex-direction:row;justify-content:center}.evb{width:130px}.eva-balao{max-width:220px;font-size:.85rem}.eva-balao::after{left:auto;right:-9px;bottom:50%;transform:translateY(50%);border:9px solid transparent;border-left-color:var(--linha);border-right:0}}`; document.head.appendChild(st); })();
-const EVB={t:null};
-function evbEstado(st,ms){ const s=document.querySelector('#t-eva .evb'); if(!s) return; clearTimeout(EVB.t); s.dataset.st=''; void s.getBoundingClientRect(); s.dataset.st=st; if(ms) EVB.t=setTimeout(()=>{ s.dataset.st=''; },ms); }
-function evbDiz(html){ const b=$('#evb-balao'); if(b) b.innerHTML=html; }
-const EVB_FRASES=['Oi! Tô aqui pra ajudar','Pode me perguntar sobre qualquer nota, cidade ou rota!','Sabia que eu aviso quando você bipa um volume caro? 💰','Hihi, cócegas! 😄','Quer que eu procure alguma coisa?','Bom trabalho hoje! 💪'];
-{ const _et=evaTela; evaTela=function(){ const t=$('#t-eva'); if(t&&!$('#eva-palco')){ const c=$('#eva-centro'); const pal=document.createElement('div'); pal.className='eva-palco'; pal.id='eva-palco'; c.parentNode.insertBefore(pal,c); pal.innerHTML=`<div class="eva-boneca"><div class="eva-balao" id="evb-balao">Oi!</div>${EVA_BIG}</div>`; pal.appendChild(c);
-      pal.querySelector('.evb').addEventListener('click',()=>{ evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); }
-    _et();
-    const nome=((NV&&NV.perfil&&NV.perfil.nome)||'').split(' ')[0]; const h=new Date().getHours(); const sd=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
-    evbDiz(`${sd}${nome?', <b>'+esc(nome)+'</b>':''}! Como posso ajudar?`); evbEstado('acenando',1700);
-    const inp=$('#eva-in'); if(inp&&!inp.dataset.evb){ inp.dataset.evb=1; let tt=null; inp.addEventListener('input',()=>{ if($('#t-eva').hidden) return; const s=document.querySelector('#t-eva .evb'); if(s&&s.dataset.st!=='pensando'&&s.dataset.st!=='falando') evbEstado('ouvindo'); clearTimeout(tt); tt=setTimeout(()=>{ const s2=document.querySelector('#t-eva .evb'); if(s2&&s2.dataset.st==='ouvindo') evbEstado(''); },1500); }); }
-  }; }
-{ const _f=evaFala; evaFala=function(html,quem){ _f(html,quem); try{ if($('#t-eva').hidden) return;
-    if(quem==='eu'){ evbEstado('pensando'); evbDiz('Hmm, deixa eu ver… 🤔'); return; }
-    const txt=String(html).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(); const ruim=/não (encontrei|achei|sei|consegui)|nenhum|⚠|erro|problema/i.test(txt); const ms=Math.min(4000,700+txt.length*25);
-    setTimeout(()=>{ evbEstado('falando',ms); evbDiz(esc(txt.length>140?txt.slice(0,137)+'…':txt)); setTimeout(()=>evbEstado(ruim?'triste':'feliz',ruim?1200:900),ms); },350);
-  }catch(e){} }; }
-/* de vez em quando ela olha em volta / acena sozinha */
-setInterval(()=>{ try{ if($('#t-eva').hidden||document.hidden) return; const s=document.querySelector('#t-eva .evb'); if(!s||s.dataset.st) return; const r=Math.random(); if(r<.25) evbEstado('acenando',1700); else if(r<.5) evbEstado('ouvindo',1200); }catch(e){} },9000);
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.unshift(['BIT ao vivo','Na aba BIT ele aparece grande ao lado do chat: acena quando você chega, inclina a cabeça enquanto você digita, pensa enquanto procura, fala a resposta no balão, fica feliz quando acha e triste quando não acha. Clique nele para brincar. Nessa aba o botão do cantinho some.']); })();
-
-
-/* ---- BIT levanta a mão quando tem dúvida ---- */
-(function(){ const st=document.createElement('style'); st.textContent=`.evb[data-st="duvida"] .braco-e{transform:rotate(150deg) translate(-6px,8px);transition:transform .35s}.evb[data-st="duvida"] .pupila{transform:translate(2px,-4px)}.evb[data-st="duvida"] .sobr .s1{transform:translateY(-5px)}.evb[data-st="duvida"] .corpo{animation:evbResp 1.2s ease-in-out infinite}
-#eva-bt.tem-duvida::after{content:"✋";position:absolute;top:-6px;left:-6px;font-size:20px;animation:evbPensa 1.2s infinite}`; document.head.appendChild(st); })();
-document.addEventListener('click',e=>{ const s=e.target.closest&&e.target.closest('#t-eva .evb'); if(!s||s.dataset.st!=='duvida') return; e.stopImmediatePropagation(); const b=[...document.querySelectorAll('#eva-painel button')].find(x=>/Dúvidas/.test(x.textContent)); if(b) b.click(); },true);
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Mão levantada','Quando o BIT tem uma dúvida (ex.: uma etiqueta ou cidade que ele não tem certeza), ele levanta a mão ✋ — na aba BIT e no botão do cantinho. O administrador toca nele e responde; ele aprende.']); })();
-
-
-/* ---- BIT com personalidade: humor pelo andamento do dia ---- */
-function evbHumor(){ const hoje=hojeISO(); const bip=((OP&&OP.bipes)||[]).filter(b=>diaLocal(new Date(b.criado_em||0).toISOString())===hoje);
-  const fora=bip.filter(b=>b.status==='fora').length, notas=todasLinhas().length, conf=new Set(bip.filter(b=>b.status!=='fora').map(b=>opK(b.nf||'')).filter(Boolean)).size, pct=notas?Math.round(100*Math.min(conf,notas)/notas):0;
-  let reH=0; try{ reH=(RE.ler().dias[hoje]||[]).length; }catch(e){}
-  const av=dvS().filter(d=>d.st!=='resolvida').length; const pick=a=>a[Math.floor(Math.random()*a.length)];
-  if(fora>=10) return {st:'triste',pulo:true,txt:pick([`Ai ai… <b>${fora}</b> caixas fora do romaneio hoje 😟 Bora puxar essas notas?`,`<b>${fora}</b> fora do romaneio?! Isso preocupa 😣`])};
-  if(fora>=5) return {st:'triste',txt:pick([`Hmm, já são <b>${fora}</b> fora do romaneio hoje. Fica de olho! 👀`,`<b>${fora}</b> caixas fora do romaneio… não gosto disso 😕`])};
-  if(notas&&pct>=95) return {st:'feliz',pulo:true,txt:pick([`<b>${pct}%</b> conferido! Vocês são demais! 🎉`,`Uhuul! <b>${pct}%</b> do dia conferido! 🥳`])};
-  if(notas&&pct>=60) return {st:'feliz',txt:pick([`Tá indo bem! <b>${pct}%</b> conferido 💪`,`Mais da metade! <b>${pct}%</b> já foi 😄`])};
-  if(reH>=5) return {st:'triste',txt:`Hoje já temos <b>${reH}</b> reentregas… vamos caprichar 🙏`};
-  if(av) return {st:'',txt:`Tem <b>${av}</b> ocorrência(s) aberta(s) esperando alguém 🧐`};
-  if(notas&&!bip.length) return {st:'acenando',txt:pick(['Os romaneios chegaram! Bora bipar? 📦','Tudo pronto pra começar a conferência! 🚀'])};
-  return {st:'',txt:pick(EVB_FRASES)}; }
-function evbReage(){ const s=document.querySelector('#t-eva .evb'); if(!s||(s.dataset.st&&s.dataset.st!=='')||$('#t-eva').hidden) return; const h=evbHumor(); evbDiz(h.txt);
-  if(h.pulo){ const st=h.st||'feliz'; evbEstado(st,800); setTimeout(()=>evbEstado(st,800),850); setTimeout(()=>evbEstado(st==='triste'?'triste':'feliz',800),1700); } else if(h.st) evbEstado(h.st,h.st==='acenando'?1700:1200); }
-{ const _et=evaTela; evaTela=function(){ _et(); setTimeout(()=>{ try{ evbReage(); }catch(e){} },2300); }; }
-setInterval(()=>{ try{ if(document.hidden||$('#t-eva').hidden) return; evbReage(); }catch(e){} },25000);
-/* pulo também quando triste (personalidade) */
-(function(){ const st=document.createElement('style'); st.textContent='.evb[data-st="triste"] .corpo{animation:evbPulo .6s ease-out}'; document.head.appendChild(st); })();
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Personalidade','O BIT reage ao dia: pula de alegria com a conferência alta, fica triste (e pula de nervoso) com muitas caixas fora do romaneio ou muitas reentregas, e avisa ocorrências abertas.']); })();
-
-/* ================= v9.5.5 · BIT redesenhada (grande e miniatura iguais) com roupa: colete, capacete, laço ================= */
-function evbSvg(v,c){ return `<svg class="evb ${c||''}"></svg>`; } /* v9.17.1: desenho antigo removido; o BIT assume abaixo */
-/* a miniatura usa o mesmo desenho */
-let _evbN=0; const evbUnico=svg=>{ const k='u'+(++_evbN); return svg.replace(/id="(evb[A-Za-z]+)"/g,(m,i)=>`id="${i}${k}"`).replace(/url\(#(evb[A-Za-z]+)\)/g,(m,i)=>`url(#${i}${k})`); };
-{ const _bs=evbSvg; evbSvg=function(v,c){ return evbUnico(_bs(v,c)); }; }
-evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
-(function(){ const st=document.createElement('style'); st.textContent=`.evb .reflexo{animation:evbRefl 2.4s infinite}@keyframes evbRefl{0%,100%{opacity:.25}50%{opacity:1}}
-#eva-bt .evb,.eva-cab .av .evb,#ep-prev .evb{width:100%;height:100%}.evb-mini .pensa,.evb-mini .olhos-feliz{display:none}`; document.head.appendChild(st); })();
-{ const _ap=evaAplicarVisual; evaAplicarVisual=function(){ _ap(); try{ const b=document.querySelector('#t-eva .evb:not(.evb-mini)'); if(b){ const st=b.dataset.st||''; b.outerHTML=evbSvg(evaVis()); const n=document.querySelector('#t-eva .evb:not(.evb-mini)'); n.dataset.st=st; n.addEventListener('click',()=>{ if(n.dataset.st==='duvida') return; evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); } }catch(e){ console.error(e); } }; }
-{ const _et=evaTela; evaTela=function(){ _et(); try{ const b=document.querySelector('#t-eva .evb:not(.evb-mini)'); if(b&&!b.dataset.v955){ const st=b.dataset.st||''; b.outerHTML=evbSvg(evaVis()); const n=document.querySelector('#t-eva .evb:not(.evb-mini)'); n.dataset.v955=1; n.dataset.st=st; n.addEventListener('click',()=>{ if(n.dataset.st==='duvida') return; evbEstado('feliz',900); evbDiz(EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); }); } }catch(e){} }; }
-setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} },1500);
-
-/* ================= v9.5.6 · Roupa do BIT no banco (o admin escolhe, todos veem igual) ================= */
-try{ NUV_CAMPOS.push('evaVisual'); NUV_ADMIN.add('s:evaVisual'); }catch(e){}
-{ const _v=evaVis; evaVis=function(){ if(S.evaVisual&&typeof S.evaVisual==='object') return Object.assign({colete:false,capacete:false,laco:true,cor:'#EC4899'},S.evaVisual); return _v(); }; }
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-ep="ok"]'); if(!b) return;
-  if(!nvAdmin()){ e.stopImmediatePropagation(); toast('A roupa do BIT é escolhida pelo administrador e vale para todos.'); const f=b.closest('.fundo'); if(f) f.remove(); return; }
-  const v={colete:$('#ep-colete').checked,capacete:$('#ep-capacete').checked,laco:$('#ep-laco').checked,cor:$('#ep-cor').value,em:new Date().toISOString()};
-  S.evaVisual=v; salvar(); setTimeout(()=>{ try{ nuvSinc(); }catch(x){} toast('BIT personalizada para todos os usuários!'); },200); },true);
-/* quando a roupa muda em outro aparelho, aplica na hora */
-let _evaVisH=''; setInterval(()=>{ try{ const h=JSON.stringify(S.evaVisual||null); if(h!==_evaVisH){ _evaVisH=h; evaAplicarVisual(); } }catch(e){} },3000);
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Roupa do BIT','Em 🎨 Personalizar BIT o administrador escolhe colete refletivo, capacete e a cor do laço. A escolha fica no banco e todos os usuários veem o BIT igual.']); })();
 
 /* ================= v9.5.7 · Aviso de nova versão: discreto no topo, salva na nuvem antes de atualizar ================= */
 (function(){ const st=document.createElement('style'); st.textContent=`#app-att{top:calc(12px + env(safe-area-inset-top,0px))!important;bottom:auto!important;z-index:1800!important;border-radius:999px!important;padding:6px 6px 6px 14px!important;background:linear-gradient(90deg,#0f4c4c,#12806f)!important;border:1px solid rgba(255,255,255,.2);font-size:.85rem!important;max-width:min(520px,calc(100vw - 24px))!important}
@@ -11306,24 +10807,8 @@ function hsCineHtml(){ let ticks=''; for(let i=0;i<60;i++){ const g=i%5===0; tic
   let fim=false; const sair=()=>{ if(fim) return; fim=true; document.body.classList.remove('hs-cine-on'); c.classList.add('fim'); setTimeout(()=>c.remove(),700); };
   /* v10.1.9 · a abertura não se pula: roda inteira, para ninguém entrar na tela antes da hora */
   setTimeout(sair,5600); }catch(e){ console.error(e); } })();
-/* ================= v9.6.3 · BIT com mais expressões (piscadinha, comemora, emburrada, estrelas, amor, coração partido, curativo, surpresa) ================= */
-/* v9.17.1: rosto e corpo do panda removidos (substituídos pelo BIT) */
-const EVB_EXPR=[['piscadinha','😉','Pode deixar comigo! 😉',1800],['comemora','🎉','Uhuuul! 🎉',2400],['estrelas','🤩','Uau, que incrível! ✨',2400],['amor','💖','Adoro trabalhar com vocês! 💖',2800],['surpresa','😮','Oh! 😮',1400],['emburrada','😤','Hunf! Não gostei disso. 😤',2600],['partido','💔','Ai… isso me deixa triste. 💔',2800],['curativo','🩹','Pronto, já passou! 🩹',2800]];
-/* botões de expressão abaixo do BIT + clique nele */
-{ const _et=evaTela; evaTela=function(){ _et(); try{ const bon=document.querySelector('#t-eva .eva-boneca'); if(bon&&!bon.querySelector('.eva-expr')) bon.insertAdjacentHTML('beforeend','<div class="eva-expr" aria-label="Expressões do BIT">'+EVB_EXPR.map((e,i)=>`<button type="button" data-evx="${i}" title="${e[0]}">${e[1]}</button>`).join('')+'</div>'); }catch(e){} }; }
-document.addEventListener('click',e=>{ const t=e.target; if(!t.closest) return; const b=t.closest('[data-evx]'); if(b){ const x=EVB_EXPR[+b.dataset.evx]; evbEstado(x[0],x[3]); evbDiz(x[2]); return; }
-  const s=t.closest('#t-eva .evb'); if(s&&s.dataset.st!=='duvida'){ e.stopImmediatePropagation(); const x=EVB_EXPR[Math.floor(Math.random()*5)]; evbEstado(x[0],x[3]); evbDiz(Math.random()<.5?x[2]:EVB_FRASES[Math.floor(Math.random()*EVB_FRASES.length)]); } },true);
-/* reações ligadas à operação */
-evbReage=function(){ const s=document.querySelector('#t-eva .evb'); if(!s||s.dataset.st||$('#t-eva').hidden) return; const h=evbHumor(); evbDiz(h.txt); const t=String(h.txt);
-  if(h.st==='triste'&&h.pulo) evbEstado('partido',3600); else if(h.st==='triste') evbEstado('emburrada',3200);
-  else if(h.st==='feliz'&&h.pulo){ evbEstado('comemora',2200); setTimeout(()=>{ if(!$('#t-eva').hidden) evbEstado('amor',2600); },2300); }
-  else if(h.st==='feliz') evbEstado('estrelas',2600); else if(h.st==='acenando') evbEstado('piscadinha',1800); else if(/ocorr/.test(t)) evbEstado('surpresa',1500); else evbEstado(['piscadinha','acenando'][Math.floor(Math.random()*2)],1700); };
-{ const _f=evaFala; evaFala=function(html,quem){ _f(html,quem); try{ if($('#t-eva').hidden||quem==='eu') return; const txt=String(html).replace(/<[^>]+>/g,' '); const ruim=/não (encontrei|achei|sei|consegui)|nenhum|⚠|erro|problema/i.test(txt); const ms=Math.min(4000,700+txt.length*25)+400;
-    setTimeout(()=>{ if($('#t-eva').hidden) return; if(ruim) evbEstado(Math.random()<.5?'triste':'surpresa',1400); else evbEstado(['feliz','piscadinha','estrelas'][Math.floor(Math.random()*3)],1500); },ms+60); }catch(e){} }; }
-/* divergência/avaria resolvida → coração com curativo */
-{ let _res=null; setInterval(()=>{ try{ const n=dvS().filter(d=>d.st==='resolvida').length; if(_res!==null&&n>_res&&!$('#t-eva').hidden){ evbEstado('curativo',3200); evbDiz('Oba, uma ocorrência foi resolvida! 🩹💖'); } _res=n; }catch(e){} },3000); }
-(function(){ const s=MAN.find(x=>x.id==='eva-ensino'); if(s) s.passos.push(['Expressões','O BIT tem várias reações: piscadinha 😉, comemoração 🎉, olhos de estrela 🤩, abraço no coração 💖, surpresa 😮, emburrada 😤 (muitas reentregas ou caixas fora do romaneio), coração partido 💔 (dia muito ruim) e coração com curativo 🩹 (quando uma ocorrência é resolvida). No computador, os botões abaixo dela mostram cada uma.']); })();
-/* v9.13.1 · Manual e BIT acompanham a 9.13.0 (pausa entre bipes, Relatório Minas, checklist) */
+/* v10.6.06: regras que moravam nos blocos do BIT e continuam valendo */
+(function(){ const st=document.createElement('style'); st.textContent='body:has(#op-cam) #hs-salvar{display:none!important} /* 9.20.1: o Salvar tampava o botão Fechar da câmera */\n#op-xml,#op-diag{display:none!important} /* v10.0.1: o NexBip não mostra o XML das notas nem o diagnóstico de reentrega */'; document.head.appendChild(st); })();
 (function(){ try{ const o=MAN.find(x=>x.id==='operacao'); if(o&&o.passos){
   o.passos.push(['⏱ Pausa entre bipes','Uma etiqueta por vez, com 1,5 segundo de intervalo entre um bipe e outro — tempo de tirar a caixa e não ler a mesma etiqueta duas vezes. Enquanto a etiqueta lida continuar na frente da câmera, ela não é bipada de novo. Em nota de um volume só a câmera nem para: bipou, segue para a próxima.']);
   o.passos.push(['✓ e ✗ — conferir os volumes no bipe','**A câmera só para quando a nota tem mais de um volume** — isso é o aviso visual de que ali tem mais de uma caixa. Aí aparecem dois botões grandes: ✗ vermelho à esquerda e ✓ verde à direita (dá para tocar em qualquer lado da tela: metade esquerda = ✗, metade direita = ✓). ✓ pergunta “todos os N volumes estão presentes?”: conte as caixas fisicamente e responda — não precisa bipar as 20 caixas, um bipe só já fecha a nota inteira. ✗ = faltou volume: escolha quantos volumes chegaram (0 = não veio nenhuma caixa; até 12 volumes aparecem botões, acima disso você digita), escreva uma observação se quiser, e o app já abre (ou atualiza) a divergência de Falta de volume com a quantidade que faltou — sem precisar ir na aba Divergências; o celular vibra diferente nessa hora. Quem respondeu, quando e quantos volumes contou ficam guardados no bipe e aparecem na ficha da nota, em “Volumes conferidos”. Se a nota for de um volume só, nada disso aparece: bipou, bipou, bipou.']);
@@ -11408,12 +10893,6 @@ setTimeout(espChip,6000); setInterval(espChip,60000);
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="esp"]'); if(b) setTimeout(espPainel,50); });
 (function(){ try{ const s=MAN.find(x=>x.id==='operacao'); if(s&&s.passos) s.passos.push(['Espaço do aparelho e XMLs (v9.16.0)',`O administrador vê no topo o 💾 com a porcentagem do espaço usado neste aparelho. A partir de 75% aparece um aviso; clique no 💾 para ver o que ocupa mais. Os XMLs das notas ficam no aparelho só por ${XMLA.dias} dias e depois saem sozinhos, mas continuam na nuvem: ao abrir um dia antigo no NexBip, os XMLs daquele dia voltam para consulta. O botão de limpar XMLs também não apaga mais da nuvem.`]); }catch(e){} })();
 
-/* ================= v9.16.1 · BIT é CORUJA em todo lugar (personagem grande, canto, chat) ================= */
-
-evaSvgVestida=function(v){ return evbSvg(v,'evb-mini'); };
-
-
-
 /* ================= v9.16.1 · Espaço dos aparelhos da equipe: acima de 85% o administrador é avisado ================= */
 const ESPE={pre:'ap:~esp:', ch:'healthSearch.espAlto', alto:75, lista:[], avisados:{}}; /* v10.1.7: 85% era tarde demais — o aparelho já estava perdendo gravação */
 async function espReportar(){ try{ if(!opOnline()||!NV.cli||Store.modo!=='nuvem'||!NV.perfil) return; const m=espMedir(); let antes=false; try{ antes=LS.getItem(ESPE.ch)==='1'; }catch(e){}
@@ -11454,78 +10933,10 @@ function semBkFalta(){ try{ if(!nvAdmin()) return false;
       g.insertAdjacentHTML('afterbegin',`<div class="mural-c" style="border:2px solid #E8590C"><h3>Aparelhos quase sem espaço</h3><b class="big" style="color:#E8590C">${ESPE.lista.length}</b> aparelho(s) acima de ${ESPE.alto}%<ul>${ESPE.lista.slice(0,5).map(v=>`<li>${esc(v.por||'?')} · ${esc(v.aparelho||'')} — <b>${v.pct}%</b></li>`).join('')}</ul><p class="sub">Aparelho cheio para de gravar: peça para a pessoa abrir o app com internet e liberar espaço.</p></div>`);
   }catch(e){} return r; }; }
 
-/* ================= v9.17.0 · BIT (antes Pluma): mascote em pixel, visual sóbrio ================= */
-const BIT_IMG={"partido": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAACqklEQVR42u3dMU4CQRSA4TeGe0hiIrWd4QLakFjJ3sDWDo8gnS03ACoTG72AsbPGxEQv4tpZMpBdNzB8X+sG2JE/U+zbJQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAOVSjqZr/OHOnfMy9Eo+zo3ryep6fvk9N9uk68fTR1ZAhAwIGBAwCBgQMCAgAEBQ1F6UdigRknnYtgDOzAIGBAwIGBAwCBgQMCAgCEMcpTs4ucpe8xs+Ll2yKKfeWJHRFlDJ9iBAQEDAgYBAwIGBAwCBsIvM4RfZgg362MHBgQMAgYEDAgYEDAIGBAwEAd8Q/8mwxGz4ajelc8CdmAQMCBgQMCAgEHAgICBcEN/Y6vJ2APXCzaYLpIdGBAwIGBAwCBgQMCAgEHAgIABAQMCBgEDAgYEDAgYBAwIGBAwCBgQMCBgQMAgYEDAgICBPz1LsL3r5+/sMcvL439/DeeLHRgEDAgYEDAIGBAwIGBAwBAGOUo3OZuv/fsyqmg6/LBPQwubfNY2zje37tP3ypfTDgwCBgQMCBgEDAgYEDCQlw7thK/mdZ07Zl+uN57ez1t5nY+7qojr8xERj1VKdmBAwICAAQGDgAEBAwIGAQNhkKOZ1WRc+3fEVoMabQ1gdPU+JRlMF8kODAgYBAwIGBAwIGAQMBCuA4frwITrwHZgQMAgYEDAgIBBwICAAQEDAgYBAwIGBAwCtgQgYEDAgIAh3NBfpE0eHNDGzdq599mVG8K7Wtcu1rTEdbUDg4ABAQMCBgQMAgYEDAgYwiBHGNIIAwWGX+zAgIABAYOAAQEDAgYBAwIGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACgI7+ci3tKh0y5XQAAAABJRU5ErkJggg==", "surpresa": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADQUlEQVR42u3dMU4UURzH8d8QEuMplkoKG1o7S4K9kHgCD6BwBJADcAISsNdY2tnSWGDFnsJYrQcwOE9ndva92c+nXdidHfjmbfJ/s5MAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwgq7mg/u0+LCq4TheLd93/lWo0Y5TAAIGBAwIGAQMCBgQMCBgiI0cqWeTxtHDu8HP8XnvMjZ7YAUGBAwIGAQMCBgQMCBgiDlw1j3nLZnxjjHD7XudOc2Jf7553vt3eXr9vVv3c2AFBgE7BSBgQMCAgEHAgIABAQN/2t3UC9eySaPkdaY61imUbNLo26hRyyaNh5OvvRtK9m5edjUcy7qOwwoMPkIDAgYEDAIGBAwIGEhFc+BMNE9uZT4bF/T/s5LZ6hjz2ZrmzVZg8BEaEDAgYBAwIGBAwICAIe7MEHdmyFzuzECa2aRhBQYfoQEBAwIGBAwCBgQMpLI5cCaYEydls+JMMEueas479AL11ueem/jCdRf0AwIGBAwCBgQMCBgEDAgYyNw3cmTCzR7ZkovxSzYcJPPZqFHTBosxNoxYgcFHaEDAgIABAYOAAQEDAgbcLSDJ/enxqpVjfbJ8++hjvxZXg36/9Dlasn9x21mBAQEDAgYEDAIGBAz8j12noC1DxzxzGxNZgQEBAwIGBAwCBgQMCBgQMAgYEDAgYBAwIGBAwICAQcCAgIH4Ro5Kvf6y/OvjHw8Xg5+j9Hk2/V5LjrOV92oFBgQMCBgEDAgYEDAIGIg58NbaprnnGDNtM14rMAjYKQABAwIGBAwCBgQMCBiIjRxp/IL+u7tvjz724+xk8Pt4dn7T+zMHBy9iY4sVGBAwCBgQMCBgQMAgYKBaXc0Hd396vPInyqgz3D5jzJK30f7FbWcFBgQMAgYEDAgYEDAIGBAwEBf0E5swrMCAgAEBAwIGAQMCBgQMCBgEDAgYEDAIGBAwIGBAwCBgIO7MkPbuADHGt+6X3GViU9/uX+tdN/rOh3NqBQYBAwIGBAwCBgQMCBgQMAgYEDAgYBAwIGBAwICAQcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAs/cbpYzJfY1RFn4AAAAASUVORK5CYII=", "normal": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAACl0lEQVR42u3dvU3DQACG4c+ICViADq9CRUlYgQmSEZIJWIFQUrGK6ViAFUyPUOwop3A5P0+biOCfV2fpznYCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUKeupY3px+dx6jtD99I57O1a2jlw5ZCDgAEBAwIGAQMCBgQMCBhiIUfqnKS3SMPiiKWdR0ZgcAkNCBgQMAgYEDAgYCAVzwO7Gd+8qHPRCAwuoQEBAwIGBAwCBgQMCBhiIUcsFohFCfbUZZ7PRmBwCQ0IGBAwCBgQMCBg4A/XS9vgYb0aW9mWh+3N5HfeN9/Tf6ihfdLv9p0RGBAwIGBAwCBgQMCAgEHAQCzkyEk3jbvxPEcv1Ji1SIN4MwPgEhoQMCBgEDAgYEDAIGAgFnKk6EKPpK23OxR7mgZZ8ltCjMDgEhoQMCBgEDAgYCAe7J5C93HG1EyWfi+vgFPnXPElHTxzvHWvOXAJDQgYEDAIGBAwIGBAwBDzwPzy+PF18PO3+1vbi4Bz7AT9ejU67LFIwyU0IGBAwCBgQMCAgIGYB/4XJeY977avBz//3DwV+V9L/I55XiMwIGAQMCBgQMCAgEHAgICB01Vz7+TgPt2UXoAxV6kFIUvS7/adERgQMAgYEDAgYEDAIGBAwEA8kYNYgIERGAQMCBgQMAgYEDAgYEDAIGBAwICAAQGDgAEBAwIGAQPxZobKzHkDRImn7k/9Ti1P9j/Xfj3HPm1xvxqBQcCAgAEBAwIGAQMCBgQMAgYEDAgYEDAIGBAwIGAQsF0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJT2A+WHiEdd0FHWAAAAAElFTkSuQmCC", "feliz": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAC+ElEQVR42u3dMU4CQRSA4bfGGxhqK+UOtjZWJjRg6ynwCHIKW6EhsbKx9Q6rlTXxDGtvwZgIszO739diWBb3z2zyBogAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgBo03oJ+TDazbkjns5tvXUs9OPEWgIABAQMCBgEDAgYEDAgYwkaOil19vyQ3ULyf3TY2akRxGz1y/e+swICAAQGDgAEBAwIGBAxhDhylzHBzzQDNeKPqLwUo5TqyAoNbaEDAgIABAYOAAQEDAgZ+O63pxY7tw9qluLi+T/7N59uT68gKDAgYBAwIGBAwIGAQMCBgIAaykcO37kexGzVq2qQxtmvRCgxuoQEBAwIGAQMCBgQMRMFzYDPeOMp8dmgfxnctWoHBLTQgYEDAIGBAwICAAQFD2MhxfO1y0eU4znS1rmZIn9pgYZOG68gKDG6hAQEDAgYBAwIGBAxEwXPgmuzm2+QMcLKZdX3PiWt7z7ACg4ABAQMCBgQMAgYEDAgYwkYOooeNCzk2etioYQUGBAwIGBAwCBgQMCBgGKXRze5yffE3/ajpi/utwOAWGhAwIGBAwCBgQMCAgAEBg4ABAQMCBgEDAgYEDAgYBAyEX2YYlfnr197HNzfnzhcrMAgYEDAgYEDAIGBAwECYA0cVM8+I9NzzEM/hfLECg4ABAQMCBgEDAgYEDAgYhqUZ2wm3y0VXy2u9fHze+/jHw11Vx8lhulo3VmBAwICAAQGDgAEBAwKG8IF+CpWav6bmt4c6DlZgQMCAgEHAgIABAYOAAQEDYSMHYQMGVmAQMCBgQMCAgEHAgIABAYOAAQEDAgYEDAIGBAwIGAQMCBgQMCBgEDAgYEDAgIBBwICAgfDLDIc1Xa2b/z5Hu1x0xz5GSXKcb+oYVmBAwICAAQGDgAEBAwIGImJgc+C/zAmHNn8N8/lRXwNWYBAwIGBAwCBgQMCAgAEBAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQ3w9DTo0KioorWQAAAABJRU5ErkJggg==", "acenando": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADJElEQVR42u3dMS4EURjA8W9E6Q46OtHiAk6AUKkcgSPYI6hoCE7gAmhFR+cOWhm1RMzb3Wf2vZnfr91kdncm/7xN3rczEQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGTQOAX9aD822s6LsfrqejCVJacABAwIGBAwCBgQMCBgQMAQBjmIWoc92p2L1pkuNMbHk8YKDH5CAwIGBAwIGAQMCBiIBe0Db7WHo9pLfG5umrHs8W5+XvZyTl9Wjuf+LCnHyCHlnPTxWX7bJ7YCg5/QgIABAYOAAQEDAgYEDMOyHP80qPEU13++vh1Hcx8j5Tg5jpFyPrqGPYb01IUcQxilyDWksaihEysw+AkNCBgQMAgYEDAgYCAS94H7kLI/G27sHiXuJ5eyx1vKH+2twICAQcCAgAEBAwIGAQMCBqL2QY5cf+gPQxpTPeG96+kNJQ0+9PFZcr1HjuOkXD8rMPgJDQgYEDAIGBAwIGAgwUz7jjlu/F6Trpu2x8j+0F+Trn3vWfZercCAgEHAgIABAQMCBgEDAgaipEGOvqQMjPQ1ZEFUN6QxhEENKzAIGBAwIGBAwCBgQMCAgCEMctSka9jj6uzLVR6w9cldYwUGBAwIGBAwCBgQMCBg4IflGPpTE073W5cZKzAgYEDAgIBBwICAAQGDgAEBAwIGBAwCBgQMCBgEDAgYEDAgYBAwIGBAwICAQcCAgIEY843dS7H38PHn6/e7q6P5rkP7vlZgQMCAgEHAgIABAYOAAQEDYZCjLjkGF9bObxf+Pd7PDgxpWIEBAQMCBgEDAgYEDAgY6tYs6o3fTvdbpz963ytO2eflp/XJXRNWYEDAgIBBwICAAQGDgAEBA+EP/YRBDKzAIGBAwICAAQGDgAEBAwIGAQMCBgQMCBgEDAgYEDAIGAhPZihPyhMgctx5v+t9Sr67f63ndGjn1QoMAgYEDAgYEDAIGBAwEPaBI6Ke/dda9jRr2nu1T2wFBgEDAgYEDAIGBAwIGBAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwC++AUcMpCZnZgQdAAAAAElFTkSuQmCC", "pensando": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADTElEQVR42u3dsYvTUBzA8V9EdHRUEBQc7OR44J1yOPoP6ImKk/tNhy4i4mJx0tlFqGIdnRzlUCs4Op2CcIJwq6OTjuKSF5rXNnn5fNYeuTbNl6S895IIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoR9WVN/LlzIs/qb859/1G5SuDfw7ZBSBgQMCAgEHAgIABAQOxunHgJuO8bRknpomDi1F7LJ54n+4ixzacgcElNCBgQMCAgEHAgIABAQPR5wX9R668af1/RuOpyR4F27uz1XrC0LEP0+TfLGuihjMwuIQGBAwIGBAwCBgQMDCHw115IznGeCEyjPP+urCV3MZBTC3oBwQMAgYEDAgYEDAIGBAwEMVO5IBlaTJRIyzoBwQMCBgEDAgYEDAI2C4AAAAAAAAAAABoqfIEd0oyGk8rUykBAQMCBgQMAgYEDAgYBAxEyU9mOP/zUuvJD59Ovqvsbkpxff3HwicEvZydqpyBwSU0IGBAwICAQcBAlP+A7xzrcIe21pPo8JrxndpXH+w+Livgobn6dr/29deXT/u8A9dknNclNPgNDAgYEDAgYBAwIGAgVjQO/PzpcXsyhj3uaZz3f/c3dyI9DrykgJOL8Qf2tIPUpIUmB3SObfi8uIQGAQMCBgQMAgYEDIT1wFHYmGefhkyG9nmdgQEBAwIGAQMCBgQMCBgEDKxK5a77/XX20ass2/l691ox3+/Qnt7hDAwCBgQMCBgEDAgYEDAgYAh35JjH2rPftRMoPt8+Wvk6YrATMLrk3ubH5GSfh7sb1aK34QwMLqEBAQMCBgQMAgYEDETPn8yQY6H90BZzs5hjbTJrv43ReKNyBgYEDAIGBAwIGBAwCBgQMBCrmMiRWqwPpZnMtqN+Qf+2Bf2AgEHAgIABAQMCBgEDUfqC/sm3W/Y2vXBz/cnCx4k7FXCjpypkuOPGsqTu7NHk7iHuDpJ/n+316BjKMUnDJTT4DQwIGBAwIGAQMCBgYE7GKmOeu+6nx3hzbMM+M7buDAwCBgQMCBgQMAgYEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD9xc/v6crqDOgAwAAAABJRU5ErkJggg==", "estrelas": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAC1ElEQVR42u3dPUrDYADH4b+SUzjoIOhV3HSq4uwgeAAFZ0HxAg7Oop0cvYqCgw6eohAPUGgiTWP65nnWSrVpf7yR96MJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACUY8MlWI2z76d60eOP26eu/R/NZpO66Weqajqq67rpYwECBgQMCBgEDAgYEDAwr3IJWJsP68jmeI3AIGBAwICAAQGDgAEBAwKG2NBPlt6sn9iwHxv6jcCAgEHAgIABAQMCBgEDsaE/DkuPOdwh/C3rNJdsBAa30ICAAQGDgAEBAwIGBAyxoT+Fb7S3YGSY79/D1mvjc5z/HGVMhy0YgUHAgIABAYOAAQEDAgbiYHeHsmc1G9zbbNhfVps53jZzxV1ouiZ9HWBgBAa30ICAAQGDgAEBAwIGBAyxkOO/vF8e196yct1fHMaGfiMwuIUGBAwIGBAwCBgQMCBgiIUcsZCDldq9qQdzykUXJ5AYgQEBg4ABAQMCBgQM5atcAvrwee070QXck8nb18LHpwc7Xu86f+jXaJ7XLTT4HxgQMCBgQMAgYEDAQMwDd6K0eU+vV8AZy6KFNh/oLp7D6x33Agy30ICAQcCAgAEBg4CBOBc6zoWmpf27l17OhTYCAwIGBAwCBgQMCBgQMAgYSMkLOSywmLd3+7zw8Y+rk5X/jq5+T0a2YMQIDAgYEDAIGBAwIGBAwCBgIA52L0vTAoo2izAs0sAIDAIGBAwIGBAwCBgQMBDzwCllnhiMwCBgQMCAgAEBg4ABAQMChvhmhiHzDRDxjQkYgUHAgIABAYOAAQEDAgYEDHEiR8a0EKBpwUhpCw76eL0W4RiBAQGDgAEBAwIGAQMCBgQMCBgEDAgYEDAgYBAwIGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABG7xfJepQS9tOHmAAAAABJRU5ErkJggg==", "comemora": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADXklEQVR42u3dvWoUURiA4e9ISu9AMMHCiCBbB4N1CgsJGG0EvYpZryDZqzCQJomNhUWwFGRrEdSkEFN4B/ZjHZU9J8xkdjLzPG3C7O/LWTjfzEQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFEtje8FP6vd17n/epcfJV6N/dh/+zH52rz+tjeqzu+FrAQIGBAwIGAQMCBgQMBD93Qc+rZ7VTY9R7b2INvZ4c3vF9oljKfu8JXu8JXvF25tV4+e6PjtKVmBAwCBgQMCAgAEBg4ABAQNtWxnSi5lND/L/5IT+3soNanQ1pGEFBgQMCBgEDAgYEDAgYBAwEAY5umFIIwY76BERsb3Z/MouVmBAwICAQcCAgAEBAwIGAAAAAAAAAABog5Pb4S91vZG9KEBK82SUEhAwCBgQMCBgQMAgYCDsAy90vPEmu/e2M39l35q46n3ekj3eNo5hBQY/oQEBAwIGBAwCBgQMCBiIqxjkOK3yd0X//HFr4d8nj06i6TFKBj1KnivX1/rsKHVxQv/Z9HYvnqsVGPyEBgQMCBgEDAgYEDDwHytdPVBunze3xxvhhH660cYerxUYEDAIGBAwIGBAwCBgQMBA9HmQIxoOekRExNwHBlZgEDAgYEDAIGBAwICAAQFDuDPDULgzQ7gzgxUYEDAgYBAwIGBAwICAIZzQz0U7J+eNj3G8teo9Gfh7YgUGBAwCBgQMCBgQMAgYEDAQyxjkWN2/lz1J/vzl98GcaN3VwMHdvcOFfz+bPu/N4xjCuOj30/vZJm6+/ZqswOAnNCBgQMCAgEHAgICBWNI+cBv7vLljfPg2CRf1jkvtv+b2b9t6nHBx/3/c+vElmu7x5vaKS45hBQY/oQEBAwIGAQMCBgQMCBhifIMcJUMaXQxqEKMewOiTX3cexOIhjXBCPyBgEDAgYEDAgIBBwEBc5wu7F120vZrU3m7Goo09Xisw+AkNCBgQMCBgEDAgYEDAMD5pbC+45Kr8bdzhIfc4Q7uLRBevt6vPzgoMCBgQMAgYEDAgYEDAIGAgDHKEoYSeDiUYfrECAwIGBAwCBgQMCBgEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM1R+XQboVzH1asQAAAABJRU5ErkJggg==", "falando": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAACpklEQVR42u3dMUoDQRiG4W8l97BT8AwGW0+gdinSCpbmCFoKthZ26glsxZwhoJ0niRcQXYibzMw+T6usZsnLvzCzuwkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1KBzCijV8ep+3cpnWR5dDtLanq8J1EvAIGBAwICAQcCAgAEBA7GRg9ikkYY2e5jA4BIaEDAgYBAwIGBAwECsAxPrvGlondgEBpfQgIABAYOAAQEDAgYEDG2ZOAWUqrs6+fXn67u3Io7R9zgmMCBgEDAgYEDAIGBAwICAgXgiB/FEjngiB+ASGhAwIGAQMCBgQMAQ68AQ68TZ+TqvCQwuoQEBAwIGBAwCBgQMCBhiIwfEZo/sepOGCQwuoQEBAwIGBAwCBgQMxDowqWcNd6h1URMYEDAgYEDAIGBAwICAAQFDbOQgNmmklpvgTWBAwICAQcCAgAEBAwKGWAcexMf1uTe0N2w+m8YarwkMCBgEDAgYEDAgYBAwIGAgNnKQwTZgJMnD43sx/+/h7XNnAgMCBgQMCBgEDAgYEDAgYGjFxCkghW7SwAQGAQMCBgQMCBgEDAgYiHXgH5y9fm18jJfTfZ8VExgQMCBgEDAgYEDAIGBAwEC8mYEqjf2NCSYwIGAQMCBgQMCAgEHAQNzQ37yDm6c/f+dzceFEYQKDgAEBAwIGBAwCBgQMCBjihv642Z64od8EBgQMCBgEDAgYEDAgYBAwIGBAwCBgQMCAgAEBg4ABAQMCBgQMAgYEDAgYBAwIGBAwIGDIGN7MsA193v7wH0/339bfKUHfN2ps+nnHdE5NYEDAgIBBwICAAQGDgAEBAwIGBAwCBgQMCBgQMAgYEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG37BqoBWVVp7Is3AAAAAElFTkSuQmCC", "piscadinha": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADDklEQVR42u3dwVECMRiG4Q/HPrzJwQJswIM2AHaCJUgnQgN6sAEL4IA3K8EODOPENdk8zxVGYN13wsyfaAIAAAAAAAAAAAAAAAAAAAAAAAAAwHgWLkG7Tu85NXGT3LlPWnXhEoCAAQEDAgYBAwIGBAzEHDgV5q815qKtzHhbmhVPcd2twICAAQGDgAEBAwIGBAwCBmIjR2wGGf1GswnDCgwIGAQMCBgQMAgYEDAgYKDoMjZYxKYDvzsrMCBgQMAgYEDAgIABAUMc6CcTHOg/FB6/qfRmJ3gds3UrMCBgEDAgYEDAIGBAwECcB44zpcX562Gi1/G7swIDAgYEDAIGBAwIGAQMCBiIA/1x4L+bG8mBfSswIGAQMCBgQMCAgEHAQBzoT7czWjNP113AgzvnZmxls4dwfIUGBAwIGAQMCBgQMAgYiAP9v3DcrCeZeS63u25mmqvb1ybmwPuPB3NgKzAgYEDAIGBAwICAQcCAgIE40D+00gaKWhs9bNSwAgMCBgQMAgYEDAgYEDDEHBgaNdofhhBw5rvRA1+hAQEDAgYEDAIGBAwIGGIjxz/q6T8mgBUYEDAIGBAwIGBAwCBgIObAGe3AN1iBAQGDgAEBAwIGBAwCBmIODHGu3AoMAgYEDAgYEDAIGBAwIGAQMCBgQMCAgEHAgIABAQMCBgED8Rc5OrR6+yo+Z39/9ec/w+fFCgwCBgQMCBgEDAgYEDAQc+AqzplXluaePc08R/u8VmBAwICAQcCAgAEBAwIGAQOxkSPDbfYouX5++fHxz6fHKu+1xuvYqGEFBgQMAgYEDAgYEDAIGIg5MEWl+WtpflvrdbACAwIGBAwCBgQMCBgEDAgYiI0cxAYMrMAgYEDAgIABAYOAAQEDAgYBAwIGBAwIGAQMCBgQMAgY6NRiTh/muFmfSs9ZbneLFt7LVO+jlWvfynWf27W3AoOAAQEDAgYBAwIGBAwIGGIjRwbfLDDahoO5bY6Y031kBQZfoQEBAwIGAQMCBgQMAAAAAAAAAAAAAAAAAAAAAAAAAABAkuQbpvaKfPIa/kMAAAAASUVORK5CYII=", "duvida": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADj0lEQVR42u3dMWoUURzH8d9IwNoTiI0Bj2EliJWwsbTzCNETxBzBztIEUgXBymMsxEY8gbXVegBl3wv7dubNzOfTLkx2Z/nyAu//dhIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABg3ga34F9vn93s9r3+eft6OPbfSJKHT57vff3Pz+859Bo116m5xqevj4apv5dW382cPJArCBgQMCBgEDAgYEDAgIAhBjkoevfy927qwYcsbPgFKzAIGBAwIGAQMCBgQMCAgCEGOchEvwxRGgYZ6xc5xvgsyfKGW6zAgIBBwICAAQEDAgYBAxM5cQsyyWH8mr3kJvui2+Pfj5r3WrNnbS/ZCgz+hQYEDAgYEDAIGBAwIGCIQQ4ywdDBWMMgNQf6xxjCqHkfpaETB/6twCBgQMCAgEHAgIABAQOxD5wj7VluZ7SXvE0Xe7gO9FuBAQGDgAEBAwIGAQMCBmIfmIz1oPGa6yDgrOlAf4thkNJQQk14NcMPpc/bYjiil2EQ/0IDAgYEDAIGBAwIGBAwxD5wHOjPZHu4pSGMmiGNFgf602CopJe9ZCswIGBAwCBgQMCAgAEBg4CBnnnieab7JYwceBi/5oB7zfBD6To112gxqFG6ry3uqRUYEDAgYBAwIGBAwICAQcBADHKsT2kIo8Xgw5LuxxrviRUYBAwIGBAwIGAQMBDbSD25Oz8rbmdc3G72vv7h1fXB76P0N5LyOdyezgOXrtHinp1eXg1jncW2AgMCBgQMAgYEDAgYEDAIGIhBjnQxyMF8XdxuDHLAXK3t6Q0CBgEDAgYEDAIGBAwIGPiPE7fgODbffu19/frFY58XKzAIGBAwIGBAwCBgQMBA7ANnFnueSXnfs8U1fF6swCBgQMCAgEHAgIABAQMChhjkWLuagYMlHXBf2+e1AgMCBgQMAgYEDAgYEDDMXDcPQ747P9v5Ou7n6ccvTa7z4/0bN/OeTi+vBiswIGAQMCBgQMCAgEHAgICBONBPDGBgBQYBAwIGBAwCBgQMCBgQMAgYEDAgYEDAIGBAwICAQcBAPJmhM54AEU9MsAIDAgYEDAIGBAwIGBAwxA+7x15iWu83L22/cozPaw/fCgwCBgQMCBgEDAgYEDAgYIgD/evTy1BCL8MeY73XtQ2/WIFBwICAAQEDAgYBAwIGBAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAS/MX9uACjsUmciEAAAAASUVORK5CYII=", "ouvindo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAACdUlEQVR42u3dPU4CQQCG4W+NnYfQQiWx9gDa22NlbDkBdsZOTkBrrKTnAB7A2gSxwEPYggcwwR+WDcM+T0sCDMvLkMzsbgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABLVG0b8KTfXTjs26szGLXqO73jkIOAAQEDAgYBAwIGBAwIGAQMCBgQMAgYEDAgYEDAIGBgY+36CP7uZXjWyOuc9p6NFzMwCBgQMCBgQMAgYEDAQKwDZ+3rnuPb82beyF0aWTdt23jNwICAAQGDgAEBAwIGBAwCBmIjR7u8Pl4vffzk6iGlnGi/KePFDAwCBgQMCBgEDAgYEDAgYNh2VdsGPOl3F3Gngq0db2cwqszAgIABAQMCBgEDAgZiGSm1LxGV5Pj+qZbnebu5VELKXIoyA4O/0ICAAQGDgAEBAwIGBAxxYfeif7F642Le63x4ERswaE3AJcUJ/kKDgAEBAwIGBAwCBmIZKQ2dsD8f1rPU9PF+sPax7B/OfPswA4OAAQEDAgYEDAIGBAwIGEirT+hPQZssftp0cnTwWZWyyaaOux385s4bbvANCBgQMCBgEDAgYEDAgIAhNnI0o45F+mlvb7HqczRxxY7EVTswA4OAAQEDAgYEDAIGBAz8S+Uj+G46W32teFNs0kn/mIEBAYOAAQEDAgYBAwIGBAzERo7Y6BGbPczAgIABAQMCBgEDAgYEDAIGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAJPkC04JVv5lrXzoAAAAASUVORK5CYII=", "triste": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAC80lEQVR42u3dMW7UQACG0X8R96CIBC0VZbpI9JHCcgDOAA0VDZyBAwArpY+ULmUqWpBScBJzACSPUWZnZ+z32kS769n9ZEszYycAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwY2cI/vXp5zTN/f3jy51xM+5deGIIQMCAgAEBg4ABAQMCBjL2PPD59fw84cVZ+TWuvu0f/TkOb783eZ81aTVmS97n9mH+73eX48w3OwODS2hAwICAQcCAgAEBAwKGWMiREyzSSOpMsJc2jSd1FhS8ezW/oODr/boWerQ43iWLNGps+m/1W3QGBpfQgIABAQMCBgEDAgYy+DxwaW6t1bzar/dvJnO4We1c8osvP3Zb+j07A4NLaEDAgIBBwICAAQEDAoZYyDGyJQs5Sq5u/hT/5/D62dFfo5WRjrfVQg5nYEDAIGBAwICAAQGDgAEBA8fw1BDkv+8Mccj+0YsfelmkscSSz1rjeN0JxRkYBAwIGBAwIGAQMBD7gXOyvbylqYpaWkx5PP9c51h+f9iffGqup3EfaU+xMzC4hAYEDAgYBAwIGBAwIGCIhRzpdCHHksUCF2fl97l9yCoWeqSjPdQ11PruSmNvIQcgYEDAIGBAwICAAQFD3Bd6KEvmCUvzjS3mibfIuG884F4WadD3byD3LqEBAQMCBgEDAgYEDAgYYkN/J86vp2lLc8W9bPpv9VSFXr67u8udDf2AgAEBg4ABAQMCBgQMAgZiQ3/6uCPHKGo9QaD0xAvfnTMwIGBAwCBgQMCAgEHAQMwDH0lpo3WNDf+9HEuSpJP52SWfdXVj7wwMCBgQMAgYEDAgYBCwIQABA/FkhozwdIdsbLGAcXcGBgQMCBgEDAgYEDAIGBAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA6/EX0+qlK7KzRyoAAAAASUVORK5CYII=", "amor": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADEElEQVR42u3dv03zQBjA4fcQPTQRdBRIFNAwATUTACNQpIcRMkAKRrCYgJodQEokCjoQDWEAzAi28L+z8zx15Av5vh9n6b3gCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgzTUwm8Xt2Ub1zl+fkhdr1O1Bgxlx0cAAgYEDAgYBAwIGBAwIGAIBzmi+UGN/bPTymt8v7w2fh99reOwB3ZgQMAgYEDAgIABAYOAgUzsDrVwG7PXnNYBOzAgYBAwIGBAwICAQcCAgIHY9icz9MGX9bEDAwIGBAwCBgQMCBgEDAgYiCkf5IiMDnv0cVBjU85L/92may8tkx0YEDAIGBAwIGBAwCBgIMyBo49ZcV9fxjfnJQaYE9uBwS00IGBAwCBgQMCAgAEBQzjIMSaru2sHLCbscDELBzkAt9CAgAEBg4ABAQMCBgQMAgYEDAgYBAwIGBAwIGAQMCBgQMCAgEHAgIABAYOAAQEDXdv1EVS7enqvfM3j5VHn18jl563zPtu4BnZgEDAgYEDAgIBBwICAAQHDtklDLby6uy5jiw57TOngwpgOpbThcDFrfI29tEx2YEDAIGBAwICAQcCAgAEBA+EvcvSjjYMLJ4ui8jXr+5tO16hzfX9Nww4MCBgEDAgYEDAgYBAwEObA1FJnBltnVtzlHBk7MCBgQMAgYEDAgIBBwICAgRjfkxk25TyLJy983H/5V56wNp6a0AdPZgAEDAIGBAwIGAQMCBiIzL/Qn8uMF8aiTjP/mRXbgcEtNCBgQMAgYEDAgIABAUM4yJGTqi/sn9wcNF5jXXxWvqaNdcbyPnP5PH7Of+3AfoeBgAEBAwIGAQMCBgQMxPTmwNHHrLAYyUyy8HnYgQEBAwIGBAwCBgQMCBgQMIxZ8mQGyIMnM4BbaEDAgIABAYOAAQEDAgZSVxd22AOi0SENOzC4hQYEDAgYEDAIGBAwEJnNgcOcmDDntQMDAgYBAwIGBAwC9hGAgAEBAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwPX9XOIYx/Y47agAAAABJRU5ErkJggg==", "dormindo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAACxklEQVR42u3dsU3DQBSA4WfEBnQ0iYRENoABaJiAIEFDCRUVYQRCRQUlDUiECWgYADYIElLS0DGDqansyHF0OX9fHYXkwq9X3NmOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKitsATtOOl9lyl8juf5jt84YxuWAAQMCBgQMAgYEDAgYCDsA0dGe8kp7fGWs9PG+95F/8n/owkMAgYEDAgYEDAIGBAwIGAIBzmIFC/4z+lifAc9TGBAwCBgQMCAgEHAgIABAQOR10GO7fuDJJ528HPxXngyAyYwIGAQMCBgQMCAgEHAQNgHjnXZS66zz8t/5dle8wv2Hz+tuwkMAgYEDAgYEDAIGBAwIGAIBznCIQ3CQQ8TGBAwIGAQMCBgQMCAgCHsA4cbu2fh8rffeF3vtmb2aE1gQMAgYEDAgIABAYOAAQED4YL+hUxHw9LPvpiHq4/G73F+u7+SzzoYTwoTGBAwIGBAwCBgQMCAgKHjNi0BkcgeLiYwCBgQMCBgQMAgYEDAgIBBwICAAQEDAgYBAwIGBAwIGAQMhDtyrKmjt3nla14Pe62/h++LCQwCBgQMCBgEDAgYEDAQ9oGXos5+ZdW+5zrteXbt+5rAgIABAYOAAQEDAgYEDAIGwkGO6NxhD98XExgEDAgYEDAgYBAwIGCgBUUqH2Q6GpZ+jsXs3rxUvubr+thCtWAwnhQmMCBgEDAgYEDAgIBBwICAgXBBP+GQBiYwCBgQMCBgEDAgYEDAgIBBwICAAQEDAgYBAwIGBAwCBsKTGRJT5wkQy7jrftXfSeXO/qta11WsaY7ragKDgAEBAwIGBAwCBgQMCBjCQY6ucygh3wM0ua2rCQwCBgQMCBgEDAgYEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA0Mwf6158TJUbz5AAAAAASUVORK5CYII=", "emburrada": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADJklEQVR42u3doU4cURiG4Q+ywSKROEjQaCxkVVWL6RXUERK4AERJCI47QFBUVUNTh67bhKS4ykquYNAYdtOdnD1n5nkspF1meTND/n9nEgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHqw5hAwNt2/o66K+LYelu5v3dsJ7RIwCBgQMCBgEDAgYEDAQCxyEEsarSxpOAODS2hAwICAAQGDgAEBAzEHztDmkaVmiWa87b43zsDgEhoQMCBgEDAgYEDAgIAhFjmIRQ8LIZ7MAAgYBAwIGBAwIGAQMBBzYLKCeWYfs8aWZtZu7A64hAYEDAgYBAwIGBAwIGCIRQ7i5gJrQ1nSaOlGCc7A4BIaEDAgYBAwIGBAwEDMgWPGW+/c083unYHBJTQgYEDAgIBBwICAAQFDLHKUsf/hqYo75v/+vmd5JW0unYxtScMZGAQMCBgQMCBgEDAgYEDAEIsc/+Pg8LIb0kF5/Hn27nH5c/ap86szXLuX3zyZARAwIGAQMCBgQMBAJqX+o5uraRU/8JfTH971kds5eXn3691JOw8Sn5SYmyZJrqZdCzNecAkNCBgQMAgYEDAgYEDAEIscC/n869TRJqte0hAwkBJbVi6hwd/AgIABAQMCBgEDMUYqaZF7Ord0X2Deer7ezJhmxebAK/Lx4e/c77k/2vbzZtxzXpfQ4G9gQMCAgAEBg4ABAQNZ0QO+FzGbzaq4sfvG7UWWXeQo9YDvebPTmuamLb3WFFj08HlgQMAgYEDAgIABAYOAAQEDsciRXhY5iKc3+EA/IGBAwCBgQMCAgEHADgHEHDgVzIn7mvHW8oH+Pux8vVv633g+P86Y5sCLPN2hxO+ZMzC4hAYEDAgYEDAIGBAwIGCIRQ7ma2mRg3pZ5ACX0ICAAQEDAgYBAwIGBAwIGAQMCBgQMAgYEDAgYEDAMGwThyDVflg7PdxYoMTraO21znsttRwzZ2BwCQ0IGBAwIGAQMCBgQMAgYEDAgIABAYOAAQEDAgYEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJBXuI2eJABE3TsAAAAASUVORK5CYII=", "curativo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAADUUlEQVR42u3dsWoUQRjA8W9FKxPSWEQQ0ukjSF5AbGwsTiG1IFcegtraRJuUh2Ad0CsskkbstJE8gnaCoIVFxGh7vsHN6s0OM+vv1ybc3t3enzmYb28jAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHrrvAXtOvt2a5njcTa2j30OGnXOWwACBgQMCBgEDAgYEDAQ9oGjkv3Xr19+Jf/n8pWLVbzeUs/VfrQVGAQMCBgQMCBgEDAgYEDAEAY5iIEulI+BByhyDXqUOk4Y9LACAwIGAQMCBgQMAgYEDAgYCIMcUd+vaZR6jD5qea5+1cMKDL5CAwIGBAwIGAQMCBjI4ry3oF21XGiPFRgQMAgYEDAgYEDAIGBAwEC4oD8avusC0fTdG2bzxcrP0cF00lmBAQGDgAEBAwIGBAwCBsIF/WGPlxKfgTH9+LsVGAQMCBgQMAgYEDAgYEDAEAY54i8vbo7Ic4Fz6jgb2+ljvL1/27DHiN14/rqzAgMCBgQMCBgEDAgYEDCEfeCo4YewS9nZuuCsYwUGBAwIGAQMCBgQMCBgEDAQox3k6HOxfmqQ4+eP78njvHg87ZwysAKDgAEBAwIGAQMCBgQMCBjCIMd6UoMam1uXnA2a0WfwyAoMCBgEDAgYEDAgYBAwECPfB07t89ayr5bL5M3nlX9f3Nzxeiu1t3uSvIvI76P1H+Pww/XOCgy+QgMCBgQMCBgEDAgYEDAQLugfXo7BhatPX678+6dHd7M81xzHGdNgSp8Bi9SgRo4hDSsw+AoNCBgQMCBgEDAgYOAfFbvj/b39+cp9swen75yNyLt/21eu/eT/yZP3s7APDAgYBAwIGBAwIGAQMCBgIFq9oJ/8DGBgBQYBAwIGBAwCBgQMCBiIgfaBZ/PFcu0HOXUywAoMAgYEDAgYEDAIGBAwIGAId2aIAoMcB9NJN/Rx+hzj48M7yed67dmrtZ9r6jg5jlGTEq+31Lnb2z1ZlnjPcty9wQoMvkIDAgYEDAIGBAwIGBAwhEGOaHSYIKKtgQLnxrmxAoOv0ICAAQEDAgYBAwIGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIb1B/CAte2ZkHilAAAAAElFTkSuQmCC"};
-const bitSrc=st=>BIT_IMG[st]||BIT_IMG.normal;
-function bitSvg(extraCls){ return `<svg class="evb ${extraCls||''}" data-coruja="5" data-bit="1" viewBox="0 0 240 240" role="img" aria-label="BIT"><image href="${bitSrc('')}" x="0" y="0" width="240" height="240" style="image-rendering:pixelated"/></svg>`; }
-evbSvg=function(v,c){ return bitSvg(c); };
-evaSvgVestida=function(){ return bitSvg('evb-mini'); };
-evaPersonalizar=function(){ toast('O BIT não usa roupas nem cores: o visual é o mesmo para todos.'); };
-const BIT={ult:Date.now()};
-function bitAtualiza(t){ const im=t.querySelector('image'); if(!im) return; const st=t.dataset.st||t.dataset.bitBase||''; const h=bitSrc(st); if(im.getAttribute('href')!==h) im.setAttribute('href',h); }
-new MutationObserver(ms=>{ for(const m of ms){ const t=m.target; if(t.matches&&t.matches('svg[data-bit]')) bitAtualiza(t); } }).observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:['data-st','data-bit-base']});
-/* parado 5 min: o BIT cochila; qualquer toque acorda */
-['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{ BIT.ult=Date.now(); document.querySelectorAll('svg[data-bit][data-bit-base]').forEach(x=>{ delete x.dataset.bitBase; }); },true));
-setInterval(()=>{ if(Date.now()-BIT.ult>5*60e3) document.querySelectorAll('svg[data-bit]').forEach(x=>{ if(!x.dataset.st) x.dataset.bitBase='dormindo'; }); },30000);
-/* troca quem já estava na tela */
-function bitTrocaTela(){ document.querySelectorAll('svg.evb:not([data-bit])').forEach(n=>{ const t=document.createElement('div'); t.innerHTML=bitSvg([...n.classList].filter(c=>c!=='evb').join(' ')); n.replaceWith(t.firstElementChild); }); }
-setTimeout(()=>{ try{ evaAplicarVisual(); }catch(e){} try{ bitTrocaTela(); }catch(e){} },400);
-setInterval(()=>{ try{ bitTrocaTela(); }catch(e){} },3000);
-(function(){ const st=document.createElement('style'); st.textContent=`
- svg[data-bit] *{animation:none!important} svg[data-bit]{overflow:visible}
- #t-eva svg[data-bit]{animation:bitRespira 3.2s ease-in-out infinite}
- #t-eva svg[data-bit][data-st="feliz"],#t-eva svg[data-bit][data-st="comemora"],#t-eva svg[data-bit][data-st="estrelas"]{animation:bitPulo .5s ease-out 2}
- #t-eva svg[data-bit][data-st="triste"],#t-eva svg[data-bit][data-st="partido"]{animation:none;transform:translateY(4px)}
- @keyframes bitRespira{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
- @keyframes bitPulo{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px)}}
- .eva-cab{background:var(--teal)!important;color:var(--priTxt)!important}
- .eva-cab small{opacity:.85}
- .eva-cab button{color:inherit!important}
- #eva-cfg,.eva-expr{display:none!important}
- #t-eva .eva-boneca .evb{max-width:330px;width:100%}
-`; document.head.appendChild(st); })();
-/* falas mais adultas */
-EVB_FRASES.splice(0,EVB_FRASES.length,'Estou aqui para ajudar.','Pergunte sobre qualquer nota, cidade ou rota.','Aviso quando um volume de alto valor é bipado.','Posso procurar alguma nota para você?','Bom trabalho hoje.');
-[['piscadinha','Pode deixar comigo.'],['comemora','Excelente resultado.'],['estrelas','Ótimo trabalho, equipe.'],['amor','Bom trabalhar com vocês.'],['surpresa','Opa, algo inesperado.'],['emburrada','Isso não está certo.'],['partido','Isso não saiu como esperado.'],['curativo','Pronto, corrigido.']].forEach(([k,t])=>{ const e=EVB_EXPR.find(x=>x[0]===k); if(e) e[2]=t; });
-evbHumor=function(){ const hoje=hojeISO(); const bip=((OP&&OP.bipes)||[]).filter(b=>diaLocal(new Date(b.criado_em||0).toISOString())===hoje);
-  const fora=bip.filter(b=>b.status==='fora').length, notas=todasLinhas().length, conf=new Set(bip.filter(b=>b.status!=='fora').map(b=>opK(b.nf||'')).filter(Boolean)).size, pct=notas?Math.round(100*Math.min(conf,notas)/notas):0;
-  let reH=0; try{ reH=(RE.ler().dias[hoje]||[]).length; }catch(e){} const av=dvS().filter(d=>d.st!=='resolvida').length; const pick=a=>a[Math.floor(Math.random()*a.length)];
-  if(fora>=10) return {st:'triste',txt:`<b>${fora}</b> caixas fora do romaneio hoje. Vale puxar essas notas no sistema.`};
-  if(fora>=5) return {st:'duvida',txt:`Já são <b>${fora}</b> caixas fora do romaneio hoje. Fique de olho.`};
-  if(notas&&pct>=95) return {st:'comemora',pulo:true,txt:pick([`<b>${pct}%</b> do dia conferido. Excelente trabalho.`,`Conferência em <b>${pct}%</b>. Dia praticamente fechado.`])};
-  if(notas&&pct>=60) return {st:'feliz',txt:`Conferência em <b>${pct}%</b>. Bom ritmo.`};
-  if(reH>=5) return {st:'triste',txt:`Hoje já temos <b>${reH}</b> reentregas. Atenção redobrada.`};
-  if(av) return {st:'pensando',txt:`<b>${av}</b> ocorrência(s) aberta(s) aguardando tratamento.`};
-  if(notas&&!bip.length) return {st:'acenando',txt:pick(['Os romaneios chegaram. Pronto para começar a conferência.','Romaneios do dia carregados. Podemos começar.'])};
-  return {st:'',txt:pick(EVB_FRASES)}; };
-(function(){ try{ const s=MAN.find(x=>x.id==='eva-ensino'); if(s&&s.passos) s.passos.push(['O BIT (v9.17.0)','O assistente agora se chama BIT. Ele muda de expressão conforme a situação: acena quando os romaneios chegam, pensa enquanto procura, comemora quando o dia passa de 95% conferido, fica triste com muitas caixas fora do romaneio e cochila quando o app fica parado por 5 minutos. O visual é o mesmo para todos os usuários.']); }catch(e){} })();
-
-/* ================= v9.17.1 · BIT no NexBip: expressão ao lado do resultado de cada bipe ================= */
-const OP_BIT={ok:'feliz',semnota:'pensando',fora:'duvida',dup:'surpresa'};
-{ const _om=opMostrar; opMostrar=function(r){ _om(r); try{
-    let st=OP_BIT[r.status]||'normal'; if(r.status==='ok'&&r._vt&&(r._vk||0)>=r._vt) st='comemora';
-    const img=`<img class="op-bit" src="${bitSrc(st)}" alt="" aria-hidden="true">`;
-    const el=$('#op-res'); if(el){ el.insertAdjacentHTML('afterbegin',img); el.classList.add('com-bit'); }
-    const m=document.querySelector('#op-cam .msg'); if(m){ m.insertAdjacentHTML('afterbegin',img); m.classList.add('com-bit'); }
-  }catch(e){} }; }
-(function(){ const st=document.createElement('style'); st.textContent=`
- #op-res.com-bit{position:relative;padding-left:76px!important;min-height:64px}
- #op-res.com-bit .op-bit{position:absolute;left:10px;top:50%;width:56px;height:56px;margin-top:-28px;image-rendering:pixelated;background:rgba(255,255,255,.18);border-radius:10px;padding:3px}
- #op-cam .msg.com-bit{padding-left:56px!important} /* 9.19.11: sem position:relative, que tirava o aviso do topo e jogava para baixo do vídeo */
- #op-cam .msg.com-bit .op-bit{position:absolute;left:8px;top:50%;width:40px;height:40px;margin-top:-20px;image-rendering:pixelated;background:rgba(255,255,255,.18);border-radius:8px;padding:2px}
-`; document.head.appendChild(st); })();
-(function(){ try{ const s=MAN.find(x=>x.id==='operacao'); if(s&&s.passos) s.passos.push(['BIT no resultado do bipe (v9.17.1)','Ao lado de cada resultado aparece o BIT: feliz quando a nota confere (comemorando quando o pedido fica completo), pensativo quando a nota está sem dados, com dúvida quando a caixa está fora do romaneio e surpreso quando o bipe é duplicado. Dá para entender o resultado de relance, sem ler o texto.']); }catch(e){} })();
-
 /* ================= v9.18.0 · clientes fixos: Manual e BIT ================= */
 (function(){ try{ const s=MAN.find(x=>x.id==='agenda'); if(s&&s.passos) s.passos.push(
   ['Clientes fixos: bipar para cadastrar','Em Agendamentos → “Clientes fixos”, bipe uma nota do cliente (código de barras da DANFE ou número da NF) e clique em Buscar dados. O app preenche nome, CNPJ, endereço, número, bairro, cidade, UF, CEP e telefone, procurando nos XMLs e romaneios já carregados e, com a chave de 44 dígitos, no Meu Danfe. Valor, volumes e o número da nota não ficam guardados: o cadastro é só do destinatário e não tem data.'],
   ['Exigências e exclusão','Depois de salvar, clique em Editar para colocar as exigências de entrega (PBR, altura máxima, horário, observações). O cliente fica cadastrado para sempre; só o administrador vê o botão Excluir. Quando ele aparece nos romaneios, o aviso sai no mural e no bipe da Operação.']); }catch(e){} })();
-{ const _ee=evaEntender; evaEntender=function(txt){ try{ const t=N(String(txt||''));
-    if(/\b(ENDERECO|CLIENTE FIXO|CLIENTES FIXOS|EXIGENCIAS?|TELEFONE|CEP)\b/.test(t)){ const L=cliS(); let best=null; for(const c of L){ const a=N(c.nome); const p1=(a.split(' ').find(w=>w.length>=4)||''); if(a&&(t.includes(a)||(p1&&(' '+t+' ').includes(' '+p1+' ')))){ if(!best||a.length>N(best.nome).length) best=c; } }
-      if(best){ const d=best.dd||{}; const end=[d.end&&(d.end+(d.nro?', '+d.nro:'')),d.bai,d.mun&&(d.mun+(d.uf?'/'+d.uf:'')),d.cep&&('CEP '+d.cep)].filter(Boolean).join(' · '); const ex=cliResumo(best);
-        return `<b>${esc(best.nome)}</b>${d.doc?' · '+esc(d.doc):''}<br>📍 ${end?esc(end):'endereço não cadastrado'}${d.fone?'<br>☎ '+esc(d.fone):''}<br>Exigências: ${ex?esc(ex):'nenhuma cadastrada'}`; }
-      if(/CLIENTES? FIXOS?/.test(t)) return L.length?`Temos <b>${L.length}</b> cliente(s) fixo(s) cadastrado(s). Pergunte, por exemplo: “endereço do ${esc(L[0].nome)}”.`:'Nenhum cliente fixo cadastrado ainda. Em Agendamentos, bipe uma nota do cliente para cadastrar.'; } }catch(e){}
-  return _ee.apply(this,arguments); }; }
 
 (function(){ try{ const s=MAN.find(x=>x.id==='romaneios'); if(s&&s.passos) s.passos.push(['Simular sem os clientes de Agendamentos (v9.18.1)','Em Romaneios → Carregados, ligue “Simular sem algumas notas” e marque “Agendamentos”. O app tira da conta todas as notas dos clientes cadastrados em Agendamentos (clientes fixos e agendamentos) que estão nos romaneios de hoje e mostra quantas notas e volumes sobram, com a lista dos clientes que saíram. Nada é apagado.']); }catch(e){} })();
 
@@ -11955,14 +11366,6 @@ try{ const s=document.querySelector('#t-gestor > p.sub'); if(s) s.textContent='C
 #mural:not([hidden]){display:flex;flex-direction:column}
 #mural .mural-in{width:100%;box-sizing:border-box;flex:0 0 auto}
 #mural .mural-in>:not(.mu-hero){display:none!important}
-#mural .mu-bussola{flex:1 1 auto;display:grid;place-items:center;min-height:300px;padding:24px 0 40px}
-#mural .mu-bussola svg{width:min(46vmin,300px);height:auto;filter:drop-shadow(0 10px 30px rgba(0,0,0,.25))}
-#mural .mu-bussola .aro{fill:none;stroke:var(--aqua);stroke-width:14;stroke-linecap:round}
-#mural .mu-bussola .fundo-b{fill:var(--sup)}
-#mural .mu-bussola .agulha{transform-origin:100px 100px;animation:muAgulha 9s ease-in-out infinite}
-#mural .mu-bussola .cl{fill:#FFFFFF} #mural .mu-bussola .ce{fill:var(--aqua)}
-@keyframes muAgulha{0%{transform:rotate(-16deg)}22%{transform:rotate(11deg)}44%{transform:rotate(-7deg)}63%{transform:rotate(5deg)}80%{transform:rotate(-3deg)}100%{transform:rotate(-16deg)}}
-@media (prefers-reduced-motion:reduce){#mural .mu-bussola .agulha{animation:none}}
 #hs-salvar{background:var(--teal)!important;color:var(--priTxt)!important;border:1.5px solid var(--aqua)!important;border-radius:999px!important;
   box-shadow:0 6px 18px rgba(0,0,0,.28)!important;display:inline-flex!important;align-items:center;gap:8px;padding:10px 18px 10px 14px!important;font-weight:700!important;letter-spacing:.01em}
 #hs-salvar:hover{filter:brightness(1.08)} #hs-salvar:focus-visible{outline:3px solid var(--aqua);outline-offset:2px}
@@ -11973,17 +11376,7 @@ try{ const s=document.querySelector('#t-gestor > p.sub'); if(s) s.textContent='C
 @keyframes hsSobe{50%{transform:translateY(-3px);opacity:.6}}
 @media (max-width:820px){#hs-salvar{padding:0!important;gap:0;justify-content:center}}
 `; document.head.appendChild(st); })();
-function murBussola(){ const m=document.getElementById('mural'); if(!m||m.querySelector('.mu-bussola')) return;
-  m.insertAdjacentHTML('beforeend',`<div class="mu-bussola" aria-hidden="true"><svg viewBox="0 0 200 200" role="img">
-    <circle class="fundo-b" cx="100" cy="100" r="92" opacity=".55"/>
-    <circle class="aro" cx="100" cy="100" r="70" stroke-dasharray="372 68" transform="rotate(-56 100 100)"/>
-    <g class="agulha"><polygon class="cl" points="100,18 100,100 88,88"/><polygon class="ce" points="100,18 112,88 100,100"/>
-      <polygon class="ce" points="100,182 100,100 112,112"/><polygon class="cl" points="100,182 88,112 100,100"/>
-      <polygon class="cl" points="152,100 100,100 112,88"/><polygon class="ce" points="152,100 112,112 100,100"/>
-      <polygon class="ce" points="48,100 100,100 88,112"/><polygon class="cl" points="48,100 88,88 100,100"/>
-      <circle cx="100" cy="100" r="9" class="cl"/><circle cx="100" cy="100" r="4" class="ce"/></g></svg></div>`); }
-{ const _ma=muralAbrir; muralAbrir=function(){ const r=_ma.apply(this,arguments); try{ murBussola(); }catch(e){} return r; }; }
-try{ if(document.getElementById('mural')) murBussola(); }catch(e){}
+/* v10.6.06: a bússola do Mural saiu (o Tiago não gostou). */
 
 /* ================= v10.6.03 · Reentregas: divergência NUNCA é reentrega + motivos novos =================
    Combinado com o Tiago (17/11/2026): apagar os motivos cadastrados e as reentregas que eram divergência,
@@ -12093,12 +11486,17 @@ document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.m
   const sec=id=>MAN.find(x=>x.id===id);
   const tira=id=>{ const i=MAN.findIndex(x=>x.id===id); if(i>=0) MAN.splice(i,1); };
   const passo=(id,titRe,txt)=>{ const s=sec(id); if(!s||!s.passos) return; const p=s.passos.find(p=>titRe.test(p[0])); if(!p) return; if(txt===null) s.passos.splice(s.passos.indexOf(p),1); else p[1]=txt; };
-  tira('rotas'); tira('eva-reset');
+  tira('rotas'); tira('eva-reset'); tira('eva-chat'); tira('eva-observar'); tira('eva-ensino');
+  passo('operacao',/BIT — a assistente/,null);
+  /* limpezas de texto que sobraram em passos antigos */
+  for(const s of MAN) for(const p of (s.passos||[])){ p[0]=String(p[0]).replace(/ \(o BIT se esforça\)/,''); p[1]=String(p[1]).replace(/ O CPF cadastrado preenche sozinho no Registro de carretas, e os motoristas de transferência aparecem primeiro[^.]*\./,'').replace(/, e o recado do BIT, quando houver, abaixo dos dois/,''); }
+  passo('operacao',/BIT no resultado do bipe/,null);
+  passo('operacao',/Etiquetas difíceis/,'Se a primeira leitura do texto não achar a nota, o app tenta sozinho outras passadas: só a etiqueta amarela, o centro da imagem, a imagem inteira e a imagem invertida. Na câmera aparece “Leitura em andamento…” — segure a caixa firme.');
   passo('menu2026',/^Operacional/,'NexBip, Conferência total, Buscar e Via Minas.');
   passo('menu2026',/^Ocorr/,'Reentregas e Divergências. Para registrar divergência, bipe no NexBip (ou busque a nota) e marque o quadrado “Divergência”.');
   passo('menu2026',/^Planejamento/,'Agendamentos, Feriados, Romaneios, Geolocalização e Checklist Agregados.');
   passo('menu2026',/^Relat/,'Painel de Gestão: conferência do dia em destaque, painel mensal em PDF e os quadros com filtro Hoje, 7, 15 ou 30 dias.');
-  passo('menu2026',/^Configura/,'Ajustes (tema claro/escuro, trocar senha, ordem dos títulos do menu), BIT, Manual e Ajuda.');
+  passo('menu2026',/^Configura/,'Ajustes (tema claro/escuro, trocar senha, ordem dos títulos do menu e teclas de atalho) e Manual. O (?) de cada tela abre a parte certa do Manual.');
   passo('menu2026',/Grupo da opera/,'O administrador cadastra o link do grupo em Cadastros → 📲 Grupo da operação. Ao enviar qualquer texto pelo WhatsApp (fechamento do turno, divergência, Via Minas…), aparece o botão do grupo: o texto vai copiado e o grupo abre; é só colar e enviar.');
   passo('inicio',/^Mural/,'Ao entrar aparece o Mural do dia: data, saudação e os números do dia (romaneios, notas, volumes, fora do romaneio, reentregas, divergências e agendados). No meio, a bússola do Health Search. Toque em “Entrar no programa” para seguir; clique no logo para abrir o mural de novo; Esc fecha.');
   const dv=sec('divergencias'); if(dv) dv.intro='Registre faltas e sobras de volume e seja avisado quando a nota voltar. Divergência NÃO é reentrega: ela nunca entra nas Reentregas nem nos gráficos de reentrega.';
@@ -12118,7 +11516,7 @@ document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.m
   passo('sistema',/Layout e ajuda/,'Cada tela tem o botão (?) ao lado do título, que abre a parte certa do Manual. Os grupos do menu abrem e fecham clicando no nome. Sem internet aparece só um selo pequeno. Na Operação, Sem nota, Fora do romaneio e Duplicados ficam no cartão “Problemas”. No celular e no tablet as tabelas viram cartões.');
   passo('operacao',/Registro \(Recebimento/,null); passo('operacao',/Relatório Minas/,null);
   passo('operacao',/Painel mensal/,'No Painel de Gestão: escolha o mês e toque em “📄 Gerar PDF”, logo ao lado. Sai a página do mês com reentregas por motivo (sem as que eram divergência), divergências por origem e notas fora do romaneio.');
-  const e=sec('eva-ensino'); if(e){ e.t='BIT — conversar'; e.intro='Configurações → BIT abre o BIT no centro da tela. Ele procura notas, pedidos, clientes e cidades e responde sobre o dia. Desde a v10.6.01 ele não aprende sozinho nem recebe ensino.';
+  const e=null; if(e){ e.t='BIT — conversar'; e.intro='Configurações → BIT abre o BIT no centro da tela. Ele procura notas, pedidos, clientes e cidades e responde sobre o dia. Desde a v10.6.01 ele não aprende sozinho nem recebe ensino.';
     e.passos=(e.passos||[]).filter(p=>!/ensin|aprend|treino|d[uú]vida|m[aã]o levantada|foto/i.test(p.join(' '))); }
   if(!sec('gestao-v106')) MAN.splice(Math.max(0,MAN.findIndex(x=>x.id==='op-recursos')+1),0,{id:'gestao-v106',t:'Painel de Gestão',
     img:'gestor', intro:'Relatórios → Painel de Gestão. A conferência do dia vem grande no topo; abaixo, o painel mensal e os quadros do período.',
@@ -12127,6 +11525,51 @@ document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.m
       ['Bipes sem repetição','“Bipes (por hora)” e “Bipes (por pessoa)” contam NOTA: a mesma nota bipada duas vezes conta uma, na hora e na pessoa do primeiro bipe. Repetido e fora do romaneio não contam.'],
       ['Divergência não é reentrega','Os quadros de reentrega nunca mostram divergência. A conferência por origem mostra onde faltou conferir quando o dia não fecha 100%.']]});
 }catch(e){ console.error('manual v10.6',e); } })();
+
+/* ================= v10.6.06 · Celular: topo novo, menu limpo, zoom só na Geolocalização =================
+   Topo (até 860 px): [☰][status salvo/ao vivo] ······ [logo → Mural] ······ [🔔 com número][💾 %]
+   O título da aba saiu do topo (já aparece grande na tela). O número do sino fica preso no sino.
+   Menu aberto: só as abas, a partir do topo, e embaixo usuário/versão/"Desenvolvido por"; a lista rola
+   sozinha (a tela de trás não rola junto). Fecha tocando fora, escolhendo uma aba ou no Esc. */
+(function(){ const st=document.createElement('style'); st.textContent=`
+@media (max-width:860px){
+  .rail:not(.mb-aberto){position:sticky!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;min-height:56px}
+  .rail:not(.mb-aberto) #mb-bar{display:contents!important}
+  .rail:not(.mb-aberto) #mb-tit{display:none!important}
+  .rail:not(.mb-aberto) #mb-menu{order:1;flex:0 0 auto;width:40px!important;height:40px!important}
+  .rail:not(.mb-aberto) #nuv-st{order:2;flex:0 1 auto;max-width:34vw!important}
+  .rail:not(.mb-aberto) #nv-offline{display:none!important}
+  .rail:not(.mb-aberto) .marca{position:absolute!important;left:50%!important;top:50%;transform:translate(-50%,-50%);margin:0!important;cursor:pointer;z-index:1}
+  .rail:not(.mb-aberto) #esp-st{order:4;flex:0 0 auto;margin:0 0 0 auto!important}
+  .rail:not(.mb-aberto) #mb-bar #nx-sino{order:5;margin:0!important;position:relative!important;top:auto!important;right:auto!important;width:40px!important;height:40px!important}
+  .rail:not(.mb-aberto) #mb-bar #nx-sino #nx-sino-n{top:-3px!important;right:-3px!important;left:auto!important}
+  .rail:not(.mb-aberto) #mb-bar #mb-menu{order:1}
+  .rail.mb-aberto{padding-top:calc(10px + var(--sat))!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+  .rail.mb-aberto .marca,.rail.mb-aberto #esp-st,.rail.mb-aberto #nuv-st,.rail.mb-aberto #nv-offline,.rail.mb-aberto #mb-bar{display:none!important}
+  .rail.mb-aberto .nav{order:1;margin-top:0!important}
+  .rail.mb-aberto .resumo{order:2;padding-bottom:calc(28px + var(--sab))!important}
+  .rail.mb-aberto .resumo .salvo,.rail.mb-aberto .resumo [id*="sino"],.rail.mb-aberto .resumo #nuv-st{display:none!important}
+  .rail.mb-aberto .resumo .autoria{white-space:normal!important;overflow:visible!important;line-height:1.5;padding-right:8px}
+  html.mb-trava,html.mb-trava body{overflow:hidden!important;overscroll-behavior:none}
+  #mb-fundo{touch-action:none}
+  /* mural: botão "Entrar no programa" ocupa a linha toda */
+  #mural #mural-x{width:100%!important;justify-content:center;min-height:48px;margin:6px 0 4px}
+}`; document.head.appendChild(st); })();
+/* trava a tela de trás enquanto o menu está aberto (no iPhone a lista e a tela rolavam juntas) */
+(function(){ const rail=document.querySelector('.rail'); if(!rail) return; let y=0;
+  new MutationObserver(()=>{ const on=rail.classList.contains('mb-aberto'); const h=document.documentElement;
+    if(on&&!h.classList.contains('mb-trava')){ y=scrollY; h.classList.add('mb-trava'); rail.scrollTop=0; }
+    else if(!on&&h.classList.contains('mb-trava')){ h.classList.remove('mb-trava'); try{ scrollTo(0,y); }catch(e){} } }).observe(rail,{attributes:true,attributeFilter:['class']}); })();
+/* zoom com os dedos: só na Geolocalização. Nas outras telas o zoom sem querer desalinha tudo. */
+(function(){ const meta=document.querySelector('meta[name="viewport"]'); const BASE='width=device-width, initial-scale=1, viewport-fit=cover';
+  const aplicar=()=>{ const g=document.getElementById('t-geo'); const livre=!!(g&&!g.hidden);
+    document.documentElement.classList.toggle('zoom-livre',livre);
+    if(meta) meta.setAttribute('content',livre?BASE+', maximum-scale=5, user-scalable=yes':BASE+', maximum-scale=1, user-scalable=no'); };
+  const st=document.createElement('style'); st.textContent='html:not(.zoom-livre){touch-action:pan-x pan-y}html:not(.zoom-livre) body{touch-action:pan-x pan-y}'; document.head.appendChild(st);
+  /* iPhone ignora o user-scalable: o gesto de pinça é barrado aqui fora da Geolocalização */
+  for(const ev of ['gesturestart','gesturechange']) document.addEventListener(ev,e=>{ if(!document.documentElement.classList.contains('zoom-livre')) e.preventDefault(); },{passive:false});
+  const _ir=irPara; irPara=function(){ const r=_ir.apply(this,arguments); try{ aplicar(); }catch(e){} return r; };
+  aplicar(); })();
 </script>
 
 </body>
