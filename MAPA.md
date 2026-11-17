@@ -404,3 +404,20 @@ sem gravar vínculo. `cpfFmt` (Cadastros) e a leitura de XML (`rdTexto`, `rdLerX
 quebrava; agora é função global), `OCR` em vez de `HS_OCR` na chave da DANFE por texto (nunca funcionava em aparelho
 sem leitor de código de barras — iPhone e computador), `nvAud` (não existe; auditoria é no banco), `geoDesenhar`→`desenharGeo`.
 **Verificador:** ESLint 8 com `no-undef` sobre os scripts do index (ver v10.6.01 nesta conversa) — rodar depois de cortar código.
+
+## v10.6.02 (17/11/2026) — Painel de Gestão refeito, (?), Via Minas, Mural e Salvar
+- **Painel de Gestão** (bloco "Painel de Gestão refeito", fim do script principal): `gestorRender` virou UMA função;
+  as 3 camadas antigas (mensal, cartão do dia, "ao vivo") e `gestorDados`/`gsSeletor` foram apagadas. A declaração
+  `function gestorRender(){}` original ficou vazia de propósito (script em 'use strict': sem ela a atribuição quebra).
+  `GS.per` (hoje/7/15/30, guardado em `healthSearch.gsPer`) vale para todos os quadros; `gsPerDias()`.
+  `gsNotasUnicas()`: **conta nota, não bipe** (primeiro bipe da nota; `dup` e `fora` não contam). A foto do dia ganhou
+  `ph` (por hora) e `pp` (por pessoa) — dia cujos bipes crus já foram apagados do aparelho usa isso.
+  `reEhDivergencia(l)`: reentrega com motivo de divergência/avaria não entra no painel, no semanal nem no mensal.
+  Saíram "Avarias por tipo" e a linha "Avarias" das ocorrências. Mensal sem "cidades mais atendidas" (era do Relatório Minas).
+- **(?) de todas as telas**: o estilo inline tinha `font:700 14px/1 inherit` (inválido → o navegador jogava fora e o ?
+  herdava a letra do título). Agora é a classe `.ajuda-q`. Mesmo erro corrigido nos chips de Cadastros (`font:600 12px inherit`).
+- **Via Minas**: título, números e "Transferências" ocupam a largura toda; "Falta Chegar" começa na linha da lista (`grid-row:5`).
+- **Mural**: só o cabeçalho; os quadros ficam escondidos por CSS (`.mural-in>:not(.mu-hero)`) e entra `murBussola()`
+  (SVG: aro parado, agulha balançando — `@keyframes muAgulha`, respeita "reduzir movimento").
+- **Salvar**: mesma função; teal + borda aqua, ícone de nuvem por `mask` no `::before` (texto "Salvar"/"Salvando…" sem emoji).
+- **Testes**: `testes/abertura.js` acusa ~460–650 ms neste servidor **também na v10.5.14** — é o ambiente, não regressão.

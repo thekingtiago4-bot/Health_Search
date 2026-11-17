@@ -4502,7 +4502,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.01', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.02', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7593,7 +7593,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 
 /* ---- 2) relatório semanal (1 página) ---- */
 function semanalHTML(){ const fim=hojeISO(), ini=new Date(Date.now()-6*864e5).toISOString().slice(0,10), dentro=d=>d>=ini&&d<=fim;
-  const fo=foraS().filter(x=>dentro(x.dia)); const re=(typeof rpTodas==='function'?rpTodas():[]).filter(x=>dentro(x.d)); const dvs=dvS();
+  const fo=foraS().filter(x=>dentro(x.dia)); const re=(typeof rpTodas==='function'?rpTodas():[]).filter(x=>dentro(x.d)&&!reEhDivergencia(x.l)); const dvs=dvSo();
   const dvN=dvs.filter(x=>dentro(x.d||'')), dvA=dvs.filter(x=>x.st!=='resolvida'), dvR=dvs.filter(x=>x.st==='resolvida'&&dentro(String(((x.hist||[]).slice(-1)[0]||{}).em||'').slice(0,10)));
   const top=(l,f,n)=>{ const m=new Map(); for(const x of l){ const k=f(x)||'(não informado)'; m.set(k,(m.get(k)||0)+1); } return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n||5); };
   const lista=(t,it,tot)=>`<div class="bx"><h4>${t}</h4>${it.length?it.map(([k,v])=>`<div class="ln"><span>${esc(k)}</span><b>${v}${tot?' · '+rpPct(v,tot):''}</b></div>`).join(''):'<p class="v">Sem registros.</p>'}</div>`;
@@ -7751,7 +7751,7 @@ const CAD_CSS=`#re-motivos.cad-gr,#rb-motivos.cad-gr{display:grid;grid-template-
 #t-cadastros .cad-it, #re-motivos .cad-it, #rb-motivos .cad-it{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--linha)}#t-cadastros .cad-m, #re-motivos .cad-m, #rb-motivos .cad-m{display:block;padding:10px 0;border-bottom:1px solid var(--linha)}#t-cadastros .cad-m input, #re-motivos .cad-m input, #rb-motivos .cad-m input{width:100%;box-sizing:border-box}#t-cadastros .cad-m .nm, #re-motivos .cad-m .nm, #rb-motivos .cad-m .nm{font-weight:700;font-size:15px}#t-cadastros .cad-m .cf, #re-motivos .cad-m .cf, #rb-motivos .cad-m .cf{margin-top:6px;font-size:13px}#t-cadastros .cad-m .al, #re-motivos .cad-m .al, #rb-motivos .cad-m .al{margin-top:6px;font-size:13px}#t-cadastros .cad-pe, #re-motivos .cad-pe, #rb-motivos .cad-pe{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}#t-cadastros .cad-pe small, #re-motivos .cad-pe small, #rb-motivos .cad-pe small{flex:1}#t-cadastros .cad-pe select, #re-motivos .cad-pe select, #rb-motivos .cad-pe select{max-width:170px;font-size:12px;padding:5px 6px}#t-cadastros .cad-larga, #re-motivos .cad-larga, #rb-motivos .cad-larga{grid-column:1/-1}#t-cadastros .cad-duas, #re-motivos .cad-duas, #rb-motivos .cad-duas{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
 #t-cadastros .cad-col, #re-motivos .cad-col, #rb-motivos .cad-col{border:1.5px solid var(--linha);border-radius:12px;padding:10px 12px;background:var(--papel)}
 #t-cadastros .cad-col h4, #re-motivos .cad-col h4, #rb-motivos .cad-col h4{font-size:15px}
-#t-cadastros .cad-bases, #re-motivos .cad-bases, #rb-motivos .cad-bases{gap:5px}#t-cadastros .cad-chip, #re-motivos .cad-chip, #rb-motivos .cad-chip{border:1.5px solid var(--linha);background:transparent;color:var(--mudo);border-radius:999px;padding:4px 10px;font:600 12px inherit;cursor:pointer}
+#t-cadastros .cad-bases, #re-motivos .cad-bases, #rb-motivos .cad-bases{gap:5px}#t-cadastros .cad-chip, #re-motivos .cad-chip, #rb-motivos .cad-chip{border:1.5px solid var(--linha);background:transparent;color:var(--mudo);border-radius:999px;padding:4px 10px;font-family:inherit;font-weight:600;font-size:12px;cursor:pointer}
 #t-cadastros .cad-chip.on, #re-motivos .cad-chip.on, #rb-motivos .cad-chip.on{background:var(--acento);border-color:var(--acento);color:#fff}#t-cadastros .cad-it input, #re-motivos .cad-it input, #rb-motivos .cad-it input{width:100%}#t-cadastros .cad-add, #re-motivos .cad-add, #rb-motivos .cad-add{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}#t-cadastros .cad-add input, #re-motivos .cad-add input, #rb-motivos .cad-add input{flex:1;min-width:110px}#t-cadastros .cad-add button, #re-motivos .cad-add button, #rb-motivos .cad-add button{flex:0 0 auto}#t-cadastros small.u, #re-motivos small.u, #rb-motivos small.u{color:var(--mudo)}#t-cadastros input, #re-motivos input, #rb-motivos input,#t-cadastros select, #re-motivos select, #rb-motivos select{background:var(--papel);color:var(--tinta);border:1.5px solid var(--linha);border-radius:8px;padding:7px 9px;font:inherit}#t-cadastros select option, #re-motivos select option, #rb-motivos select option{background:#0C2B31;color:#fff}#t-cadastros input:focus, #re-motivos input:focus, #rb-motivos input:focus{outline:2px solid var(--acento);outline-offset:0}`;
 (function(){ const st=document.createElement('style'); st.textContent=CAD_CSS; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return;
@@ -7825,7 +7825,7 @@ document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.
 /* ================= v7.7.1 · Via Minas: lista "Falta Chegar" à direita ================= */
 (function(){ const sec=document.getElementById('t-viaminas'); if(!sec||$('#vm-falta')) return;
   const st=document.createElement('style'); st.textContent=`#t-viaminas[hidden]{display:none!important}#t-viaminas.vm-com-falta{max-width:none;display:grid;grid-template-columns:minmax(0,1fr) 340px;column-gap:20px;align-items:start}
-#t-viaminas.vm-com-falta>*:not(#vm-falta){grid-column:1}#vm-falta{grid-column:2;grid-row:1 / span 20;position:sticky;top:12px;margin-top:0;align-self:start}
+#t-viaminas.vm-com-falta>*:not(#vm-falta){grid-column:1}#t-viaminas.vm-com-falta>h1,#t-viaminas.vm-com-falta>p.sub,#t-viaminas.vm-com-falta>#vm-topo,#t-viaminas.vm-com-falta>#vm-transf{grid-column:1 / -1}#vm-falta{grid-column:2;grid-row:5 / span 20;position:sticky;top:12px;margin-top:0;align-self:start}
 #vm-falta .vm-col h3{margin:0;padding:12px 14px;font-size:15px;border-bottom:1px solid var(--linha);display:flex;justify-content:space-between;align-items:center;color:var(--ag)}#vm-falta .vm-cids{max-height:calc(100vh - 90px)}
 @media (max-width:1200px){#t-viaminas.vm-com-falta{display:block}#vm-falta{position:static;margin-top:16px}}`; document.head.appendChild(st);
   sec.insertAdjacentHTML('beforeend','<aside id="vm-falta" hidden><div class="vm-col"><h3>Falta Chegar <b id="vm-falta-n"></b></h3><div class="vm-cids" id="vm-falta-l"></div></div></aside>');  $('#vm-falta-l').addEventListener('click',e=>{ const b=e.target.closest('[data-vm]'); if(!b) return; VM_SEL=b.dataset.vm; renderViaMinas(); $('#vm-det').scrollIntoView({behavior:'smooth',block:'start'}); }); })();
@@ -8145,12 +8145,12 @@ async function vsnGravar(tipo,resumo){ /* v9.19.2: cópia feita dentro do banco 
   if(error){ VSN.ok=false; const ok=await nuvBackupNuvem(tipo==='manual'?'salvo manualmente':'cópia automática'); return {ok,msg:ok?'guardado como backup (rode o SQL v8.4.0 para versões permanentes)':error.message,velho:true}; }
   VSN.ok=true; return {ok:true,n:itens.length}; }
 async function hsSalvarAgora(){ if(!opOnline()){ toast('Sem internet: está guardado neste aparelho e sobe sozinho quando a conexão voltar.'); return; }
-  const b=$('#hs-salvar'); if(b){ b.disabled=true; b.textContent='⏳ Salvando…'; }
+  const b=$('#hs-salvar'); if(b){ b.disabled=true; b.textContent='Salvando…'; }
   try{ NUV.desde=NUV.desde||''; await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro); const r=await vsnGravar('manual');
     if(!r.ok) throw new Error(r.msg); try{ LS.setItem('healthSearch.ultSalvar',new Date().toISOString()); }catch(e){}
     toast('✔ Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+(r.velho?' ('+r.msg+')':r.igual?' — tudo já estava guardado ('+r.msg+'). Quem abrir agora já recebe esta.':' — versão guardada para sempre. Quem abrir agora já recebe esta.'));
   }catch(e){ toast('⚠ Não consegui salvar na nuvem: '+(e.message||e)+' — os dados continuam guardados neste aparelho.'); }
-  finally{ if(b){ b.disabled=false; b.textContent='💾 Salvar'; } } }
+  finally{ if(b){ b.disabled=false; b.textContent='Salvar'; } } }
 /* cópia completa automática: 1x por dia por aparelho logado (além das versões que o próprio banco guarda a cada mudança) */
 async function vsnDiaria(){ try{ if(!opOnline()) return; const h=hojeISO(); if(LS.getItem('healthSearch.vsnDia')===h) return; const r=await vsnGravar('diario','cópia automática do dia'); if(r.ok) LS.setItem('healthSearch.vsnDia',h); }catch(e){} }
 setTimeout(()=>{ let n=0; const t=setInterval(()=>{ if(opOnline()&&NUV.ult){ clearInterval(t); vsnDiaria(); } else if(++n>300) clearInterval(t); },2000); },8000);
@@ -8177,7 +8177,7 @@ async function vsnRestaurar(id){ if(!nvAdmin()){ toast('Só o administrador volt
   salvar(); try{ RE.gravar(); }catch(e){} try{ renderTudo(); }catch(e){} await nuvSinc(); toast('✔ Versão restaurada ('+q+' itens) e enviada para todos.'); }
 
 /* botão fixo, sempre visível, no canto inferior direito (e Ctrl+S) */
-(function vsnBotao(){ if($('#hs-salvar')) return; const b=document.createElement('button'); b.id='hs-salvar'; b.type='button'; b.className='btn pri'; b.textContent='💾 Salvar';
+(function vsnBotao(){ if($('#hs-salvar')) return; const b=document.createElement('button'); b.id='hs-salvar'; b.type='button'; b.className='btn pri'; b.textContent='Salvar';
   b.title='Salvar na nuvem agora (Ctrl+S). Tudo também é salvo sozinho a cada mudança. Clique com o botão direito para ver as versões salvas.';
   b.style.cssText='position:fixed;right:14px;bottom:14px;z-index:1500;box-shadow:0 4px 14px rgba(0,0,0,.35);border-radius:22px;padding:10px 16px;font-weight:700';
   b.onclick=hsSalvarAgora; b.oncontextmenu=e=>{ e.preventDefault(); vsnTela(); }; document.body.appendChild(b);
@@ -8418,13 +8418,11 @@ function evaAbrir(v){ EVA.aberta=v; const p=$('#eva-painel'); if(!p) return; p.h
 /* ================= v8.8.0 · Painel mensal da gerência (PDF) ================= */
 function mensalHTML(mes){ const ini=mes+'-01', fimD=new Date(+mes.slice(0,4),+mes.slice(5,7),0), fim=mes+'-'+String(fimD.getDate()).padStart(2,'0'), dentro=d=>d&&d>=ini&&d<=fim;
   const nomeMes=new Date(ini+'T12:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-  const fo=foraS().filter(x=>dentro(x.dia)); const re=(typeof rpTodas==='function'?rpTodas():[]).filter(x=>dentro(x.d)); const dvs=dvS();
+  const fo=foraS().filter(x=>dentro(x.dia)); const re=(typeof rpTodas==='function'?rpTodas():[]).filter(x=>dentro(x.d)&&!reEhDivergencia(x.l)); const dvs=dvSo();
   const dvN=dvs.filter(x=>dentro(String(x.d||'').slice(0,10))), dvR=dvs.filter(x=>x.st==='resolvida'&&dentro(String(((x.hist||[]).slice(-1)[0]||{}).em||'').slice(0,10))), dvA=dvs.filter(x=>x.st!=='resolvida');
   const top=(l,f,n)=>{ const m=new Map(); for(const x of l){ const k=f(x)||'(não informado)'; m.set(k,(m.get(k)||0)+1); } return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n||8); };
   const barras=(t,it,tot)=>{ const mx=it.length?it[0][1]:1; return `<div class="bx"><h4>${t}</h4>${it.length?it.map(([k,v])=>`<div class="ln"><span class="nm">${esc(k)}</span><span class="br"><i style="width:${Math.max(3,Math.round(100*v/mx))}%"></i></span><b>${fmtN(v)}${tot?' · '+rpPct(v,tot):''}</b></div>`).join(''):'<p class="v">Sem registros no mês.</p>'}</div>`; };
   const val=re.reduce((s,x)=>s+(+x.l.val||0),0), vol=re.reduce((s,x)=>s+(+x.l.qtd||0),0);
-  /* cidades mais atendidas (Relatório Minas) */ const H=S.rdHist||{}; const C={}; let diasRd=0; for(const [d,v] of Object.entries(H)){ if(!dentro(d)||!v||!v.cid) continue; diasRd++; for(const [k,c] of Object.entries(v.cid)){ C[k]=(C[k]||0)+c.n; } }
-  const cid=Object.entries(C).sort((a,b)=>b[1]-a[1]).slice(0,15); const totCid=Object.values(C).reduce((a,b)=>a+b,0);
   /* reentregas por semana do mês */ const sem=new Map(); for(const x of re){ const s='Semana '+Math.ceil(+x.d.slice(8,10)/7); sem.set(s,(sem.get(s)||0)+1); }
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Painel mensal Health Search · ${nomeMes}</title><style>
   @page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#1b2b2e;margin:0;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -8436,16 +8434,12 @@ function mensalHTML(mes){ const ini=mes+'-01', fimD=new Date(+mes.slice(0,4),+me
   footer{margin-top:12px;color:#8aa;font-size:9.5px;display:flex;justify-content:space-between}</style></head><body>
   <header><div><h1>Painel mensal da operação · ${nomeMes}</h1><small>Base AQA · ${fmtData(ini)} a ${fmtData(fim)} · gerado por ${esc(opEu())} em ${new Date().toLocaleString('pt-BR')}</small></div><small><b>Health Search</b><br>Relatórios Precisos</small></header>
   <div class="kp"><div>Reentregas<b>${fmtN(re.length)}</b></div><div>Volumes reentregues<b>${fmtN(vol)}</b></div><div>Valor reentregue<b>${reMoeda(val)}</b></div><div>Notas fora do romaneio<b>${fmtN(fo.length)}</b></div>
-   <div>Divergências novas<b>${fmtN(dvN.length)}</b></div><div>Divergências resolvidas<b>${fmtN(dvR.length)}</b></div><div>Divergências em aberto<b>${fmtN(dvA.length)}</b></div><div>Notas no Relatório Minas<b>${fmtN(totCid)}</b></div></div>
+   <div>Divergências novas<b>${fmtN(dvN.length)}</b></div><div>Divergências resolvidas<b>${fmtN(dvR.length)}</b></div><div>Divergências em aberto<b>${fmtN(dvA.length)}</b></div></div>
   <h2>Reentregas por motivo</h2><div class="g">${barras('Motivos',top(re,rpMotivo,10),re.length)}${barras('Por semana do mês',[...sem.entries()].sort(),re.length)}${barras('Cidades com mais reentregas',top(re,rpCidade,10),re.length)}${barras('Motoristas',top(re,rpMot,10),re.length)}</div>
   <h2>Divergências por origem</h2><div class="g">${barras('Novas no mês por origem (remetente)',top(dvN,x=>x.rem,10),dvN.length)}${barras('Novas no mês por tipo',top(dvN,x=>x.tipo,10),dvN.length)}</div>
   <h2>Fora do romaneio</h2><div class="g">${barras('Por origem',top(fo,x=>x.origem,10),fo.length)}${barras('Por motivo',top(fo,x=>x.motivo,10),fo.length)}</div>
-  <h2>Cidades de MG que mais atendemos (Relatório Minas · ${fmtN(diasRd)} dia(s))</h2><div class="g">${barras('Notas por cidade',cid.slice(0,8),totCid)}${barras('Continuação',cid.slice(8,15),totCid)}</div>
   <footer><span>© ${new Date().getFullYear()} Tiago Souza · Health Search — todos os direitos reservados</span><span>${nomeMes}</span></footer><script>onload=()=>setTimeout(()=>print(),400)<\/script></body></html>`; }
 function mensalAbrir(mes){ const w=window.open('','_blank'); if(!w){ toast('Permita pop-ups para gerar o PDF.'); return; } w.document.write(mensalHTML(mes||hojeISO().slice(0,7))); w.document.close(); }
-{ const _gr=gestorRender; gestorRender=function(){ _gr.apply(this,arguments); const c=$('#gs-corpo'); if(!c||$('#gs-mensal')) return; const ms=[]; for(let i=0;i<12;i++){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-i); ms.push(d.toISOString().slice(0,7)); }
-  c.insertAdjacentHTML('afterbegin',`<div class="card" id="gs-mensal" style="padding:12px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>📊 Painel mensal da gerência</b><span class="sub">reentregas por motivo, divergências por origem, fora do romaneio e cidades mais atendidas</span><span style="flex:1"></span><select id="gs-mes">${ms.map(m=>`<option value="${m}">${new Date(m+'-15').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</option>`).join('')}</select><button class="btn pri" type="button" id="gs-pdf">📄 Gerar PDF</button></div>`);
-  $('#gs-pdf').onclick=()=>mensalAbrir($('#gs-mes').value); }; }
 
 /* ================= v8.8.0 · Alerta do robô de backup (mural/topo do admin) ================= */
 async function roboChecar(){ try{ if(!nvAdmin()||!opOnline()) return; const {data}=await NV.cli.from('hs_sync').select('valor,atualizado_em').eq('chave','robo:backup').maybeSingle(); if(!data||!data.valor) return;
@@ -9614,8 +9608,10 @@ document.addEventListener('click',e=>{ const s=e.target.closest&&e.target.closes
 /* ================= v8.2.0 · Botão (?) em cada tela abre a parte certa do Manual ================= */
 const AJUDA_MAP={buscar:'buscar',romaneios:'romaneios',operacao:'operacao',reentregas:'reentregas',fora:'dados',divergencias:'divergencias',agenda:'agenda',geo:'geo',viaminas:'feriados',feriados:'feriados',historico:'historico',excel:'historico',correcao:'correcao',usuarios:'usuarios',cadastros:'cadastros',gestor:'op-recursos',operacao:'op-recursos'};
 function ajudaAbrir(id){ irPara('manual'); const ir=()=>{ const el=document.getElementById('man-'+id); if(el) el.scrollIntoView({block:'start'}); }; [200,600,1200,2000].forEach(t=>setTimeout(ir,t)); }
+/* v10.6.02: o (?) de cada tela — círculo certinho com o ? no centro, nas cores do app */
+(function(){ const st=document.createElement('style'); st.textContent='.ajuda-q{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;margin-left:10px;vertical-align:middle;position:relative;top:-2px;border-radius:50%;border:2px solid var(--teal);background:transparent;color:var(--teal);font-family:inherit;font-size:16px;font-weight:800;line-height:1;cursor:pointer;transition:background .15s,color .15s}.ajuda-q:hover,.ajuda-q:focus-visible{background:var(--teal);color:var(--priTxt);outline:none}'; document.head.appendChild(st); })();
 function ajudaBotoes(){ $$('section.tela').forEach(sec=>{ const id=(sec.id||'').replace(/^t-/,''); const alvo=AJUDA_MAP[id]; const h=sec.querySelector('h1'); if(!alvo||!h||h.querySelector('.ajuda-q')) return;
-    h.insertAdjacentHTML('beforeend',` <button type="button" class="ajuda-q" data-ajuda="${alvo}" title="Ajuda: abrir esta parte do Manual" aria-label="Ajuda" style="vertical-align:middle;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--linha);background:transparent;color:var(--mudo);font:700 14px/1 inherit;cursor:pointer;margin-left:8px">?</button>`); }); }
+    h.insertAdjacentHTML('beforeend',` <button type="button" class="ajuda-q" data-ajuda="${alvo}" title="Ajuda: abrir esta parte do Manual" aria-label="Ajuda">?</button>`); }); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-ajuda]'); if(!b) return; ajudaAbrir(b.dataset.ajuda); });
 setTimeout(ajudaBotoes,1200); setTimeout(ajudaBotoes,4000);
 
@@ -9791,22 +9787,9 @@ function gsDiaNome(){ const d=gsDia(); return d===hojeISO()?'hoje':fmtData(d); }
 function gsBipes(dia){ const h=hojeISO();
   if(dia===h) return ((OP&&OP.bipes)||[]).filter(b=>diaLocal(new Date(b.criado_em||0).toISOString())===h);
   return (opLocalLer(dia)||[]); }
-function gsSeletor(){ const ds=gsDias(); const d=gsDia(); if(!ds.includes(d)) ds.unshift(d);
-  return `<div class="gs-box" style="grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <b>Dia da operação</b><select id="gs-dia" style="padding:8px 10px">${ds.map(x=>`<option value="${esc(x)}"${x===d?' selected':''}>${fmtData(x)}${x===hojeISO()?' (hoje)':''}</option>`).join('')}</select>
-    <span class="sub">os quadros de conferência e bipes mostram este dia</span>
-    <button class="btn mini" type="button" data-gs-remontar="1" title="Remonta a conferência de todos os dias que existem no banco de romaneios">📊 Remontar o histórico</button></div>`; }
 document.addEventListener('change',e=>{ if(e.target&&e.target.id==='gs-dia'){ GS.dia=e.target.value; try{ gestorRender(); }catch(er){} } });
-function gestorDados(){ const D=RE.ler(); const lim=new Date(Date.now()-7*864e5).toISOString().slice(0,10); const mot=new Map(), mtr=new Map(), dia=new Map(); let tot=0;
-  for(const [d,ls] of Object.entries(D.dias||{})){ if(d<lim) continue; for(const l of ls){ tot++; const p=rpObsPartes(l.obs); const m=p.m||'(SEM MOTIVO)'; mot.set(m,(mot.get(m)||0)+1); const t=motCanon(l.mot||p.mot)||'(SEM MOTORISTA)'; mtr.set(t,(mtr.get(t)||0)+1); dia.set(d,(dia.get(d)||0)+1); } }
-  let pr=[]; try{ pr=opPorRom(); }catch(e){} const orig=new Map(); for(const x of pr){ const a=orig.get(x.base)||{t:0,f:0}; a.t+=x.tn; a.f+=x.fn; orig.set(x.base,a); }
-  return {tot,mot:[...mot].sort((a,b)=>b[1]-a[1]),mtr:[...mtr].sort((a,b)=>b[1]-a[1]),dia:[...dia].sort(),orig:[...orig]}; }
 function gestorBarras(t,L,fmt,cor){ const mx=Math.max(1,...L.map(x=>x[1])); return `<div class="gs-box"><h3>${t}</h3>${L.length?L.slice(0,10).map(([k,v])=>`<div class="gs-l"><span title="${esc(k)}">${esc(k)}</span><i><b style="width:${Math.round(100*v/mx)}%;background:${cor}"></b></i><em>${fmt?fmt(v):fmtN(v)}</em></div>`).join(''):'<p class="sub">Sem dados.</p>'}</div>`; }
-function gestorRender(){ const el=$('#gs-corpo'); if(!el) return; const d=gestorDados();
-  el.innerHTML=`<div class="rot-tot" style="margin:6px 0 14px;display:flex;gap:18px;color:var(--mudo)"><span><b style="color:var(--tinta);font-size:18px">${fmtN(d.tot)}</b> reentregas nos últimos 7 dias</span></div><div class="gs-grid">
-   ${gsSeletor()}
-   ${gestorBarras('Reentregas por motivo (7 dias)',d.mot,null,'#B197FC')}${gestorBarras('Reentregas por motorista (7 dias)',d.mtr,null,'#74C0FC')}${gestorBarras('Reentregas por dia',d.dia.map(([k,v])=>[fmtData(k),v]),null,'#63E6BE')}
-   ${gestorBarras('Conferência por origem ('+gsDiaNome()+') (%)',d.orig.map(([b,a])=>[b,a.t?Math.round(100*(a.t-a.f)/a.t):100]),v=>v+'%','#20C997')}</div>`; }
+function gestorRender(){} /* v10.6.02: o painel é montado no bloco "Painel de Gestão refeito" (fim do arquivo) */
 (function(){ const st=document.createElement('style'); st.textContent='#t-gestor .gs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}#t-gestor .gs-box{background:var(--sup);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}#t-gestor h3{margin:0 0 10px;font-size:15px}#t-gestor .gs-l{display:grid;grid-template-columns:38% 1fr 48px;gap:8px;align-items:center;font-size:13px;margin:5px 0}#t-gestor .gs-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#t-gestor .gs-l i{height:9px;background:var(--linha);border-radius:5px;overflow:hidden;display:block}#t-gestor .gs-l i.gs-b2{display:flex}#t-gestor .gs-l i.gs-b2 b{height:100%}#t-gestor .gs-l em.ok{color:var(--ok)}#t-conftotal .ct-juntar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}#t-conftotal .ct-fila{color:#F59F00;font-size:var(--fs-sm)}#t-gestor .gs-leg{margin:8px 0 0;font-size:12px;color:var(--mudo)}#t-gestor .gs-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px}.gs-dvp{margin:2px 0 6px;color:#F59F00;font-size:var(--fs-sm)}.gs-aj{white-space:nowrap}.gs-aj .btn{margin:0 2px}.gs-semdv{background:rgba(245,159,0,.12);border:1px solid #F59F00;border-radius:10px;padding:8px 10px;font-size:var(--fs-sm);margin:6px 0}#t-gestor .gs-l b{display:block;height:100%}#t-gestor .gs-l em{font-style:normal;text-align:right;font-weight:700}'; document.head.appendChild(st);
   const ref=document.querySelector('.nav [data-tela="historico"]'); if(!ref) return; ref.insertAdjacentHTML('beforebegin','<button data-tela="gestor"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span class="lbl">Painel de Gestão</span></button>');
   const sec=document.createElement('section'); sec.className='tela'; sec.id='t-gestor'; sec.hidden=true; sec.innerHTML='<h1>Painel de Gestão</h1><p class="sub">Reentregas da semana por motivo, motorista e dia, e o andamento da conferência de hoje por origem.</p><div id="gs-corpo"></div>'; const r2=document.getElementById('t-romaneios'); r2.parentNode.insertBefore(sec,r2);
@@ -10245,16 +10228,6 @@ function gsTrocarOrigem(f,dia){ try{ const el=$('#gs-corpo'); if(!el) return;
   for(const b of el.querySelectorAll('.gs-box')){ const h=b.querySelector('h3');
     if(h&&/^Confer(ê|e)ncia por origem/i.test(h.textContent)){ b.outerHTML=gsOrigemBox(f,dia); return; } }
 }catch(e){} }
-{ const _gr10=gestorRender; gestorRender=function(){ const r=_gr10.apply(this,arguments);
-  try{ const el=$('#gs-corpo'); if(!el) return r; const dia=gsDia(); const f=gsFotoLer(dia);
-    el.insertAdjacentHTML('afterbegin',gsCartao(f));
-    if(dia!==hojeISO()) gsTrocarOrigem(f,dia);
-    if(dia!==hojeISO()&&(!(f&&f.tn)||f.v!==GS_REGRA)){
-      const velha=!!(f&&f.tn&&f.v!==GS_REGRA);
-      if(!velha||!gsRefeitas.has(dia)){ if(velha) gsRefeitas.add(dia);
-        gsGarantirFoto(dia,velha).then(f2=>{ if(f2&&gsDia()===dia){ try{ gestorRender(); }catch(e){} } }); } }
-  }catch(e){}
-  return r; }; }
 /* a cada bipe o app guarda a foto do dia, sem o conferente precisar fazer nada */
 { const _ol10=opLer; opLer=function(){ const r=_ol10.apply(this,arguments); try{ gsFotoAgendar(); }catch(e){} return r; }; }
 /* v10.5.7: so entra na lista o que e dia de verdade (AAAA-MM-DD), e o lixo antigo sai de vez. */
@@ -10265,13 +10238,6 @@ function gsSnapFaxina(){ try{ const m=S&&S.gsSnap; if(!m||typeof m!=='object') r
     try{ console.warn('gsSnap: tirei '+ruins.length+' chave(s) que nao sao dia:',ruins); }catch(e){}
     try{ salvar(); }catch(e){} return ruins.length; }catch(e){ return 0; } }
 { const _gd10=gsDias; gsDiasFoto=function(){ try{ gsSnapFaxina(); const a=new Set(Object.keys(S.gsSnap||{}).filter(gsDiaOk)); for(const d of _gd10()) if(gsDiaOk(d)) a.add(d); return [...a].sort().reverse(); }catch(e){ return _gd10(); } }; }
-/* o seletor passa a listar também os dias que só têm foto guardada (sem bipe no aparelho) */
-{ const _gse=gsSeletor; gsSeletor=function(){ const d=gsDia(); const html=_gse.apply(this,arguments);
-  try{ const extra=gsDiasFoto().filter(x=>html.indexOf('value="'+x+'"')<0);
-    if(!extra.length) return html;
-    const opts=extra.map(x=>`<option value="${esc(x)}">${fmtData(x)}${x===hojeISO()?' (hoje)':''}</option>`).join('');
-    return html.replace('</select>',opts+'</select>');
-  }catch(e){ return html; } }; }
 
 /* v8.3.1: PC — as telas usam a largura toda (texto explicativo continua em largura confortável) */
 (function(){ const st=document.createElement('style'); st.textContent='@media (min-width:1200px){ .tela{max-width:1900px!important} .tela > p.sub{max-width:900px} #t-romaneios .rom-lista, .tela .rolagem{max-width:none} }'; document.head.appendChild(st); })();
@@ -10544,10 +10510,10 @@ document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&!e.altKey&&(
 { const _vd=vsnDiaria; vsnDiaria=async function(){ if(!(typeof nvAdmin==='function'&&nvAdmin())) return; return _vd(); }; }
 { const _sa=hsSalvarAgora; hsSalvarAgora=async function(){ if(typeof nvAdmin==='function'&&nvAdmin()) return _sa();
     if(!opOnline()){ toast('Sem internet: está guardado neste aparelho e sobe sozinho quando a conexão voltar.'); return; }
-    const b=$('#hs-salvar'); if(b){ b.disabled=true; b.textContent='⏳ Salvando…'; }
+    const b=$('#hs-salvar'); if(b){ b.disabled=true; b.textContent='Salvando…'; }
     try{ await nuvSinc(); if(NUV.erro) throw new Error(NUV.erro); toast('✔ Salvo na nuvem às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.'); }
     catch(e){ toast('⚠ Não consegui salvar na nuvem: '+(e.message||e)+' — os dados continuam guardados neste aparelho.'); }
-    finally{ if(b){ b.disabled=false; b.textContent='💾 Salvar'; } } }; }
+    finally{ if(b){ b.disabled=false; b.textContent='Salvar'; } } }; }
 function bkSoAdmin(){ const adm=typeof nvAdmin==='function'&&nvAdmin(); for(const id of ['re-bkp','re-rest','bkn-bt','bkn-rest','uso-bt','bkf-bt']){ const el=document.getElementById(id); if(el) el.hidden=!adm; }
   const a=document.querySelector('.bk-auto'); if(a) a.hidden=!adm; if(!adm){ try{ LS.removeItem('healthSearch.bkAuto'); }catch(e){} }
   const s=document.getElementById('hs-salvar'); if(s&&!s._v912){ s._v912=1; s.onclick=()=>hsSalvarAgora(); } if(s) s.title=adm?'Salvar na nuvem agora (Ctrl+S) e guardar uma versão permanente. Botão direito: ver as versões salvas.':'Salvar na nuvem agora (Ctrl+S). Tudo também é salvo sozinho a cada mudança.'; }
@@ -10986,21 +10952,7 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest) re
 (function(){ const seg=document.querySelector('.rom-sub'); if(!seg) return; const x=seg.querySelector('[data-rom-sub="excel"]'); if(x) x.style.display='none'; const bd=seg.querySelector('[data-rom-sub="banco"]'); if(bd) bd.textContent='Banco de dados'; const bt=$('#t-excel'); if(bt) bt.hidden=true; })();
 
 /* ================= v9.5.2 · Painel de Gestão ao vivo · Rotas com histórico por dia · BIT que aprende ================= */
-{ const _g=gestorRender; gestorRender=function(){ _g.apply(this,arguments); try{ const g=$('#t-gestor .gs-grid'); if(!g) return;
-    /* v10.0.1 · o painel passa a olhar o dia escolhido, e começa no último dia que teve bipe
-       (antes só mostrava "hoje" e, de manhã cedo, aparecia tudo vazio mesmo com o dia anterior cheio) */
-    const hoje=gsDia(); const bip=gsBipes(hoje);
-    const hr=new Map(); for(const b of bip){ const h=String(new Date(b.criado_em).getHours()).padStart(2,'0')+'h'; hr.set(h,(hr.get(h)||0)+1); }
-    /* v9.13.0 · Task #33 — só conta bipes válidos (exclui duplicados) */
-    const pu=new Map(); for(const b of bip.filter(b=>b.status!=='dup')){ const u=(b.usuario||'?').split(' ')[0]; pu.set(u,(pu.get(u)||0)+1); }
-    const L=dvS().filter(d=>d.st!=='resolvida'); const oc=[['Divergência · falta',L.filter(d=>!avEh(d)&&d.tipo==='Falta de volume').length],['Divergência · sobra',L.filter(d=>!avEh(d)&&d.tipo==='Sobra de volume').length],['Avarias',L.filter(avEh).length],['Voltaram no romaneio',L.filter(d=>d.st==='apareceu').length]];
-    const avt=new Map(); for(const d of dvS().filter(avEh)) avt.set(d.sub||'Outro',(avt.get(d.sub||'Outro')||0)+1);
-    const notasHoje=todasLinhas().length, confer=new Set(bip.map(b=>opK(b.nf||'')).filter(Boolean)).size;
-    g.insertAdjacentHTML('afterbegin',`<div class="gs-box" style="grid-column:1/-1;display:flex;gap:22px;flex-wrap:wrap;align-items:center"><span class="gs-vivo">● ao vivo</span><span><b style="font-size:22px">${notasHoje?Math.round(100*Math.min(confer,notasHoje)/notasHoje):0}%</b> conferido hoje</span><span><b style="font-size:22px">${fmtN(bip.length)}</b> bipes hoje</span><span><b style="font-size:22px">${fmtN(L.length)}</b> ocorrências abertas</span></div>`);
-    g.insertAdjacentHTML('beforeend',gestorBarras('Bipes por hora ('+gsDiaNome()+')',[...hr].sort(),null,'#4DABF7')+gestorBarras('Bipes por pessoa ('+gsDiaNome()+')',[...pu].sort((a,b)=>b[1]-a[1]),null,'#FFA94D')+gestorBarras('Ocorrências abertas',oc,null,'#E8590C')+gestorBarras('Avarias por tipo (todas)',[...avt].sort((a,b)=>b[1]-a[1]),null,AV_COR));
-  }catch(e){ console.error(e); } }; }
 setInterval(()=>{ try{ if(!document.hidden&&!$('#t-gestor').hidden) gestorRender(); }catch(e){} },30000);
-(function(){ const st=document.createElement('style'); st.textContent='.gs-vivo{color:#2f9e44;font-weight:700;animation:gsP 2s infinite}@keyframes gsP{50%{opacity:.4}}'; document.head.appendChild(st); })();
 
 
 /* BIT que aprende: o admin ensina regras, perguntas e respostas (com foto); todos aproveitam */
@@ -11891,6 +11843,152 @@ setInterval(()=>{ try{ simAvisos(); }catch(e){} },5000);
   const _render=opRender;
   opRender=function(){ abrir(); return _render.apply(this,arguments); };
 }catch(e){ console.error('cache de desenho:',e); } })();
+
+/* ================= v10.6.02 · Painel de Gestão refeito num lugar só =================
+   Antes eram 4 camadas (gestorRender + mensal + cartão do dia + "ao vivo"), cada uma enfiando
+   HTML na tela da outra. Agora é UMA função, e as camadas antigas foram apagadas.
+   - Período (Hoje · 7 · 15 · 30 dias) vale para todos os quadros e aparece no título.
+   - Bipes por hora / por pessoa contam NOTA, não bipe: a mesma nota bipada duas vezes conta uma,
+     no horário e na pessoa do PRIMEIRO bipe. "Fora do romaneio" e repetido não contam.
+   - Reentrega que nasceu de divergência/avaria nunca entra (divergência NÃO é reentrega). */
+function reEhDivergencia(l){ const m=N(String((l&&l.obs)||'')+' '+String((l&&l.motivo)||'')+' '+String((l&&l.m)||''));
+  return /DIVERGENCIA|ERA DIVERG|\bAVARIA\b/.test(m); }
+const GS_PER={hoje:'hoje','7':'7 dias','15':'15 dias','30':'30 dias'};
+GS.per=(()=>{ try{ const v=LS.getItem('healthSearch.gsPer'); return GS_PER[v]?v:'hoje'; }catch(e){ return 'hoje'; } })();
+function gsPerNome(){ return GS.per==='hoje'?gsDiaNome():GS_PER[GS.per]; }
+/* dias do período, terminando no dia escolhido em "Dia da operação" */
+function gsPerDias(){ const fim=gsDia(); const n=GS.per==='hoje'?1:+GS.per; const out=[];
+  for(let i=0;i<n;i++){ const d=new Date(fim+'T12:00:00'); d.setDate(d.getDate()-i); out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); }
+  return out; }
+/* uma entrada por NOTA: o primeiro bipe dela (quem e que horas) */
+function gsNotasUnicas(bips){ const m=new Map();
+  for(const b of (bips||[]).slice().sort((a,c)=>String(a.criado_em||'').localeCompare(String(c.criado_em||'')))){
+    if(!b||b.status==='dup'||b.status==='fora') continue; const k=opK(b.nf||'')||(b.ped?'P'+opK(b.ped):''); if(!k||m.has(k)) continue;
+    m.set(k,{h:String(new Date(b.criado_em).getHours()).padStart(2,'0')+'h',u:String(b.usuario||'?').trim().split(' ')[0]||'?'}); }
+  return [...m.values()]; }
+function gsContaMapa(L,campo){ const m={}; for(const x of L) m[x[campo]]=(m[x[campo]]||0)+1; return m; }
+/* a foto do dia passa a guardar as contas por hora e por pessoa (os bipes crus do aparelho são apagados depois) */
+{ const _fm=gsFotoMontar; gsFotoMontar=function(){ const f=_fm.apply(this,arguments); try{ if(f){ const U=gsNotasUnicas(gsBipes(f.dia)); f.ph=gsContaMapa(U,'h'); f.pp=gsContaMapa(U,'u'); } }catch(e){} return f; }; }
+function gsSoma(dst,src){ for(const [k,v] of Object.entries(src||{})) dst.set(k,(dst.get(k)||0)+(+v||0)); }
+function gestorDados2(){ const dias=gsPerDias(), set=new Set(dias); const D=RE.ler();
+  const mot=new Map(), mtr=new Map(), dia=new Map(); let tot=0;
+  for(const [d,ls] of Object.entries(D.dias||{})){ if(!set.has(d)) continue;
+    for(const l of ls||[]){ if(reEhDivergencia(l)) continue; tot++; const p=rpObsPartes(l.obs); const m=p.m||'(SEM MOTIVO)';
+      mot.set(m,(mot.get(m)||0)+1); const t=motCanon(l.mot||p.mot)||'(SEM MOTORISTA)'; mtr.set(t,(mtr.get(t)||0)+1); dia.set(d,(dia.get(d)||0)+1); } }
+  /* notas por hora e por pessoa: bipes do aparelho; dia sem bipe aqui usa a conta guardada na foto */
+  const ph=new Map(), pp=new Map(); let semDado=0;
+  for(const d of dias){ const U=gsNotasUnicas(gsBipes(d));
+    if(U.length){ gsSoma(ph,gsContaMapa(U,'h')); gsSoma(pp,gsContaMapa(U,'u')); continue; }
+    const f=gsFotoLer(d); if(f&&f.ph){ gsSoma(ph,f.ph); gsSoma(pp,f.pp); } else if(f&&f.tn) semDado++; }
+  /* conferência por origem: soma as fotos dos dias (cada romaneio do dia vira a sua origem) */
+  const og=new Map(); let fotos=0;
+  for(const d of dias){ const f=gsFotoLer(d); if(!f||!(f.orig||[]).length) continue; fotos++;
+    for(const o of f.orig){ const a=og.get(o.base)||{base:o.base,tn:0,fn:0,dn:0,tv:0,fv:0,dv:0}; for(const k of ['tn','fn','dn','tv','fv','dv']) a[k]+=(+o[k]||0); og.set(o.base,a); } }
+  const L=dvSo().filter(x=>x.st!=='resolvida');
+  const oc=[['Divergência · falta',L.filter(x=>x.tipo==='Falta de volume').length],['Divergência · sobra',L.filter(x=>x.tipo==='Sobra de volume').length],['Voltaram no romaneio',L.filter(x=>x.st==='apareceu').length]];
+  return {dias,tot,semDado,fotos,
+    mot:[...mot].sort((a,b)=>b[1]-a[1]), mtr:[...mtr].sort((a,b)=>b[1]-a[1]), dia:[...dia].sort(),
+    ph:[...ph].sort(), pp:[...pp].sort((a,b)=>b[1]-a[1]), orig:[...og.values()], oc}; }
+function gsFiltros(){ const ds=gsDiasFoto(); const d=gsDia(); /* dias com bipe no aparelho + dias que só têm a foto guardada */ if(!ds.includes(d)) ds.unshift(d);
+  return `<div class="gs-filtros">
+    <label class="gs-f"><span>Dia da operação</span><select id="gs-dia">${ds.map(x=>`<option value="${esc(x)}"${x===d?' selected':''}>${fmtData(x)}${x===hojeISO()?' (hoje)':''}</option>`).join('')}</select></label>
+    <div class="gs-f"><span>Período dos quadros</span><div class="gs-seg" role="group" aria-label="Período">${['hoje','7','15','30'].map(k=>`<button type="button" data-gs-per="${k}" aria-pressed="${GS.per===k}">${k==='hoje'?'Hoje':GS_PER[k]}</button>`).join('')}</div></div>
+    <button class="btn mini gs-remontar" type="button" data-gs-remontar="1" title="Remonta a conferência de todos os dias que existem no banco de romaneios">📊 Remontar o histórico</button></div>`; }
+function gsMensal(){ const ms=[]; for(let i=0;i<12;i++){ const x=new Date(); x.setDate(1); x.setMonth(x.getMonth()-i); ms.push(x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')); }
+  return `<div class="gs-mensal" id="gs-mensal"><div class="gs-mensal-t"><h2>📊 Painel mensal da gerência</h2><p>Reentregas por motivo, divergências por origem e notas fora do romaneio do mês, em PDF.</p></div>
+    <div class="gs-mensal-a"><select id="gs-mes" aria-label="Mês">${ms.map(m=>{ const t=new Date(m+'-15T12:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); return `<option value="${m}">${t.charAt(0).toUpperCase()+t.slice(1)}</option>`; }).join('')}</select>
+    <button class="btn pri" type="button" id="gs-pdf">📄 Gerar PDF</button></div></div>`; }
+gestorRender=function(){ const el=$('#gs-corpo'); if(!el) return;
+  const dia=gsDia(); const f=gsFotoLer(dia); const d=gestorDados2(); const per=gsPerNome();
+  const origem=GS.per==='hoje'?gsOrigemBox(f,dia).replace(/Conferência por origem \([^)]*\) \(%\)/,`Conferência por origem (${per} em %)`)
+    :gsBarras2(`Conferência por origem (${per} em %)`,d.orig.map(o=>Object.assign({rot:o.base+' ('+fmtN(o.tn-o.fn)+' de '+fmtN(o.tn)+')'},o)),
+      `<p class="gs-leg">${fmtN(d.fotos)} dia(s) com conferência guardada${d.orig.some(o=>o.dn)?' · <i style="background:var(--ok)"></i> conferido · <i style="background:#F59F00"></i> em divergência':''}</p>`);
+  el.innerHTML=gsCartao(f)+gsMensal()+gsFiltros()
+    +`<p class="gs-resumo"><b>${fmtN(d.tot)}</b> reentrega(s) · ${per}${d.semDado?` <span class="sub">· ${fmtN(d.semDado)} dia(s) sem os bipes neste aparelho</span>`:''}</p>`
+    +`<div class="gs-grid">`
+    +gestorBarras(`Reentregas (por motivo / ${per})`,d.mot,null,'#B197FC')
+    +gestorBarras(`Reentregas (por motorista / ${per})`,d.mtr,null,'#74C0FC')
+    +gestorBarras(`Reentregas (por dia / ${per})`,d.dia.map(([k,v])=>[fmtData(k),v]),null,'#63E6BE')
+    +origem
+    +gestorBarras(`Bipes (por hora / ${per})`,d.ph,null,'#4DABF7')
+    +gestorBarras(`Bipes (por pessoa / ${per})`,d.pp,null,'#FFA94D')
+    +gestorBarras('Ocorrências abertas (todas)',d.oc,null,'#E8590C')
+    +`</div>`;
+  $('#gs-pdf').onclick=()=>mensalAbrir($('#gs-mes').value);
+  /* dia passado sem foto (ou com regra velha): remonta do banco de romaneios e redesenha */
+  try{ if(dia!==hojeISO()&&(!(f&&f.tn)||f.v!==GS_REGRA)){ const velha=!!(f&&f.tn&&f.v!==GS_REGRA);
+      if(!velha||!gsRefeitas.has(dia)){ if(velha) gsRefeitas.add(dia);
+        gsGarantirFoto(dia,velha).then(f2=>{ if(f2&&gsDia()===dia){ try{ gestorRender(); }catch(e){} } }); } } }catch(e){} };
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gs-per]'); if(!b) return;
+  GS.per=b.dataset.gsPer; try{ LS.setItem('healthSearch.gsPer',GS.per); }catch(er){} gestorRender(); });
+/* cartão do dia: cada informação na sua linha */
+gsCartao=(function(_c){ return function(f){ if(!f) return _c(f);
+  const pdv=(typeof f.pctDv==='number')?f.pctDv:0; const lin=(t,v)=>`<div class="gs-li"><span>${t}</span><b>${v}</b></div>`;
+  const html=_c(f); const i=html.indexOf('<p class="sub"><b>'); const j=i>=0?html.indexOf('</p>',i):-1; if(i<0||j<0) return html;
+  const lista=`<div class="gs-lista">${lin('Notas conferidas',`${fmtN(f.tn-f.fn)} de ${fmtN(f.tn)}`)}${lin('Volumes',`${fmtN(f.tv-f.fv)} de ${fmtN(f.tv)} (${f.pctVol}%)`)}${lin('Romaneios',fmtN(f.roms))}${lin('Divergências',fmtN(f.dv||0))}${(f.fora||[]).length?lin('Notas tiradas da conta',fmtN(f.fora.length)):''}${f.fn?'':`<p class="gs-okdia">✔ Operação ${f.pct}% conferida.</p>`}</div>`;
+  return (html.slice(0,i)+lista+html.slice(j+4)); }; })(gsCartao);
+(function(){ const st=document.createElement('style'); st.textContent=`
+#t-gestor .gs-dia{padding:22px 24px;margin-bottom:16px}
+#t-gestor .gs-dia h3{font-size:1.05rem;margin:0}
+#t-gestor .gs-dia .gs-pct{font-size:clamp(64px,10vw,112px);margin:4px 0 6px}
+#t-gestor .gs-dvp{color:var(--ag);font-weight:600;margin:0 0 12px}
+#t-gestor .gs-lista{display:grid;gap:0;max-width:520px;margin:4px 0 14px}
+#t-gestor .gs-li{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--linha);font-size:1rem}
+#t-gestor .gs-li span{color:var(--mudo)} #t-gestor .gs-li b{color:var(--tinta);font-variant-numeric:tabular-nums}
+#t-gestor .gs-okdia{margin:12px 0 0;font-weight:700;color:var(--ok)}
+#t-gestor .gs-mensal{display:flex;gap:18px 28px;align-items:center;flex-wrap:wrap;padding:20px 24px;margin:0 0 16px;background:var(--sup);border:1px solid var(--linha);border-radius:14px}
+#t-gestor .gs-mensal-t{flex:1 1 320px} #t-gestor .gs-mensal h2{margin:0 0 4px;font-size:1.35rem} #t-gestor .gs-mensal p{margin:0;color:var(--mudo)}
+#t-gestor .gs-mensal-a{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+#t-gestor .gs-mensal select,#t-gestor .gs-f select{min-height:42px;padding:8px 36px 8px 14px;border-radius:10px;border:1.5px solid var(--linha);background-color:var(--sup2);color:var(--tinta);font:inherit;font-weight:600;cursor:pointer;
+  appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mudo) 50%),linear-gradient(135deg,var(--mudo) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 12px) 50%;background-size:6px 6px;background-repeat:no-repeat}
+#t-gestor .gs-mensal .btn{min-height:42px;padding:0 18px}
+#t-gestor .gs-filtros{display:flex;gap:14px 22px;align-items:flex-end;flex-wrap:wrap;padding:14px 18px;margin:0 0 12px;background:var(--sup);border:1px solid var(--linha);border-radius:14px}
+#t-gestor .gs-f{display:flex;flex-direction:column;gap:6px} #t-gestor .gs-f>span{font-size:.78rem;font-weight:700;color:var(--mudo);text-transform:uppercase;letter-spacing:.04em}
+#t-gestor .gs-seg{display:inline-flex;border:1.5px solid var(--linha);border-radius:10px;overflow:hidden;min-height:42px}
+#t-gestor .gs-seg button{border:0;background:transparent;color:var(--tinta);font:inherit;font-weight:600;padding:0 16px;cursor:pointer;border-left:1px solid var(--linha)}
+#t-gestor .gs-seg button:first-child{border-left:0} #t-gestor .gs-seg button[aria-pressed="true"]{background:var(--teal);color:var(--priTxt)}
+#t-gestor .gs-remontar{margin-left:auto;min-height:42px}
+#t-gestor .gs-resumo{margin:4px 2px 12px;color:var(--mudo)} #t-gestor .gs-resumo b{color:var(--tinta);font-size:1.15rem}
+@media(max-width:640px){#t-gestor .gs-remontar{margin-left:0} #t-gestor .gs-seg{width:100%} #t-gestor .gs-seg button{flex:1;padding:0 8px} #t-gestor .gs-mensal-a,#t-gestor .gs-mensal-a select{width:100%} #t-gestor .gs-dia{padding:16px}}
+`; document.head.appendChild(st); })();
+try{ const s=document.querySelector('#t-gestor > p.sub'); if(s) s.textContent='Conferência do dia em destaque e, abaixo, reentregas, notas bipadas e conferência por origem no período escolhido (hoje, 7, 15 ou 30 dias).'; }catch(e){}
+/* ================= v10.6.02 · Mural com a bússola e botão Salvar nas cores do app =================
+   Mural: fica só o cabeçalho (data, saudação, números do dia, "Entrar no programa"); os quadrados saíram.
+   No meio, a bússola do Health Search: o aro parado e a agulha balançando devagar (só enfeite).
+   Salvar: mesma função; ícone de nuvem desenhado (não emoji), fundo teal e borda aqua do app. */
+(function(){ const st=document.createElement('style'); st.textContent=`
+#mural:not([hidden]){display:flex;flex-direction:column}
+#mural .mural-in{width:100%;box-sizing:border-box;flex:0 0 auto}
+#mural .mural-in>:not(.mu-hero){display:none!important}
+#mural .mu-bussola{flex:1 1 auto;display:grid;place-items:center;min-height:300px;padding:24px 0 40px}
+#mural .mu-bussola svg{width:min(46vmin,300px);height:auto;filter:drop-shadow(0 10px 30px rgba(0,0,0,.25))}
+#mural .mu-bussola .aro{fill:none;stroke:var(--aqua);stroke-width:14;stroke-linecap:round}
+#mural .mu-bussola .fundo-b{fill:var(--sup)}
+#mural .mu-bussola .agulha{transform-origin:100px 100px;animation:muAgulha 9s ease-in-out infinite}
+#mural .mu-bussola .cl{fill:#FFFFFF} #mural .mu-bussola .ce{fill:var(--aqua)}
+@keyframes muAgulha{0%{transform:rotate(-16deg)}22%{transform:rotate(11deg)}44%{transform:rotate(-7deg)}63%{transform:rotate(5deg)}80%{transform:rotate(-3deg)}100%{transform:rotate(-16deg)}}
+@media (prefers-reduced-motion:reduce){#mural .mu-bussola .agulha{animation:none}}
+#hs-salvar{background:var(--teal)!important;color:var(--priTxt)!important;border:1.5px solid var(--aqua)!important;border-radius:999px!important;
+  box-shadow:0 6px 18px rgba(0,0,0,.28)!important;display:inline-flex!important;align-items:center;gap:8px;padding:10px 18px 10px 14px!important;font-weight:700!important;letter-spacing:.01em}
+#hs-salvar:hover{filter:brightness(1.08)} #hs-salvar:focus-visible{outline:3px solid var(--aqua);outline-offset:2px}
+#hs-salvar::before{content:""!important;width:20px;height:20px;flex:0 0 20px;background:currentColor;font-size:0!important;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1 .5 7.97'/%3E%3Cpath d='M12 12v8M9 15l3-3 3 3'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1 .5 7.97'/%3E%3Cpath d='M12 12v8M9 15l3-3 3 3'/%3E%3C/svg%3E") center/contain no-repeat}
+#hs-salvar:disabled::before{animation:hsSobe 1s ease-in-out infinite}
+@keyframes hsSobe{50%{transform:translateY(-3px);opacity:.6}}
+@media (max-width:820px){#hs-salvar{padding:0!important;gap:0;justify-content:center}}
+`; document.head.appendChild(st); })();
+function murBussola(){ const m=document.getElementById('mural'); if(!m||m.querySelector('.mu-bussola')) return;
+  m.insertAdjacentHTML('beforeend',`<div class="mu-bussola" aria-hidden="true"><svg viewBox="0 0 200 200" role="img">
+    <circle class="fundo-b" cx="100" cy="100" r="92" opacity=".55"/>
+    <circle class="aro" cx="100" cy="100" r="70" stroke-dasharray="372 68" transform="rotate(-56 100 100)"/>
+    <g class="agulha"><polygon class="cl" points="100,18 100,100 88,88"/><polygon class="ce" points="100,18 112,88 100,100"/>
+      <polygon class="ce" points="100,182 100,100 112,112"/><polygon class="cl" points="100,182 88,112 100,100"/>
+      <polygon class="cl" points="152,100 100,100 112,88"/><polygon class="ce" points="152,100 112,112 100,100"/>
+      <polygon class="ce" points="48,100 100,100 88,112"/><polygon class="cl" points="48,100 88,88 100,100"/>
+      <circle cx="100" cy="100" r="9" class="cl"/><circle cx="100" cy="100" r="4" class="ce"/></g></svg></div>`); }
+{ const _ma=muralAbrir; muralAbrir=function(){ const r=_ma.apply(this,arguments); try{ murBussola(); }catch(e){} return r; }; }
+try{ if(document.getElementById('mural')) murBussola(); }catch(e){}
 </script>
 
 </body>

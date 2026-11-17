@@ -587,6 +587,26 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!bt.treino,'BIT: treino por foto e "ensinar" tinham que ter saído da aba');
     ok(bt.semCer,'BIT: o Cérebro (cer/FOT) tinha que ter saído do código');
     ok(/bipe/i.test(bt.resp),'BIT: continua respondendo pergunta simples ('+bt.resp.slice(0,80)+')'); }
+  /* v10.6.02: Painel de Gestão — nota bipada duas vezes conta uma, fora não conta, período nos títulos, divergência não é reentrega */
+  { const g2=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO();
+      const guarda=localStorage.getItem(OP_LOCAL+h); const D=RE.ler(); const guardaRe=JSON.stringify(D.dias||{});
+      const t=x=>h+'T1'+x+':00:00.000Z';
+      OP.dia=h; OP.bipes=[{nf:'100',status:'ok',usuario:'ANA',criado_em:t(0)},{nf:'100',status:'ok',usuario:'BETO',criado_em:t(1)},
+        {nf:'100',status:'dup',usuario:'BETO',criado_em:t(2)},{nf:'200',status:'ok',usuario:'BETO',criado_em:t(1)},{nf:'300',status:'fora',usuario:'ANA',criado_em:t(1)}];
+      D.dias=D.dias||{}; D.dias[h]=[{nf:'1',obs:'CLIENTE FECHADO'},{nf:'2',obs:'ERA DIVERGENCIA #12'},{nf:'3',obs:'DIVERGÊNCIA DV-004 - Falta de volume'}];
+      GS.dia=h; GS.per='hoje'; irPara('gestor'); await w(300);
+      const d=gestorDados2(); const tit1=[...document.querySelectorAll('#gs-corpo .gs-box h3')].map(x=>x.textContent);
+      document.querySelector('[data-gs-per="7"]').click(); await w(200);
+      const tit7=[...document.querySelectorAll('#gs-corpo .gs-box h3')].map(x=>x.textContent);
+      const r={ph:d.ph.reduce((a,x)=>a+x[1],0), pp:Object.fromEntries(d.pp), tot:d.tot, mot:d.mot.map(x=>x[0]).join('|'), tit1, tit7,
+        avaria:tit1.some(x=>/Avarias/i.test(x)), mensal:!!document.getElementById('gs-pdf'), filtro:document.querySelectorAll('[data-gs-per]').length};
+      GS.per='hoje'; try{ LS.removeItem('healthSearch.gsPer'); }catch(e){} D.dias=JSON.parse(guardaRe); OP.bipes=[]; if(guarda) localStorage.setItem(OP_LOCAL+h,guarda); GS.dia=''; return r; });
+    ok(g2.ph===2,'gestor: 2 notas bipadas (uma delas 2x, uma repetida e uma fora) tinham que dar 2 no "por hora" (deu '+g2.ph+')');
+    ok(g2.pp.ANA===1&&g2.pp.BETO===1,'gestor: a nota conta para quem bipou PRIMEIRO ('+JSON.stringify(g2.pp)+')');
+    ok(g2.tot===1&&!/DIVERG/.test(g2.mot),'gestor: reentrega que veio de divergência não pode entrar ('+g2.tot+' · '+g2.mot+')');
+    ok(g2.tit1.some(x=>x==='Reentregas (por motivo / hoje)')&&g2.tit1.some(x=>x==='Conferência por origem (hoje em %)'),'gestor: títulos com o período ('+g2.tit1.join(' | ')+')');
+    ok(g2.tit7.some(x=>x==='Bipes (por hora / 7 dias)'),'gestor: o filtro de 7 dias tinha que mudar os títulos ('+g2.tit7.join(' | ')+')');
+    ok(!g2.avaria&&g2.mensal&&g2.filtro===4,'gestor: sem "Avarias por tipo", com painel mensal e com os 4 períodos'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */
@@ -598,7 +618,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       irPara('gestor'); await w(500);
       const txt=(document.getElementById('gs-corpo')||{}).innerText||'';
       const sel=document.getElementById('gs-dia');
-      const r={dia:gsDia(),ont,sel:!!sel,val:sel&&sel.value,pessoa:/CHRISTIAN/.test(txt),hora:/Bipes por hora/.test(txt),nBip:gsBipes(ont).length};
+      const r={dia:gsDia(),ont,sel:!!sel,val:sel&&sel.value,pessoa:/CHRISTIAN/.test(txt),hora:/Bipes \(por hora/.test(txt),nBip:gsBipes(ont).length};
       localStorage.removeItem(OP_LOCAL+ont); if(guardaHoje) localStorage.setItem(OP_LOCAL+hojeISO(),guardaHoje); GS.dia=''; return r; });
     ok(gs.dia===gs.ont,'gestor: tinha que começar no último dia com bipe ('+gs.dia+' ≠ '+gs.ont+')');
     ok(gs.sel&&gs.val===gs.ont,'gestor: falta o seletor de dia ('+gs.val+')');
@@ -983,7 +1003,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       localStorage.setItem(RB.local,gRB||'{}'); if(gBip) localStorage.setItem(OP_LOCAL+ant,gBip); else localStorage.removeItem(OP_LOCAL+ant);
       S.divergencias=JSON.parse(gDv); S.gsSnap=JSON.parse(gSnap); S.gsAjuste=JSON.parse(gAj);
       return {p1:f1&&f1.pct,tn1:f1&&f1.tn,p2:f2&&f2.pct,tn2:f2&&f2.tn,fora2:(f2&&f2.fora||[]).length,
-        tn3:f3&&f3.tn,p3:f3&&f3.pct,txt:/tirada\(s\) da conta/.test(cart),bt:/\|fora"/.test(gsCartao(f1))}; });
+        tn3:f3&&f3.tn,p3:f3&&f3.pct,txt:/tiradas? da conta/i.test(cart),bt:/\|fora"/.test(gsCartao(f1))}; });
     ok(fo.p1===67&&fo.tn1===3,'fora da conta: antes de tirar, o dia é 2 de 3 ('+fo.p1+'%, '+fo.tn1+' notas)');
     ok(fo.p2===100&&fo.tn2===2&&fo.fora2===1,'fora da conta: tirando a nota, o dia fecha 100% com 2 notas ('+fo.p2+'%, '+fo.tn2+', fora '+fo.fora2+')');
     ok(fo.tn3===2&&fo.p3===100,'fora da conta: a foto guardada lembra quais notas estavam fora ('+fo.tn3+' notas)');
