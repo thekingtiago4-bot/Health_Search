@@ -421,3 +421,17 @@ sem leitor de código de barras — iPhone e computador), `nvAud` (não existe; 
   (SVG: aro parado, agulha balançando — `@keyframes muAgulha`, respeita "reduzir movimento").
 - **Salvar**: mesma função; teal + borda aqua, ícone de nuvem por `mask` no `::before` (texto "Salvar"/"Salvando…" sem emoji).
 - **Testes**: `testes/abertura.js` acusa ~460–650 ms neste servidor **também na v10.5.14** — é o ambiente, não regressão.
+
+## v10.6.03 (17/11/2026) — divergência NUNCA é reentrega + limpeza dos motivos
+Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que eram divergência** (as outras ficam).
+- **Janela única do administrador** (`reZerarJanela` → `reZerarAgora`): baixa a planilha `Backup reentregas e motivos
+  AAAA-MM-DD.csv` (todas as reentregas, coluna "vai sair" e a lista de motivos) e **só então** apaga. "Agora não" adia
+  para a próxima entrada. Depois abre `reMotivosJanela` (admin/líder/supervisor): não fecha sem pelo menos 1 motivo.
+- **Travas para o apagado não voltar** (a junção de `re:` é UNIÃO e o `atuDevolver` devolve o que "sumiu"):
+  `S.reTirados` (chave `nf|obs` → quando; sincronizado), filtro no `nuvAplicar('re:*')`, no `atuDevolver` e varredura
+  `reVarrerTirados()` a cada entrada. Motivos agora em **`S.motivos2 {em,l}`** (vale o mais novo); `S.cadMotivos` virou
+  espelho (`cadInit` copia de `motivos2`; `cadMudou` grava em `motivos2`). Sem `motivos2` tudo funciona como antes.
+- **Portas fechadas:** `dvParaReentregas` (dar baixa na divergência lançava reentrega "DIVERGÊNCIA DV-… RESOLVIDA") foi
+  apagada; o aviso "Reentregas detectadas" e a reentrega rápida da Busca não preenchem mais o motivo com a divergência
+  nem marcam `d.reent`; `nexParaReentrega` recusa motivo de divergência (devolve `null`); digitar divergência na tabela
+  é recusado na fase de captura. Regra única: `reEhDivergencia(l)` = /DIVERGENCIA|ERA DIVERG|AVARIA AV\W?\d/ em obs/motivo ("AVARIA" sozinho continua motivo normal).

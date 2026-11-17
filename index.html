@@ -3873,7 +3873,7 @@ function nexPedirMotivo(titulo,texto,inicial){ return new Promise(res=>{ const f
   f.addEventListener('keydown',e=>{ if(e.key==='Enter') fim(inp.value.trim()); if(e.key==='Escape') fim(null); }); }); }
 
 /* ---- jogar para reentregas (cria a linha no dia seguinte útil) ---- */
-function nexParaReentrega(o,dia,origem){ const D=RE.ler(); D.dias[dia]=D.dias[dia]||[]; if(D.apagados) D.apagados=D.apagados.filter(x=>x!==dia);
+function nexParaReentrega(o,dia,origem){ if(o&&reEhDivergencia({obs:o.motivo})){ toast('Divergência não é reentrega: essa nota não entrou nas Reentregas.'); return null; } const D=RE.ler(); D.dias[dia]=D.dias[dia]||[]; if(D.apagados) D.apagados=D.apagados.filter(x=>x!==dia);
   if(D.dias[dia].some(l=>z(l.nf)===z(o.nf))) return false;
   D.dias[dia].push({nf:String(o.nf||''),ped:o.ped||'',cli:String(o.dest||'').toUpperCase(),cid:String(o.cid||'').toUpperCase(),uf:String(o.uf||'').toUpperCase(),qtd:volNum(o.vol)||1,obs:o.motivo||'',per:'Não',val:reNum(o.valor),chave:'',peso:o.peso||'',origem:origem||'nex'});
   RE.gravar(); return true; }
@@ -4502,7 +4502,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.02', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.03', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5456,7 +5456,7 @@ function opDvChegaram(b,d,n){ const falta=Math.max(0,+d.qtd||0), chegou=Math.max
   const eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
   { const t=+d.tot||0; if(t) opVolFaixa(Math.max(0,t-resta),t); }
   d.qtd=resta; (d.hist=d.hist||[]).push({em:ag,por:eu,t:`Chegaram ${chegou} volume(s) na conferência do bipe — ${resta?('ainda faltam '+resta):'nada mais falta'}`});
-  if(!resta){ d.st='resolvida'; d.res={d:hojeISO(),obs:`Os ${chegou} volume(s) que faltavam chegaram e foram bipados.`,por:eu}; try{ dvParaReentregas(d); }catch(e){} }
+  if(!resta){ d.st='resolvida'; d.res={d:hojeISO(),obs:`Os ${chegou} volume(s) que faltavam chegaram e foram bipados.`,por:eu}; }
   salvar(); try{ dvRender(); }catch(e){} try{ dvBadge(); }catch(e){}
   const m=document.querySelector('#op-cam .msg');
   if(m){ m.style.background=resta?'#C2255C':'#2B8A3E'; m.innerHTML=resta?`<b>⚠ Ainda faltam ${resta} volume(s)</b>${esc(dvNum(d))} · chegaram ${chegou} agora`:`<b>✔ Divergência ${esc(dvNum(d))} resolvida</b>os ${chegou} volume(s) que faltavam chegaram`; }
@@ -6075,7 +6075,7 @@ function dvBadge(){ const q=$('#qt-dv'); if(!q) return; const n=dvS().filter(d=>
       $('#dv-form').scrollIntoView({behavior:'smooth',block:'center'});
       try{ setTimeout(()=>{ const q=$('#dv-qtd'); if(q&&!TOQUE){ q.focus(); q.select&&q.select(); } },260); }catch(e){}
       toast('Editando a divergência '+dvNum(d)+' — altere abaixo e toque em Salvar alterações.'); return; }
-    if(a==='resolver'){ const obs=await dvPerguntar('Resolver divergência '+dvNum(d),'Como foi resolvida? (ex.: volumes chegaram no romaneio 812, entregue completo)'); if(obs===null) return; d.st='resolvida'; d.res={d:hojeISO(),obs,por:eu}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Resolvida: '+obs}); dvParaReentregas(d); }
+    if(a==='resolver'){ const obs=await dvPerguntar('Resolver divergência '+dvNum(d),'Como foi resolvida? (ex.: volumes chegaram no romaneio 812, entregue completo)'); if(obs===null) return; d.st='resolvida'; d.res={d:hojeISO(),obs,por:eu}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Resolvida: '+obs}); }
     if(a==='reabrir'){ d.st='aberta'; delete d.res; delete d.apareceu; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Reaberta'}); }
     if(a==='apagar'){ if(!opAdmin()&&opOnline()){ toast('Só o administrador apaga divergência.'); return; } if(!await confirmar('Apagar divergência',`Apagar ${dvNum(d)} de vez?`,'Apagar')) return; S.divergencias=dvS().filter(x=>x!==d); try{ (NUV.apagar=NUV.apagar||new Set()).add('dv:'+d.id); }catch(e){} }
     salvar(); dvRender(); };
@@ -6083,16 +6083,7 @@ function dvBadge(){ const q=$('#qt-dv'); if(!q) return; const n=dvS().filter(d=>
   document.querySelector('.nav [data-tela="divergencias"]').addEventListener('click',()=>irPara('divergencias'));
 })();
 
-/* divergência resolvida → lançada nas Reentregas do dia de hoje, completa */
-function dvParaReentregas(d){ try{ const D=RE.ler(); const dia=reHoje(); D.dias[dia]=D.dias[dia]||[]; const L=D.dias[dia];
-    if(L.some(l=>l.dvId===d.id)) return;
-    let row=null; const hit=todasLinhas().find(({row:x})=>(d.nf&&z(x.nf)===z(d.nf))||(d.ped&&z(x.ped)===z(d.ped))); if(hit) row=hit.row;
-    if(!row){ try{ const B=rbLocalLer(); for(const dd of Object.keys(B).sort().reverse()){ for(const reg of Object.values(B[dd])){ const x=(reg.rows||[]).find(x=>(d.nf&&z(x.nf)===z(d.nf))||(d.ped&&z(x.ped)===z(d.ped))); if(x){ row=x; break; } } if(row) break; } }catch(e){} }
-    const x=(S.opXml||{})[z(d.nf)]||null;
-    const obs=`DIVERGÊNCIA ${dvNum(d)} · ${d.tipo}${d.qtd?' · '+d.qtd+' vol.':''}${d.obs?' · '+d.obs:''} · RESOLVIDA ${fmtData(d.res.d).slice(0,5)}: ${d.res.obs||'—'}`;
-    L.push({nf:z(d.nf)||'',ped:z(d.ped)||'',cli:(d.cli||(row&&row.dest)||'').toUpperCase(),cid:((row&&row.cid)||'').toUpperCase(),uf:((row&&row.uf)||'').toUpperCase(),qtd:d.qtd||1,obs,per:x&&x.g?'Sim':'Não',val:(x&&x.valor)||(row&&nexNum(row.valor))||0,chave:(x&&x.chave)||'',dvId:d.id});
-    RE.gravar(); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){}
-    toast(`Divergência ${dvNum(d)} lançada em Reentregas de ${fmtData(dia).slice(0,5)}.`); }catch(e){ console.error(e); toast('Resolvida, mas não consegui lançar em Reentregas.'); } }
+/* v10.6.03: dvParaReentregas saiu — divergência resolvida NÃO vira reentrega (regra do Tiago). */
 function dvPerguntar(tit,txt){ return new Promise(res=>{ const f=document.createElement('div'); f.className='fundo'; f.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>${esc(tit)}</h2><p>${esc(txt)}</p><textarea rows="3" style="width:100%;box-sizing:border-box;border:1.5px solid var(--linha);border-radius:var(--r);padding:8px;font:inherit;background:var(--sup);color:inherit"></textarea><div class="botoes"><button class="btn" data-r="0">Cancelar</button><button class="btn pri" data-r="1">Confirmar</button></div></div>`;
   document.body.appendChild(f); const ta=f.querySelector('textarea'); ta.focus(); f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(!b) return; f.remove(); res(b.dataset.r==='1'?ta.value.trim():null); }; f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ f.remove(); res(null); } }); }); }
 function dvRender(){ if(!$('#dv-cards')) return; const L=dvSo(), F=window.DVF||{filtro:'abertas'}; const c={abertas:L.filter(d=>d.st!=='resolvida').length,apareceu:L.filter(d=>d.st==='apareceu').length,resolvida:L.filter(d=>d.st==='resolvida').length,todas:L.length};
@@ -10423,14 +10414,14 @@ function dvavDaNota(k,re){ const ped=z(re&&re.ped||(String(k).startsWith('P')?St
       const cor=dvCor(d); tr.style.background=cor+'2E'; tr.style.boxShadow=`inset 6px 0 0 ${cor}`; tr.dataset.dvavId=[dv&&dv.id,av&&av.id].filter(Boolean).join(',');
       const td=tr.querySelector('td'); const selo=x=>`<span class="dvav-selo" style="background:${dvCor(x)}">${avEh(x)?'Avaria '+esc(avNum(x))+' · '+esc(x.sub||''):'Divergência '+esc(dvNum(x))+' · '+esc(x.tipo)}${x.qtd?' · '+x.qtd+' vol.':''}</span>${x.obs?`<span class="dvav-obs">${esc(x.obs)} (${fmtData(x.d)}${x.por?' · '+esc(x.por):''})</span>`:''}`;
       td.insertAdjacentHTML('beforeend','<br>'+[dv,av].filter(Boolean).map(selo).join('<br>'));
-      const m=tr.querySelector('[data-mot]'); if(m&&!m.value) m.value=avEh(d)?`AVARIA ${avNum(d)} - ${d.sub||''}${d.qtd?' ('+d.qtd+' vol.)':''}`:`DIVERGÊNCIA ${dvNum(d)} - ${d.tipo}${d.qtd?' ('+d.qtd+' vol.)':''}`; }
+      /* v10.6.03: o motivo não vem mais preenchido com a divergência — divergência não é reentrega */ }
     if(tem){ const p=f.querySelector('p'); p.insertAdjacentHTML('afterend',`<div class="dvav-leg"><b style="font-size:.85rem;margin-right:4px">${tem} nota(s) com ocorrência registrada:</b>${Object.entries(DV_COR).filter(([t])=>t!=='Outro').map(([t,c])=>`<span><i style="background:${c}"></i>${t}</span>`).join('')}<span><i style="background:${DV_COR['Outro']}"></i>Outro</span></div>`); }
     const ok=f.querySelector('[data-a="ok"]'); if(ok) ok.addEventListener('click',()=>{ const eu=dvEu(), ag=new Date().toISOString(); let mud=false;
       for(const tr of f.querySelectorAll('tr[data-dvav-id]')){
         if(tr.dataset.dvid) continue; /* v10.1.3: divergência que recebeu o volume que faltou não volta como reentrega */
         const ig=tr.querySelector('[data-ign]'), mo=tr.querySelector('[data-mot]');
         if(!ig||!mo||ig.checked||!mo.value.trim()) continue;
-        for(const id of tr.dataset.dvavId.split(',')){ const d=dvS().find(x=>x.id===id); if(!d) continue; d.reent={d:hojeISO(),motivo:mo.value.trim()}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Voltou como reentrega'}); mud=true; } }
+        /* v10.6.03: a divergência não é mais marcada como "voltou como reentrega" */ }
       if(mud) salvar(); },{capture:true}); }catch(e){ console.error(e); }
   return r; }; }
 
@@ -10467,14 +10458,13 @@ function reRapida(l){ return new Promise(res=>{ const row=l.row||{}; const f=doc
    <label class="av-l">Motivo<input id="rr-m" list="rr-mots" autocomplete="off" placeholder="Ex.: cliente fechado"></label>
    <p class="sub" style="margin:8px 0 0">Entra em Dados → Reentregas de hoje.</p>
    <div class="botoes"><button class="btn" data-r="0" type="button">Cancelar</button><button class="btn pri" data-r="1" type="button">Lançar</button></div></div>`;
-  document.body.appendChild(f); const m=f.querySelector('#rr-m'); const dv=dvAcha(l.ped,l.nf); if(dv) m.value=avEh(dv)?`AVARIA ${avNum(dv)} - ${dv.sub||''}`:`DIVERGÊNCIA ${dvNum(dv)} - ${dv.tipo}${dv.qtd?' ('+dv.qtd+' vol.)':''}`; setTimeout(()=>m.focus(),30);
+  document.body.appendChild(f); const m=f.querySelector('#rr-m'); setTimeout(()=>m.focus(),30);
   const fim=ok=>{ const v=m.value.trim(); f.remove(); res(ok?v:null); };
   f.onclick=e=>{ const b=e.target.closest('[data-r]'); if(b) fim(b.dataset.r==='1'); }; f.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); fim(true); } if(e.key==='Escape') fim(false); }); }); }
 async function reRapidaLancar(l){ const mot=await reRapida(l); if(mot===null) return; if(!mot){ toast('Digite o motivo.'); return reRapidaLancar(l); }
   const dia=reHoje(), row=l.row||{}; const antes=JSON.stringify(RE.ler().dias[dia]||[]);
   const ok=nexParaReentrega({nf:l.nf,ped:l.ped,dest:row.dest,cid:row.cid,uf:row.uf,vol:row.vol,peso:row.peso,valor:row.valor,motivo:mot},dia,'busca');
-  if(!ok){ toast('Essa nota já está nas Reentregas de hoje.'); return; }
-  const d=dvAcha(l.ped,l.nf); if(d){ d.reent={d:hojeISO(),motivo:mot}; (d.hist=d.hist||[]).push({em:new Date().toISOString(),por:dvEu(),t:'Lançada como reentrega pela Busca'}); salvar(); }
+  if(!ok){ if(ok!==null) toast('Essa nota já está nas Reentregas de hoje.'); return; }
   try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){}
   desfazerOferecer(`NF ${l.nf} lançada nas Reentregas de hoje.`,()=>{ const D=RE.ler(); D.dias[dia]=JSON.parse(antes); RE.gravar(); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} }); }
 
@@ -11852,7 +11842,7 @@ setInterval(()=>{ try{ simAvisos(); }catch(e){} },5000);
      no horário e na pessoa do PRIMEIRO bipe. "Fora do romaneio" e repetido não contam.
    - Reentrega que nasceu de divergência/avaria nunca entra (divergência NÃO é reentrega). */
 function reEhDivergencia(l){ const m=N(String((l&&l.obs)||'')+' '+String((l&&l.motivo)||'')+' '+String((l&&l.m)||''));
-  return /DIVERGENCIA|ERA DIVERG|\bAVARIA\b/.test(m); }
+  return /DIVERGENCIA|ERA DIVERG|AVARIA AV\W?\d/.test(m); } /* "AVARIA" sozinho é motivo normal de reentrega; "AVARIA AV-001" veio do registro de avarias */
 const GS_PER={hoje:'hoje','7':'7 dias','15':'15 dias','30':'30 dias'};
 GS.per=(()=>{ try{ const v=LS.getItem('healthSearch.gsPer'); return GS_PER[v]?v:'hoje'; }catch(e){ return 'hoje'; } })();
 function gsPerNome(){ return GS.per==='hoje'?gsDiaNome():GS_PER[GS.per]; }
@@ -11989,6 +11979,93 @@ function murBussola(){ const m=document.getElementById('mural'); if(!m||m.queryS
       <circle cx="100" cy="100" r="9" class="cl"/><circle cx="100" cy="100" r="4" class="ce"/></g></svg></div>`); }
 { const _ma=muralAbrir; muralAbrir=function(){ const r=_ma.apply(this,arguments); try{ murBussola(); }catch(e){} return r; }; }
 try{ if(document.getElementById('mural')) murBussola(); }catch(e){}
+
+/* ================= v10.6.03 · Reentregas: divergência NUNCA é reentrega + motivos novos =================
+   Combinado com o Tiago (17/11/2026): apagar os motivos cadastrados e as reentregas que eram divergência,
+   com a planilha baixada antes; depois o app obriga a cadastrar os motivos novos.
+   Travas para o que foi apagado não voltar (a sincronização junta listas e a "atualização nunca tira
+   informação" devolve o que sumiu):
+   1. S.reTirados {chave:quando} — lista de linhas tiradas (sincronizada; só cresce). Nenhuma sincronização,
+      junção ou devolução põe de volta uma linha dessa lista.
+   2. S.motivos2 {em,l} — a lista de motivos passa a ter data e vale a mais nova entre os aparelhos
+      (S.cadMotivos era um array sem data: a junção somava as listas e o apagado voltava).
+   3. As portas por onde divergência virava reentrega foram fechadas (dar baixa, Busca, aviso de reentregas)
+      e nexParaReentrega recusa motivo de divergência. */
+NUV_CAMPOS.push('reTirados','motivos2');
+const reChaveT=l=>z(l&&l.nf)+'|'+rpNz(l&&l.obs);
+function reTirado(l){ const T=S.reTirados; return !!(T&&T[reChaveT(l)]); }
+function reVarrerTirados(){ const T=S.reTirados; if(!T||!Object.keys(T).length) return 0; const D=RE.ler(); let n=0;
+  for(const d of Object.keys(D.dias||{})){ const L=D.dias[d]||[]; const f=L.filter(l=>!reTirado(l));
+    if(f.length!==L.length){ n+=L.length-f.length; if(f.length) D.dias[d]=f; else delete D.dias[d]; } }
+  if(n) RE.gravar(); return n; }
+{ const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){
+    if(!apagado&&String(chave).startsWith('re:')&&Array.isArray(valor)&&S.reTirados) valor=valor.filter(l=>!reTirado(l));
+    return _na.call(this,chave,valor,apagado); }; }
+{ const _ad=atuDevolver; atuDevolver=function(){ try{ const sn=ATU.snap; if(sn){
+      if(S.reTirados&&sn.re) for(const d of Object.keys(sn.re)) sn.re[d]=(sn.re[d]||[]).filter(l=>!reTirado(l));
+      if(S.motivos2) sn.cadMotivos=[]; } }catch(e){} return _ad.apply(this,arguments); }; }
+/* motivos: S.motivos2 manda; S.cadMotivos vira só o espelho que as telas antigas leem */
+{ const _ci=cadInit; cadInit=function(){ if(S.motivos2&&Array.isArray(S.motivos2.l)) S.cadMotivos=S.motivos2.l.slice(); return _ci.apply(this,arguments); }; }
+{ const _cm=cadMudou; cadMudou=function(){ try{ if(S.motivos2&&Array.isArray(S.cadMotivos)){ const l=S.cadMotivos.slice();
+      if(JSON.stringify(l)!==JSON.stringify(S.motivos2.l)) S.motivos2=Object.assign({},S.motivos2,{em:new Date().toISOString(),l}); } }catch(e){}
+    return _cm.apply(this,arguments); }; }
+function reMotivosCsv(todas,sai,mot){ const q=x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"';
+  const cab=['Dia','NF','Pedido','Cliente','Cidade','UF','Volumes','Motivo','Motorista','Valor','Vai sair (era divergência)'];
+  const lin=todas.map(({d,l})=>[fmtData(d),l.nf,l.ped,l.cli,l.cid,l.uf,l.qtd||l.vol,l.obs||l.motivo,l.mot||l.motorista,l.val,sai.has(l)?'SIM':''].map(q).join(';'));
+  return '﻿'+[cab.map(q).join(';'),...lin,'',q('Motivos cadastrados (todos vão sair)'),...mot.map(q)].join('\r\n'); }
+/* passo 1 (só o administrador, uma vez): baixa a planilha e só então apaga */
+function reZerarContas(){ const D=RE.ler(); const todas=[]; for(const [d,ls] of Object.entries(D.dias||{})) for(const l of ls||[]) todas.push({d,l});
+  const sai=new Set(todas.filter(x=>reEhDivergencia(x.l)||x.l.dvId).map(x=>x.l)); cadInit(); return {todas,sai,mot:(S.cadMotivos||[]).slice()}; }
+function reZerarAgora(){ const {todas,sai,mot}=reZerarContas();
+  try{ nexBaixar(reMotivosCsv(todas,sai,mot),'Backup reentregas e motivos '+hojeISO()+'.csv','text/csv;charset=utf-8'); }
+  catch(e){ toast('Não consegui baixar a planilha. Não apaguei nada.'); return false; }
+  const ag=new Date().toISOString(); const T=S.reTirados=S.reTirados||{}; for(const l of sai) T[reChaveT(l)]=ag;
+  const n=reVarrerTirados();
+  S.motivos2={em:ag,l:[],zerado:{em:ag,por:opEu(),motivos:mot.length,reentregas:n}}; S.cadMotivos=[]; NEX_MOTIVOS.splice(0,NEX_MOTIVOS.length);
+  salvar(); try{ nuvJa(); }catch(e){ try{ nuvSinc(); }catch(x){} }
+  try{ renderTudo(); }catch(e){} try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} try{ gestorRender(); }catch(e){}
+  toast(`✔ Planilha baixada. Saíram ${fmtN(mot.length)} motivo(s) e ${fmtN(n)} reentrega(s) que eram divergência.`); return true; }
+let _reZerarMostrado=false;
+function reZerarJanela(){ if(_reZerarMostrado||S.motivos2||!nvAdmin()||document.querySelector('#re-zerar')) return; _reZerarMostrado=true;
+  const {todas,sai,mot}=reZerarContas(); const f=document.createElement('div'); f.className='fundo'; f.id='re-zerar'; f.style.zIndex='1800';
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:520px"><h2 style="margin-top:0">🧹 Limpeza das reentregas</h2>
+    <p>Como combinado: <b>divergência não é reentrega</b>. Vou fazer assim, nesta ordem:</p>
+    <ol style="line-height:1.7;margin:0 0 12px;padding-left:20px"><li>Baixar a planilha com <b>todas as ${fmtN(todas.length)} reentregas</b> e os <b>${fmtN(mot.length)} motivos</b> (abre no Excel). É o seu backup.</li>
+    <li>Apagar os <b>${fmtN(mot.length)} motivos</b> cadastrados.</li><li>Apagar as <b>${fmtN(sai.size)} reentregas</b> que eram divergência. As outras ${fmtN(todas.length-sai.size)} continuam.</li>
+    <li>Em seguida você cadastra os motivos novos.</li></ol>
+    <p class="sub" style="margin:0 0 12px">Isso vale para todos os aparelhos e não tem volta pelo app — a planilha é a cópia. O robô de backup também guarda a de hoje.</p>
+    <div class="botoes"><button class="btn" type="button" data-z="0">Agora não</button><button class="btn pri" type="button" data-z="1">⬇ Baixar planilha e limpar</button></div></div>`;
+  document.body.appendChild(f);
+  f.addEventListener('click',e=>{ const b=e.target.closest('[data-z]'); if(!b) return;
+    if(b.dataset.z==='0'){ f.remove(); toast('Fica para depois: a janela volta na próxima vez que você entrar.'); return; }
+    b.disabled=true; if(reZerarAgora()){ f.remove(); setTimeout(reMotivosJanela,600); } else b.disabled=false; }); }
+/* passo 2: sem motivo cadastrado, quem cuida dos cadastros é obrigado a cadastrar antes de seguir */
+function reMotivosObrigado(){ try{ return !!(S.motivos2&&Array.isArray(S.motivos2.l)&&!S.motivos2.l.length&&['admin','lider','supervisor'].includes(cargoMeu())); }catch(e){ return false; } }
+function reMotivosJanela(){ if(!reMotivosObrigado()||document.querySelector('#re-mtv-obr')) return;
+  const f=document.createElement('div'); f.className='fundo'; f.id='re-mtv-obr'; f.style.zIndex='1800'; const L=[];
+  const pinta=()=>{ f.querySelector('#rmo-l').innerHTML=L.length?L.map((m,i)=>`<span class="cad-chip" style="display:inline-flex;gap:6px;align-items:center;margin:0 6px 6px 0">${esc(m)} <button type="button" class="op-x" data-rmo-x="${i}" aria-label="Tirar">✕</button></span>`).join(''):'<p class="sub" style="margin:0">Nenhum ainda.</p>';
+    f.querySelector('[data-rmo="ok"]').disabled=!L.length; };
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:520px"><h2 style="margin-top:0">📝 Cadastre os motivos de reentrega</h2>
+    <p>Os motivos antigos saíram. Cadastre os que vocês usam (ex.: CLIENTE FECHADO, FORA DO HORÁRIO). Dá para mudar depois em Reentregas → Motivos.</p>
+    <form id="rmo-f" style="display:flex;gap:8px;margin:0 0 10px"><input id="rmo-i" class="bus" style="flex:1" placeholder="Novo motivo" autocomplete="off" maxlength="60"><button class="btn mini pri" type="submit">Adicionar</button></form>
+    <div id="rmo-l" style="min-height:40px"></div>
+    <p class="sub" style="margin:10px 0 0">Divergência e avaria não entram como motivo: <b>divergência não é reentrega</b>.</p>
+    <div class="botoes"><button class="btn pri" type="button" data-rmo="ok" disabled>Salvar motivos</button></div></div>`;
+  document.body.appendChild(f); const inp=f.querySelector('#rmo-i'); setTimeout(()=>inp.focus(),50); pinta();
+  f.querySelector('#rmo-f').addEventListener('submit',e=>{ e.preventDefault(); const v=inp.value.trim().toUpperCase().replace(/\s+/g,' '); if(!v) return;
+    if(reEhDivergencia({obs:v})){ toast('Divergência não é reentrega: esse não pode ser motivo.'); return; }
+    if(L.some(m=>rpNz(m)===rpNz(v))){ toast('Esse motivo já está na lista.'); return; } L.push(v); inp.value=''; inp.focus(); pinta(); });
+  f.addEventListener('click',e=>{ const x=e.target.closest('[data-rmo-x]'); if(x){ L.splice(+x.dataset.rmoX,1); pinta(); return; }
+    if(e.target.closest('[data-rmo="ok"]')&&L.length){ S.cadMotivos=L.slice(); S.motivos2=Object.assign({},S.motivos2,{em:new Date().toISOString(),l:L.slice()}); cadMudou(); try{ nuvJa(); }catch(er){}
+      f.remove(); toast('✔ '+L.length+' motivo(s) cadastrado(s).'); } });
+  f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); } },true); }
+/* digitado na tabela de reentregas: motivo de divergência é recusado antes de qualquer gravação (fase de captura) */
+document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.matches('#re-tab [data-f="obs"]')) return;
+  if(reEhDivergencia({obs:el.value})){ el.value=''; toast('Divergência não é reentrega: esse motivo não pode ser usado aqui.'); } },true);
+/* quando aparecem: depois da primeira sincronização (ou 15 s sem nuvem), e de novo a cada entrada */
+{ let n=0; const t=setInterval(()=>{ n++; try{ reVarrerTirados(); }catch(e){}
+    const pronto=n>=3&&(Store.modo!=='nuvem'||(typeof NUV!=='undefined'&&NUV.ult)||n>=8);
+    if(!pronto) return; clearInterval(t); try{ if(!S.motivos2) reZerarJanela(); else reMotivosJanela(); }catch(e){ console.error(e); } },5000); }
 </script>
 
 </body>
