@@ -628,6 +628,46 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const j=nuvJuntar('dv:x',a,b); return {st:j.st,n:j.hist.length,t:j.hist.map(x=>x.t).join('>'),rec:typeof hsRecarregar,prazo:typeof hsFetchComPrazo}; });
     ok(c4.st==='resolvida'&&c4.n===3&&c4.t==='Criada>Mudou o dia>Resolvida','conflito: o histórico dos dois aparelhos tinha que ficar ('+c4.st+' · '+c4.t+')');
     ok(c4.rec==='function'&&c4.prazo==='function','recarregar seguro / prazo do banco não existem'); }
+  /* v10.6.07: aviso do sino com ✕ — dispensado some e não volta enquanto não mudar */
+  { const nt=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      try{ LS.removeItem('healthSearch.avisosIgn'); }catch(e){}
+      const orig=window.nexAvisos; let base=null;
+      const fake=[{cor:'red',txt:'<b>3</b> aviso de teste A',acao:'x1'},{cor:'red',txt:'aviso de teste B',acao:'x2'}];
+      const n0=nexAvisos().filter(a=>/aviso de teste/.test(a.txt)).length;
+      const _nb=nexAbrirNotif; /* injeta os avisos falsos por baixo do filtro */
+      const r={};
+      const _base=Object.getOwnPropertyDescriptor(window,'nexAvisos');
+      return {n0, temX:typeof avisoChave==='function', ign:typeof nexAbrirNotif}; });
+    ok(nt.temX&&nt.ign==='function','notificações: funções do ✕ não existem'); }
+  { const nt2=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      try{ LS.removeItem('healthSearch.avisosIgn'); }catch(e){}
+      const ig={}; ig[avisoChave({acao:'x2',txt:'aviso de teste B'})]=Date.now(); LS.setItem('healthSearch.avisosIgn',JSON.stringify(ig));
+      const lista=[{cor:'red',txt:'<b>3</b> aviso de teste A',acao:'x1'},{cor:'red',txt:'aviso de teste B',acao:'x2'}];
+      const lim=Date.now()-864e5; const fil=lista.filter(x=>!(ig[avisoChave(x)]>lim));
+      nexAbrirNotif(); await w(100); const f=[...document.querySelectorAll('.fundo')].pop(); const temX=!!(f&&f.querySelectorAll('.nx-ign').length===f.querySelectorAll('.nx-aviso').length);
+      if(f) f.remove(); LS.removeItem('healthSearch.avisosIgn'); return {fil:fil.map(x=>x.acao).join(','),temX}; });
+    ok(nt2.fil==='x1','notificações: aviso dispensado tinha que sumir ('+nt2.fil+')');
+    ok(nt2.temX,'notificações: cada aviso da janela do sino tem que ter o ✕'); }
+  /* v10.6.07: ✕ Cancelar divergência — some sem histórico e a nota volta a ficar pendente; atalhos configuráveis */
+  { const cx=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      try{ NV.perfil={papel:'admin',ativo:true,nome:'Teste'}; }catch(e){} document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      S.romaneios=[{id:'cx1',numero:'0999001',base:'CAJ',arquivo:a,rows:[{nf:'990001',ped:'880001',vol:'1',dest:'CLIENTE CX',cid:'FRANCA',uf:'SP'}]}];
+      OP.dia=h; OP.bipes=[]; renderTudo();
+      const pend0=opPendentes().some(x=>opK(x.nf)==='990001');
+      const fez=await opMarcarMao(S.romaneios[0].rows[0],'dv',true); await w(200);
+      const d=dvS().find(x=>opK(x.nf)==='990001'); const pend1=opPendentes().some(x=>opK(x.nf)==='990001');
+      irPara('divergencias'); dvRender(); await w(200); const bt=!!document.querySelector('[data-du-cancelar="'+(d&&d.id)+'"]');
+      const _c=confirmar; window.confirmar=async()=>true; const ok=d?await dvCancelar(d.id):false; window.confirmar=_c; await w(200);
+      const r={pend0,fez,temDv:!!d,pend1,bt,ok,sumiu:!dvS().some(x=>opK(x.nf)==='990001'),bips:OP.bipes.filter(b=>opK(b.nf)==='990001').length,pend2:opPendentes().some(x=>opK(x.nf)==='990001')};
+      /* atalhos */
+      LS.removeItem('healthSearch.atalhos'); r.padrao=atalhosLer().buscar; irPara('ajustes'); await w(150);
+      document.dispatchEvent(new KeyboardEvent('keydown',{key:'5',code:'Digit5',altKey:true,bubbles:true})); await w(150);
+      r.alt5=!document.getElementById('t-divergencias').hidden;
+      S.romaneios=[]; OP.bipes=[]; renderTudo(); return r; });
+    ok(cx.pend0&&cx.fez&&cx.temDv&&!cx.pend1,'cancelar dv: a preparação falhou ('+JSON.stringify(cx)+')');
+    ok(cx.bt,'cancelar dv: o cartão da divergência tinha que ter o ✕ Cancelar');
+    ok(cx.ok&&cx.sumiu&&cx.bips===0&&cx.pend2,'cancelar dv: a divergência e o bipe tinham que sair e a nota voltar para pendente ('+JSON.stringify(cx)+')');
+    ok(cx.padrao==='Ctrl+K'&&cx.alt5,'atalhos: o padrão (Ctrl+K / Alt+5) não funcionou ('+cx.padrao+', '+cx.alt5+')'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */

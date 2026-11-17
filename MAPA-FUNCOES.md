@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 17/11/2026 22:25 · versão 10.6.06
+Gerado em 17/11/2026 22:35 · versão 10.6.07
 
 
 ## ab
@@ -51,6 +51,10 @@ Gerado em 17/11/2026 22:25 · versão 10.6.06
 - `assemble` — linha 1563
 
 ## at
+- `atalhoDoEvento` — linha 11649
+- `atalhosCard` — linha 11657
+- `atalhosGravar` — linha 11648
+- `atalhosLer` — linha 11647
 - `atuDevolver` — linha 9172
 - `atuFoto` — linha 9168
 - `atualizarAgora` — linha 4528
@@ -69,6 +73,8 @@ Gerado em 17/11/2026 22:25 · versão 10.6.06
 ## av
 - `avS` — linha 10055
 - `avisoDiario` — linha 3356
+- `avisoGravar` — linha 11586
+- `avisoLer` — linha 11585
 
 ## ba
 - `baixar` — linha 2810
@@ -274,11 +280,13 @@ Gerado em 17/11/2026 22:25 · versão 10.6.06
 - `dvBaixaPeloBipe` — linha 9675
 - `dvBipar` — linha 6148
 - `dvBotaoBaixa` — linha 9682
+- `dvCancelar` — linha 11695
 - `dvCidade` — linha 6012
 - `dvJanelaFalta` — linha 6126
 - `dvLeitura` — linha 6114
 - `dvMeusAvisos` — linha 9673
 - `dvNoBanco` — linha 6122
+- `dvPodeCancelar` — linha 11692
 - `dvRegistrar` — linha 10065
 - `dvRender` — linha 6102
 - `dvRenderLista` — linha 6106
@@ -641,6 +649,10 @@ Gerado em 17/11/2026 22:25 · versão 10.6.06
 
 ## no
 - `nomeArquivo` — linha 2155
+- `notifMostrar` — linha 11600
+- `notifPedir` — linha 11610
+- `notifPode` — linha 11599
+- `notifVarrer` — linha 11604
 - `novoCard` — linha 2232
 
 ## nu

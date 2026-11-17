@@ -1,5 +1,5 @@
 /* Health Search · aplicativo: abre mesmo sem internet e sempre busca a versão nova quando há conexão */
-const CACHE='hs-app-v186';
+const CACHE='hs-app-v187';
 /* v10.6.00: partes pesadas (pasta a/, com ?v=) ficam num cache proprio que nao e apagado a cada versao.
    Mudou algum arquivo de a/? Suba o V no HSA (index.html) E este PARTES. */
 const PARTES='hs-partes-v1';
@@ -18,3 +18,5 @@ self.addEventListener('fetch',e=>{ const u=new URL(e.request.url); if(e.request.
       const s2=await caches.match(e.request,{ignoreSearch:true});               if(s2) return s2;
       if(e.request.mode==='navigate'){ const i=await caches.match('./index.html',{ignoreSearch:true})||await caches.match('./',{ignoreSearch:true}); if(i) return i; }
       return new Response('<meta charset="utf-8"><body style="font-family:system-ui;background:#0b1f22;color:#fff;padding:24px"><h2>Sem conexao com o servidor do app</h2><p>Este computador nao esta conseguindo falar com <b>thekingtiago4-bot.github.io</b>. Verifique a internet ou se a rede da empresa esta bloqueando o endereco.</p>',{status:503,headers:{'Content-Type':'text/html; charset=utf-8'}}); })); });
+/* v10.6.07: tocar na notificação abre (ou traz para frente) o Health Search */
+self.addEventListener('notificationclick',e=>{ e.notification.close(); e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(cs=>{ for(const c of cs){ if('focus' in c) return c.focus(); } return self.clients.openWindow('./'); })); });

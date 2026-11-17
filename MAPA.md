@@ -481,3 +481,16 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   Menu aberto: só as abas desde o topo; trava a tela de trás (`html.mb-trava`).
 - **Zoom**: só na Geolocalização (meta viewport muda no `irPara` + `touch-action:pan-x pan-y` + `gesturestart` no iPhone).
 - **Mural**: bússola saiu; "Entrar no programa" (`#mural-x`) ocupa a linha toda no celular.
+
+## v10.6.07 (17/11/2026) — notificações, atalhos, ✕ da divergência, manual em folhas, reentregas no celular
+- **Sino**: `nexAvisos` filtra os dispensados (`healthSearch.avisosIgn`, chave = ação + texto; volta se o texto mudar
+  ou depois de 24 h). `nexAbrirNotif` ganhou o ✕ em cada aviso. **Notificação do aparelho**: janela própria pede
+  a permissão UMA vez (`healthSearch.notifPedido`; "Agora não" volta em 3 dias); aviso novo no sino vira
+  notificação (`notifVarrer` a cada 30 s, `reg.showNotification`); `sw.js` abre o app no toque. Com o app FECHADO
+  precisa Web Push (VAPID + função no Supabase) — ainda não feito. iPhone só com o app instalado (iOS 16.4+).
+- **Atalhos configuráveis** (Ajustes → ⌨ Teclas de atalho, `ATALHO_ACOES`/`ATALHO_PADRAO`, por aparelho em
+  `healthSearch.atalhos`). Os Ctrl+K e Ctrl+S fixos antigos saíram (agora vêm daqui). Teclas do navegador recusadas.
+- **✕ Cancelar divergência** (`dvCancelar`): sem histórico; tira também o(s) bipe(s) da nota no dia e a marcação à mão
+  (`gsAjuste`), e a nota volta para pendente. Banco: bipe só o admin apaga, ou o próprio nos 5 min (v8.3.0).
+- **Manual em folhas** (só na tela) e foto nova do Mural (`manual.js` → `?v=3`).
+- **Reentregas no celular**: cartão em duas colunas, rótulo pequeno em cima, ✕ no canto, "Reentrega nº".
