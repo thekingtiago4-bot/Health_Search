@@ -1,1 +1,1 @@
-{"versao":"10.5.5","data":"2026-11-16","novidades":"Botao verde da baixa na nota inteira com um clique, mesmo quando outro conferente ja bipou parte dos volumes"}
+{"versao":"10.5.6","data":"2026-11-17","novidades":"Abertura fluida: tirados os filtros de desfoque que obrigavam o navegador a repintar o logo a cada quadro. A animacao continua inteira e ficou ~85% mais leve."}
