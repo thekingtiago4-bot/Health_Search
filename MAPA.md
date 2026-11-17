@@ -501,3 +501,13 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   várias têm efeito de negócio escondido (ex.: o remendo do `muralAbrir` em 6166 chama `dvVarrer`, que marca
   divergência como "apareceu"). Plano: um módulo por rodada, com teste próprio antes/depois; NexBip (`opRender`,
   `opMostrar`, `opLerEtiqueta`) só com teste em aparelho real.
+
+## v10.6.09 (17/11/2026) — remendos: o que foi feito e a medição que decide o resto
+- **`nexAvisos`**: os 9 remendos viraram UMA função, na mesma ordem. Conferido com "foto" antes/depois
+  (4 cenários, 33 avisos, saída idêntica). Linhas que usam `const` definidas depois (`bkAtrasado`, `foraLimite`)
+  ficaram em `try` — antes do fim do carregamento a função não pode quebrar por TDZ.
+- Saíram 3 remendos que não faziam nada (`irPara` repassando sem mudar, `rotas→buscar`).
+- **Medição (300 notas, 250 bipes, PC):** `irPara` 0,3–6 ms, `opRender` 3,7 ms, `nexAvisos` 0,3 ms, `nexVarrer` 1,6 ms.
+  Os remendos NÃO pesam na fluidez. Juntar o resto (`irPara` tem 24, quase todos presos a variáveis locais do seu
+  bloco) só melhora organização e traz risco. **Decisão:** juntar só quando for mexer naquele módulo por outro
+  motivo, sempre com "foto" antes/depois (modelo: `gold-avisos.js` desta conversa).

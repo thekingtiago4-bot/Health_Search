@@ -4074,7 +4074,18 @@ function nexAvisos(){ const n=nexS(), out=[]; const sus=nexSuspeitas().length; i
   const sm=Object.values(n.fora).filter(o=>!o.motivo).length; if(sm) out.push({cor:'#C2255C',txt:`<b>${sm}</b> retirada(s) sem motivo`,acao:'ret'});
   const fr=nexForaDaRegra(); if(fr.length) out.push({cor:nexCor('Agendada'),txt:`<b>${fr.length}</b> nota(s) agendada(s) fora do romaneio da memória (${esc([...new Set(fr.map(x=>x.regra.texto))].join(', '))}) — não seguem`,acao:'rom'});
   const hj=hojeISO(); const agh=S.agendamentos.filter(a=>a.data===hj).length; if(agh) out.push({cor:nexCor('Agendada'),txt:`<b>${agh}</b> agendamento(s) para hoje`,acao:'agenda'});
-  return out; }
+  /* v10.6.09: os 9 remendos que viviam espalhados agora estão aqui, na MESMA ordem em que eram aplicados.
+     Cada unshift põe o item no topo, então o último bloco aparece primeiro — igual a antes. */
+  let a=out.filter(x=>x.acao!=='ret');                                                     /* retiradas saíram do sino */
+  try{ if(nvAdmin()&&bkAtrasado()) a.unshift({cor:'#1C7ED6',txt:'<b>Backup de hoje</b> ainda não foi feito — Reentregas → Fazer backup completo',acao:'bk'}); }catch(e){}
+  try{ const lim=foraLimite(); for(const [o,q] of foraAlertas()) if(q>=lim) a.unshift({cor:'#E8590C',txt:`<b>${q}</b> notas fora do romaneio hoje com origem <b>${esc(o)}</b> (limite ${lim})`,acao:'fora'}); }catch(e){}
+  try{ for(const m of dvMeusAvisos()) a.unshift({cor:'#F59F00',txt:esc(m.txt),acao:'dvaviso:'+m.id+'|'+m.em}); }catch(e){}
+  try{ if(nvAdmin()&&geoPendente()) a.unshift({cor:'#E8590C',txt:'<b>Mapa com alterações não publicadas</b> — Geolocalização → 📤 Publicar mapa',acao:'geo'}); }catch(e){}
+  try{ if(nvAdmin()){ const m=espMedir(); if(m.pct>=75) a.unshift({cor:espCor(m.pct),txt:`<b>Aparelho com ${m.pct}% do espaço ocupado</b> — clique em 💾 no topo para liberar`,acao:'esp'}); } }catch(e){}
+  try{ if(nvAdmin()) for(const v of ESPE.lista.slice(0,3)) a.unshift({cor:v.pct>=95?'var(--no)':'#E8590C',txt:`<b>${esc(v.por)}: aparelho com ${v.pct}% do espaço</b> — ${esc(v.aparelho)}${v.maior?' · mais pesado: '+esc(v.maior):''}`,acao:'esp'}); }catch(e){}
+  try{ if(semBkFalta()) a.unshift({cor:'#E8590C',txt:'<b>Falta a cópia de segurança desta semana</b> — baixe o arquivo e guarde no computador',acao:'bk'}); }catch(e){}
+  try{ const ig=avisoLer(NOTIF.ign), lim=Date.now()-864e5; a=a.filter(x=>!(ig[avisoChave(x)]>lim)); }catch(e){}   /* dispensados no ✕ */
+  return a; }
 function nexBadges(){ const a=nexAvisos(); const s=$('#nx-sino-n'); if(s){ s.textContent=a.length; s.hidden=!a.length; }
   const q=$('#qt-ret'); if(q){ const v=Object.values(nexS().fora).filter(o=>!o.reentregaEm).length; q.textContent=v; q.hidden=!v; } }
 function nexAbrirNotif(){ const n=nexS(); const a=nexAvisos(); const f=document.createElement('div'); f.className='fundo';
@@ -4515,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.08', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.09', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4560,7 +4571,6 @@ const HS_VERSAO='10.6.08', HS_DATA='17/11/2026';
 /* ---------- Retiradas desligada por enquanto (mude para true para voltar) ---------- */
 const HS_RETIRADAS=false;
 if(!HS_RETIRADAS){ document.documentElement.dataset.semRet='1';
-  { const _av=nexAvisos; nexAvisos=function(){ return _av().filter(a=>a.acao!=='ret'); }; }
   { const _ir5=irPara; irPara=function(t){ if(t==='retiradas') t='romaneios'; _ir5(t); }; } }
 
 /* ---------- Reentregas: depois de restaurar backup, mostra os dias restaurados e um resumo ---------- */
@@ -4579,7 +4589,7 @@ if(!HS_RETIRADAS){ document.documentElement.dataset.semRet='1';
 /* ---------- Roteirização oculta por enquanto (mude para true para reativar; dados e código continuam guardados) ---------- */
 const HS_ROTEIRIZACAO=false;
 if(!HS_ROTEIRIZACAO){ document.documentElement.dataset.semRotas='1';
-  { const _ir7=irPara; irPara=function(t){ if(t==='rotas') t='buscar'; _ir7(t); }; } }
+  }
 
 /* ---------- Base de Contagem: Norte de Minas completo (mesorregião IBGE 3102, 89 cidades) — correção feita uma vez ---------- */
 (function(){ const NM=[3101003,3106655,3107307,3108255,3108503,3108602,3109402,3111150,3112703,3115474,3116159,3116506,3117836,3118809,3120300,3120870,3122355,3123809,3124302,3126604,3126703,3127073,3127339,3127354,3127800,3128253,3129608,3129657,3130051,3130655,3132008,3132107,3135050,3135100,3135209,3135357,3135605,3136579,3136801,3136959,3137304,3138104,3138658,3138682,3139250,3139300,3140852,3141009,3142007,3142254,3142700,3142908,3143302,3143450,3144656,3145059,3145372,3145455,3146255,3146552,3147956,3149150,3150570,3151206,3152131,3152204,3154457,3154507,3155603,3156502,3157005,3157377,3157609,3160454,3161106,3162252,3162401,3162450,3162658,3162708,3164209,3166956,3168002,3170008,3170529,3170651,3170800,3170909,3171030]; let n=0, t=setInterval(()=>{ n++; if(!S.geo||!S.geo.listas){ if(n>100) clearInterval(t); return; }
@@ -4687,7 +4697,6 @@ async function bkRestaurarCompleto(b){ const r=bkResumo(b);
 /* lembrete diário + opção de baixar sozinho todo dia */
 function bkUltimo(){ try{ return LS.getItem('healthSearch.ultimoBackup')||''; }catch(e){ return ''; } }
 const bkAtrasado=()=>{ const u=bkUltimo(); return !u||u.slice(0,10)<hojeISO(); };
-{ const _av2=nexAvisos; nexAvisos=function(){ const a=_av2(); if(nvAdmin()&&bkAtrasado()) a.unshift({cor:'#1C7ED6',txt:'<b>Backup de hoje</b> ainda não foi feito — Reentregas → Fazer backup completo',acao:'bk'}); return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="bk"]'); if(b) setTimeout(()=>bkBaixar(false),50); });
 { const bar=$('#re-bkp'); if(bar) bar.insertAdjacentHTML('afterend',`<label class="bk-auto" title="Na primeira vez que abrir o programa no dia, baixa o backup completo sozinho (neste computador)"><input type="checkbox" id="bk-auto"> backup automático diário</label>`);
   try{ $('#bk-auto').checked=LS.getItem('healthSearch.bkAuto')==='1'; }catch(e){} }
@@ -5931,7 +5940,6 @@ hsSplash('Conectando…');
 { const _nt=nvTela; nvTela=function(h){ hsSplash(); return _nt(h); }; }
 /* v10.1.0 · a tela de carregamento é máscara: nada é espiado antes da hora.
    Ela só sai quando o mural do dia estiver na frente (ou depois de 25s, para nunca travar). */
-{ const _ir0=irPara; irPara=function(t){ return _ir0(t); }; }
 (function(){ let caiu=false; const tira=()=>{ if(caiu) return; caiu=true; try{ hsSplash(); }catch(e){} };
   const _ma0=muralAbrir; muralAbrir=function(){ const r=_ma0.apply(this,arguments); setTimeout(tira,60); return r; };
   setTimeout(tira,12000); })();
@@ -7589,9 +7597,6 @@ function foraFiltrada(){ const b=rpNz(FR.q||''); return foraLista().filter(x=>!b
 /* ---- 1) alerta por origem (fora do romaneio) ---- */
 const foraLimite=()=>+(S.foraLimite||5);
 function foraAlertas(dia){ dia=dia||hojeISO(); const m=new Map(); for(const x of foraS()) if(x.dia===dia){ const o=x.origem||'(sem origem)'; m.set(o,(m.get(o)||0)+1); } return [...m.entries()].sort((a,b)=>b[1]-a[1]); }
-{ const _na=nexAvisos; nexAvisos=function(){ const out=_na(); const lim=foraLimite();
-    for(const [o,n] of foraAlertas()) if(n>=lim) out.unshift({cor:'#E8590C',txt:`<b>${n}</b> notas fora do romaneio hoje com origem <b>${esc(o)}</b> (limite ${lim})`,acao:'fora'});
-    return out; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="fora"]'); if(!b) return; setTimeout(()=>irPara(b.dataset.nxIr),50); });
 { const _ma=muralAbrir; muralAbrir=function(){ _ma(); const g=document.querySelector('#mural .mural-g'); if(!g||g.querySelector('.mural-fora')) return; const al=foraAlertas(), lim=foraLimite(), tot=al.reduce((s,x)=>s+x[1],0);
   g.insertAdjacentHTML('afterbegin',`<div class="mural-c mural-fora"${al.some(x=>x[1]>=lim)?' style="border:2px solid #E8590C"':''}><h3>Fora do romaneio hoje</h3><b class="big">${tot}</b> nota(s)${al.length?`<ul>${al.map(([o,n])=>`<li${n>=lim?' style="color:#E8590C;font-weight:700"':''}>${esc(o)}: ${n}${n>=lim?' ⚠ passou do limite ('+lim+')':''}</li>`).join('')}</ul>`:'<p class="sub">Nenhuma até agora.</p>'}<button class="btn mini" data-mural-ir="fora" type="button">Abrir fora do romaneio</button></div>`); }; }
@@ -9376,9 +9381,6 @@ function cargoAplicar(){ try{ if(!cargoLogado()) return; const c=cargoMeu(); doc
     for(const b of document.querySelectorAll('.nav button[data-tela]')){ const t=b.dataset.tela; b.hidden=!cargoPodeVer(t,c); }
     for(const g of document.querySelectorAll('.nav .nav-g,.nav .grupo')){ const vis=[...g.querySelectorAll('button[data-tela]')].some(b=>!b.hidden); g.hidden=!vis; }
   }catch(e){} }
-/* v10.1.0 · a aba do BIT é só do administrador, e a tela inicial segue o cargo */
-{ const _ip=irPara; irPara=function(t){
-    return _ip.apply(this,arguments); }; }
 { const _nc=nvCarregar; nvCarregar=async function(){ const r=await _nc.apply(this,arguments);
     setTimeout(()=>{ try{ integConferir(); }catch(e){} },6000);
     setTimeout(()=>{ try{ gsEnxugarBipes(false); }catch(e){} },20000);
@@ -9694,9 +9696,6 @@ document.addEventListener('click',e=>{ const x=e.target.closest&&e.target.closes
 { const _ml3=opMostrar; opMostrar=function(r){ _ml3(r);
   try{ const d=(r&&r._ped!==undefined)?dvAcha(r._ped,r._nf):null; dvBotaoBaixa(d&&d.st!=='resolvida'?d:null); }catch(e){} }; }
 (function(){ const st=document.createElement('style'); st.textContent='#op-dvacao{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(194,37,92,.12);border:1px solid #C2255C;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:var(--fs-sm)}#op-dvacao span{flex:1;min-width:200px}'; document.head.appendChild(st); })();
-{ const _na2=nexAvisos; nexAvisos=function(){ const a=_na2();
-  try{ for(const m of dvMeusAvisos()) a.unshift({cor:'#F59F00',txt:esc(m.txt),acao:'dvaviso:'+m.id+'|'+m.em}); }catch(e){}
-  return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir^="dvaviso:"]'); if(!b) return;
   dvAvisoVisto(String(b.dataset.nxIr).slice(8)); try{ irPara('divergencias'); }catch(e2){} });
 
@@ -10274,7 +10273,6 @@ function geoDiagnostico(){ let logs=[]; try{ logs=JSON.parse(LS.getItem('healthS
 document.addEventListener('click',e=>{ const t=e.target.closest&&e.target.closest('#geo-voltar,#geo-diag'); if(!t) return;
   if(t.id==='geo-voltar') geoVoltarPublicado(); else geoDiagnostico(); });
 window.addEventListener('beforeunload',e=>{ try{ if(nvAdmin()&&geoPendente()){ e.preventDefault(); e.returnValue=''; } }catch(x){} });
-{ const _na=nexAvisos; nexAvisos=function(){ const a=_na(); try{ if(nvAdmin()&&geoPendente()) a.unshift({cor:'#E8590C',txt:'<b>Mapa com alterações não publicadas</b> — Geolocalização → 📤 Publicar mapa',acao:'geo'}); }catch(e){} return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="geo"]'); if(b) setTimeout(()=>irPara('geo'),50); });
 (function(){ const i=MAN.findIndex(s=>/Geolocaliza/i.test(s.t)); const item={id:'mapa-pub',t:'Mapa publicado',img:'mural',intro:'O mapa é só visual e fica guardado em cada aparelho. Só o administrador publica mudanças.',
   passos:[['Se o mapa aparecer errado ou menor','Na barra do mapa há dois botões: **↩ Usar o mapa publicado**, que joga fora o mapa deste aparelho e traz o publicado (não publica nada), e **🔎 Diagnóstico**, que mostra quantas cidades há aqui e no publicado, por região, e quando o mapa de fábrica foi recriado neste aparelho. Se este aparelho estiver com 25 cidades a menos que o publicado, ou com uma região inteira zerada que lá tem cidades, o app traz o publicado sozinho — mesmo que exista marca de edição — e bloqueia o botão Publicar, para ninguém publicar um mapa furado por engano. Apagar algumas cidades à mão continua valendo como edição normal.'],
@@ -10884,7 +10882,6 @@ function espPainel(){ const m=espMedir(); const f=document.createElement('div');
     if(b&&b.dataset.r==='b'){ b.disabled=true; b.textContent='Tirando…'; gsEnxugarBipes(true).then(r=>{ f.remove(); espChip();
       toast(r.dias?`✔ Tirei os bipes de ${r.dias} dia(s) do aparelho (${espMB(r.bytes)}). A conta desses dias continua no Painel de Gestão.`:'Nada para tirar: os bipes guardados ainda são de dias sem foto.'); }); return; } if(b||e.target===f) f.remove(); }); f.addEventListener('keydown',e=>{ if(e.key==='Escape') f.remove(); }); }
 setTimeout(espChip,6000); setInterval(espChip,60000);
-{ const _na=nexAvisos; nexAvisos=function(){ const a=_na(); try{ if(nvAdmin()){ const m=espMedir(); if(m.pct>=75) a.unshift({cor:espCor(m.pct),txt:`<b>Aparelho com ${m.pct}% do espaço ocupado</b> — clique em 💾 no topo para liberar`,acao:'esp'}); } }catch(e){} return a; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-nx-ir="esp"]'); if(b) setTimeout(espPainel,50); });
 (function(){ try{ const s=MAN.find(x=>x.id==='operacao'); if(s&&s.passos) s.passos.push(['Espaço do aparelho e XMLs (v9.16.0)',`O administrador vê no topo o 💾 com a porcentagem do espaço usado neste aparelho. A partir de 75% aparece um aviso; clique no 💾 para ver o que ocupa mais. Os XMLs das notas ficam no aparelho só por ${XMLA.dias} dias e depois saem sozinhos, mas continuam na nuvem: ao abrir um dia antigo no NexBip, os XMLs daquele dia voltam para consulta. O botão de limpar XMLs também não apaga mais da nuvem.`]); }catch(e){} })();
 
@@ -10899,7 +10896,6 @@ async function espEquipe(){ try{ if(!(typeof nvAdmin==='function'&&nvAdmin())||!
     const {data,error}=await NV.cli.from('hs_sync').select('chave,valor,atualizado_em').like('chave',ESPE.pre+'%').gt('atualizado_em',desde).limit(200); if(error) throw error;
     ESPE.lista=(data||[]).map(r=>r.valor||{}).filter(v=>!v.ok&&v.pct>=ESPE.alto).sort((a,b)=>b.pct-a.pct);
     const hoje=hojeISO(); for(const v of ESPE.lista){ const k=v.por+'|'+v.aparelho+'|'+hoje; if(ESPE.avisados[k]) continue; ESPE.avisados[k]=1; toast(`⚠ ${v.por} (${v.aparelho}) está com ${v.pct}% do espaço do aparelho ocupado. Se encher, os bipes param de ser guardados nele.`); } }catch(e){ console.warn('esp equipe',e); } }
-{ const _na=nexAvisos; nexAvisos=function(){ const a=_na(); try{ if(nvAdmin()) for(const v of ESPE.lista.slice(0,3)) a.unshift({cor:v.pct>=95?'var(--no)':'#E8590C',txt:`<b>${esc(v.por)}: aparelho com ${v.pct}% do espaço</b> — ${esc(v.aparelho)}${v.maior?' · mais pesado: '+esc(v.maior):''}`,acao:'esp'}); }catch(e){} return a; }; }
 { const _ep=espPainel; espPainel=function(){ _ep(); try{ const md=document.querySelector('.fundo:last-of-type .modal'); const bt=md&&md.querySelector('.botoes'); if(!bt) return; const L=ESPE.lista;
     bt.insertAdjacentHTML('beforebegin',`<h3 style="margin:12px 0 6px;font-size:1rem">Aparelhos da equipe</h3>${L.length?L.map(v=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--linha)"><span>${esc(v.por)} · <small class="sub">${esc(v.aparelho)}${v.maior?' · '+esc(v.maior):''}</small></span><b style="color:${v.pct>=95?'var(--no)':'#E8590C'}">${v.pct}%</b></div>`).join('')+'<p class="sub">Peça para a pessoa abrir o app com internet: os XMLs com mais de 7 dias saem sozinhos do aparelho. Se continuar alto, saia e entre de novo na conta dela.</p>':`<p class="sub">Nenhum aparelho da equipe acima de ${ESPE.alto}% nos últimos 2 dias.</p>`}`); }catch(e){} }; }
 setTimeout(()=>{ espReportar(); espEquipe(); },30000); setInterval(()=>{ if(!document.hidden){ espReportar(); espEquipe(); } },10*60e3);
@@ -10918,9 +10914,6 @@ function semBkFalta(){ try{ if(!nvAdmin()) return false;
   if(dow<4) return false;                     /* cobra a partir de sexta */
   const f=semBkFeito(); return !f||semSegunda(f)!==semSegunda(hojeISO()); }catch(e){ return false; } }
 { const _bb=bkBaixar; bkBaixar=async function(){ const r=await _bb.apply(this,arguments); try{ semBkMarcar(); }catch(e){} return r; }; }
-{ const _na3=nexAvisos; nexAvisos=function(){ const a=_na3();
-  try{ if(semBkFalta()) a.unshift({cor:'#E8590C',txt:'<b>Falta a cópia de segurança desta semana</b> — baixe o arquivo e guarde no computador',acao:'bk'}); }catch(e){}
-  return a; }; }
 { const _ma7=muralAbrir; muralAbrir=function(){ const r=_ma7.apply(this,arguments);
   try{ const g=document.querySelector('#mural .mural-g'); if(!g) return r;
     if(semBkFalta()) g.insertAdjacentHTML('afterbegin',`<div class="mural-c" style="border:2px solid #E8590C"><h3>Cópia de segurança da semana</h3><b class="big" style="color:#E8590C">Falta</b><p class="sub">Baixe o arquivo e guarde no computador. É a cópia que você mostra se a diretoria pedir.${semBkFeito()?` Última: ${fmtData(semBkFeito())}.`:''}</p><button class="btn mini pri" data-mural-bk="1" type="button">Baixar agora</button></div>`);
@@ -11579,7 +11572,6 @@ const NOTIF={ign:'healthSearch.avisosIgn',vistos:'healthSearch.avisosVistos',ped
 const avisoChave=a=>String((a&&a.acao)||'')+'|'+String((a&&a.txt)||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
 function avisoLer(k){ try{ return JSON.parse(LS.getItem(k)||'{}')||{}; }catch(e){ return {}; } }
 function avisoGravar(k,o){ try{ const lim=Date.now()-864e5; for(const x of Object.keys(o)) if(o[x]<lim) delete o[x]; LS.setItem(k,JSON.stringify(o)); }catch(e){} }
-{ const _na=nexAvisos; nexAvisos=function(){ const a=_na.apply(this,arguments); try{ const ig=avisoLer(NOTIF.ign), lim=Date.now()-864e5; return a.filter(x=>!(ig[avisoChave(x)]>lim)); }catch(e){ return a; } }; }
 /* ✕ em cada aviso da janela do sino */
 { const _ab=nexAbrirNotif; nexAbrirNotif=function(){ const a=nexAvisos(); const r=_ab.apply(this,arguments);
     try{ const f=[...document.querySelectorAll('.fundo')].pop(); const bts=f?[...f.querySelectorAll('.nx-aviso')]:[];
