@@ -38,7 +38,8 @@ Nenhuma senha ou chave fica guardada aqui — o banco só é acessado pelo app, 
 
 | arquivo | o que é |
 |---|---|
-| `index.html` | **o app inteiro** (~9,4 MB): HTML + CSS + JS + fontes/malha em base64. Um arquivo só. |
+| `index.html` | **o app** (~2,3 MB desde a v10.6.00): HTML + CSS + JS. |
+| `a/` | partes pesadas carregadas sob demanda pelo `HSA` (v10.6.00): `pdf.js`+`pdf-worker.js` (leitor de PDF), `ocr.js` (Tesseract + dados), `manual.js` (fotos do manual), `malha.js` (desenho das cidades). Mudou algo aqui? suba `V` no `HSA` **e** `PARTES` no `sw.js`. |
 | `sw.js` | service worker; o nome do cache (`hs-app-vNNN`) **precisa mudar** a cada versão |
 | `version.json` | versão + texto de novidades que o app mostra |
 | `manifest.webmanifest`, `icon-*.png` | PWA |
@@ -361,3 +362,20 @@ rede de segurança, então o pior caso de um bug aqui é voltar ao atraso de ant
 amarelo (salvando / falta subir / sem internet, o app resolve), verde (salvo; ⚡ quando ao vivo).
 Clique = `nuvSinc()` na hora. Não mexi nos handlers do painel (7991/8064/8155 montam um painel só em
 camadas) nem no chip 💾 (espaço, outra coisa). Só o indicador ficou direto.
+
+## v10.6.00 (17/11/2026) — numeração nova e o app emagreceu
+**Regra de versão (dita pelo Tiago):** a partir daqui é `10.6.NN` — só os dois últimos dígitos sobem
+(10.6.01, 10.6.02…). O número do meio só muda quando ele pedir.
+- **`HSA` (bloco logo depois do HSDB)**: leitor de PDF, OCR, fotos do manual e malha saíram do `index.html`
+  (9,4 MB → 2,3 MB) para a pasta `a/`. Cada arquivo chama `HSA.poe(id,tipo,conteudo)`, que recria o mesmo
+  `<script id=...>` de antes — por isso `OCR.txt()`, `malha()` e o manual quase não mudaram.
+  `HSA.pdf()` (substituiu todo `pdfjsLib` solto), `HSA.ocr()` (dentro de `OCR.iniciar`), `HSA.manual()`,
+  `HSA.malha()` (chamado 3 s depois do `load`; `malha()` devolve vazio e redesenha quando chega).
+  Carrega por `<script src>`, que funciona até em `file://` (os testes rodam assim).
+- **`sw.js`**: pasta `a/` vai para o cache `hs-partes-vN`, que **não** é apagado na troca de versão
+  (pega do aparelho, sem rede). `HSA.aquecer()` baixa tudo 20 s depois de abrir, para funcionar sem internet.
+- **Arquivo do WhatsApp (`gerarPacote`)**: `HSA.embutir(doc)` põe o leitor de PDF e a malha dentro do arquivo.
+- **`testes/partes.js`** (novo, roda junto): PDF real, OCR real, manual com fotos, malha, cache do SW e
+  abertura **sem internet**.
+- `sql/` antigos foram para `sql/historico/` (só registro).
+- **Endereço oficial: GitHub Pages.** A Vercel é cópia sobrando — cada endereço guarda dados separados no aparelho.

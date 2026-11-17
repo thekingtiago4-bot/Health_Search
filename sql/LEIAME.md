@@ -1,5 +1,7 @@
 # SQLs do Health Search — ordem e para que serve cada um
 
+> **17/11/2026 (v10.6.00):** os arquivos da tabela abaixo foram movidos para `sql/historico/` (ja aplicados no banco, guardados so como registro). Mudanca nova no banco: so por `sql/migracoes/`.
+
 Todos podem ser rodados de novo sem apagar dados.
 
 | Ordem | Arquivo | Para que serve |

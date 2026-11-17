@@ -1,8 +1,14 @@
 /* Health Search · aplicativo: abre mesmo sem internet e sempre busca a versão nova quando há conexão */
-const CACHE='hs-app-v179';
+const CACHE='hs-app-v180';
+/* v10.6.00: partes pesadas (pasta a/, com ?v=) ficam num cache proprio que nao e apagado a cada versao.
+   Mudou algum arquivo de a/? Suba o V no HSA (index.html) E este PARTES. */
+const PARTES='hs-partes-v1';
 self.addEventListener('install',e=>{ self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png']).catch(()=>{}))); });
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE&&k!==PARTES).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{ const u=new URL(e.request.url); if(e.request.method!=='GET'||(u.origin!==location.origin&&u.hostname!=='cdn.jsdelivr.net')||u.pathname.endsWith('version.json')) return;
+  /* pasta a/: o endereco ja leva a versao (?v=), entao o que esta guardado vale — pega do aparelho, sem rede */
+  if(u.origin===location.origin&&/\/a\/[^/]+$/.test(u.pathname)){ e.respondWith(caches.open(PARTES).then(async c=>{ const h=await c.match(e.request); if(h) return h;
+    const r=await fetch(e.request); if(r&&r.ok) c.put(e.request,r.clone()); return r; })); return; }
   /* sempre pede ao servidor sem usar o cache do navegador (no-cache = confere se mudou); sem internet, usa a cópia guardada */
   /* v10.5.11: so guarda resposta boa (antes guardava ate pagina de erro 404) e, quando a rede
      falha, tenta a copia guardada ignorando o ?v=... do endereco — sem isso um endereco com

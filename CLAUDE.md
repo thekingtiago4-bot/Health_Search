@@ -5,7 +5,7 @@ arquitetura por prefixo de módulo, onde ficam os dados, o ritual de publicaçã
 
 ## Economia de contexto (regra principal)
 
-O `index.html` tem ~9,4 MB (fontes e malha em base64). **Nunca leia o arquivo inteiro.**
+O `index.html` tem ~2,3 MB (as partes pesadas ficam em `a/`, desde a v10.6.00). **Nunca leia o arquivo inteiro.**
 
 1. `MAPA.md` → entender o terreno.
 2. `MAPA-FUNCOES.md` → achar a função: `grep -n '^- \`nomeDaFuncao\`' MAPA-FUNCOES.md`
@@ -23,6 +23,8 @@ O `index.html` tem ~9,4 MB (fontes e malha em base64). **Nunca leia o arquivo in
 - `node testes/idb.js` também tem que passar: valida a camada HSDB (IndexedDB) de verdade, subindo um
   servidor local (o Chromium só dá IndexedDB em http/https, não em `file://`). Cobre migração sem perda,
   persistência, união entre abas, sessão intacta e falha de gravação virando erro.
+- `node testes/partes.js` também: leitor de PDF, OCR, manual, malha e abertura sem internet (pasta `a/`).
+- Versão: `10.6.NN` — só os dois últimos dígitos sobem; o do meio só quando o Tiago pedir.
 - Antes dos testes, checar a sintaxe do script (um `\n` dentro de string quebra o app inteiro):
   `python3 -c "import re;s=open('index.html',encoding='utf-8').read();b=max(re.findall(r'<script>(.*?)</script>',s,re.S),key=len);open('/tmp/app.js','w',encoding='utf-8').write(b)" && node --check /tmp/app.js`
 - Publicar = versão no `index.html` + cache no `sw.js` + `version.json` + testes + push.
