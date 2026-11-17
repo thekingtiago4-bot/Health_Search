@@ -4484,15 +4484,33 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.9', HS_DATA='17/11/2026';
-(function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
+const HS_VERSAO='10.5.10', HS_DATA='17/11/2026';
+(function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA} <button type="button" id="app-ver-bt" class="btn mini" style="margin-left:8px">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
   if(!web) return;
   const cmp=(a,b)=>{ a=String(a).split('.').map(Number); b=String(b).split('.').map(Number); for(let i=0;i<Math.max(a.length,b.length);i++){ const d=(a[i]||0)-(b[i]||0); if(d) return d; } return 0; };
   async function checar(){ try{ const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const j=await r.json();
       if(j.versao&&cmp(j.versao,HS_VERSAO)>0){ const a=$('#app-att'); a.querySelector('span').innerHTML=`Nova versão <b>${esc(j.versao)}</b> disponível${j.novidades?': '+esc(j.novidades):''}. Seus dados ficam salvos.`; a.hidden=false; } }catch(e){} }
-  $('#app-att-ok').onclick=async()=>{ try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k); const rg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration(); if(rg) await rg.update(); }catch(e){} location.reload(); };
+  /* v10.5.10: limpa tudo que o aparelho guardou e recarrega buscando no servidor.
+     Serve tanto para a faixa quanto para o botao "Buscar atualização". */
+  async function atualizarAgora(){ try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k);
+      const rg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();
+      if(rg){ try{ await rg.update(); }catch(e){} }
+    }catch(e){}
+    /* endereco novo a cada vez: o aparelho nao tem como servir uma copia velha dele */
+    try{ const u=new URL(location.href); u.searchParams.set('v',Date.now().toString(36)); location.replace(u.toString()); return; }catch(e){}
+    location.reload(); }
+  $('#app-att-ok').onclick=atualizarAgora;
+  document.addEventListener('click',async e=>{ if(!(e.target.closest&&e.target.closest('#app-ver-bt'))) return;
+    const b=e.target.closest('#app-ver-bt'); b.disabled=true; const t=b.textContent; b.textContent='Procurando…';
+    try{ const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});
+      if(r.ok){ const j=await r.json();
+        if(j.versao&&cmp(j.versao,HS_VERSAO)>0){ toast('Versão '+j.versao+' encontrada. Atualizando…'); return atualizarAgora(); }
+        toast('Este aparelho já está na versão mais nova ('+HS_VERSAO+').'); }
+      else toast('Não consegui falar com o servidor agora.');
+    }catch(err){ toast('Não consegui falar com o servidor agora.'); }
+    b.disabled=false; b.textContent=t; });
   setTimeout(checar,4000); setInterval(checar,5*60*1000); window.addEventListener('focus',checar);
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   let pedido=null; window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); pedido=e; }); window.addEventListener('appinstalled',()=>{ const b=$('#app-inst'); if(b) b.hidden=true; toast('Health Search instalado.'); });

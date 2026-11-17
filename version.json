@@ -1,1 +1,1 @@
-{"versao":"10.5.9","data":"2026-11-17","novidades":"Checklist Agregados: apagar uma linha nao some mais com as outras do mesmo motorista (elas estavam escondidas, nao perdidas, e voltam sozinhas), e a mesma pessoa criada em dois aparelhos vira uma linha so."}
+{"versao":"10.5.10","data":"2026-11-17","novidades":"Botao \"Buscar atualizacao\" junto da versao: forca o aparelho a pegar a versao nova na hora, sem depender do cache."}
