@@ -1,1 +1,1 @@
-{"versao":"10.5.10","data":"2026-11-17","novidades":"Botao \"Buscar atualizacao\" junto da versao: forca o aparelho a pegar a versao nova na hora, sem depender do cache."}
+{"versao":"10.5.11","data":"2026-11-17","novidades":"O app nao mostra mais \"Nao e possivel acessar esse site\" quando a rede falha: usa a copia guardada mesmo com ?v= no endereco, e nunca guarda pagina de erro no lugar do app."}
