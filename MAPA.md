@@ -494,3 +494,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   (`gsAjuste`), e a nota volta para pendente. Banco: bipe só o admin apaga, ou o próprio nos 5 min (v8.3.0).
 - **Manual em folhas** (só na tela) e foto nova do Mural (`manual.js` → `?v=3`).
 - **Reentregas no celular**: cartão em duas colunas, rótulo pequeno em cima, ✕ no canto, "Reentrega nº".
+
+## v10.6.08 (17/11/2026) — restos e decisão sobre os remendos
+- Saíram restos do BIT/Avarias que apontavam para telas que não existem (`#eva-bt`, `#t-eva`, ramo `t-avarias`).
+- **Remendos (item 2 do Tiago):** ficam ~218 em 98 funções. **Decisão:** não juntar as cadeias vivas às cegas —
+  várias têm efeito de negócio escondido (ex.: o remendo do `muralAbrir` em 6166 chama `dvVarrer`, que marca
+  divergência como "apareceu"). Plano: um módulo por rodada, com teste próprio antes/depois; NexBip (`opRender`,
+  `opMostrar`, `opLerEtiqueta`) só com teste em aparelho real.

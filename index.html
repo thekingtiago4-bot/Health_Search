@@ -4515,7 +4515,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.07', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.08', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9415,7 +9415,6 @@ function murArrumar(){ try{
   try{ const bt=$('#mu-bt'), rs=$('#mu-reset'), adm=(nvAdmin()||!cargoLogado());
     if(bt) bt.hidden=!adm; if(rs) rs.hidden=!adm;
     if(!adm&&MU.edit){ MU.edit=false; } }catch(e){}
-  try{ const b=$('#eva-bt'); if(b) b.hidden=true; }catch(e){}
 }catch(e){} }
 { const _mab=muralAbrir; muralAbrir=function(){ const r=_mab.apply(this,arguments); murArrumar(); setTimeout(murArrumar,0); requestAnimationFrame(murArrumar); return r; }; }
 { const _map=muAplicar; muAplicar=function(){ const r=_map.apply(this,arguments); murArrumar(); return r; }; }
@@ -10420,8 +10419,7 @@ function confRelTela(){ const dias=Object.entries(S.confDias||{}).sort((a,b)=>b[
 /* v9.23.0 · a caixa de bipe VOLTOU para as Divergências: dá para bipar a nota ali e dizer quantos
    volumes faltam, sem precisar do NexBip — serve para reentrega de outro turno, lançada depois. */
 (function(){ for(const id of ['t-divergencias']){ const s=document.getElementById(id); if(!s) continue; const bip=s.querySelector('.op-bip'); if(!bip) continue;
-  if(id==='t-avarias'){ bip.style.display='none'; bip.insertAdjacentHTML('afterend','<p class="sec" style="margin:4px 0 10px">📷 Para registrar, bipe a caixa no <a href="#" data-ir-nexbip>NexBip</a> (ou pesquise na Busca) e marque o quadrado <b>Avaria</b>.</p>'); }
-  else bip.insertAdjacentHTML('afterend','<p class="sec" style="margin:4px 0 10px">Bipe aqui a nota e diga <b>quantos volumes faltam</b> — serve para o que não deu para lançar na hora. Na conferência do dia dá para marcar pelo <a href="#" data-ir-nexbip>NexBip</a> também.</p>'); } })();
+  bip.insertAdjacentHTML('afterend','<p class="sec" style="margin:4px 0 10px">Bipe aqui a nota e diga <b>quantos volumes faltam</b> — serve para o que não deu para lançar na hora. Na conferência do dia dá para marcar pelo <a href="#" data-ir-nexbip>NexBip</a> também.</p>'); } })();
 document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-ir-nexbip]')){ e.preventDefault(); irPara('operacao'); } });
 
 /* ---- Romaneios: só “carregar” em cima; resto em ⋯ Mais; Banco de romaneios vira sub-aba; sem arquivo de WhatsApp ---- */
@@ -10495,7 +10493,7 @@ setInterval(()=>{ try{ if(Store.modo==='nuvem'&&NV.perfil&&NV.perfil.trocar_senh
 #nuv-st{display:inline-flex!important;align-items:center;gap:6px;margin:2px 10px 8px;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:rgba(195,226,224,.85);font-size:.72rem;letter-spacing:.02em;width:max-content}
 .aj-card{border:1px solid var(--linha);border-radius:14px;padding:16px;margin:0 0 14px;background:var(--sup)}.aj-card h2{margin:0 0 10px;font-size:1.05rem}
 .aj-ordem li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--linha)}.aj-ordem li span{flex:1}
-#t-eva .eva-centro{max-width:760px;margin:0 auto}#t-eva #eva-painel{position:static!important;inset:auto!important;width:100%!important;max-width:none!important;height:min(70vh,640px)!important;transform:none!important;box-shadow:none;border:1px solid var(--linha);display:flex!important}`; document.head.appendChild(st);
+}`; document.head.appendChild(st);
   const resumo=document.querySelector('.resumo'); if(!resumo) return;
   const u=document.createElement('div'); u.className='rail-user'; u.innerHTML='<span class="av" id="ru-av">?</span><div><b id="ru-nome">—</b><small id="ru-papel"></small></div><button type="button" id="ru-sair">Deslogar</button>';
   const aut=resumo.querySelector('.autoria'); resumo.insertBefore(u,aut);
@@ -10528,7 +10526,6 @@ body:has(#nv-tela:not([hidden])) :is(.perm-sheet,#perm-sheet,#nx-sino,#eva-bt,#h
 @media (min-width:861px){
   .toast{bottom:auto!important;top:calc(14px + env(safe-area-inset-top,0px))!important;left:50%!important;transform:translateX(-50%)!important;right:auto!important}
   #hs-salvar{right:20px!important;bottom:calc(18px + var(--sab))!important}
-  #eva-bt{right:24px!important;bottom:calc(76px + var(--sab))!important}
   #ch-aviso{right:96px!important;bottom:calc(18px + var(--sab))!important}
 }
 @media (max-width:860px){
@@ -10543,12 +10540,10 @@ body:has(#nv-tela:not([hidden])) :is(.perm-sheet,#perm-sheet,#nx-sino,#eva-bt,#h
   main,.conteudo,.tela{padding-bottom:calc(96px + var(--sab))!important}
   #hs-salvar{right:12px!important;bottom:calc(12px + var(--sab))!important;width:48px!important;height:48px!important;padding:0!important;border-radius:50%!important;overflow:hidden;font-size:0!important;display:grid!important;place-items:center}
   #hs-salvar::before{content:"💾";font-size:20px}
-  #eva-bt{right:10px!important;bottom:calc(68px + var(--sab))!important;transform:scale(.8);transform-origin:bottom right}
   .toast,#toast{left:12px!important;right:12px!important;bottom:auto!important;top:calc(10px + env(safe-area-inset-top,0px))!important;transform:none!important;max-width:none!important;font-size:.9rem}
   #robo-sql,#robo-aviso,#hs-desf{top:auto!important;bottom:calc(72px + var(--sab))!important;left:12px!important;right:72px!important;transform:none!important;max-width:none!important;font-size:.82rem!important;flex-wrap:wrap}
   #ch-aviso{right:72px!important;left:12px!important;bottom:calc(72px + var(--sab))!important;max-width:none!important}
   .perm-sheet,#perm-sheet{bottom:0!important;padding-bottom:calc(16px + var(--sab))!important}
-  #eva-painel{left:8px!important;right:8px!important;width:auto!important;bottom:calc(8px + var(--sab))!important;max-height:calc(100dvh - 90px)!important}
   .modal{max-height:calc(100dvh - 24px);overflow:auto}
   .tela h1{font-size:1.5rem}
 }
