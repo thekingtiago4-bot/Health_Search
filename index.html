@@ -4484,7 +4484,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.5.8', HS_DATA='17/11/2026';
+const HS_VERSAO='10.5.9', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver">Versão <b>${HS_VERSAO}</b> · ${HS_DATA}</div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8777,9 +8777,45 @@ const CK_SEED=[['ANDRÉ','RTR-2J84','2026-10-12'],['BETO','RFB-9J02','2026-10-24
 function ckSeedRow(x){ const desat=x[2]==='DESATIVADO'; return {id:'ck'+Math.random().toString(36).slice(2),mot:x[0],placa:x[1],data:desat?'':x[2],ativo:!desat}; }
 function ckApagados(){ if(!Array.isArray(S.ckApagados)) S.ckApagados=[]; return S.ckApagados; }
 function ckApagado(mot){ const k=rpNz(String(mot||'')); return !!k&&ckApagados().some(x=>rpNz(x.mot||x)===k); }
-function ckS(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); return S.checklist.filter(r=>!ckApagado(r.mot)); }
+/* v10.5.9: a linha apagada e marcada pelo ID. Assim ela nao volta da nuvem (mesmo id),
+   e uma linha IRMA do mesmo motorista (outro id) continua aparecendo — antes sumiam as duas. */
+function ckApagadaId(id){ return !!id&&ckApagados().some(x=>x&&x.id===id); }
+function ckS(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); ckDedup(); return S.checklist.filter(r=>!ckApagadaId(r&&r.id)); }
 function ckTudo(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); return S.checklist; }
+/* v10.5.9: mesma pessoa em duas linhas (cada aparelho criou a sua) vira uma linha so.
+   Deterministico: vence o id menor, e os campos vazios dele sao preenchidos pelas outras. */
+function ckChaveMot(mot){ try{ return rpNz(motCanon(mot)); }catch(e){ return rpNz(mot); } }
+function ckDedup(){ try{ const L=S.checklist; if(!Array.isArray(L)||L.length<2) return false;
+    const por=new Map();
+    for(const r of L){ if(ckApagadaId(r&&r.id)) continue; const k=ckChaveMot(r&&r.mot); if(!k) continue; (por.get(k)||por.set(k,[]).get(k)).push(r); }
+    let mud=false; const fora=new Set();
+    for(const [,g] of por){ if(g.length<2) continue;
+      g.sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')));
+      const base=g[0];
+      for(const o of g.slice(1)){
+        if(!base.placa&&o.placa) base.placa=o.placa;
+        if(o.data&&(!base.data||o.data>base.data)) base.data=o.data;   /* fica o checklist mais recente */
+        if(base.ativo===false&&o.ativo===true) base.ativo=true;
+        fora.add(o); }
+      mud=true; }
+    if(mud){ S.checklist=L.filter(r=>!fora.has(r));
+      try{ console.warn('Checklist: juntei '+fora.size+' linha(s) repetida(s)'); }catch(e){}
+      try{ salvar(); }catch(e){} }
+    return mud; }catch(e){ return false; } }
 function ckSalvar(){ salvar(); ckRender(); }
+/* v10.5.9: tira UMA linha. So marca o nome como "nao traga de volta" se nao sobrou
+   nenhuma linha dele — antes marcava sempre, e a lista escondia as linhas irmas,
+   entao apagar uma sumia com as duas. */
+function ckExcluir(id){ const alvo=ckTudo().find(x=>x.id===id); if(!alvo) return false;
+  const nome=String(alvo.mot||'').trim();
+  S.checklist=ckTudo().filter(x=>x.id!==id);
+  const sobrou=!!nome&&ckTudo().some(x=>ckChaveMot(x.mot)===ckChaveMot(nome));
+  const reg={id:id,em:new Date().toISOString(),por:(typeof NV!=='undefined'&&NV.perfil&&NV.perfil.nome)||''};
+  /* o nome so entra na marca quando nao sobrou nenhuma linha dele: e o nome que impede
+     o Cadastro Agregado de recriar a pessoa sozinho. */
+  if(nome&&!sobrou) reg.mot=nome.toUpperCase();
+  ckApagados().push(reg);
+  return true; }
 function ckVenc(reg){ if(!reg.data) return ''; const d=new Date(reg.data+'T00:00:00'); d.setDate(d.getDate()+30); return d.toISOString().slice(0,10); }
 /* v9.21.0 · o rastreador do Cadastro Agregado manda na planilha:
    sim = entra normal · não = fica fora da planilha · desativado = entra como N/A, status DESATIVADO. */
@@ -8792,7 +8828,7 @@ function ckLista(filtro){ const L=ckS().filter(r=>ckRast(r)!=='nao');
 /* cada agregado do cadastro (rastreador sim ou desativado) tem a sua linha na planilha */
 function ckSincronizar(){ try{ const L=ckTudo(); let mud=false;
     for(const m of (S.cadMot||[])){ if(cadTipo(m)!=='agregado'||cadRastDe(m)==='nao') continue; if(ckApagado(m.nome)) continue;
-      if(L.some(r=>motCanon(r.mot)===m.nome||rpNz(r.mot)===rpNz(m.nome))) continue;
+      if(L.some(r=>ckChaveMot(r.mot)===ckChaveMot(m.nome))) continue;
       L.push({id:'ck'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),mot:m.nome,placa:'',data:'',ativo:true}); mud=true; }
     if(mud) salvar(); return mud; }catch(e){ return false; } }
 function ckStatus(reg){ if(ckDesativado(reg)) return {cor:'cinza',txt:'DESATIVADO',venc:''}; if(!reg.data) return {cor:'cinza',txt:'SEM DATA',venc:''};
@@ -8930,8 +8966,7 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; try{ ckSincronizar
        const alvo=ckTudo().find(x=>x.id===del.dataset.ckDel); const nome=alvo?String(alvo.mot||'').trim():'';
        /* v9.26.0: apagar linha do Checklist é definitivo — pergunta antes */
        if(!await confirmar('Excluir do Checklist',nome?`Tirar <b>${esc(nome.toUpperCase())}</b> da planilha?<br><br>Ele não volta sozinho pela sincronização nem pelo Cadastro Agregado. Para trazer de volta, use ＋ Adicionar e digite o nome.`:'Apagar esta linha da planilha?','Excluir')) return;
-       if(nome&&!ckApagado(nome)) ckApagados().push({mot:nome.toUpperCase(),em:new Date().toISOString(),por:(NV.perfil&&NV.perfil.nome)||''});
-       S.checklist=ckTudo().filter(x=>x.id!==del.dataset.ckDel); ckSalvar();
+       ckExcluir(del.dataset.ckDel); ckSalvar();
        if(nome) toast(`${nome.toUpperCase()} saiu da planilha. Não volta mais sozinho — para trazer de novo, use ＋ Adicionar.`);
        return; }
     const wa=e.target.closest('#ck-wa'); if(wa){ ckEnviar(); return; }

@@ -162,8 +162,9 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
   { const c=await p.evaluate(()=>{ cadInit();
       S.cadMot=[{nome:'GUSMAO',alias:'',cpf:'',tipo:'agregado',rast:'sim'}];
       S.checklist=[{id:'k1',mot:'GUSMAO',placa:'AAA-1A11',data:hojeISO(),ativo:true},{id:'k2',mot:'ANDRE',placa:'BBB-2B22',data:hojeISO(),ativo:true}];
-      S.ckApagados=[{mot:'GUSMAO',em:new Date().toISOString(),por:'teste'}];
-      S.checklist=ckTudo().filter(x=>x.id!=='k1');
+      /* v10.5.9: a exclusao e feita pelo app (marca a LINHA pelo id, nao o nome),
+         para que uma linha irma do mesmo motorista continue aparecendo. */
+      S.ckApagados=[]; ckExcluir('k1');
       const apagado=ckS().map(x=>x.mot).join(',');
       S.checklist.push({id:'k1',mot:'GUSMAO',placa:'AAA-1A11',data:hojeISO(),ativo:true});
       const nuvem=ckS().map(x=>x.mot).join(',');
