@@ -698,11 +698,11 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       S.romaneios=[{id:'eq1',numero:'0017824',base:'DF',arquivo:a,rows:[{nf:'46568',ped:'',vol:'1',dest:'ELAINE CRISTINA FARIA ABRAHAO',cid:'POCOS DE CALDAS',uf:'MG'},{nf:'46205',ped:'',vol:'1',dest:'CAROLINA FERNANDES PEREIRA',cid:'POUSO ALEGRE',uf:'MG'},{nf:'46300',ped:'',vol:'2',dest:'CAROLINA FERNANDES SILVA',cid:'POUSO ALEGRE',uf:'MG'}]}];
       OP.dia=h; OP.bipes=[]; renderTudo(); const R={}; const P=(dest,cid,qr)=>({dest,cid,nfs:[],nums:[],qr:qr?[qr]:[],tot:1,modelo:''});
       opLerEtiqueta(P('ELAINE CRISTINA FAR','CALDAS','045865')); await w(250); R.um=OP.bipes.map(b=>b.nf+':'+b.status).join(',');
-      opLerEtiqueta(P('CAROLINA FERNANDES','POUSO ALEGRE','046159')); await w(150); const j=document.getElementById('etq-escolha'); R.n=j?j.querySelectorAll('.etq-op').length:0; if(j) j.querySelector('[data-etq-i="0"]').click(); await w(250);
+      opLerEtiqueta(P('CAROLINA FERNANDES','POUSO ALEGRE','046159')); await w(150); const j=document.getElementById('etq-escolha'); R.n=j?j.querySelectorAll('.etq-op').length:0; R.ori=j?[...j.querySelectorAll('.etq-ori')].map(x=>x.textContent).join(','):''; if(j) j.querySelector('[data-etq-i="0"]').click(); await w(250);
       opLerEtiqueta(P('WALKIRIA SILVIA SANT','COTIA','051208')); await w(150); const j3=document.getElementById('etq-escolha'); if(j3) j3.querySelector('[data-etq-fora]').click(); await w(250);
       const bf=OP.bipes[0]; R.fora=bf&&(bf.status+':'+bf.ped); S.romaneios=[]; OP.bipes=[]; renderTudo(); return R; });
     ok(eq.um==='46568:ok','etiqueta por cliente: 1 nota batendo tinha que dar baixa direto ('+eq.um+')');
-    ok(eq.n===2,'etiqueta por cliente: com 2 notas iguais tinha que abrir a janela de escolha ('+eq.n+')');
+    ok(eq.ori==='DF,DF','etiqueta por cliente: cada opção tinha que mostrar a origem no canto ('+eq.ori+')'); ok(eq.n===2,'etiqueta por cliente: com 2 notas iguais tinha que abrir a janela de escolha ('+eq.n+')');
     ok(eq.fora==='fora:51208','etiqueta por cliente: o ✕ tinha que lançar fora com o pedido do QR ('+eq.fora+')'); }
   { /* v10.6.18 · relatório de divergências (Excel + PDF): só lê, não grava nada */
     const rl=await p.evaluate(async()=>{ const antes=JSON.stringify(S.divergencias||[]); const guard=S.divergencias;

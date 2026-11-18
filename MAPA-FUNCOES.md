@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 18/11/2026 11:28 · versão 10.6.18
+Gerado em 18/11/2026 19:03 · versão 10.6.19
 
 
 ## ab
@@ -297,15 +297,15 @@ Gerado em 18/11/2026 11:28 · versão 10.6.18
 - `dvavDaNota` — linha 10096
 - `dvavFoto` — linha 10130
 - `dvavVoltar` — linha 10131
-- `dvrConta` — linha 11941
-- `dvrDias` — linha 11923
-- `dvrHTML` — linha 12026
-- `dvrJanela` — linha 12080
-- `dvrLinha` — linha 11936
-- `dvrLista` — linha 11932
-- `dvrPDF` — linha 12076
-- `dvrPeriodo` — linha 11925
-- `dvrXLSX` — linha 11954
+- `dvrConta` — linha 11945
+- `dvrDias` — linha 11927
+- `dvrHTML` — linha 12030
+- `dvrJanela` — linha 12084
+- `dvrLinha` — linha 11940
+- `dvrLista` — linha 11936
+- `dvrPDF` — linha 12080
+- `dvrPeriodo` — linha 11929
+- `dvrXLSX` — linha 11958
 
 ## ed
 - `edAbrir` — linha 4348

@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.18', HS_DATA='18/11/2026';
+const HS_VERSAO='10.6.19', HS_DATA='18/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -11878,7 +11878,9 @@ function etqLancarFora(p){ const num=(p.qr||[]).find(n=>/^\d{5,9}$/.test(n))||(p
   try{ const b=OP.bipes[0]; if(b&&b.status==='fora'){ S.opForaInfo=S.opForaInfo||{}; S.opForaInfo[b.local_id]=Object.assign(S.opForaInfo[b.local_id]||{},{dest:p.dest||'',cid:p.cid||'',tot:p.tot||null}); salvar(); } }catch(e){}
   try{ opRender(); }catch(e){} }
 function etqEscolher(p,C){ ETQC.aberto=true; const f=document.createElement('div'); f.className='fundo'; f.id='etq-escolha'; f.style.zIndex='4000';
-  const lin=(c,i)=>`<button type="button" class="etq-op" data-etq-i="${i}"><b>NF ${esc(opK(c.x.nf)||'—')}${c.x.ped?' · ped. '+esc(c.x.ped):''}</b><span>${esc(c.x.dest||'')}</span><small>${esc([c.x.cid,c.x.uf].filter(Boolean).join('/'))} · ${fmtN(volNum(c.x.vol)||1)} vol. · romaneio ${esc(c.r.numero||'')}${c.pendente?'':' · <em>já conferida</em>'}</small></button>`;
+  /* v10.6.19: a origem (remetente do romaneio) aparece no canto, na mesma cor da Conferência total */
+  const ori=c=>String((c.x&&c.x.base)||(c.r&&c.r.base)||'').trim();
+  const lin=(c,i)=>{ const o=ori(c), cor=opCorBase(o||'?'); return `<button type="button" class="etq-op" data-etq-i="${i}" style="border-left:6px solid ${cor}">${o?`<i class="etq-ori" style="background:${cor}">${esc(o)}</i>`:''}<b>NF ${esc(opK(c.x.nf)||'—')}${c.x.ped?' · ped. '+esc(c.x.ped):''}</b><span>${esc(c.x.dest||'')}</span><small>${esc([c.x.cid,c.x.uf].filter(Boolean).join('/'))} · ${fmtN(volNum(c.x.vol)||1)} vol. · romaneio ${esc(c.r.numero||'')}${c.pendente?'':' · <em>já conferida</em>'}</small></button>`; };
   f.innerHTML=`<div class="modal etq-modal" role="dialog" aria-modal="true"><h2>${C.length?'Qual destas notas é esta caixa?':'Não achei essa caixa no romaneio de hoje'}</h2>
     <p class="sub">Etiqueta: <b>${esc(p.dest||'?')}</b>${p.cid?' · '+esc(p.cid):''}${(p.qr||[])[0]?' · pedido '+esc(p.qr[0]):''}</p>
     ${C.length?`<div class="etq-lista">${C.map(lin).join('')}</div>`:''}
@@ -11908,6 +11910,8 @@ function etqEscolher(p,C){ ETQC.aberto=true; const f=document.createElement('div
 .etq-lista{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;margin-bottom:12px}
 .etq-op{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1.5px solid var(--linha);border-radius:12px;background:var(--sup2)}
 .etq-op:hover,.etq-op:focus-visible{border-color:var(--teal);outline:none}
+.etq-op{position:relative}.etq-op b{padding-right:96px}
+.etq-ori{position:absolute;top:10px;right:10px;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:normal;font-weight:800;font-size:.8rem;letter-spacing:.03em;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.35);padding:3px 9px;border-radius:999px;text-transform:uppercase}
 .etq-op b{font-size:1.05rem}.etq-op span{font-weight:600}.etq-op small{color:var(--mudo)}.etq-op em{color:var(--ag);font-style:normal}
 .etq-fora{all:unset;cursor:pointer;display:block;text-align:center;width:100%;box-sizing:border-box;padding:16px;border-radius:14px;background:var(--no);color:#fff;font-size:1.1rem;font-weight:800;margin-top:auto}
 .etq-canc{margin-top:8px;width:100%;justify-content:center}`; document.head.appendChild(st); })();

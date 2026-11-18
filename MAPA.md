@@ -570,3 +570,7 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - **PDF** (`dvrHTML`/`dvrPDF`): janela de impressão A4 deitada com logo, cartões, barras e a tabela.
 - Só lê: usa `dvSo()` (sem avarias antigas) e a cidade é buscada numa cópia — gerar relatório não grava nada.
 - O clique é pego em captura no `document` antes do `onclick` antigo (que continua no código, sem uso).
+
+### v10.6.19 · Etiqueta por cliente: origem no canto
+- Em `etqEscolher`, cada opção mostra a origem do romaneio (`x.base` ou `r.base`) numa pílula no canto
+  (`.etq-ori`) e uma faixa à esquerda, com a cor de `opCorBase` — a mesma da Conferência total.
