@@ -1,1 +1,1 @@
-{"versao":"10.6.21","data":"2026-11-18","novidades":"Divergencias: botao 'Escrever as caixas a mao' para notas segregadas ou fracionadas (ex.: 3/10, 10/10 e 1/1). Enter anota e ja deixa pronto para a proxima."}
+{"versao":"10.6.22","data":"2026-11-18","novidades":"NexBip: etiquetas fracionadas. 1/13 e 1/2 do mesmo pedido contam como caixas diferentes; etiqueta igual (1/1 e 1/1) pergunta se e outra caixa. QR do pallet de 8 digitos reconhecido."}

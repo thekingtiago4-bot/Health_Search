@@ -737,6 +737,36 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(cm.travou===1,'caixas à mão: 5/2 não podia entrar ('+cm.travou+')');
     ok(cm.esc==='["3/10","1/1"]','caixas à mão: a janela devolveu errado ('+cm.esc+')');
     ok(cm.d==='2|["3/10","1/1"]|null|faltaram as caixas 3/10 e 1/1','caixas à mão: divergência gravada errada ('+cm.d+(cm.err?' '+cm.err:'')+')'); }
+  { /* v10.6.22 · etiquetas fracionadas: caixa = número + total da série; etiqueta igual pergunta */
+    const fr=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); NV.perfil={papel:'admin',ativo:true,nome:'T'}; document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      const h=hojeISO(), arq='x '+h.split('-').reverse().join('-')+'.pdf'; const rs=S.romaneios;
+      S.romaneios=[{id:'fr1',numero:'1',base:'CAJ',arquivo:arq,rows:[{nf:'50001',ped:'739273',vol:'15',dest:'HOSPITAL'},{nf:'50002',ped:'733772',vol:'2',dest:'VACCINE'},{nf:'50003',ped:'731696',vol:'6',dest:'LAB'},{nf:'50004',ped:'700100',vol:'13',dest:'NORMAL'}]}];
+      OP.dia=h; OP.bipes=[]; renderTudo(); const Q=(c,t,pd)=>'12420164002109@'+String(c).padStart(4,'0')+'@'+String(t).padStart(4,'0')+'@'+pd;
+      const st=()=>OP.bipes[0]&&OP.bipes[0].status; const r={};
+      const ler=async(c,t,pd)=>{ OP.ultLeitura=0; opLer([Q(c,t,pd)],'teclado'); await w(30); };
+      // 13 + 2 no mesmo pedido: 1/13 e 1/2 são caixas diferentes
+      await ler(1,13,'739273'); await ler(1,2,'739273'); await ler(2,2,'739273'); r.serie=OP.bipes.slice(0,3).map(b=>b.status).join(',')+' lidos='+opContagem('739273','50001').lidos;
+      await ler(1,13,'739273'); r.dupSerie=st(); r.semPergunta=!document.getElementById('op-mesma');
+      // 1/1 e 1/1 (nota de 2): pergunta; "outra" conta; terceira vez = duplicada
+      await ler(1,1,'733772'); await ler(1,1,'733772'); r.perg=!!document.getElementById('op-mesma');
+      (document.querySelector('#op-mesma [data-o="s"]')||{click(){}}).click(); await w(30); r.outra=st()+':'+/:outra/.test(OP.bipes[0].tipo)+' lidos='+opContagem('733772','50002').lidos;
+      await ler(1,1,'733772'); r.terceira=st()+' perg='+!!document.getElementById('op-mesma');
+      // 1/3 e 1/3 (nota de 6): "mesma caixa" não conta
+      await ler(1,3,'731696'); const n0=OP.bipes.length; await ler(1,3,'731696'); (document.querySelector('#op-mesma [data-o="n"]')||{click(){}}).click(); await w(30); r.mesma=(OP.bipes.length===n0)+' lidos='+opContagem('731696','50003').lidos;
+      // nota normal 13: etiqueta repetida continua duplicada, sem pergunta
+      await ler(5,13,'700100'); await ler(5,13,'700100'); r.normal=st()+' perg='+!!document.getElementById('op-mesma');
+      // pallet de 8 dígitos sozinho não vira bipe
+      const n1=OP.bipes.length; OP.ultLeitura=0; opLer(['10067143'],'teclado'); await w(30); r.pallet=OP.bipes.length===n1;
+      OP.ultLeitura=0; opLer([Q(2,13,'739273'),'10093019'],'teclado'); await w(30); r.palletCampo=OP.bipes[0].pallet;
+      document.querySelectorAll('.fundo').forEach(f=>f.remove()); OP.bipes=[]; S.romaneios=rs; return r; });
+    ok(fr.serie==='ok,ok,ok lidos=3','fracionada: 1/13, 1/2 e 2/2 do mesmo pedido tinham que contar 3 caixas ('+fr.serie+')');
+    ok(fr.dupSerie==='dup'&&fr.semPergunta,'fracionada: 1/13 lida de novo (nota 13+2) tinha que ser duplicada ('+fr.dupSerie+')');
+    ok(fr.perg,'fracionada: 1/1 e 1/1 no pedido de 2 caixas tinha que perguntar');
+    ok(fr.outra==='ok:true lidos=2','fracionada: "outra caixa" tinha que contar ('+fr.outra+')');
+    ok(fr.terceira==='dup perg=false','fracionada: com a nota completa, a 3ª leitura é duplicada sem perguntar ('+fr.terceira+')');
+    ok(fr.mesma==='true lidos=1','fracionada: "mesma caixa" não podia contar ('+fr.mesma+')');
+    ok(fr.normal==='dup perg=false','fracionada: nota normal (5/13 duas vezes) tinha que ser duplicada sem perguntar ('+fr.normal+')');
+    ok(fr.pallet,'pallet de 8 dígitos sozinho virou bipe'); ok(fr.palletCampo==='10093019','pallet de 8 dígitos não foi guardado no bipe ('+fr.palletCampo+')'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */

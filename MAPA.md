@@ -589,3 +589,16 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   dois (cartão, PDF do Painel, WhatsApp, relatório). `opConfFalta` aceita lista de texto. `dvRegistrar` (Busca)
   passou a guardar também as caixas da grade e o total da nota (antes perdia).
 - Aparelho com versão antiga não conhece `faltM`, mas a quantidade e a observação ("faltaram as caixas …") vão iguais.
+
+### v10.6.22 · Etiquetas fracionadas no NexBip
+- QR do volume MAFRA: `12420164002109@0009@0013@739273` = código fixo · caixa · total DA SÉRIE · pedido.
+  A primeira parte é igual em todas as etiquetas (não identifica a caixa). Pedido segregado tem várias séries
+  (1/13…13/13 + 1/2, 2/2) e caixa fracionada pode repetir a etiqueta inteira (duas 1/1 iguais no mesmo pedido).
+- Caixa = número + total da série: `opJaBipado(ped,nf,vol,tot,etq)` e `opLidosBips` (série principal = maior total
+  conta pelo número como antes; as outras contam à parte). `opEtqB(b)` = bipe de etiqueta (não ":contado").
+- Etiqueta IGUAL só pergunta (`opMesmaEtiqueta`) quando cabe outra série igual na nota ((cópias+1)×total ≤ volumes
+  do romaneio) e ainda falta caixa. "Outra caixa" grava o bipe com tipo `…:outra` (conta sozinho; `opConferirOutro`
+  não marca como duplicado). Câmera parada na mesma etiqueta continua sendo a mesma caixa.
+- Sem coluna nova no banco: tudo vai em `vol`, `tot` e `tipo`, que já existem.
+- Pallet de 8 dígitos (`100xxxxx`) reconhecido (`opEhPallet`): sozinho não vira bipe e é guardado no campo pallet.
+- `opConfCompletar` não passa da conta quando há séries.

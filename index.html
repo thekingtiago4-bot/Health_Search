@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.21', HS_DATA='18/11/2026';
+const HS_VERSAO='10.6.22', HS_DATA='18/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5091,9 +5091,10 @@ function opLer(textos,origem){
   const lidos=textos.map(opInterpretar).filter(Boolean); if(!lidos.length) return;
   const idx=opIndice();
   let prin=lidos.find(l=>l.tipo==='volume')||lidos.find(l=>l.tipo==='danfe')||lidos.find(l=>l.tipo==='numero'&&(idx.ped.has(l.num)||idx.nf.has(l.num)))||null;
-  const pallet=(lidos.find(l=>l.tipo==='numero'&&l.codigo.length===7&&l!==prin)||{}).codigo||'';
+  const camGap0=OP.camGap; /* v10.6.22: guardado para a etiqueta igual (1/1 e 1/1) */
+  const pallet=(lidos.find(l=>l.tipo==='numero'&&opEhPallet(l.codigo)&&l!==prin)||{}).codigo||'';
   if(!prin){ const n=lidos.find(l=>l.tipo==='numero'); if(!n) return;
-    if(n.codigo.length===7&&!idx.ped.has(n.num)){ opMostrar({status:'info',titulo:'Pallet '+n.codigo,linha:'Bipe a etiqueta do volume (QR do canto inferior direito) ou a nota.'}); return; }
+    if(opEhPallet(n.codigo)&&!idx.ped.has(n.num)&&!idx.nf.has(n.num)){ opMostrar({status:'info',titulo:'Pallet '+n.codigo,linha:'Bipe a etiqueta do volume (QR do canto inferior direito) ou a nota.'}); return; }
     prin=n; }
   let achados=[];
   if(prin.tipo==='volume') achados=idx.ped.get(prin.ped)||[];
@@ -5116,12 +5117,24 @@ function opLer(textos,origem){
       if(cam&&(Date.now()-ult<1800||(OP.camGap!=null&&OP.camGap<1200))){ OP.camGap=null; opMostrar({status:'info',titulo:'Mesma caixa ('+ja+' de '+tt+')',linha:'Tire a câmera desta etiqueta e aponte para a próxima caixa.'}); return; }
       vol=ja+1; chave='C'+(ped||nf)+'#'+vol; cont=true; } else if(ja===0){ vol=1; } }
   OP.camGap=null;
-  let status, jaB=null;
+  let status, jaB=null, outra=false;
+  /* v10.6.22 · etiqueta fracionada: caixa = número + total da série (1/13 ≠ 1/2). Etiqueta IGUAL (1/1 e 1/1)
+     numa nota que ainda tem caixa faltando e é maior que a série: pergunta se é outra caixa. */
+  if(x&&!cont&&(jaB=opJaBipado(ped,nf,vol,tot,prin.tipo==='volume'))){
+    const igual=prin.tipo==='volume'&&opEtqB(jaB)&&+jaB.vol===+vol&&+jaB.tot===+tot;
+    if(igual){ const cg=opContagem(ped,nf); const espV=achados.reduce((t,a)=>t+(volNum(a.x.vol)||0),0)||cg.esp; cg.esp=Math.max(cg.esp,espV);
+      /* cabe outra série igual? ex.: 1/1+1/1 numa nota de 2 (2×1≤2) sim; 1/13 de novo numa nota de 15 (2×13>15) não */
+      const copias=OP.bipes.filter(b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(!ped&&nf&&b.nf===nf))&&opEtqB(b)&&+b.vol===+vol&&+b.tot===+tot).length;
+      if(+tot>0&&(copias+1)*(+tot)<=cg.esp&&cg.lidos<cg.esp){
+        if(OP.forcarOutra) outra=true;
+        else { if(/camera/.test(origem||'')&&camGap0!=null&&camGap0<1200){ opMostrar({status:'info',titulo:'Mesma caixa ('+vol+'/'+tot+')',linha:'Tire a câmera desta etiqueta e aponte para a próxima caixa.'}); return; }
+          opMesmaEtiqueta(textos,origem,jaB,cg,vol,tot); return; } } }
+    if(outra) jaB=null; }
   if(!x) status='fora';
-  else if(!cont&&(jaB=opJaBipado(ped,nf,vol))) status='dup';
+  else if(jaB) status='dup';
   else if(!nf) status='semnota';
   else status='ok';
-  const b={local_id:Date.now().toString(36)+Math.random().toString(36).slice(2,8),dia:OP.dia||hojeISO(),codigo:prin.codigo,tipo:prin.tipo+(origem?':'+origem:''),ped,nf,vol,tot,pallet,
+  const b={local_id:Date.now().toString(36)+Math.random().toString(36).slice(2,8),dia:OP.dia||hojeISO(),codigo:prin.codigo,tipo:prin.tipo+(origem?':'+origem:'')+(outra?':outra':''),ped,nf,vol,tot,pallet,
     conteudo:(opConteudo(ped,nf)||{}).cod||'',valor:opValor(ped,nf,x)||null,romaneio:it?String(it.r.numero||''):'',dest:x?String(x.dest||''):'',cid:x?String(x.cid||''):'',status,usuario:opEu(),criado_em:new Date().toISOString(),chave};
   if(b.dia!==hojeISO()){ b.dia=hojeISO(); if(OP.dia!==b.dia){ $('#op-dia').value=b.dia; OP.dia=b.dia; OP.bipes=opLocalLer(b.dia); } }
   OP.bipes.unshift(b); opLocalGravar(); opEnviar(b); opConferirOutro(b);
@@ -5132,12 +5145,26 @@ function opLer(textos,origem){
 /* v9.20.1 · duplicado entre conferentes: compara pedido/NF + número do volume.
    Antes comparava a "chave" do bipe, que era recalculada de outro jeito quando o bipe voltava
    do banco (`opDoBanco`) — por isso dois conferentes conseguiam bipar a mesma caixa. */
-function opJaBipado(ped,nf,vol){ const v=Math.max(1,+vol||1);
+/* v10.6.22 · bipe de etiqueta de volume (QR "...@caixa@total@pedido"), não as caixas contadas à mão */
+function opEtqB(b){ return !!b&&/^volume/.test(b.tipo||'')&&!/:contado/.test(b.tipo||'')&&+b.tot>0; }
+function opEhPallet(c){ c=String(c||''); return /^\d{7}$/.test(c)||/^100\d{5}$/.test(c); }
+function opMesmaEtiqueta(textos,origem,jaB,cg,vol,tot){ const old=document.getElementById('op-mesma'); if(old) old.remove();
+  const q=String(jaB.usuario||'').trim(), quem=(q&&q!==opEu())?q.split(' ')[0]:'você'; let h=''; try{ h=hora(jaB.criado_em); }catch(e){}
+  const f=document.createElement('div'); f.className='fundo'; f.id='op-mesma'; f.style.zIndex='1700';
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:440px;text-align:center"><h2 style="margin-top:0;color:var(--ag)">Etiqueta ${vol}/${tot} já lida</h2>
+   <p>Bipada por <b>${esc(quem)}</b>${h?' às '+h:''}. A nota tem <b>${cg.esp}</b> volumes e faltam <b>${Math.max(0,cg.esp-cg.lidos)}</b>.</p>
+   <p class="sub">Caixa fracionada pode vir com a etiqueta igual (ex.: duas caixas 1/1 no mesmo pedido). Olhe o pallet / CX da etiqueta.</p>
+   <div style="display:grid;gap:8px;margin-top:12px"><button class="btn" type="button" data-o="n">É a mesma caixa (não contar)</button><button class="btn pri" type="button" data-o="s">É outra caixa com etiqueta igual — contar</button></div></div>`;
+  f.addEventListener('click',e=>{ const b=e.target.closest('[data-o]'); if(!b) return; f.remove(); OP.ultLeitura=Date.now();
+    if(b.dataset.o==='s'){ OP.forcarOutra=true; try{ opLer(textos,origem); }finally{ OP.forcarOutra=false; } }
+    else opMostrar({status:'dup',titulo:'Mesma caixa — não contei',linha:'Passe a próxima caixa.'}); });
+  document.body.appendChild(f); }
+function opJaBipado(ped,nf,vol,tot,etq){ const v=Math.max(1,+vol||1);
   const mesma=b=>b.status!=='fora'&&b.status!=='dup'&&((ped&&b.ped===ped)||(!ped&&nf&&b.nf===nf));
   /* v9.26.7 · bipou 1/5 e confirmou que as 5 chegaram: as outras caixas dessa nota são duplicidade */
   const fechada=OP.bipes.find(b=>mesma(b)&&Math.max(1,+b.tot||1)>1&&(+b.conferido_qt||0)>=Math.max(1,+b.tot||1));
   if(fechada) return fechada;
-  return OP.bipes.find(b=>mesma(b)&&Math.max(1,+b.vol||1)===v)||null; }
+  return OP.bipes.find(b=>mesma(b)&&Math.max(1,+b.vol||1)===v&&(!etq||!(+tot>0)||!opEtqB(b)||+b.tot===+tot))||null; }
 function opDupTitulo(b){ if(!b) return OP_ST.dup.t; const q=String(b.usuario||'').trim();
   return (q&&q!==opEu())?('⚠ '+q.split(' ')[0]+' já bipou essa caixa'):'Você já bipou essa caixa'; }
 /* v10.6.01: hh:mm de uma data — era usada em dois lugares sem existir (o cartão "✅ Resolvidos" quebrava) */
@@ -5146,11 +5173,12 @@ function opDupLinha(b){ const q=String(b.usuario||'').trim()||'alguém'; let h='
   return 'Bipada por '+q+(h?' às '+h:'')+' — não conta de novo'; }
 /* rede: confere no banco se outro conferente já bipou esta caixa (cobre o atraso do tempo real) */
 async function opConferirOutro(b){ try{ if(!b||!opOnline()||!['ok','semnota'].includes(b.status)) return;
-    let q=NV.cli.from('hs_bipagens').select('usuario,vol,criado_em,local_id').eq('dia',b.dia);
+    if(/:outra\b/.test(b.tipo||'')) return; /* v10.6.22: etiqueta igual confirmada como outra caixa */
+    let q=NV.cli.from('hs_bipagens').select('usuario,vol,tot,tipo,criado_em,local_id').eq('dia',b.dia);
     q=b.ped?q.eq('ped',b.ped):q.eq('nf',b.nf);
     const {data,error}=await q.limit(60); if(error||!data||!data.length) return;
     const v=Math.max(1,+b.vol||1), meu=new Date(b.criado_em).getTime();
-    const outro=data.find(x=>x.local_id!==b.local_id&&Math.max(1,+x.vol||1)===v&&String(x.usuario||'')!==String(b.usuario||'')&&new Date(x.criado_em).getTime()<=meu);
+    const outro=data.find(x=>x.local_id!==b.local_id&&Math.max(1,+x.vol||1)===v&&!/:outra\b/.test(x.tipo||'')&&(!opEtqB(b)||!opEtqB(x)||+x.tot===+b.tot)&&String(x.usuario||'')!==String(b.usuario||'')&&new Date(x.criado_em).getTime()<=meu);
     if(!outro) return;
     const atual=OP.bipes.find(z=>z.local_id===b.local_id); if(!atual||atual.status==='dup') return;
     atual.status='dup'; opLocalGravar(); opRender();
@@ -5161,10 +5189,14 @@ async function opConferirOutro(b){ try{ if(!b||!opOnline()||!['ok','semnota'].in
    Antes um bipe só contava como 1 volume, então marcar "conferida" numa nota de 5 caixas
    deixava "1 de 5". Quem foi conferido de uma vez carrega quantos volumes (conferido_qt). */
 function opLidosBips(bs){ let extra=0; const vs=new Set();
+  /* v10.6.22 · série principal (maior total das etiquetas) conta pelo número, como sempre; as outras séries
+     (1/2, 1/1 de caixa fracionada) contam à parte; etiqueta igual confirmada como outra caixa (":outra") conta sozinha */
+  const M=Math.max(0,...(bs||[]).filter(opEtqB).map(b=>+b.tot||0));
   for(const b of (bs||[])){ const q=Math.max(0,+((b&&b.conferido_qt))||0);
     /* conferido_qt > 1 = marcação manual da nota inteira: vale pela quantidade, NÃO pelo vol */
     if(q>1){ extra+=q; continue; }
-    if(b&&b.vol){ vs.add('v'+b.vol); continue; }
+    if(b&&/:outra\b/.test(b.tipo||'')){ vs.add('o'+b.local_id); continue; }
+    if(b&&b.vol){ vs.add('v'+b.vol+(opEtqB(b)&&+b.tot!==M?'/'+b.tot:'')); continue; }
     vs.add((b&&b.local_id)||Math.random()); }
   /* v10.5.5: a marcação da nota inteira já inclui as caixas bipadas uma a uma — não soma as duas (dava 339 de 170) */
   return Math.max(vs.size,extra); }
@@ -5591,8 +5623,8 @@ function opConfQuantos(b,tot){ const cam=document.querySelector('#op-cam'); if(!
 /* conferência por volume ligada: completa as caixas contadas fisicamente, sem bipar uma por uma */
 function opConfCompletar(b,tot,chegou){ try{ if(!opPorVol()) return 0; const n=Math.min(Math.max(0,+chegou||0),Math.max(1,+tot||1)); if(n<=1) return 0;
   const meus=OP.bipes.filter(x=>x.status!=='fora'&&x.status!=='dup'&&((b.ped&&x.ped===b.ped)||(!b.ped&&b.nf&&x.nf===b.nf)));
-  const ja=new Set(meus.map(x=>+x.vol||0)); let add=0;
-  for(let v=1;v<=n;v++){ if(ja.has(v)) continue; const c=Object.assign({},b); delete c.id;
+  const ja=new Set(meus.map(x=>+x.vol||0)); let add=0; let falta=n-opLidosBips(meus); /* v10.6.22: com séries (1/13 + 1/2) não passa da conta */
+  for(let v=1;v<=n+60&&falta>0;v++){ if(ja.has(v)) continue; falta--; const c=Object.assign({},b); delete c.id;
     c.local_id=Date.now().toString(36)+Math.random().toString(36).slice(2,8); c.vol=v; c.tot=tot; c.tipo=(b.tipo||'')+':contado';
     c.criado_em=new Date().toISOString(); c.chave='C'+(b.ped||b.nf)+'#'+v; OP.bipes.unshift(c); opEnviar(c); add++; }
   if(add){ opLocalGravar(); opRender(); } return add; }catch(e){ console.error('conf vol',e); return 0; } }
