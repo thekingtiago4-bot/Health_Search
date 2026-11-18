@@ -120,7 +120,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(k.todos==='ADRIEL,BETO','checklist: rastreador Não deveria tirar o motorista da planilha ('+k.todos+')');
     ok(k.ativos==='ADRIEL'&&k.des==='BETO','checklist: filtro de ativos/desativados errado ('+k.ativos+' | '+k.des+')');
     ok(k.st==='DESATIVADO','checklist: rastreador desativado não deixou a linha como DESATIVADO ('+k.st+')');
-    ok(k.novo,'checklist: cadastrar um agregado não criou a linha dele na planilha');
+    ok(!k.novo,'checklist: cadastrar um agregado NÃO pode criar a linha dele (v10.6.10: só à mão)');
     ok(k.cpf==='555.666.777-88','registro: CPF do motorista de transferência não vem do cadastro'); }
   /* 9.21.1: a origem do romaneio sai do motorista cadastrado (troca de motorista da rota sem mexer no código) */
   { const o=await p.evaluate(()=>{ cadInit();

@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.09', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.10', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8437,7 +8437,8 @@ function ckLista(filtro){ const L=ckS().filter(r=>ckRast(r)!=='nao');
   return L; }
 /* cada agregado do cadastro (rastreador sim ou desativado) tem a sua linha na planilha */
 function ckSincronizar(){ try{ const L=ckTudo(); let mud=false;
-    for(const m of (S.cadMot||[])){ if(cadTipo(m)!=='agregado'||cadRastDe(m)==='nao') continue; if(ckApagado(m.nome)) continue;
+    /* v10.6.10: o Tiago pediu — motorista novo entra no Checklist só à mão (+ Adicionar). Antes o cadastro criava a linha sozinho. */
+    for(const m of []){ if(cadTipo(m)!=='agregado'||cadRastDe(m)==='nao') continue; if(ckApagado(m.nome)) continue;
       if(L.some(r=>ckChaveMot(r.mot)===ckChaveMot(m.nome))) continue;
       L.push({id:'ck'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),mot:m.nome,placa:'',data:'',ativo:true}); mud=true; }
     if(mud) salvar(); return mud; }catch(e){ return false; } }
@@ -11466,7 +11467,7 @@ document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.m
 /* quando aparecem: depois da primeira sincronização (ou 15 s sem nuvem), e de novo a cada entrada */
 { let n=0; const t=setInterval(()=>{ n++; try{ reVarrerTirados(); }catch(e){}
     const pronto=n>=3&&(Store.modo!=='nuvem'||(typeof NUV!=='undefined'&&NUV.ult)||n>=8);
-    if(!pronto) return; clearInterval(t); try{ if(!S.motivos2) reZerarJanela(); else reMotivosJanela(); }catch(e){ console.error(e); } },5000); }
+    if(!pronto) return; clearInterval(t); /* v10.6.10: a janela automática saiu — o Tiago cadastra os motivos à mão em Reentregas */ },5000); }
 
 /* ================= v10.6.05 · Manual em dia com a v10.6 =================
    Roda depois de todos os blocos que montam o MAN: tira o que saiu do app e reescreve o que mudou. */
@@ -11711,6 +11712,56 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
   #re-tab.tb-cartao td select{min-width:0!important}
   #re-tab.tb-cartao td.base{background:transparent!important}
 }`; document.head.appendChild(st); })();
+
+/* ================= v10.6.10 · Correções dos prints de 17/11 (celular) =================
+   - "Por romaneio" (Conferência total): barra e porcentagem não passam mais da tela.
+   - Pesquisas recentes (Buscar): cada pesquisa vira uma linha compacta (termo em cima, resumo e hora embaixo).
+   - Checklist Agregados: no celular cada motorista vira um cartão (nada cortado).
+   - Notificações: lista limpa, ✕ pequeno e centralizado. */
+(function(){ const st=document.createElement('style'); st.textContent=`
+.nx-avisos{gap:0!important;border-top:1px solid var(--linha)}
+.nx-aviso-w{align-items:center!important;gap:4px!important;border-bottom:1px solid var(--linha)}
+.nx-aviso-w .nx-aviso{border:0!important;border-radius:8px!important;padding:12px 6px!important;line-height:1.35}
+.nx-ign{flex:0 0 34px!important;width:34px;height:34px;display:grid;place-items:center;padding:0!important;border:0!important;border-radius:50%!important;background:transparent;color:var(--mudo);font-size:14px!important;line-height:1}
+.nx-ign:hover,.nx-ign:focus-visible{background:var(--sup2);color:var(--no);outline:none}
+@media (max-width:860px){
+  #op-porrom-d{padding:10px 10px!important}
+  #op-porrom-d>div{padding-left:6px!important}
+  #op-porrom-d>div>div:first-child,#op-porrom-d button[data-op-rom]{flex-wrap:wrap!important;gap:4px 8px!important}
+  #op-porrom-d button[data-op-rom]{margin-left:8px!important;width:calc(100% - 8px)!important;box-sizing:border-box}
+  #op-porrom-d span[style*="min-width:90px"]{min-width:0!important}
+  #op-porrom-d small{min-width:0!important;margin-left:auto!important;white-space:normal!important}
+  #op-porrom-d span[style*="height:8px"]{flex:1 1 calc(100% - 56px)!important;min-width:0!important}
+  #op-porrom-d b[style*="min-width:42px"]{min-width:44px!important}
+  #bs-hist table,#bs-hist tbody{display:block;width:100%}
+  #bs-hist tr{display:grid!important;grid-template-columns:1fr auto;grid-template-areas:"q x" "r x";align-items:center;column-gap:8px;padding:10px 14px;border-bottom:1px solid var(--linha)}
+  #bs-hist td{display:block;border:0!important;padding:0!important;min-width:0}
+  #bs-hist td:nth-child(1){grid-area:q;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #bs-hist td:nth-child(2){grid-area:r;font-size:.82rem;display:inline}
+  #bs-hist td:nth-child(3){display:none}
+  #bs-hist td:nth-child(4){grid-area:x;width:auto!important}
+  #t-checklist .ck-tab thead{display:none}
+  #t-checklist .ck-tab,#t-checklist .ck-tab tbody{display:block;width:100%}
+  #t-checklist .ck-tab tr{display:grid!important;grid-template-columns:1fr 1fr;gap:8px 10px;padding:12px;margin:0 0 10px;border:1px solid var(--linha);border-radius:12px;position:relative}
+  #t-checklist .ck-tab td{display:flex;flex-direction:column;gap:3px;border:0!important;padding:0!important;min-width:0;font-size:.95rem}
+  #t-checklist .ck-tab td::before{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mudo);font-weight:600}
+  #t-checklist .ck-tab td::before{content:attr(data-l)}
+  #t-checklist .ck-tab td.ck-drag-handle{display:none}
+  #t-checklist .ck-tab td[data-l="Motorista"]{grid-column:1/-1;padding-right:44px!important}
+  #t-checklist .ck-tab td[data-l=""]{position:absolute;top:10px;right:10px}
+  #t-checklist .ck-tab input,#t-checklist .ck-tab select{width:100%!important;max-width:none!important;box-sizing:border-box;min-height:38px;font-size:.95rem!important;border-radius:8px}
+  #t-checklist .ck-tab input[type=date]{padding:6px 8px}
+  #t-checklist .ck-tab td{background:transparent!important;color:inherit!important}
+  #t-checklist .ck-tab tr{background:var(--sup)!important;border-left-width:6px!important}
+  #t-checklist .ck-tab tr.ck-verde{border-left-color:var(--ok)!important}
+  #t-checklist .ck-tab tr.ck-amarelo{border-left-color:var(--amar)!important;background:color-mix(in srgb,var(--amar) 12%,var(--sup))!important}
+  #t-checklist .ck-tab tr.ck-laranja{border-left-color:var(--ag)!important;background:color-mix(in srgb,var(--ag) 14%,var(--sup))!important}
+  #t-checklist .ck-tab tr.ck-vermelho{border-left-color:var(--no)!important;background:color-mix(in srgb,var(--no) 14%,var(--sup))!important}
+  #t-checklist .ck-tab tr.ck-cinza{border-left-color:var(--mudo)!important}
+  #t-checklist .ck-tab input,#t-checklist .ck-tab select{background:var(--sup2)!important;color:var(--tinta)!important;border:1px solid var(--linha)!important}
+}`; document.head.appendChild(st); })();
+/* rótulo de cada célula do Checklist vem do cabeçalho (a coluna de arrastar só existe para o admin) */
+{ const _ckr=ckRender; ckRender=function(){ const r=_ckr.apply(this,arguments); try{ const t=document.querySelector('#t-checklist .ck-tab'); if(t){ const H=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim()); for(const tr of t.querySelectorAll('tbody tr')) [...tr.children].forEach((td,i)=>{ td.dataset.l=H[i]||''; }); } }catch(e){} return r; }; }
 </script>
 
 </body>

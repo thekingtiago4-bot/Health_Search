@@ -511,3 +511,13 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   Os remendos NÃO pesam na fluidez. Juntar o resto (`irPara` tem 24, quase todos presos a variáveis locais do seu
   bloco) só melhora organização e traz risco. **Decisão:** juntar só quando for mexer naquele módulo por outro
   motivo, sempre com "foto" antes/depois (modelo: `gold-avisos.js` desta conversa).
+
+## v10.6.10 (18/11/2026) — correções dos prints do Tiago (uso real no iPhone)
+- Janela automática de limpeza das reentregas / motivos novos **saiu** (voltava a cada login). Ele cadastra os
+  motivos à mão em Reentregas. As travas (`S.reTirados`, `S.motivos2`) continuam.
+- **Checklist**: motorista do Cadastro Agregado NÃO entra mais sozinho (`ckSincronizar` não cria linha). No celular,
+  cada motorista é um cartão (rótulo vem do cabeçalho via `data-l`, porque a coluna de arrastar só existe para o admin);
+  a cor do vencimento pinta o cartão inteiro.
+- **Conferência total → Por romaneio** no celular: linha quebra, barra cabe na tela.
+- **Buscar → Pesquisas recentes** no celular: termo em cima, resumo embaixo, ✕ à direita (hora escondida).
+- **Notificações**: lista limpa com divisórias, ✕ redondo pequeno e centralizado.
