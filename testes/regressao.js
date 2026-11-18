@@ -684,6 +684,14 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const _c=window.confirmar; window.confirmar=async()=>true; await oresApagar('v3'); window.confirmar=_c; await w(100);
       const r=OP.bipes.map(b=>b.local_id).join(','); OP.bipes=[]; return r; });
     ok(dx==='o1','apagar bipe: o ✕ tinha que tirar as 5 caixas da nota e deixar a outra ('+dx+')'); }
+  /* v10.6.16: ✕ num duplicado tira só os duplicados; a conferida fica */
+  { const dd=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); NV.perfil={papel:'admin',ativo:true,nome:'Teste'}; document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      const h=hojeISO(); OP.dia=h; const t=new Date().toISOString();
+      OP.bipes=[{local_id:'c1',nf:'746274',ped:'739270',vol:1,tot:2,status:'ok',dia:h,criado_em:t},{local_id:'c2',nf:'746274',ped:'739270',vol:2,tot:2,status:'ok',dia:h,criado_em:t},
+        {local_id:'d1',nf:'746274',ped:'739270',vol:1,tot:2,status:'dup',dia:h,criado_em:t},{local_id:'d2',nf:'746274',ped:'739270',vol:2,tot:2,status:'dup',dia:h,criado_em:t}];
+      const _c=window.confirmar; window.confirmar=async()=>true; await oresApagar('d1'); window.confirmar=_c; await w(100);
+      const r=OP.bipes.map(b=>b.local_id).join(','); OP.bipes=[]; return r; });
+    ok(dd==='c1,c2','apagar duplicado: só os duplicados podiam sair, a conferida tinha que ficar ('+dd+')'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */

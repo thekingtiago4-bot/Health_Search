@@ -545,3 +545,6 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `oresGrupo`: para bipe conferido/duplicado, o grupo é TODAS as caixas da mesma NF (ou do pedido, se não tem NF) no dia.
   `oresApagar` confirma dizendo quantas caixas saem. Fora do romaneio continua agrupando pelo pedido, como antes.
   Banco: apagar bipe na nuvem continua só admin (ou o próprio nos 5 min).
+
+## v10.6.16 (18/11/2026)
+- `oresGrupo`: ✕ num bipe **duplicado** agrupa só os duplicados da nota (a conferida NUNCA sai junto); ✕ num conferido continua tirando a nota inteira. Teste no `regressao.js`.
