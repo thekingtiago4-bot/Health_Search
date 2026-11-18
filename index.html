@@ -473,7 +473,7 @@ tr.alvo td{background:var(--tealBg)!important}
 @media print{
   html,body{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
   .app{display:block!important;min-height:0!important}
-  .rail,.resumo,#nx-sino,#hs-salvar,#eva-bt,.ajuda-q,#op-sem-rom{display:none!important}
+  .rail,.resumo,#nx-sino,#hs-salvar,.ajuda-q,#op-sem-rom{display:none!important}
   main{padding:0!important;overflow:visible!important}
   .tela{max-width:none!important}
   .rolagem,.xl-tab,.vm-cids,.nx-log,.modal,.rel .rolagem,.rom .corpo .rolagem,.vm-rom .rolagem,.geo-prev .nomes,
@@ -753,80 +753,6 @@ body.so-mapa .app{grid-template-columns:1fr}
 .sim-cen{margin-top:14px;border-top:1px solid var(--linha);padding-top:10px}.sim-cen h3{margin:0 0 6px;font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.06em}.sim-cen-l{display:flex;flex-wrap:wrap;gap:6px}
 .chip-cen{display:inline-flex;align-items:center}.chip-cen .x{border:1px solid var(--linha);border-left:0;background:var(--sup2);border-radius:0 6px 6px 0;height:100%;padding:0 7px;cursor:pointer;color:inherit}.chip-cen .btn{border-radius:6px 0 0 6px}
 .sreg-av{margin:8px 0;padding:8px 12px;border-left:4px solid var(--ag);background:var(--sup);border-radius:6px;font-size:var(--fs-sm)}
-/* ---------- ROTEIRIZAÇÃO ---------- */
-.rt-topo,.rt-topo2{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:6px 0 14px}
-.rt-topo label,.rt-topo2 label{display:flex;flex-direction:column;gap:5px;font-size:var(--fs-sm);font-weight:600;color:var(--tinta2)}
-.rt-topo select,.rt-topo input,.rt-topo2 select,#rt-mover{border:1px solid var(--linha);border-radius:var(--r);padding:8px 10px;background:var(--sup)}
-.rt-ou{color:var(--mudo);font-size:var(--fs-sm);padding-bottom:9px}
-.rt-xml{padding:10px 14px!important;flex-direction:column;align-items:flex-start;gap:0;min-width:200px}
-.rt-xml span{font-size:var(--fs-sm);color:var(--mudo)}
-.rt-geral{display:flex;flex-wrap:wrap;gap:14px;font-size:var(--fs-sm);padding-bottom:9px;flex:1}
-.rt-geral b{font-family:"Barlow Semi Condensed",sans-serif;font-size:1rem}
-.rt-pend b{color:var(--no)}
-.rt-grade{display:grid;grid-template-columns:270px 1fr;gap:14px;align-items:stretch}
-.rt-carros{display:flex;flex-direction:column;gap:6px;background:var(--sup);border:1px solid var(--linha);border-radius:var(--r);padding:10px;max-height:600px;overflow:auto}
-.rt-carros-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.rt-carro{all:unset;cursor:pointer;display:grid;grid-template-columns:12px 1fr auto;gap:2px 10px;align-items:center;padding:8px 10px;border:1px solid var(--linha);border-radius:var(--r);position:relative}
-.rt-carro i{width:12px;height:12px;border-radius:3px;background:var(--c);grid-row:span 2}
-.rt-carro .n{font-weight:700;display:flex;flex-direction:column}.rt-carro .n small{font-weight:500;color:var(--mudo)}
-.rt-carro .t{grid-column:2/4;font-size:.75rem;color:var(--tinta2);font-variant-numeric:tabular-nums}
-.rt-carro.on{border-color:var(--c);box-shadow:inset 3px 0 0 var(--c);background:color-mix(in srgb,var(--c) 9%,transparent)}
-.rt-carro:focus-visible{outline:2px solid var(--teal)}
-.rt-ed{position:absolute;top:6px;right:8px;color:var(--mudo);padding:2px 4px;border-radius:4px}.rt-ed:hover{background:var(--sup2);color:var(--tinta)}
-.rt-dica{font-size:.75rem;margin:6px 2px 0}
-.rt-mapa{position:relative;background:var(--sup);border:1px solid var(--linha);border-radius:var(--r);overflow:hidden;min-height:520px}
-#rt-canvas{display:block;width:100%;height:600px;cursor:pointer;touch-action:none}
-.rt-mapa .hover{position:absolute;left:10px;bottom:10px;background:var(--sup);border:1px solid var(--linha);border-radius:var(--r);padding:4px 9px;font-size:var(--fs-sm);pointer-events:none}
-.rt-zoom{position:absolute;top:10px;right:10px;display:flex;gap:6px}
-.rt-tab{max-height:520px;overflow:auto;margin-top:8px;background:var(--sup);border:1px solid var(--linha);border-radius:var(--r)}
-@media (max-width:900px){.rt-grade{grid-template-columns:1fr}#rt-canvas{height:420px}}
-#rt-print{display:none}
-@media print{ body.rt-imprimindo>*:not(#rt-print){display:none!important} body.rt-imprimindo #rt-print{display:block!important;font:11px/1.35 "Barlow",sans-serif;color:#000}
-  #rt-print h1{font-size:16px;margin:0 0 8px}.rt-p-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-  #rt-print section{border:1px solid #999;border-top:5px solid var(--c);padding:6px;break-inside:avoid}#rt-print h2{font-size:13px;margin:0}#rt-print p{margin:3px 0}
-  #rt-print table{width:100%;border-collapse:collapse}#rt-print td{border-bottom:1px solid #ddd;padding:2px 3px}#rt-print .tot{font-weight:700}#rt-print .rodape{margin-top:8px;color:#555;font-size:9px}
-  @page{size:A4 landscape;margin:10mm} }
-.rt-abas{display:flex;flex-wrap:wrap;gap:0;margin:0 0 14px;border-bottom:1px solid var(--linha)}
-.rt-abas button{all:unset;cursor:pointer;padding:9px 14px;font-weight:600;color:var(--tinta2);border-bottom:3px solid transparent;margin-bottom:-1px}
-.rt-abas button[aria-pressed="true"]{color:var(--teal);border-bottom-color:var(--acento)}
-.rt-abas button:hover{color:var(--tinta)}
-.rt-abas button:focus-visible{outline:2px solid var(--teal)}
-.rt-qt{background:var(--no);color:#fff;border-radius:10px;padding:0 6px;font-size:.75rem}
-.rt-conf-topo{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px}
-.rt-cmp{display:grid;gap:6px;background:var(--sup);border:1px solid var(--linha);border-radius:var(--r);padding:12px;font-size:var(--fs-sm)}
-.rt-carro{display:grid}
-.rt-carro .n em{font-style:normal;font-size:.7rem;background:var(--c);color:#fff;border-radius:8px;padding:0 6px;margin-left:4px}
-.rt-ord{grid-column:1/4;margin:6px 0 0;padding-left:20px;font-size:.78rem}
-.rt-ord li{display:flex;justify-content:space-between;gap:6px;padding:2px 0;border-top:1px dashed var(--linha2)}
-.rt-ord small{color:var(--mudo)}
-.rt-ord button{all:unset;cursor:pointer;padding:0 5px;border:1px solid var(--linha);border-radius:4px;margin-left:3px}
-.rt-impr{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-bottom:14px}
-.rt-impr-it{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:14px;background:var(--sup);border:1px solid var(--linha);border-radius:var(--r)}
-.rt-impr-it:hover{border-color:var(--acento)}.rt-impr-it span{font-size:var(--fs-sm);color:var(--tinta2)}
-.rt-comb{display:flex;flex-direction:column;gap:6px}
-.rt-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px}
-.rt-kpis div{background:var(--sup);border:1px solid var(--linha);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column}
-.rt-kpis small{color:var(--mudo);font-size:.75rem}.rt-kpis b{font:700 1.35rem "Barlow Semi Condensed",sans-serif;font-variant-numeric:tabular-nums}
-.rt-dash{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:12px}
-.rt-bars{display:flex;flex-direction:column;gap:5px}
-.rt-bar{display:grid;grid-template-columns:110px 1fr 80px;gap:8px;align-items:center;font-size:var(--fs-sm)}
-.rt-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rt-bar i{height:12px;border-radius:3px;display:block;min-width:2px}.rt-bar b{text-align:right;font-variant-numeric:tabular-nums}
-.rt-cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-.rt-dia{background:var(--sup);border:1px solid var(--linha);border-radius:var(--r);padding:10px;font-size:var(--fs-sm)}
-.rt-dia.hoje{border-color:var(--acento);box-shadow:inset 0 3px 0 var(--acento)}.rt-dia h3{margin:0 0 6px;font-size:var(--fs);text-transform:capitalize}
-.rt-dia .fer{color:var(--fer);margin:3px 0}.rt-dia .ag{color:var(--ag);margin:3px 0}
-body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt-cheio #rt-canvas{height:100vh;height:100dvh}
-.rt-previa{max-width:1100px;width:96vw}.rt-previa-topo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
-.rt-folha{background:#fff;color:#000;border:1px solid #ccc;padding:16px;max-height:72vh;overflow:auto;font:11px/1.35 "Barlow",sans-serif}
-.rt-folha h1,#rt-print h1{font-size:15px;margin:0 0 8px}
-.rt-folha table,#rt-print table{width:100%;border-collapse:collapse}.rt-folha th,#rt-print th{text-align:left;color:#fff;background:#5B9BD5;padding:3px 4px;font-size:10px}
-.rt-folha table.verm th,#rt-print table.verm th{background:#BE504D}.rt-folha td,#rt-print td{border-bottom:1px solid #ddd;padding:2px 4px}
-.rt-folha .rt-p-grade,#rt-print .rt-p-grade{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.rt-folha section,#rt-print section{border:1px solid #999;border-top:5px solid var(--c,#999);padding:5px;break-inside:avoid;min-height:120px}
-.rt-folha section.vazio,#rt-print section.vazio{border-top-color:#ccc}
-.rt-folha h2,#rt-print h2{font-size:12px;margin:0}.rt-folha .tot,#rt-print .tot{font-weight:700;margin:6px 0}.rt-folha .obs,#rt-print .obs{color:#C92A2A}
-.rt-folha .rt-etq,#rt-print .rt-etq{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rt-etq section{min-height:300px}.rt-etq h2{font-size:28px!important}.rt-etq .cid{font-size:16px}
-.rt-folha .rt-kpis b,#rt-print .rt-kpis b{font-size:16px}.rodape{color:#555;font-size:9px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -1186,7 +1112,6 @@ body.rt-cheio .rt-mapa{position:fixed;inset:0;z-index:60;border-radius:0}body.rt
       <div id="cor-corpo"></div>
     </section>
 
-    <!-- ROTEIRIZAÇÃO -->
   </main>
 </div>
 <div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="h-intro" hidden>
@@ -2417,7 +2342,6 @@ const contarHits=hits=>{ const vist=new Set(); return contar(hits.map(h=>h.row).
 const fmtN=n=>Number(n||0).toLocaleString('pt-BR');
 const ZERO_TIT='Nota com 0 volume: aparece na lista, mas não entra no total de notas nem de volumes';
 function totaisTxt(c){ return `<span>Notas <b>${fmtN(c.notas)}</b></span><span>Volumes <b>${fmtN(c.vol)}</b></span>${c.zero?`<span class="chip-zero" title="${ZERO_TIT}">${c.zero} nota(s) com 0 volume</span>`:''}`; }
-const somaVol=hits=>contarHits(hits).vol;
 const volTxt=v=>{ if(v===''||v==null) return '—'; if(volNum(v)===0) return `<span class="zero" title="${ZERO_TIT}">0</span>`; return esc(v); };
 
 /* ---------- notas e pedidos repetidos ---------- */
@@ -2776,7 +2700,6 @@ function salvarAg(){
   S.agendamentos.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),tipo:tipoAg,valor:tipoAg==='cli'?valor.toUpperCase():valor.replace(/\D/g,''),data,hora,obs,criadoEm:new Date().toISOString()});
   salvar(); $('#ag-valor').value=''; $('#ag-hora').value=''; $('#ag-obs').value=''; renderTudo(); toast('Agendamento salvo.'); $('#ag-valor').focus();
 }
-function linhasDoAg(a){ return todasLinhas().filter(({row})=> (a.tipo==='nf'&&z(a.valor)===z(row.nf))||(a.tipo==='ped'&&row.ped&&z(a.valor)===z(row.ped))||(a.tipo==='cli'&&N(row.dest).includes(N(a.valor)))); }
 function renderAgenda(){
   const el=$('#lista-ag'); const hj=hojeISO();
   const ags=S.agendamentos.slice().sort((a,b)=>(a.data+(a.hora||'99')).localeCompare(b.data+(b.hora||'99')));
@@ -3090,8 +3013,6 @@ function rpPdf(){ const sel=RP._sel||[]; if(!sel.length){ toast('Nada no períod
   ${[...sel].sort((a,b)=>a.d.localeCompare(b.d)).map(x=>`<tr><td>${reDataBR(x.d).slice(0,5)}</td><td>${esc(x.l.nf)}</td><td>${esc(x.cli)}</td><td>${esc(x.l.cid)}/${esc(x.l.uf)}</td><td>${esc(rpRegNome(x.reg))}</td><td>${esc(x.tipo)}</td><td class="r">${esc(x.l.qtd)}</td><td class="r">${reMoeda(x.l.val)}</td></tr>`).join('')}</tbody></table>`;
   const t0=document.title; document.title='Relatorio_Reentregas_'+(RP.per==='*'?'geral':RP.per);
   document.body.classList.add('re-imprimindo'); setTimeout(()=>{ window.print(); document.body.classList.remove('re-imprimindo'); document.title=t0; },50);
-}
-function rpNoop(){
 }
 function reSub(t){ $$('[data-re-sub]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.reSub===t)); $('#re-painel').hidden=t!=='painel'; $('#re-lanc').hidden=t==='painel'; if(t==='painel'){ RP.per=null; rpRender(); } else $('#re-bip').focus(); }
 (function reInit(){
@@ -4526,7 +4447,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.24', HS_DATA='18/11/2026';
+const HS_VERSAO='10.6.25', HS_DATA='18/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -4586,10 +4507,6 @@ if(!HS_RETIRADAS){ document.documentElement.dataset.semRet='1';
       <div class="botoes"><button class="btn pri" type="button" data-a="x">Ver reentregas</button></div></div>`;
     document.body.appendChild(fd); fd.addEventListener('click',e=>{ if(e.target.closest('[data-a]')) fd.remove(); }); }; }
 
-/* ---------- Roteirização oculta por enquanto (mude para true para reativar; dados e código continuam guardados) ---------- */
-const HS_ROTEIRIZACAO=false;
-if(!HS_ROTEIRIZACAO){ document.documentElement.dataset.semRotas='1';
-  }
 
 /* ---------- Base de Contagem: Norte de Minas completo (mesorregião IBGE 3102, 89 cidades) — correção feita uma vez ---------- */
 (function(){ const NM=[3101003,3106655,3107307,3108255,3108503,3108602,3109402,3111150,3112703,3115474,3116159,3116506,3117836,3118809,3120300,3120870,3122355,3123809,3124302,3126604,3126703,3127073,3127339,3127354,3127800,3128253,3129608,3129657,3130051,3130655,3132008,3132107,3135050,3135100,3135209,3135357,3135605,3136579,3136801,3136959,3137304,3138104,3138658,3138682,3139250,3139300,3140852,3141009,3142007,3142254,3142700,3142908,3143302,3143450,3144656,3145059,3145372,3145455,3146255,3146552,3147956,3149150,3150570,3151206,3152131,3152204,3154457,3154507,3155603,3156502,3157005,3157377,3157609,3160454,3161106,3162252,3162401,3162450,3162658,3162708,3164209,3166956,3168002,3170008,3170529,3170651,3170800,3170909,3171030]; let n=0, t=setInterval(()=>{ n++; if(!S.geo||!S.geo.listas){ if(n>100) clearInterval(t); return; }
@@ -6145,7 +6062,7 @@ function dvBadge(){ const q=$('#qt-dv'); if(!q) return; const n=dvS().filter(d=>
   const DV={filtro:'abertas'}; window.DVF=DV;
   /* preencher sozinho pelo romaneio / XML */
   const preencher=()=>{ let ped=z($('#dv-ped').value), nf=z($('#dv-nf').value); if(nf.length===44) { nf=z(nf.slice(25,34)); $('#dv-nf').value=nf; }
-    const hit=todasLinhas().find(({row})=>(nf&&z(row.nf)===nf)||(ped&&z(row.ped)===ped));
+    let hit=todasLinhas().find(({row})=>(nf&&z(row.nf)===nf)||(ped&&z(row.ped)===ped)); /* v10.6.25: era const — o Banco de romaneios nunca preenchia */
     if(!hit&&(ped||nf)){ try{ const bk=dvNoBanco(ped,nf); if(bk) hit={row:bk.row,rom:bk.rom}; }catch(e){} }
     if(hit){ const row=hit.row; if(!ped&&row.ped) $('#dv-ped').value=z(row.ped); if(!nf&&row.nf) $('#dv-nf').value=z(row.nf);
       { const t=$('#dv-tot'); if(t&&!t.value&&volNum(row.vol)) t.value=volNum(row.vol); }
@@ -7215,8 +7132,6 @@ const MAN=[
    ['Conferir e salvar','Notas, volumes e valor do romaneio sobem na hora. As novas aparecem em verde. Clique em Salvar: já valem na busca, na conferência e para todos os aparelhos.'],
    ['Retirar notas','Só o administrador retira notas ou remove um romaneio. Tudo fica registrado na Auditoria (quem, quando e quais notas).'],
    ['Criar romaneio','“＋ Criar romaneio”: escolha a origem (MESA, CAJ, DF, Via Minas), a data e o motorista; depois acrescente as notas.']]},
-  {id:'rotas',t:'Rotas e roteirização',intro:'Folha de rota do dia para toda a equipe, publicada pelo administrador ou por um roteirizador.',
-  passos:[['Rotas','Menu Regiões → Rotas. O administrador ou um usuário com a opção “Roteirizador” ligada publica a folha de rota do dia (o PDF com PLACA, AGREGADO, cidades, VOLUMES, PARADAS e VALOR): o app lê cada veículo e mostra um cartão com a placa, o motorista e a sequência numerada das cidades. Todos os usuários veem e são avisados (aviso no app e notificação, se permitida). Aceita os dois modelos de folha: o com PLACA/AGREGADO e o “Folha de rotas” do sistema (sem placa: cada coluna vira ROTA 01, 02…, com as observações OBS. em destaque). Para mudar, publique o PDF novo: o anterior vai para o histórico (até 15). Só administrador/roteirizador coloca o nome dos motoristas e tira a rota. Em Usuários, cada pessoa tem a opção Roteirizador (Ligado/Desligado); o administrador é sempre roteirizador.']]},
  {id:'op-recursos',t:'Operação — recursos da conferência',intro:'Tudo o que ajuda a conferir mais rápido e sem erro: caixas, volumetria, romaneios, notas fora e fechamento do turno.',
   passos:[['Bipar caixa a caixa','Na câmera, bipar de novo a mesma nota ou pedido (sem número de volume na etiqueta) conta como a próxima caixa: 1/6, 2/6… Só vira “Duplicado” depois que todas as caixas foram bipadas. Pela câmera, a mesma etiqueta só conta como nova caixa depois de sair da tela (afaste e aponte para a próxima); se ficar parada, aparece “Mesma caixa”. Embaixo da tela aparece em destaque VOLUMES lidos / total e quantos faltam (verde quando completa). Toque na faixa de informação do bipe (em cima) para abrir a ficha completa: cliente, cidade, valor, volumes, pedido, NF, romaneio, motorista, conteúdo e chave.'],
    ['Fora do romaneio: cliente e cidade','Quando a caixa bipada não está no romaneio, o app completa cliente e cidade sozinho: primeiro pelo histórico (romaneios antigos e XMLs), e, se não achar, lê o texto da própria etiqueta na câmera (📝 aparece na faixa de cima). A informação fica salva online e aparece na tabela Fora do romaneio para todos.'],
@@ -7363,24 +7278,6 @@ const MAN=[
     ['Confirmação visual','Um toast verde aparece na tela: "🗺 Mapa atualizado do administrador" confirmando que a sincronização foi aplicada com sucesso.'],
     ['Apenas leitura para não-ADMs','Aparelhos que não são do administrador não conseguem publicar o mapa — apenas baixam e visualizam a versão oficial.']
   ]}
-,{id:'eva-reset',t:'Resetar o BIT (somente administrador)',img:null,
-  intro:'O administrador pode apagar todo o aprendizado acumulado pelo BIT, voltando-o ao estado inicial.',
-  passos:[
-    ['Onde encontrar','Na aba BIT, o cabeçalho exibe um ícone 🗑️ vermelho ao lado do título, visível apenas para o administrador.'],
-    ['Backup automático','Antes de apagar qualquer dado, o app salva automaticamente uma cópia do cérebro e do ensino do BIT na nuvem, como segurança.'],
-    ['Confirmação obrigatória','Ao tocar em 🗑️, uma caixa de confirmação aparece. O administrador deve confirmar explicitamente para prosseguir — toque acidental não apaga nada.'],
-    ['O que é apagado','Após confirmação, são apagados: o "cérebro" do BIT (padrões aprendidos de bipagem e reentrega) e o banco de ensino manual (evaEnsino). O histórico de conversa no chat não é apagado.'],
-    ['Quando usar','Use apenas quando o BIT estiver apresentando sugestões incorretas persistentes ou após uma mudança grande na operação que torne o aprendizado anterior obsoleto.']
-  ]}
-,{id:'eva-chat',t:'Chat do BIT — estilo WhatsApp',img:null,
-  intro:'A conversa com o BIT usa o formato visual do WhatsApp: balões coloridos, horário em cada mensagem e rolagem automática.',
-  passos:[
-    ['Abrindo o chat','Toque no ícone (BIT) em qualquer tela — o app navega automaticamente para a aba BIT e foca o chat.'],
-    ['Balões do usuário','Suas mensagens aparecem à direita, em verde, com rabo apontando para a direita — igual ao WhatsApp.'],
-    ['Balões do BIT','As respostas do BIT aparecem à esquerda, em azul-escuro, com rabo apontando para a esquerda, e mostram o nome "BIT" acima.'],
-    ['Horário','Cada balão exibe o horário no canto inferior, no formato HH:MM.'],
-    ['Rolagem automática','Ao chegar uma nova mensagem, o chat rola automaticamente para o final, mantendo sempre a última mensagem visível.']
-  ]}
 ,{id:'conf-diario',t:'Relatório diário de conferência',img:null,
   intro:'O app registra automaticamente o percentual de conferência de cada dia e oferece um relatório colorido para acompanhar a evolução da operação.',
   passos:[
@@ -7389,15 +7286,6 @@ const MAN=[
     ['Cores da tabela','Verde = 100% conferido; Amarelo = 90–99%; Laranja = 70–89%; Vermelho = abaixo de 70%. As cores indicam rapidamente como foi a conferência de cada dia.'],
     ['Exportar para o WhatsApp','No relatório, toque em "📤 WhatsApp" para gerar um texto formatado com todos os dias e percentuais, pronto para enviar no grupo da operação.'],
     ['Histórico','O app guarda o histórico de todos os dias registrados. Dias sem nenhuma bipagem não aparecem na tabela.']
-  ]}
-,{id:'eva-observar',t:'BIT — observação diária da operação',img:null,
-  intro:'O BIT analisa automaticamente os dados do dia e envia um cartão de insights ao abrir o app e a cada hora, para manter o time atualizado.',
-  passos:[
-    ['Quando aparece','Um cartão com as observações do BIT aparece 10 segundos após abrir o app e, depois disso, uma vez por hora enquanto o app estiver aberto.'],
-    ['Apenas uma vez por dia','O cartão diário é enviado apenas uma vez por período de 24 horas, mesmo que o app seja fechado e reaberto. Isso evita repetições desnecessárias.'],
-    ['O que o BIT analisa','O BIT verifica: percentual de conferência do dia, reentregas pendentes por remetente, remetentes com mais notas no romaneio do dia e quantos padrões já foram aprendidos pelo cérebro.'],
-    ['Formato do cartão','O cartão aparece como uma mensagem do BIT no chat, com ícones e dados formatados para leitura rápida.'],
-    ['Para que serve','Use o cartão diário para ter uma visão rápida da saúde da operação sem precisar abrir cada relatório individualmente.']
   ]}
 ];
 function manHTML(){ const v=typeof HS_VERSAO!=='undefined'?HS_VERSAO:''; const hoje=new Date().toLocaleDateString('pt-BR');
@@ -7824,7 +7712,6 @@ const CAD_BASES=['CAJ','DF','MESA','VIA MINAS','AQA','LKR','CREMER'];
 function cadBases(m){ if(!m) return []; const v=Array.isArray(m.bases)?m.bases:String(m.base||'').split(/[,;]+/);
   return [...new Set(v.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean))]; }
 function cadBasesNome(n){ const canon=motCanon(n); if(!canon) return []; const m=(S.cadMot||[]).find(x=>x.nome===canon&&cadBases(x).length); return m?cadBases(m):[]; }
-function cadBaseNome(n){ const b=cadBasesNome(n); return b.length===1?b[0]:''; }
 function cadBaseSet(m,bs){ m.bases=[...new Set(bs.map(x=>String(x).toUpperCase()))]; m.base=m.bases.join(', '); }
 function cadTipo(m){ return m&&m.tipo==='transf'?'transf':'agregado'; }
 function cadRastDe(m){ return cadTipo(m)==='agregado'?(m.rast||'sim'):''; }
@@ -8206,22 +8093,7 @@ async function nuvTelaBackups(){ let L=[]; try{ L=await nuvBackups(); }catch(e){
 const VSN={ok:null,chBase:'healthSearch.nuvBaseVal'};
 function vsnBaseLer(k){ try{ return (JSON.parse(LS.getItem(VSN.chBase)||'{}'))[k]||null; }catch(e){ return null; } }
 function vsnBaseGravar(k,v){ try{ const o=JSON.parse(LS.getItem(VSN.chBase)||'{}'); o[k]=v; LS.setItem(VSN.chBase,JSON.stringify(o)); }catch(e){} }
-/* junta o mapa em 3 vias: o que estava sincronizado (base), o deste aparelho e o da nuvem */
-function geoJuntar3(base,loc,rem){ base=base||{listas:[],aprend:{}}; loc=loc||{listas:[],aprend:{}}; rem=rem||{listas:[],aprend:{}};
-  const mp=a=>new Map((a.listas||[]).map(l=>[l.id,l])); const B=mp(base), L=mp(loc), R=mp(rem); const out=[]; const ganhouAqui=new Map();
-  const ids=[...new Set([...R.keys(),...L.keys()])];
-  for(const id of ids){ const b=B.get(id), l=L.get(id), r=R.get(id);
-    if(!l){ if(b) continue; out.push(JSON.parse(JSON.stringify(r))); continue; } /* apaguei aqui → some; nova lá → entra */
-    if(!r){ out.push(JSON.parse(JSON.stringify(l))); continue; } /* nova aqui, ou apagada lá: guardo (não perco marcação) */
-    const bc=new Set((b&&b.cidades)||[]), lc=new Set(l.cidades||[]), rc=new Set(r.cidades||[]);
-    const add=[...lc].filter(c=>!bc.has(c)), tir=b?[...bc].filter(c=>!lc.has(c)):[];
-    const cid=new Set(b?rc:new Set([...rc,...lc])); for(const c of add) cid.add(c); for(const c of tir) cid.delete(c);
-    const lMudou=b&&JSON.stringify({...l,cidades:0})!==JSON.stringify({...b,cidades:0});
-    const o=Object.assign({},lMudou?l:r,{cidades:[...cid]}); out.push(o); for(const c of add) ganhouAqui.set(c+'|'+o.tipo,id); }
-  /* cidade que EU coloquei numa região sai da outra região do mesmo tipo (uma cidade = uma região) */
-  for(const o of out) o.cidades=o.cidades.filter(c=>{ const g=ganhouAqui.get(c+'|'+o.tipo); return !g||g===o.id; });
-  const ap=Object.assign({},rem.aprend||{}); const ba=base.aprend||{}; for(const [k,v] of Object.entries(loc.aprend||{})) if(JSON.stringify(v)!==JSON.stringify(ba[k])) ap[k]=v;
-  return Object.assign({},rem,{listas:out,aprend:ap,em:new Date().toISOString()}); }
+/* v10.6.25: geoJuntar3 (junção do mapa em 3 vias) saiu — aposentada desde a 9.19.13, ninguém chamava */
 { const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave==='s:geo'&&local&&remoto&&Array.isArray(local.listas)&&Array.isArray(remoto.listas)){
       const anc=vsnBaseLer('s:geo');
       /* v9.10.0 — Task #13: sem ancestral e não-adm → mapa publicado pelo adm é autoritativo */
@@ -8923,7 +8795,7 @@ function etqAchouAlgo(p,idx){ if(!p) return false; const ns=[...(p.nfs||[]),...(
       const diz=t=>{ if(msg&&!OP.espera&&Date.now()>(OP.resultadoAte||0)){ opMsgTrocar(msg,t); escreveu=true; } };
       OCRK.ocupado=true; let linhas=[]; const t0=Date.now();
       let wsUlt=[]; for(const [nome,R,inv,gir,aut] of passes){ if(Date.now()-t0>4500) break; diz(`<b>Leitura em andamento…</b>lendo de novo (${nome}). Segure firme.`);
-        try{ const ws=await OCR.ler(etqQuadro(v,R,inv,gir,aut)); wsUlt=ws.filter(w=>w.conf>30); const L=etqLinhas(ws.filter(w=>w.conf>30)); linhas=linhas.concat(L); const pp=etqInterpretar(linhas); if(etqAchouAlgo(pp,idx)||(pp.dest&&pp.cid&&etqPorCliente(pp,idx))){ linhas=linhas; break; } }catch(e){} }
+        try{ const ws=await OCR.ler(etqQuadro(v,R,inv,gir,aut)); wsUlt=ws.filter(w=>w.conf>30); const L=etqLinhas(ws.filter(w=>w.conf>30)); linhas=linhas.concat(L); const pp=etqInterpretar(linhas); if(etqAchouAlgo(pp,idx)||(pp.dest&&pp.cid&&etqPorCliente(pp,idx))){ break; } }catch(e){} }
       OCRK.ocupado=false; OCRK.ult=Date.now(); if(msg&&ant&&escreveu&&!OP.espera) opMsgTrocar(msg,ant); if(!linhas.length) return p;
       const q=etqInterpretar(linhas); const base=p||{nfs:[],nums:[]}; /* junta: números de todas as passadas (inclusive números soltos de 6+ dígitos) */
       const soltos=[...new Set(linhas.join(' ').match(/\b\d{5,9}\b/g)||[])]; const res=Object.assign({},q,base);
@@ -9390,7 +9262,7 @@ setTimeout(()=>{ try{ bxHistRender(); }catch(e){} },1500);
 document.addEventListener('click',e=>{ const s=e.target.closest&&e.target.closest('#op-cards [data-f2]'); if(!s) return; e.stopPropagation(); OP.filtro=s.dataset.f2; opRender(); },true);
 
 /* ================= v8.2.0 · Botão (?) em cada tela abre a parte certa do Manual ================= */
-const AJUDA_MAP={buscar:'buscar',romaneios:'romaneios',operacao:'operacao',reentregas:'reentregas',fora:'dados',divergencias:'divergencias',agenda:'agenda',geo:'geo',viaminas:'feriados',feriados:'feriados',historico:'historico',excel:'historico',correcao:'correcao',usuarios:'usuarios',cadastros:'cadastros',gestor:'op-recursos',operacao:'op-recursos'};
+const AJUDA_MAP={buscar:'buscar',romaneios:'romaneios',reentregas:'reentregas',fora:'dados',divergencias:'divergencias',agenda:'agenda',geo:'geo',viaminas:'feriados',feriados:'feriados',historico:'historico',excel:'historico',correcao:'correcao',usuarios:'usuarios',cadastros:'cadastros',gestor:'op-recursos',operacao:'op-recursos'}; /* v10.6.25: operacao estava 2x (valia a 2ª) */
 function ajudaAbrir(id){ irPara('manual'); const ir=()=>{ const el=document.getElementById('man-'+id); if(el) el.scrollIntoView({block:'start'}); }; [200,600,1200,2000].forEach(t=>setTimeout(ir,t)); }
 /* v10.6.02: o (?) de cada tela — círculo certinho com o ? no centro, nas cores do app */
 (function(){ const st=document.createElement('style'); st.textContent='.ajuda-q{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;margin-left:10px;vertical-align:middle;position:relative;top:-2px;border-radius:50%;border:2px solid var(--teal);background:transparent;color:var(--teal);font-family:inherit;font-size:16px;font-weight:800;line-height:1;cursor:pointer;transition:background .15s,color .15s}.ajuda-q:hover,.ajuda-q:focus-visible{background:var(--teal);color:var(--priTxt);outline:none}'; document.head.appendChild(st); })();
@@ -9410,7 +9282,7 @@ setTimeout(ajudaBotoes,1200); setTimeout(ajudaBotoes,4000);
 (function(){ const st=document.createElement('style'); st.textContent=`
 @media (max-width:820px){ table.tb-cartao thead{display:none} table.tb-cartao,table.tb-cartao tbody{display:block;width:100%} table.tb-cartao tr{display:block;border:1px solid var(--linha);border-radius:10px;margin:0 0 10px;padding:6px 10px;background:var(--sup)}
  table.tb-cartao td{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0!important;padding:4px 0!important;text-align:right;min-height:0} table.tb-cartao td::before{content:attr(data-l);color:var(--mudo);font-size:12px;text-align:left;flex:0 0 38%}
- table.tb-cartao td[data-l=""]::before{display:none} table.tb-cartao td input,table.tb-cartao td select{max-width:60%} .rolagem{overflow-x:auto} .tela{padding-left:12px!important;padding-right:12px!important} .op-card{min-width:0} #t-rotadia .rot-grid{grid-template-columns:1fr} }
+ table.tb-cartao td[data-l=""]::before{display:none} table.tb-cartao td input,table.tb-cartao td select{max-width:60%} .rolagem{overflow-x:auto} .tela{padding-left:12px!important;padding-right:12px!important} .op-card{min-width:0} }
 @media (max-width:1100px){ .tela{max-width:100%} img,canvas{max-width:100%} }`; document.head.appendChild(st);
   const alvo='#re-tab table, table#re-tab, #op-lista table, #t-fora table, #t-divergencias table, #nv-users table, #t-agenda table';
   const rotular=()=>{ document.querySelectorAll(alvo).forEach(t=>{ const hs=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim()); if(!hs.length) return; t.classList.add('tb-cartao'); t.querySelectorAll('tbody tr').forEach(tr=>{ [...tr.children].forEach((td,i)=>{ if(!td.hasAttribute('data-l')) td.setAttribute('data-l',hs[i]||''); }); }); }); };
@@ -10561,7 +10433,7 @@ setInterval(()=>{ try{ const t=$('#t-cadastros'); if(!t||!nvAdmin()||$('#zg-bt')
 
 
 /* ================= v9.4.0 · Login só com usuário e senha · troca de senha no 1º acesso · tela de login limpa · aviso de resposta de chamado ================= */
-(function(){ const st=document.createElement('style'); st.textContent=`body:has(#nv-tela:not([hidden])) :is(#eva-bt,#eva-painel,#hs-salvar,#robo-sql,#robo-aviso,#hs-desf,#ch-aviso,#uso-aviso,.toast,#toast,#nuv-st,#geo-pub-bar){display:none!important}`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.textContent=`body:has(#nv-tela:not([hidden])) :is(#hs-salvar,#robo-sql,#robo-aviso,#hs-desf,#uso-aviso,.toast,#toast,#nuv-st,#geo-pub-bar){display:none!important}`; document.head.appendChild(st); })();
 let _trocaMostrada=false;
 async function nvTrocaPrimeiroAcesso(){ if(_trocaMostrada) return; _trocaMostrada=true;
   await new Promise(res=>{ const f=nvTela(`<h2>Crie a sua senha</h2><p>Este é o seu primeiro acesso (ou o administrador redefiniu a sua senha). Crie uma senha só sua para continuar.</p>
@@ -10618,12 +10490,11 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t
 /* ---- v9.5.0 · Layout por aparelho: cada coisa no seu lugar, nada sobrepõe ---- */
 (function(){ const st=document.createElement('style'); st.textContent=`
 :root{--sab:env(safe-area-inset-bottom,0px);--sat:env(safe-area-inset-top,0px)}
-body:has(#nv-tela:not([hidden])) :is(.perm-sheet,#perm-sheet,#nx-sino,#eva-bt,#hs-salvar){display:none!important}
-#robo-sql,#robo-aviso,#ch-aviso,#hs-desf{max-width:min(560px,calc(100vw - 24px))!important}
+body:has(#nv-tela:not([hidden])) :is(.perm-sheet,#perm-sheet,#nx-sino,#hs-salvar){display:none!important}
+#robo-sql,#robo-aviso,#hs-desf{max-width:min(560px,calc(100vw - 24px))!important}
 @media (min-width:861px){
   .toast{bottom:auto!important;top:calc(14px + env(safe-area-inset-top,0px))!important;left:50%!important;transform:translateX(-50%)!important;right:auto!important}
   #hs-salvar{right:20px!important;bottom:calc(18px + var(--sab))!important}
-  #ch-aviso{right:96px!important;bottom:calc(18px + var(--sab))!important}
 }
 @media (max-width:860px){
   .rail{padding:calc(6px + var(--sat)) 10px 6px!important;gap:8px!important;min-height:0!important;height:auto!important;align-self:start!important;flex:0 0 auto!important}
@@ -10639,7 +10510,6 @@ body:has(#nv-tela:not([hidden])) :is(.perm-sheet,#perm-sheet,#nx-sino,#eva-bt,#h
   #hs-salvar::before{content:"💾";font-size:20px}
   .toast,#toast{left:12px!important;right:12px!important;bottom:auto!important;top:calc(10px + env(safe-area-inset-top,0px))!important;transform:none!important;max-width:none!important;font-size:.9rem}
   #robo-sql,#robo-aviso,#hs-desf{top:auto!important;bottom:calc(72px + var(--sab))!important;left:12px!important;right:72px!important;transform:none!important;max-width:none!important;font-size:.82rem!important;flex-wrap:wrap}
-  #ch-aviso{right:72px!important;left:12px!important;bottom:calc(72px + var(--sab))!important;max-width:none!important}
   .perm-sheet,#perm-sheet{bottom:0!important;padding-bottom:calc(16px + var(--sab))!important}
   .modal{max-height:calc(100dvh - 24px);overflow:auto}
   .tela h1{font-size:1.5rem}
@@ -10706,7 +10576,6 @@ setInterval(()=>{ try{ if(!document.hidden&&!$('#t-gestor').hidden) gestorRender
 /* v10.6.01: "ensinar o BIT" (regras e fatos, S.evaEnsino) saiu. O dado continua sincronizado e guardado. */
 try{ NUV_CAMPOS.push('evaEnsino'); NUV_ADMIN.add('s:evaEnsino'); }catch(e){}
 (function(){
-  MAN.push({id:'eva-ensino',t:'BIT — conversar e ensinar',img:'mural',intro:'Configurações → BIT abre o BIT no centro da tela.',passos:[['Conversar','Todos podem tirar dúvidas, pedir para procurar notas, cidades, ocorrências e rotas.'],['Ensinar (admin)','O administrador escreve regras (“o que ela deve saber”) e perguntas com a resposta certa, com foto se quiser. O BIT passa a responder isso para todos.'],['Perguntar o que ele aprendeu','Pergunte “quais são suas regras?”.']]});
   const g=MAN.find(x=>/gestor/i.test(x.t)); if(g&&g.passos) g.passos.unshift(['Ao vivo','O Painel de Gestão atualiza sozinho a cada 30 segundos: % conferido, bipes por hora e por pessoa (em “por pessoa” o bipe duplicado não conta, só o válido), ocorrências abertas, avarias por tipo, reentregas por motivo, motorista e dia.']);
   const r=MAN.find(x=>/^Rotas|ROTAS/i.test(x.t)); if(r&&r.passos) r.passos.push(['Histórico por dia','O último upload de cada dia fica guardado. À meia-noite a rota do dia vai para o histórico; escolha o dia na lista “Último upload de cada dia”.']); })();
 
@@ -10714,7 +10583,7 @@ try{ NUV_CAMPOS.push('evaEnsino'); NUV_ADMIN.add('s:evaEnsino'); }catch(e){}
 (function(){ const st=document.createElement('style'); st.textContent=`#app-att{top:calc(12px + env(safe-area-inset-top,0px))!important;bottom:auto!important;z-index:1800!important;border-radius:999px!important;padding:6px 6px 6px 14px!important;background:linear-gradient(90deg,#0f4c4c,#12806f)!important;border:1px solid rgba(255,255,255,.2);font-size:.85rem!important;max-width:min(520px,calc(100vw - 24px))!important}
 #app-att span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#app-att .btn{border-radius:999px!important;background:#fff!important;color:#0f4c4c!important;border:0!important}
 @media (max-width:860px){#app-att{top:calc(64px + env(safe-area-inset-top,0px))!important}}
-body:has(#nv-tela:not([hidden])) :is(#app-att,#eva-balao){display:none!important}`; document.head.appendChild(st);
+body:has(#nv-tela:not([hidden])) :is(#app-att){display:none!important}`; document.head.appendChild(st);
   const a=$('#app-att'); if(!a) return; const ok=$('#app-att-ok'); ok.textContent='Atualizar';
   new MutationObserver(()=>{ const s=a.querySelector('span'); const m=s&&s.textContent.match(/Nova versão\s*([\d.]+)/); if(m&&!s.dataset.v957){ s.dataset.v957=1; s.innerHTML=`✨ Nova versão <b>${esc(m[1])}</b>`; a.title='Seus dados ficam salvos: o app envia tudo para a nuvem antes de atualizar.'; } }).observe(a,{childList:true,subtree:true});
   ok.addEventListener('click',async e=>{ if(ok.dataset.ok) return; e.stopImmediatePropagation(); ok.disabled=true; ok.textContent='Salvando…'; try{ if(typeof opOnline==='function'&&opOnline()) await nuvSinc(); }catch(x){} ok.dataset.ok=1; ok.disabled=false; ok.click(); },true);
@@ -11494,56 +11363,8 @@ function reVarrerTirados(){ const T=S.reTirados; if(!T||!Object.keys(T).length) 
 { const _cm=cadMudou; cadMudou=function(){ try{ if(S.motivos2&&Array.isArray(S.cadMotivos)){ const l=S.cadMotivos.slice();
       if(JSON.stringify(l)!==JSON.stringify(S.motivos2.l)) S.motivos2=Object.assign({},S.motivos2,{em:new Date().toISOString(),l}); } }catch(e){}
     return _cm.apply(this,arguments); }; }
-function reMotivosCsv(todas,sai,mot){ const q=x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"';
-  const cab=['Dia','NF','Pedido','Cliente','Cidade','UF','Volumes','Motivo','Motorista','Valor','Vai sair (era divergência)'];
-  const lin=todas.map(({d,l})=>[fmtData(d),l.nf,l.ped,l.cli,l.cid,l.uf,l.qtd||l.vol,l.obs||l.motivo,l.mot||l.motorista,l.val,sai.has(l)?'SIM':''].map(q).join(';'));
-  return '﻿'+[cab.map(q).join(';'),...lin,'',q('Motivos cadastrados (todos vão sair)'),...mot.map(q)].join('\r\n'); }
-/* passo 1 (só o administrador, uma vez): baixa a planilha e só então apaga */
-function reZerarContas(){ const D=RE.ler(); const todas=[]; for(const [d,ls] of Object.entries(D.dias||{})) for(const l of ls||[]) todas.push({d,l});
-  const sai=new Set(todas.filter(x=>reEhDivergencia(x.l)||x.l.dvId).map(x=>x.l)); cadInit(); return {todas,sai,mot:(S.cadMotivos||[]).slice()}; }
-function reZerarAgora(){ const {todas,sai,mot}=reZerarContas();
-  try{ nexBaixar(reMotivosCsv(todas,sai,mot),'Backup reentregas e motivos '+hojeISO()+'.csv','text/csv;charset=utf-8'); }
-  catch(e){ toast('Não consegui baixar a planilha. Não apaguei nada.'); return false; }
-  const ag=new Date().toISOString(); const T=S.reTirados=S.reTirados||{}; for(const l of sai) T[reChaveT(l)]=ag;
-  const n=reVarrerTirados();
-  S.motivos2={em:ag,l:[],zerado:{em:ag,por:opEu(),motivos:mot.length,reentregas:n}}; S.cadMotivos=[]; NEX_MOTIVOS.splice(0,NEX_MOTIVOS.length);
-  salvar(); try{ nuvJa(); }catch(e){ try{ nuvSinc(); }catch(x){} }
-  try{ renderTudo(); }catch(e){} try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} try{ gestorRender(); }catch(e){}
-  toast(`✔ Planilha baixada. Saíram ${fmtN(mot.length)} motivo(s) e ${fmtN(n)} reentrega(s) que eram divergência.`); return true; }
-let _reZerarMostrado=false;
-function reZerarJanela(){ if(_reZerarMostrado||S.motivos2||!nvAdmin()||document.querySelector('#re-zerar')) return; _reZerarMostrado=true;
-  const {todas,sai,mot}=reZerarContas(); const f=document.createElement('div'); f.className='fundo'; f.id='re-zerar'; f.style.zIndex='1800';
-  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:520px"><h2 style="margin-top:0">🧹 Limpeza das reentregas</h2>
-    <p>Como combinado: <b>divergência não é reentrega</b>. Vou fazer assim, nesta ordem:</p>
-    <ol style="line-height:1.7;margin:0 0 12px;padding-left:20px"><li>Baixar a planilha com <b>todas as ${fmtN(todas.length)} reentregas</b> e os <b>${fmtN(mot.length)} motivos</b> (abre no Excel). É o seu backup.</li>
-    <li>Apagar os <b>${fmtN(mot.length)} motivos</b> cadastrados.</li><li>Apagar as <b>${fmtN(sai.size)} reentregas</b> que eram divergência. As outras ${fmtN(todas.length-sai.size)} continuam.</li>
-    <li>Em seguida você cadastra os motivos novos.</li></ol>
-    <p class="sub" style="margin:0 0 12px">Isso vale para todos os aparelhos e não tem volta pelo app — a planilha é a cópia. O robô de backup também guarda a de hoje.</p>
-    <div class="botoes"><button class="btn" type="button" data-z="0">Agora não</button><button class="btn pri" type="button" data-z="1">⬇ Baixar planilha e limpar</button></div></div>`;
-  document.body.appendChild(f);
-  f.addEventListener('click',e=>{ const b=e.target.closest('[data-z]'); if(!b) return;
-    if(b.dataset.z==='0'){ f.remove(); toast('Fica para depois: a janela volta na próxima vez que você entrar.'); return; }
-    b.disabled=true; if(reZerarAgora()){ f.remove(); setTimeout(reMotivosJanela,600); } else b.disabled=false; }); }
-/* passo 2: sem motivo cadastrado, quem cuida dos cadastros é obrigado a cadastrar antes de seguir */
-function reMotivosObrigado(){ try{ return !!(S.motivos2&&Array.isArray(S.motivos2.l)&&!S.motivos2.l.length&&['admin','lider','supervisor'].includes(cargoMeu())); }catch(e){ return false; } }
-function reMotivosJanela(){ if(!reMotivosObrigado()||document.querySelector('#re-mtv-obr')) return;
-  const f=document.createElement('div'); f.className='fundo'; f.id='re-mtv-obr'; f.style.zIndex='1800'; const L=[];
-  const pinta=()=>{ f.querySelector('#rmo-l').innerHTML=L.length?L.map((m,i)=>`<span class="cad-chip" style="display:inline-flex;gap:6px;align-items:center;margin:0 6px 6px 0">${esc(m)} <button type="button" class="op-x" data-rmo-x="${i}" aria-label="Tirar">✕</button></span>`).join(''):'<p class="sub" style="margin:0">Nenhum ainda.</p>';
-    f.querySelector('[data-rmo="ok"]').disabled=!L.length; };
-  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" style="max-width:520px"><h2 style="margin-top:0">📝 Cadastre os motivos de reentrega</h2>
-    <p>Os motivos antigos saíram. Cadastre os que vocês usam (ex.: CLIENTE FECHADO, FORA DO HORÁRIO). Dá para mudar depois em Reentregas → Motivos.</p>
-    <form id="rmo-f" style="display:flex;gap:8px;margin:0 0 10px"><input id="rmo-i" class="bus" style="flex:1" placeholder="Novo motivo" autocomplete="off" maxlength="60"><button class="btn mini pri" type="submit">Adicionar</button></form>
-    <div id="rmo-l" style="min-height:40px"></div>
-    <p class="sub" style="margin:10px 0 0">Divergência e avaria não entram como motivo: <b>divergência não é reentrega</b>.</p>
-    <div class="botoes"><button class="btn pri" type="button" data-rmo="ok" disabled>Salvar motivos</button></div></div>`;
-  document.body.appendChild(f); const inp=f.querySelector('#rmo-i'); setTimeout(()=>inp.focus(),50); pinta();
-  f.querySelector('#rmo-f').addEventListener('submit',e=>{ e.preventDefault(); const v=inp.value.trim().toUpperCase().replace(/\s+/g,' '); if(!v) return;
-    if(reEhDivergencia({obs:v})){ toast('Divergência não é reentrega: esse não pode ser motivo.'); return; }
-    if(L.some(m=>rpNz(m)===rpNz(v))){ toast('Esse motivo já está na lista.'); return; } L.push(v); inp.value=''; inp.focus(); pinta(); });
-  f.addEventListener('click',e=>{ const x=e.target.closest('[data-rmo-x]'); if(x){ L.splice(+x.dataset.rmoX,1); pinta(); return; }
-    if(e.target.closest('[data-rmo="ok"]')&&L.length){ S.cadMotivos=L.slice(); S.motivos2=Object.assign({},S.motivos2,{em:new Date().toISOString(),l:L.slice()}); cadMudou(); try{ nuvJa(); }catch(er){}
-      f.remove(); toast('✔ '+L.length+' motivo(s) cadastrado(s).'); } });
-  f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); } },true); }
+/* v10.6.25: a janela de limpeza (planilha + apagar) e a de motivos obrigatórios saíram — já rodaram e o pop-up foi tirado
+   a pedido do Tiago (v10.6.10). As travas acima (reTirados, motivos2) continuam valendo. */
 /* ================= v10.6.04 · Divergência mexida em dois aparelhos ao mesmo tempo =================
    Antes: ficava o objeto inteiro do lado mais novo e o outro sumia sem aviso (inclusive do histórico).
    Agora: continua valendo o estado mais novo (status, dia, quantidade), mas o HISTÓRICO dos dois lados é
@@ -11562,7 +11383,7 @@ function reMotivosJanela(){ if(!reMotivosObrigado()||document.querySelector('#re
 /* digitado na tabela de reentregas: motivo de divergência é recusado antes de qualquer gravação (fase de captura) */
 document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.matches('#re-tab [data-f="obs"]')) return;
   if(reEhDivergencia({obs:el.value})){ el.value=''; toast('Divergência não é reentrega: esse motivo não pode ser usado aqui.'); } },true);
-/* quando aparecem: depois da primeira sincronização (ou 15 s sem nuvem), e de novo a cada entrada */
+/* varre as reentregas tiradas nas primeiras sincronizações */
 { let n=0; const t=setInterval(()=>{ n++; try{ reVarrerTirados(); }catch(e){}
     const pronto=n>=3&&(Store.modo!=='nuvem'||(typeof NUV!=='undefined'&&NUV.ult)||n>=8);
     if(!pronto) return; clearInterval(t); /* v10.6.10: a janela automática saiu — o Tiago cadastra os motivos à mão em Reentregas */ },5000); }
@@ -11574,8 +11395,7 @@ document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.m
   const tira=id=>{ const i=MAN.findIndex(x=>x.id===id); if(i>=0) MAN.splice(i,1); };
   const passo=(id,titRe,txt)=>{ const s=sec(id); if(!s||!s.passos) return; const p=s.passos.find(p=>titRe.test(p[0])); if(!p) return; if(txt===null) s.passos.splice(s.passos.indexOf(p),1); else p[1]=txt; };
   passo('atalhos',/^Ctrl\+K/,'Teclas de atalho ficam em Ajustes → ⌨ Teclas de atalho: dá para mudar cada uma. Padrão: Ctrl+K Buscar, Ctrl+S Salvar, Ctrl+H Mural, Alt+1 NexBip, Alt+2 Conferência total, Alt+3 Romaneios, Alt+4 Reentregas, Alt+5 Divergências, Alt+6 Agendamentos, Alt+7 Geolocalização, Alt+8 Painel de Gestão, Alt+9 Manual e Alt+0 Ajustes.');
-  tira('rotas'); tira('eva-reset'); tira('eva-chat'); tira('eva-observar'); tira('eva-ensino');
-  passo('operacao',/BIT — a assistente/,null);
+    passo('operacao',/BIT — a assistente/,null);
   /* limpezas de texto que sobraram em passos antigos */
   for(const s of MAN) for(const p of (s.passos||[])){ p[0]=String(p[0]).replace(/ \(o BIT se esforça\)/,''); p[1]=String(p[1]).replace(/ O CPF cadastrado preenche sozinho no Registro de carretas, e os motoristas de transferência aparecem primeiro[^.]*\./,'').replace(/, e o recado do BIT, quando houver, abaixo dos dois/,''); }
   passo('operacao',/BIT no resultado do bipe/,null);
@@ -11597,7 +11417,6 @@ document.addEventListener('change',e=>{ const el=e.target; if(!el.matches||!el.m
   passo('agenda',/^Avisos/,'Agendados que vierem em outros romaneios aparecem na lista para serem pedidos fisicamente, e no sino.');
   passo('agenda',/^Exigências e exclusão/,'Depois de salvar, clique em Editar para colocar as exigências de entrega (PBR, altura máxima, horário, observações). O cliente fica cadastrado para sempre; só o administrador vê o botão Excluir. Quando ele aparece nos romaneios, o aviso sai no sino e no bipe da Operação.');
   passo('semanal',/Alerta por origem/,'Quando uma origem (ex.: Cajamar, Brasília) passa do limite de notas fora do romaneio no dia, o sino avisa.');
-  passo('eva-observar',/O que o BIT analisa/,'O BIT verifica: percentual de conferência do dia, reentregas pendentes e os remetentes com mais ocorrências.');
   passo('op-recursos',/Fechamento do turno/,'Na Operação: “🌙 Fechamento do turno” monta o resumo (bipes, faltando, fora, sem nota, duplicados, caixas sem chave, reentregas, divergências e andamento por origem) para copiar ou mandar no WhatsApp. “↩ Desfazer meu último bipe” apaga o seu último bipe dos últimos 5 minutos. O cargo de cada pessoa (definido pelo administrador em Usuários) escolhe as telas que ela vê.');
   passo('sistema',/Edição ao mesmo tempo/,'Se duas pessoas mexerem na mesma divergência quase juntas, fica a mudança mais nova, as duas ações ficam no histórico dela e aparece um aviso. Tudo fica também na Auditoria (antes e depois).');
   passo('sistema',/Cérebro/,null);
@@ -11930,8 +11749,6 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
    Com a conferência caixa a caixa ligada, a nota de 15 volumes com 2 caixas em falta ficava "13 de 15" e
    continuava em "Faltando", segurando a porcentagem. Agora sai das pendentes (e a % do NexBip e da
    Conferência total bate com a do Painel). A divergência continua aberta até alguém dar baixa. */
-function opNotaTemDv(x){ try{ const nf=opK(x&&x.nf||''), ped=opK(x&&x.ped||''); if(!nf&&!ped) return false;
-    return dvSo().some(d=>(d.st!=='resolvida'||d.conferida)&&((nf&&opK(d.nf||'')===nf)||(ped&&opK(d.ped||'')===ped))); }catch(e){ return false; } }
 { const _pdv=opPendentes; opPendentes=function(){ const l=_pdv.apply(this,arguments); try{ if(!Array.isArray(l)) return l; const D=dvSo(); if(!D.length) return l;
     const nfs=new Set(), peds=new Set(); for(const d of D){ if(d.st==='resolvida'&&!d.conferida) continue; const a=opK(d.nf||''), b=opK(d.ped||''); if(a) nfs.add(a); if(b) peds.add(b); }
     if(!nfs.size&&!peds.size) return l;

@@ -79,14 +79,16 @@ const srv=http.createServer((req,res)=>{ let u=decodeURIComponent(req.url.split(
   ok(uni.lsVazio,'3) depois de unir, o bipe devia sair do localStorage de novo');
 
   // ---- 5) gravação que falha é erro de verdade, e se recupera ----
+  // v10.6.25: chave só do teste (mesma regra de 'dado' que vai para o IndexedDB). Antes usava healthSearch.v1,
+  // e o salvamento automático do app às vezes gravava por cima no meio do teste (falha intermitente).
   const fal=await p.evaluate(async()=>{ const out={}; let avisou=false; window.LS.aoFalhar=()=>{ avisou=true; };
-    window.LS.simularFalha=k=>k==='healthSearch.v1';
-    window.LS.setItem('healthSearch.v1',JSON.stringify({versao:1,marca:'tentativa'}));
+    window.LS.simularFalha=k=>k==='healthSearch.db.testeFalha';
+    window.LS.setItem('healthSearch.db.testeFalha',JSON.stringify({versao:1,marca:'tentativa'}));
     try{ await window.LS.assentar(); out.rejeitou=false; }catch(e){ out.rejeitou=true; }
     out.avisou=avisou; out.falhas=window.LS.diag.falhas;
-    window.LS.simularFalha=null; window.LS.setItem('healthSearch.v1',JSON.stringify({versao:1,marca:'ok'}));
+    window.LS.simularFalha=null; window.LS.setItem('healthSearch.db.testeFalha',JSON.stringify({versao:1,marca:'ok'}));
     try{ await window.LS.assentar(); out.recuperou=true; }catch(e){ out.recuperou=false; }
-    out.valor=JSON.parse(window.LS.getItem('healthSearch.v1')||'{}').marca; return out; });
+    out.valor=JSON.parse(window.LS.getItem('healthSearch.db.testeFalha')||'{}').marca; window.LS.removeItem('healthSearch.db.testeFalha'); return out; });
   ok(fal.rejeitou,'5) gravação que falhou não rejeitou o assentar (passou como ok silencioso)');
   ok(fal.avisou&&fal.falhas>0,'5) a falha não foi sinalizada (aoFalhar/diag.falhas)');
   ok(fal.recuperou&&fal.valor==='ok','5) depois que a falha passou, o app não conseguiu gravar ('+JSON.stringify(fal)+')');

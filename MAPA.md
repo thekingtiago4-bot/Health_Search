@@ -618,3 +618,20 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Usuários: `#nv-users .tb-cartao td` com rótulo em cima e `overflow-wrap:anywhere` (e-mail longo).
 - Reentregas (celular): cartão com áreas (cliente grande, 📍cidade, caixinhas NF/Pedido/Qtd/Valor, motivo laranja);
   perecível = faixa laranja (`:has(option:checked:last-child)`). No computador: NF e valor em negrito.
+
+### v10.6.25 · Varredura geral (lint + código morto + CSS morto + celular)
+- **Bug:** Divergência → "Ou preencher à mão": a busca no **Banco de romaneios** gravava numa `const` (TypeError engolido
+  pelo try) — nota que não estava nos romaneios carregados nunca preenchia. Virou `let`.
+- `AJUDA_MAP` tinha `operacao` duas vezes (valia a 2ª — comportamento mantido); `linhas=linhas` tirado.
+- Código morto removido: `cadBaseNome`, `geoJuntar3` (junção 3 vias aposentada na 9.19.13), `linhasDoAg`,
+  `opNotaTemDv`, `rpNoop`, `somaVol`, flag `HS_ROTEIRIZACAO`, janela de limpeza das reentregas e de motivos
+  obrigatórios (`reZerar*`, `reMotivosJanela/Obrigado/Csv` — o pop-up saiu na 10.6.10; as TRAVAS `reTirados`/`motivos2`
+  continuam), capítulos do manual do BIT/Rotas que eram montados e tirados na hora, CSS do Rotas (`rt-*`, ~70 linhas,
+  inclusive um `.rodape` global que deixava o rodapé da tela de boas-vindas com letra de 9px), `#eva-*`, `#ch-aviso`.
+- Conferidos e OK: nenhum `localStorage.` direto (tudo pela camada LS); apagar o aparelho só com bloqueio confirmado
+  pelo servidor; relógios periódicos custam <0,1 ms; service worker ok. Retiradas continua desligada de propósito.
+- `testes/abas.js` agora passa também no tamanho de celular (390px).
+- **Lição:** ao apagar um bloco por intervalo de linhas, conferir `git diff` linha a linha — o primeiro corte levou junto
+  o bloco de conflito de divergências e a recusa de motivo na tabela; o teste de regressão pegou e foi restaurado.
+- `testes/idb.js` cenário 5 usava a chave do estado do app (`healthSearch.v1`) e o salvamento automático às vezes gravava
+  por cima no meio do teste (falha intermitente, não perda de dado). Agora usa `healthSearch.db.testeFalha`.

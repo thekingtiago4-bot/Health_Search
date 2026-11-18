@@ -588,7 +588,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(g2.tit1.some(x=>x==='Reentregas (por motivo / hoje)')&&g2.tit1.some(x=>x==='Conferência por origem (hoje em %)'),'gestor: títulos com o período ('+g2.tit1.join(' | ')+')');
     ok(g2.tit7.some(x=>x==='Bipes (por hora / 7 dias)'),'gestor: o filtro de 7 dias tinha que mudar os títulos ('+g2.tit7.join(' | ')+')');
     ok(!g2.avaria&&g2.mensal&&g2.filtro===4,'gestor: sem "Avarias por tipo", com painel mensal e com os 4 períodos'); }
-  /* v10.6.03: limpeza das reentregas — planilha antes, divergência sai, o resto fica, e nada volta pela sincronização */
+  /* v10.6.03: reentregas — divergência sai, o resto fica, e nada volta pela sincronização */
   { const z3=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const D=RE.ler(); const guarda=JSON.stringify(D.dias||{}); const gS=JSON.stringify({c:S.cadMotivos,m:S.motivos2,t:S.reTirados});
       try{ NV.perfil={papel:'admin',ativo:true}; }catch(e){}
@@ -597,31 +597,20 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       D.dias={'2026-11-10':[{nf:'1',obs:'CLIENTE FECHADO'},{nf:'2',obs:'ERA DIVERGENCIA (chegou depois)'}],'2026-11-11':[{nf:'3',obs:'DIVERGÊNCIA DV-004 · Falta de volume · RESOLVIDA'}]}; RE.gravar();
       const baixou=[]; const _nb=nexBaixar; nexBaixar=(txt,nome)=>baixou.push({nome,txt});
       const recusa=nexParaReentrega({nf:'9',motivo:'DIVERGENCIA #12'},'2026-11-12','teste');
-      _reZerarMostrado=false; reZerarJanela(); await w(100); const jan=!!document.getElementById('re-zerar');
-      document.querySelector('#re-zerar [data-z="1"]').click(); await w(800);
-      const obrig=!!document.getElementById('re-mtv-obr');
-      const esc=new KeyboardEvent('keydown',{key:'Escape',bubbles:true}); document.getElementById('re-mtv-obr').dispatchEvent(esc); await w(50);
-      const aindaObrig=!!document.getElementById('re-mtv-obr');
+      /* v10.6.25: a janela de limpeza saiu (já rodou); as travas continuam: o que está em S.reTirados sai e não volta */
+      const ag=new Date().toISOString(); S.reTirados={}; for(const l of [{nf:'2',obs:'ERA DIVERGENCIA (chegou depois)'},{nf:'3',obs:'DIVERGÊNCIA DV-004 · Falta de volume · RESOLVIDA'}]) S.reTirados[reChaveT(l)]=ag;
+      reVarrerTirados(); S.motivos2={em:ag,l:['CLIENTE AUSENTE']}; S.cadMotivos=['CLIENTE AUSENTE'];
       const linhas=Object.values(RE.ler().dias).flat().map(l=>l.nf).join(',');
-      /* outro aparelho manda o dia antigo inteiro de volta pela sincronização */
       nuvAplicar('re:2026-11-10',[{nf:'1',obs:'CLIENTE FECHADO'},{nf:'2',obs:'ERA DIVERGENCIA (chegou depois)'}],false);
       const depoisSinc=(RE.ler().dias['2026-11-10']||[]).map(l=>l.nf).join(',');
-      /* a junção antiga somava a lista de motivos: o espelho tem que vencer */
-      S.cadMotivos=['VELHO']; cadInit(); const espelho=S.cadMotivos.length;
-      const inp=document.getElementById('rmo-i'); inp.value='Cliente ausente'; document.getElementById('rmo-f').requestSubmit(); await w(50);
-      inp.value='divergência de volume'; document.getElementById('rmo-f').requestSubmit(); await w(50);
-      document.querySelector('#re-mtv-obr [data-rmo="ok"]').click(); await w(100);
-      const r={recusa, jan, obrig, aindaObrig, baixou:baixou.length&&/Backup reentregas/.test(baixou[0].nome)&&/ERA DIVERGENCIA/.test(baixou[0].txt)&&/LOCAL FECHADO/.test(baixou[0].txt),
-        linhas, depoisSinc, espelho, motivos:(S.motivos2&&S.motivos2.l||[]).join('|'), fechou:!document.getElementById('re-mtv-obr')};
+      S.cadMotivos=['VELHO']; cadInit(); const espelho=S.cadMotivos.join('|');
+      const r={recusa, linhas, depoisSinc, espelho};
       nexBaixar=_nb; D.dias=JSON.parse(guarda); RE.gravar(); const g=JSON.parse(gS); S.cadMotivos=g.c; if(g.m) S.motivos2=g.m; else delete S.motivos2; if(g.t) S.reTirados=g.t; else delete S.reTirados;
       document.querySelectorAll('.fundo').forEach(f=>f.remove()); return r; });
     ok(z3.recusa===null,'reentregas: motivo de divergência tinha que ser recusado');
-    ok(z3.jan&&z3.baixou,'reentregas: a limpeza tem que baixar a planilha (com tudo e com os motivos) antes de apagar');
     ok(z3.linhas==='1','reentregas: só a reentrega normal fica ('+z3.linhas+')');
     ok(z3.depoisSinc==='1','reentregas: a sincronização devolveu uma reentrega que foi tirada ('+z3.depoisSinc+')');
-    ok(z3.espelho===0,'reentregas: a lista velha de motivos voltou pela junção ('+z3.espelho+')');
-    ok(z3.obrig&&z3.aindaObrig,'reentregas: a janela de motivos novos tem que aparecer e não fechar no Esc');
-    ok(z3.motivos==='CLIENTE AUSENTE'&&z3.fechou,'reentregas: motivo novo grava e "divergência" não entra como motivo ('+z3.motivos+')'); }
+    ok(z3.espelho==='CLIENTE AUSENTE','reentregas: a lista velha de motivos voltou pela junção ('+z3.espelho+')'); }
   /* v10.6.04: divergência mexida em dois aparelhos — histórico dos dois lados fica; recarregar espera o disco */
   { const c4=await p.evaluate(()=>{ const a={id:'x',n:7,st:'aberta',d:'2026-11-10',hist:[{em:'2026-11-10T10:00:00Z',t:'Criada',por:'A'},{em:'2026-11-10T11:00:00Z',t:'Mudou o dia',por:'A'}]};
       const b={id:'x',n:7,st:'resolvida',d:'2026-11-09',hist:[{em:'2026-11-10T10:00:00Z',t:'Criada',por:'A'},{em:'2026-11-10T12:00:00Z',t:'Resolvida',por:'B'}]};
