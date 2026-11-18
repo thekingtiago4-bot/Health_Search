@@ -574,3 +574,7 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 ### v10.6.19 · Etiqueta por cliente: origem no canto
 - Em `etqEscolher`, cada opção mostra a origem do romaneio (`x.base` ou `r.base`) numa pílula no canto
   (`.etq-ori`) e uma faixa à esquerda, com a cor de `opCorBase` — a mesma da Conferência total.
+
+### v10.6.20 · Grade "Quais caixas faltaram?" em laranja
+- `.vol-cx.on[data-dcx]` (janela de divergência) e `[data-mcx]` (marcar à mão) usam `var(--ag)`.
+  A grade da câmera (`data-cx`, marca as que CHEGARAM) continua verde.

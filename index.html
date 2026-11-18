@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.19', HS_DATA='18/11/2026';
+const HS_VERSAO='10.6.20', HS_DATA='18/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12108,6 +12108,8 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 .dvr-l .bus{width:100%;font-weight:400}
 .dvr-datas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .dvr-datas[hidden]{display:none}
+/* v10.6.20: caixa marcada como FALTOU fica laranja (verde ficava parecendo "chegou"); a da câmera, que marca as que chegaram, continua verde */
+.vol-cx.on[data-dcx],.vol-cx.on[data-mcx]{background:var(--ag);border-color:var(--ag);color:#fff}
 .dvr-bt{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 @media (max-width:560px){ .dvr-bt .btn{flex:1 1 30%} }`; document.head.appendChild(st); })();
 </script>
