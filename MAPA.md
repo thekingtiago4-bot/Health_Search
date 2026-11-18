@@ -521,3 +521,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - **Conferência total → Por romaneio** no celular: linha quebra, barra cabe na tela.
 - **Buscar → Pesquisas recentes** no celular: termo em cima, resumo embaixo, ✕ à direita (hora escondida).
 - **Notificações**: lista limpa com divisórias, ✕ redondo pequeno e centralizado.
+
+## v10.6.11 (18/11/2026) — cartão da divergência
+- Remendo final do `duCard` (bloco "Cartão da divergência"): lê os `.du-l` que o cartão já monta e reorganiza —
+  cliente grande + cidade, blocos NF / Pedido / Quanto falta (vermelho; sobra em laranja) / Volumes, resto no rodapé.
+  Só aparência; campo novo cai sozinho no rodapé. **Classes `dvc-*` próprias** — `.du-topo` já existia e quebrou o layout.

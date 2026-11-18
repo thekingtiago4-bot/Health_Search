@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.10', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.11', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -11762,6 +11762,43 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 }`; document.head.appendChild(st); })();
 /* rótulo de cada célula do Checklist vem do cabeçalho (a coluna de arrastar só existe para o admin) */
 { const _ckr=ckRender; ckRender=function(){ const r=_ckr.apply(this,arguments); try{ const t=document.querySelector('#t-checklist .ck-tab'); if(t){ const H=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim()); for(const tr of t.querySelectorAll('tbody tr')) [...tr.children].forEach((td,i)=>{ td.dataset.l=H[i]||''; }); } }catch(e){} return r; }; }
+
+/* ================= v10.6.11 · Cartão da divergência: o que importa em destaque =================
+   Cliente grande no topo, cidade embaixo; NF, Pedido e "quanto falta" em blocos grandes; o resto
+   (tipo, volumes, quem e quando cadastrou, remetente…) pequeno no rodapé do cartão.
+   Só muda a aparência: lê os campos que o cartão já monta, e qualquer campo novo cai no rodapé. */
+{ const _dcv=duCard; duCard=function(d,ehAvaria){ const h=_dcv.apply(this,arguments); try{
+    const tp=document.createElement('template'); tp.innerHTML=String(h).trim(); const art=tp.content.firstElementChild; const g=art&&art.querySelector('.du-g'); if(!g) return h;
+    const campos=[...g.querySelectorAll(':scope>.du-l')].map(el=>({k:(el.querySelector('small')||{}).textContent||'',v:(el.querySelector('b')||{}).innerHTML||'',el}));
+    const tira=re=>{ const i=campos.findIndex(c=>re.test(c.k)); return i<0?null:campos.splice(i,1)[0]; };
+    const cli=tira(/^Cliente$/i), cid=tira(/^Cidade$/i), nf=tira(/^NF$/i), ped=tira(/^Pedido$/i), qt=tira(/^Quanto/i), vol=tira(/^Volumes$/i);
+    const quem=tira(/^Quem cadastrou$/i), quando=tira(/^Cadastrada em$/i);
+    const bloco=(rot,val,cls)=>val?`<div class="dvc-k${cls?' '+cls:''}"><small>${rot}</small><b>${val}</b></div>`:'';
+    const topo=document.createElement('div'); topo.className='dvc-topo';
+    topo.innerHTML=`<div class="dvc-cli">${cli&&cli.v?cli.v:'<span class="sub">Cliente não informado</span>'}</div>${cid&&cid.v?`<div class="dvc-cid">📍 ${cid.v}</div>`:''}
+      <div class="dvc-ks">${bloco('NF',nf&&nf.v,'dvc-nf')}${bloco('Pedido',ped&&ped.v)}${bloco(qt?qt.k:'',qt&&qt.v,qt&&/sobr/i.test(qt.k)?'dvc-falta dvc-sobra':'dvc-falta')}${bloco('Volumes',vol&&vol.v)}</div>`;
+    const rod=document.createElement('div'); rod.className='du-g dvc-rod'; for(const c of campos) rod.appendChild(c.el);
+    g.replaceWith(topo); topo.after(rod);
+    const hd=art.querySelector(':scope>header'); if(hd&&(quem||quando)) hd.insertAdjacentHTML('beforeend',`<span class="dvc-quem">${quando?quando.v:''}${quem&&quem.v?' · '+quem.v:''}</span>`);
+    return art.outerHTML; }catch(e){ return h; } }; }
+(function(){ const st=document.createElement('style'); st.textContent=`
+.du-c header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.du-c header>b{font-size:1rem;letter-spacing:.02em}
+.du-c .dvc-quem{margin-left:auto;order:3;font-size:.75rem;color:var(--mudo);width:100%;text-align:left}
+.dvc-topo{margin:6px 0 10px}
+.dvc-cli{font-size:1.15rem;font-weight:800;line-height:1.25;word-break:break-word}
+.dvc-cid{font-size:.85rem;color:var(--tinta2);margin-top:2px}
+.dvc-ks{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:10px}
+.dvc-k{border:1px solid var(--linha);border-radius:10px;padding:8px 10px;background:var(--sup2);min-width:0}
+.dvc-k small{display:block;font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mudo);font-weight:600}
+.dvc-k b{display:block;font-size:1.1rem;font-variant-numeric:tabular-nums;word-break:break-word}
+.dvc-falta{border-color:var(--no);background:color-mix(in srgb,var(--no) 12%,var(--sup2))}
+.dvc-falta b{color:var(--no)}
+.dvc-sobra{border-color:var(--ag);background:color-mix(in srgb,var(--ag) 12%,var(--sup2))}
+.dvc-sobra b{color:var(--ag)}
+.dvc-rod{opacity:.9;padding-top:8px;border-top:1px dashed var(--linha)}
+.dvc-rod .du-l b{font-size:.85rem;font-weight:600}
+`; document.head.appendChild(st); })();
 </script>
 
 </body>
