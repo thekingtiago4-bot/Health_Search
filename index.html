@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.22', HS_DATA='18/11/2026';
+const HS_VERSAO='10.6.23', HS_DATA='18/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7062,7 +7062,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     /* 2) sobe o que mudou aqui */
     const sobe=[]; const eu=opEu(); const agora=nuvLocal();
     if(nvAdmin()&&NUV.aal==null){ try{ const {data:al}=await NV.cli.auth.mfa.getAuthenticatorAssuranceLevel(); NUV.aal=al&&al.currentLevel||''; }catch(e){ NUV.aal=''; } }
-    const admOk=nvAdmin()&&NUV.aal==='aal2'; const soAdm=k=>(k==='s:geo'&&!NUV.publicarGeo)||(!admOk&&NUV_ADMIN.has(k))||(!nvAdmin()&&NUV_SO_ADMIN.has(k)); /* v10.6.04: cargo só o admin sobe (o banco recusa dos outros) */ /* v9.2.0: mapa só sobe pelo 📤 Publicar mapa */
+    const admOk=nvAdmin()&&(!HS_2ETAPAS||NUV.aal==='aal2'); const soAdm=k=>(k==='s:geo'&&!NUV.publicarGeo)||(!admOk&&NUV_ADMIN.has(k))||(!nvAdmin()&&NUV_SO_ADMIN.has(k)); /* v10.6.04: cargo só o admin sobe (o banco recusa dos outros) */ /* v9.2.0: mapa só sobe pelo 📤 Publicar mapa */
     if(nvAdmin()&&!admOk&&[...agora.keys()].some(k=>NUV_ADMIN.has(k)&&NUV.h[k]!==nuvHash(agora.get(k).valor))) NUV.avisoAal='Suas alterações em regiões/Correção estão guardadas neste aparelho, mas só vão para o banco depois que você entrar com a verificação em 2 etapas (saia e entre de novo).'; for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
     for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)&&(!k.startsWith('dv:')||(NUV.apagar&&NUV.apagar.has(k)))) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
     if(NUV.temAp) for(const r of sobe) r.ap=nuvApTab();
@@ -7444,7 +7444,11 @@ const MAN_CSS=`
 })();
 
 /* ================= v7.1.0 · Verificação em 2 etapas (admin) + tela de Auditoria ================= */
-async function nvMfa(){ const M=NV.cli.auth.mfa; if(!M) return;
+/* v10.6.23 · 2 etapas DESLIGADA por enquanto (pedido do Tiago, 18/11/2026: fase de testes, só ele e o Christian).
+   O banco também deixou de exigir (sql/migracoes/2026-11-18-001). Para religar: true aqui + migração com o aal2 de volta.
+   O autenticador cadastrado no Supabase continua lá. */
+const HS_2ETAPAS=false;
+async function nvMfa(){ if(!HS_2ETAPAS) return; const M=NV.cli.auth.mfa; if(!M) return;
   try{ const {data:al}=await M.getAuthenticatorAssuranceLevel(); if(al&&al.currentLevel==='aal2') return;
     const {data:fs,error:ef}=await M.listFactors(); if(ef) throw ef; const ok=(fs.totp||[]).find(x=>x.status==='verified');
     let fid=ok&&ok.id, qr='', seg='';

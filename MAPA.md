@@ -602,3 +602,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Sem coluna nova no banco: tudo vai em `vol`, `tot` e `tipo`, que já existem.
 - Pallet de 8 dígitos (`100xxxxx`) reconhecido (`opEhPallet`): sozinho não vira bipe e é guardado no campo pallet.
 - `opConfCompletar` não passa da conta quando há séries.
+
+### v10.6.23 · Verificação em 2 etapas do admin DESLIGADA (fase de testes)
+- Pedido do Tiago (18/11/2026): só ele e o Christian usam o app. `HS_2ETAPAS=false` (antes de `nvMfa`) pula a tela
+  do código e libera as chaves de admin sem aal2. No banco, `sql/migracoes/2026-11-18-001-admin-sem-2etapas.sql`
+  tirou o aal2 de `hs_eh_admin()`. O autenticador cadastrado no Supabase NÃO foi apagado.
+- **Religar antes de abrir para mais gente:** `HS_2ETAPAS=true` + migração nova devolvendo
+  `and coalesce(auth.jwt()->>'aal','') = 'aal2'` (texto em sql/historico/supabase-v7.1.0-auditoria-2etapas.sql).
