@@ -704,6 +704,25 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(eq.um==='46568:ok','etiqueta por cliente: 1 nota batendo tinha que dar baixa direto ('+eq.um+')');
     ok(eq.n===2,'etiqueta por cliente: com 2 notas iguais tinha que abrir a janela de escolha ('+eq.n+')');
     ok(eq.fora==='fora:51208','etiqueta por cliente: o ✕ tinha que lançar fora com o pedido do QR ('+eq.fora+')'); }
+  { /* v10.6.18 · relatório de divergências (Excel + PDF): só lê, não grava nada */
+    const rl=await p.evaluate(async()=>{ const antes=JSON.stringify(S.divergencias||[]); const guard=S.divergencias;
+      const h=hojeISO(), m=n=>{ const t=new Date(h+'T12:00'); t.setDate(t.getDate()-n); return t.toISOString().slice(0,10); };
+      S.divergencias=[{id:'r1',n:1,d:m(2),nf:'111',ped:'P1',tipo:'Falta de volume',cli:'A & <B>',st:'aberta'},{id:'r2',n:2,d:m(40),nf:'222',tipo:'Sobra de volume',cli:'C',st:'resolvida',res:{d:m(36),obs:'ok'}},
+        {id:'r3',n:3,d:h,nf:'333',tipo:'Falta de volume',cli:'A & <B>',st:'apareceu',apareceu:{d:h,rom:'9'}},{id:'av',n:4,d:h,cat:'av',tipo:'Avaria',st:'aberta'}];
+      const snap=JSON.stringify(S.divergencias);
+      DVR.per='tudo'; DVR.st='todas'; const todas=dvrLista().map(d=>d.id).join(',');
+      DVR.per='7'; const sete=dvrLista().length; DVR.per='tudo'; DVR.st='pend'; const pend=dvrLista().length; DVR.st='todas';
+      const c=dvrConta(dvrLista()); const blob=dvrXLSX(dvrLista(),dvrPeriodo()); const u=new Uint8Array(await blob.arrayBuffer());
+      const txt=new TextDecoder().decode(u); const html=dvrHTML(dvrLista(),dvrPeriodo());
+      const r={todas,sete,pend,pk:u[0]===0x50&&u[1]===0x4B,abas:/name="Resumo"/.test(txt)&&/name="Divergências"/.test(txt),esc:/A &amp; &lt;B&gt;/.test(txt)&&!/A & <B>/.test(txt),
+        htmlEsc:html.includes('A &amp; &lt;B&gt;'),rod:html.includes('Grupo VIVEO'),media:c.media,intacto:JSON.stringify(S.divergencias)===snap};
+      S.divergencias=guard; return r; });
+    ok(rl.todas==='r3,r1,r2','relatório: a lista tinha que vir sem a avaria e da mais nova para a mais velha ('+rl.todas+')');
+    ok(rl.sete===2&&rl.pend===2,'relatório: filtro de período/situação errado (7 dias='+rl.sete+', pendentes='+rl.pend+')');
+    ok(rl.pk&&rl.abas,'relatório: o Excel não saiu como .xlsx com as abas Resumo e Divergências');
+    ok(rl.esc&&rl.htmlEsc,'relatório: texto do cliente não foi protegido no Excel/PDF');
+    ok(rl.rod,'relatório: PDF sem o rodapé da empresa'); ok(rl.media===4,'relatório: média de dias até resolver errada ('+rl.media+')');
+    ok(rl.intacto,'relatório: gerar o relatório mexeu nos dados'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */

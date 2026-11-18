@@ -2351,7 +2351,7 @@ function iniciarTela(){
   renderXL();
 }
 root.HS_OCR=OCR; root.HS_OCR_PAL=palavrasOCR; root.HS_NOMES=NOMES;
-root.RomExcel={_i:{vizinhos,deitada,cinzaDe,reduzir,clarear,acharFolha,endireitar,girar,inclinacao,grayParaCanvas,escalar},converter,planilhaXLSX,planilhaXML,montarPagina,lerMeta,numBR,OCR,prepararImagem,acharFolha,XL,juntarPaginas,conferir,renderXL,cardDoRomaneio,nomeArquivo,ativa:()=>!document.getElementById('t-excel').hidden};
+root.RomExcel={_i:{vizinhos,deitada,cinzaDe,reduzir,clarear,acharFolha,endireitar,girar,inclinacao,grayParaCanvas,escalar,zip,xesc,colL},converter,planilhaXLSX,planilhaXML,montarPagina,lerMeta,numBR,OCR,prepararImagem,acharFolha,XL,juntarPaginas,conferir,renderXL,cardDoRomaneio,nomeArquivo,ativa:()=>!document.getElementById('t-excel').hidden};
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciarTela); else setTimeout(iniciarTela,0);
 })(window);
 
@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.17', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.18', HS_DATA='18/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -11911,6 +11911,201 @@ function etqEscolher(p,C){ ETQC.aberto=true; const f=document.createElement('div
 .etq-op b{font-size:1.05rem}.etq-op span{font-weight:600}.etq-op small{color:var(--mudo)}.etq-op em{color:var(--ag);font-style:normal}
 .etq-fora{all:unset;cursor:pointer;display:block;text-align:center;width:100%;box-sizing:border-box;padding:16px;border-radius:14px;background:var(--no);color:#fff;font-size:1.1rem;font-weight:800;margin-top:auto}
 .etq-canc{margin-top:8px;width:100%;justify-content:center}`; document.head.appendChild(st); })();
+
+/* ================= v10.6.18 · Relatório de Divergências para a diretoria (Excel formatado + PDF) =================
+   O antigo "Exportar Excel (CSV)" virou "⬇ Relatório": escolhe período e situação e gera
+   - Excel (.xlsx de verdade): aba "Resumo" (números, por tipo, por remetente, por cliente) e aba
+     "Divergências" (cabeçalho fixo, filtro, situação colorida, dias em aberto);
+   - PDF: janela de impressão A4 deitada com logo, cartões de resumo e a tabela.
+   Só lê os dados (dvSo: sem as avarias antigas). Nada é gravado nem apagado. */
+const DVR={ per:'tudo', st:'todas', de:'', ate:'' };
+const dvrDia=x=>String(x||'').slice(0,10);
+function dvrDias(d){ const a=dvrDia(d.d); if(!a) return null; const b=d.st==='resolvida'&&d.res&&d.res.d?dvrDia(d.res.d):hojeISO();
+  const n=Math.round((new Date(b+'T12:00')-new Date(a+'T12:00'))/864e5); return isNaN(n)?null:Math.max(0,n); }
+function dvrPeriodo(){ const h=hojeISO(), menos=n=>{ const t=new Date(h+'T12:00'); t.setDate(t.getDate()-n); return t.toISOString().slice(0,10); };
+  if(DVR.per==='7') return {de:menos(6),ate:h,t:'Últimos 7 dias'};
+  if(DVR.per==='30') return {de:menos(29),ate:h,t:'Últimos 30 dias'};
+  if(DVR.per==='mes') return {de:h.slice(0,8)+'01',ate:h,t:'Este mês'};
+  if(DVR.per==='outro'&&(DVR.de||DVR.ate)) return {de:DVR.de||'',ate:DVR.ate||'',t:(DVR.de?fmtData(DVR.de):'início')+' a '+(DVR.ate?fmtData(DVR.ate):'hoje')};
+  return {de:'',ate:'',t:'Todo o período'}; }
+const DVR_ST={todas:'Todas as situações',pend:'Pendentes (abertas + apareceram)',aberta:'Só abertas',apareceu:'Só as que apareceram no romaneio',resolvida:'Só resolvidas'};
+function dvrLista(){ const p=dvrPeriodo();
+  return dvSo().filter(d=>{ const dd=dvrDia(d.d); if(p.de&&dd<p.de) return false; if(p.ate&&dd>p.ate) return false;
+    if(DVR.st==='todas') return true; if(DVR.st==='pend') return d.st!=='resolvida'; return d.st===DVR.st; })
+    .sort((a,b)=>(dvrDia(b.d)).localeCompare(dvrDia(a.d))||(b.n||0)-(a.n||0)); }
+function dvrLinha(d){ return { n:dvNum(d), aberta:fmtData(dvrDia(d.d)), dias:dvrDias(d), st:(DV_ST[d.st]||{t:d.st||''}).t, stk:d.st, tipo:d.tipo||'',
+  nf:d.nf||'', ped:d.ped||'', cli:d.cli||'', cid:dvCidade(Object.assign({},d))||'', rem:d.rem||'',
+  vol:(d.qtd?d.qtd:'')+(d.tot?' de '+d.tot:''), falt:(d.falt&&d.falt.length&&d.tot)?volLista(d.falt,d.tot):'',
+  obs:d.obs||'', por:d.por||'', apar:d.apareceu?fmtData(dvrDia(d.apareceu.d))+(d.apareceu.rom?' · rom. '+d.apareceu.rom:''):'',
+  res:d.res?fmtData(dvrDia(d.res.d)):'', sol:d.res?(d.res.obs||''):'' }; }
+function dvrConta(L){ const c={tot:L.length,aberta:0,apareceu:0,resolvida:0,velhas:0,diasRes:[]}; const tipo={},rem={},cli={};
+  for(const d of L){ c[d.st]=(c[d.st]||0)+1; const n=dvrDias(d);
+    if(d.st==='resolvida'){ if(n!=null) c.diasRes.push(n); } else if(n!=null&&n>7) c.velhas++;
+    const t=d.tipo||'Sem tipo'; tipo[t]=(tipo[t]||0)+1; const r=d.rem||'Sem remetente'; rem[r]=(rem[r]||0)+1; const k=d.cli||'Sem cliente'; cli[k]=(cli[k]||0)+1; }
+  c.pctRes=c.tot?Math.round(100*c.resolvida/c.tot):0;
+  c.media=c.diasRes.length?Math.round(10*c.diasRes.reduce((s,x)=>s+x,0)/c.diasRes.length)/10:null;
+  const top=(o,n)=>Object.entries(o).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,n);
+  c.tipo=top(tipo,20); c.rem=top(rem,10); c.cli=top(cli,10); return c; }
+const DVR_COLS=[['Nº','n',7],['Aberta em','aberta',11],['Dias','dias',6],['Situação','st',20],['Tipo','tipo',16],['NF','nf',11],['Pedido','ped',11],
+  ['Cliente','cli',32],['Cidade','cid',20],['Remetente','rem',22],['Volumes','vol',9],['Caixas que faltaram','falt',18],['Observação','obs',36],
+  ['Aberta por','por',16],['Apareceu em','apar',20],['Resolvida em','res',12],['Solução','sol',32]];
+
+/* ---------- Excel ---------- */
+function dvrXLSX(L,p){ const {zip,xesc,colL}=RomExcel._i; const c=dvrConta(L), R=L.map(dvrLinha), eu=(NV.perfil&&NV.perfil.nome)||'';
+  const cel=(ref,s,v)=>{ if(v==null||v==='') return `<c r="${ref}" s="${s}"/>`; if(typeof v==='number') return `<c r="${ref}" s="${s}"><v>${v}</v></c>`; return `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xesc(v)}</t></is></c>`; };
+  const ws=(dim,views,cols,rows,extra)=>`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension ref="${dim}"/><sheetViews>${views}</sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${cols}</cols><sheetData>${rows}</sheetData>${extra||''}</worksheet>`;
+  const sub=`Health Log · Grupo VIVEO   |   Período: ${p.t}   |   ${DVR_ST[DVR.st]}   |   Gerado em ${new Date().toLocaleString('pt-BR')}${eu?' por '+eu:''}`;
+  /* aba Resumo */
+  let r=`<row r="1" ht="28" customHeight="1">${cel('A1',1,'Relatório de Divergências')}</row><row r="2" ht="18" customHeight="1">${cel('A2',2,sub)}</row>`;
+  const kp=[['Total no período',c.tot],['Abertas',c.aberta],['Apareceram no romaneio',c.apareceu],['Resolvidas',c.resolvida],['% resolvidas',c.pctRes/100],['Tempo médio até resolver (dias)',c.media==null?'—':c.media],['Pendentes há mais de 7 dias',c.velhas]];
+  let lin=4; r+=`<row r="${lin}" ht="20" customHeight="1">${cel('A'+lin,9,'Números do período')}</row>`; lin++;
+  kp.forEach(([t,v],i)=>{ const st=i===1?14:i===2?15:i===3?16:11; r+=`<row r="${lin}" ht="22" customHeight="1">${cel('A'+lin,10,t)}${cel('B'+lin,i===4?17:i===5?20:st,v)}</row>`; lin++; });
+  const bloco=(tit,arr)=>{ lin++; r+=`<row r="${lin}" ht="20" customHeight="1">${cel('A'+lin,9,tit)}</row>`; lin++;
+    r+=`<row r="${lin}">${cel('A'+lin,3,tit.replace(/^Por /,'').replace(/\s*\(.*\)$/,'').replace(/^./,x=>x.toUpperCase()))}${cel('B'+lin,3,'Divergências')}${cel('C'+lin,3,'% do total')}</row>`; lin++;
+    if(!arr.length){ r+=`<row r="${lin}">${cel('A'+lin,4,'—')}</row>`; lin++; }
+    arr.forEach(([k,v],i)=>{ const z=i%2; r+=`<row r="${lin}">${cel('A'+lin,z?5:4,k)}${cel('B'+lin,z?13:12,v)}${cel('C'+lin,z?19:18,c.tot?v/c.tot:0)}</row>`; lin++; }); };
+  bloco('Por tipo',c.tipo); bloco('Por remetente (10 maiores)',c.rem); bloco('Por cliente (10 maiores)',c.cli);
+  lin++; r+=`<row r="${lin}">${cel('A'+lin,2,'© 2026 Health Log · Grupo VIVEO — uso interno')}</row>`;
+  const s1=ws('A1:C'+lin,`<sheetView showGridLines="0" tabSelected="1" workbookViewId="0"/>`,`<col min="1" max="1" width="44" customWidth="1"/><col min="2" max="2" width="16" customWidth="1"/><col min="3" max="3" width="14" customWidth="1"/>`,r,
+    `<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>`);
+  /* aba Divergências */
+  const nC=DVR_COLS.length, ult=colL(nC-1), fim=4+R.length;
+  let t=`<row r="1" ht="24" customHeight="1">${cel('A1',1,'Divergências — detalhe')}</row><row r="2">${cel('A2',2,sub)}</row>`;
+  t+=`<row r="4" ht="30" customHeight="1">${DVR_COLS.map((k,i)=>cel(colL(i)+'4',3,k[0])).join('')}</row>`;
+  R.forEach((x,j)=>{ const rr=5+j, z=j%2; t+=`<row r="${rr}">${DVR_COLS.map(([,k],i)=>{ const v=x[k];
+      if(k==='st') return cel(colL(i)+rr,x.stk==='aberta'?6:x.stk==='apareceu'?7:8,v);
+      if(k==='dias'||k==='n'||k==='aberta'||k==='nf'||k==='ped'||k==='res'||k==='vol') return cel(colL(i)+rr,z?13:12,k==='dias'?(v==null?'':v):v);
+      return cel(colL(i)+rr,z?5:4,v); }).join('')}</row>`; });
+  const s2=ws(`A1:${ult}${Math.max(5,fim)}`,`<sheetView showGridLines="0" workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A5" sqref="A5"/></sheetView>`,
+    DVR_COLS.map((k,i)=>`<col min="${i+1}" max="${i+1}" width="${k[2]}" customWidth="1"/>`).join(''),t,
+    `<autoFilter ref="A4:${ult}${Math.max(5,fim)}"/><pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/><headerFooter><oddFooter>&amp;L© 2026 Health Log · Grupo VIVEO — uso interno&amp;RPágina &amp;P de &amp;N</oddFooter></headerFooter>`);
+  const F=(b,sz,cor)=>`<font>${b?'<b/>':''}<sz val="${sz}"/><color rgb="${cor}"/><name val="Calibri"/><family val="2"/></font>`;
+  const fill=c=>`<fill><patternFill patternType="solid"><fgColor rgb="${c}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const X=(nf,f,fi,b,al,wrap)=>`<xf numFmtId="${nf}" fontId="${f}" fillId="${fi}" borderId="${b}" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="${al}" vertical="center"${wrap?' wrapText="1"':''}/></xf>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="0%"/><numFmt numFmtId="165" formatCode="0.0"/></numFmts>`+
+    `<fonts count="13">${F(0,10,'FF212529')}${F(1,18,'FF0C3A40')}${F(0,10,'FF6C757D')}${F(1,10,'FFFFFFFF')}${F(1,11,'FF212529')}${F(1,16,'FF0C3A40')}${F(1,12,'FF0C3A40')}${F(1,10,'FFC92A2A')}${F(1,10,'FFD9480F')}${F(1,10,'FF087F5B')}${F(1,16,'FFC92A2A')}${F(1,16,'FFD9480F')}${F(1,16,'FF087F5B')}</fonts>`+
+    `<fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${fill('FF0C3A40')}${fill('FFF3F6F8')}${fill('FFFDE2E2')}${fill('FFFFE8D6')}${fill('FFD3F9E0')}${fill('FFEAF4F4')}</fills>`+
+    `<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFD0D7DE"/></left><right style="thin"><color rgb="FFD0D7DE"/></right><top style="thin"><color rgb="FFD0D7DE"/></top><bottom style="thin"><color rgb="FFD0D7DE"/></bottom><diagonal/></border></borders>`+
+    `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="21">`+
+    X(0,0,0,0,'general')+            /*0*/
+    X(0,1,0,0,'left')+               /*1 título*/
+    X(0,2,0,0,'left')+               /*2 subtítulo*/
+    X(0,3,2,1,'center',1)+           /*3 cabeçalho*/
+    X(49,0,0,1,'left',1)+            /*4 texto*/
+    X(49,0,3,1,'left',1)+            /*5 texto zebra*/
+    X(0,7,4,1,'center')+             /*6 aberta*/
+    X(0,8,5,1,'center')+             /*7 apareceu*/
+    X(0,9,6,1,'center')+             /*8 resolvida*/
+    X(0,6,0,0,'left')+               /*9 seção*/
+    X(0,4,7,1,'left')+               /*10 rótulo do número*/
+    X(3,5,7,1,'center')+             /*11 número grande*/
+    X(0,0,0,1,'center')+             /*12 centro*/
+    X(0,0,3,1,'center')+             /*13 centro zebra*/
+    X(3,10,4,1,'center')+            /*14 n abertas*/
+    X(3,11,5,1,'center')+            /*15 n apareceu*/
+    X(3,12,6,1,'center')+            /*16 n resolvidas*/
+    X(164,5,7,1,'center')+           /*17 % grande*/
+    X(164,0,0,1,'center')+           /*18 % */
+    X(164,0,3,1,'center')+           /*19 % zebra*/
+    X(165,5,7,1,'center')+           /*20 média (0,0)*/
+    `</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const wb=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets><sheet name="Resumo" sheetId="1" r:id="rId1"/><sheet name="Divergências" sheetId="2" r:id="rId2"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="1" hidden="1">'Divergências'!$A$4:$${ult}$${Math.max(5,fim)}</definedName><definedName name="_xlnm.Print_Titles" localSheetId="1">'Divergências'!$4:$4</definedName></definedNames></workbook>`;
+  const ag=new Date().toISOString().replace(/\.\d+Z$/,'Z'), H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  return zip([
+    {nome:'[Content_Types].xml',dados:H+`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`},
+    {nome:'_rels/.rels',dados:H+`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`},
+    {nome:'docProps/core.xml',dados:H+`<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>Relatório de Divergências</dc:title><dc:creator>Health Search</dc:creator><cp:lastModifiedBy>Health Search</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${ag}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${ag}</dcterms:modified></cp:coreProperties>`},
+    {nome:'docProps/app.xml',dados:H+`<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Health Search</Application></Properties>`},
+    {nome:'xl/workbook.xml',dados:wb},
+    {nome:'xl/_rels/workbook.xml.rels',dados:H+`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {nome:'xl/styles.xml',dados:styles},
+    {nome:'xl/worksheets/sheet1.xml',dados:s1},
+    {nome:'xl/worksheets/sheet2.xml',dados:s2} ]); }
+
+/* ---------- PDF ---------- */
+function dvrHTML(L,p){ const c=dvrConta(L), R=L.map(dvrLinha), eu=(NV.perfil&&NV.perfil.nome)||'';
+  const barra=(arr,cor)=>{ const mx=Math.max(1,...arr.map(x=>x[1])); return arr.length?`<table class="bar">${arr.map(([k,v])=>`<tr><td class="k">${esc(k)}</td><td class="b"><i style="width:${Math.max(2,Math.round(100*v/mx))}%;background:${cor}"></i></td><td class="v">${fmtN(v)}</td></tr>`).join('')}</table>`:'<p class="nada">—</p>'; };
+  const stc={aberta:'#C92A2A',apareceu:'#D9480F',resolvida:'#087F5B'}, stf={aberta:'#FDE2E2',apareceu:'#FFE8D6',resolvida:'#D3F9E0'};
+  let logo=''; try{ logo=HS_LOGO_ANIM; }catch(e){}
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Divergências ${hojeISO()}</title>
+<style>@page{size:A4 landscape;margin:10mm 10mm 12mm}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font:10pt/1.35 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#212529;margin:0}
+header{display:flex;align-items:center;gap:14px;padding:0 0 10px;border-bottom:3px solid #0C3A40;margin-bottom:12px}
+header svg{width:52px;height:52px;flex:none}header .t{flex:1}header h1{margin:0;font-size:20pt;color:#0C3A40;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:#6C757D;font-size:9.5pt}header .q{text-align:right;color:#6C757D;font-size:9pt;line-height:1.5}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
+.kpi{border:1px solid #D0D7DE;border-radius:8px;padding:8px 10px;background:#F8FAFB;border-top:4px solid #0C3A40}
+.kpi b{display:block;font-size:20pt;line-height:1.1;color:#0C3A40}.kpi span{font-size:8.5pt;color:#495057;text-transform:uppercase;letter-spacing:.03em}
+.kpi.ab{border-top-color:#C92A2A}.kpi.ab b{color:#C92A2A}.kpi.ap{border-top-color:#D9480F}.kpi.ap b{color:#D9480F}.kpi.re{border-top-color:#087F5B}.kpi.re b{color:#087F5B}
+.kpi.vl{border-top-color:#E8A33D}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+.cx{border:1px solid #D0D7DE;border-radius:8px;padding:8px 10px}.cx h3{margin:0 0 6px;font-size:10pt;color:#0C3A40;text-transform:uppercase;letter-spacing:.03em}
+table.bar{width:100%;border-collapse:collapse;font-size:8.5pt}table.bar td{padding:2px 0;vertical-align:middle}
+table.bar .k{width:46%;padding-right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0}table.bar .b{width:44%}
+table.bar .b i{display:block;height:10px;border-radius:3px}table.bar .v{width:10%;text-align:right;font-weight:700;padding-left:6px}
+.nada{color:#868E96;margin:0}
+h2{font-size:12pt;color:#0C3A40;margin:4px 0 6px}
+table.dv{width:100%;border-collapse:collapse;font-size:8pt}
+table.dv thead{display:table-header-group}
+table.dv th{background:#0C3A40;color:#fff;text-align:left;padding:5px 5px;font-weight:600;font-size:7.8pt;text-transform:uppercase;letter-spacing:.02em}
+table.dv td{border-bottom:1px solid #E3E8EC;padding:4px 5px;vertical-align:top}
+table.dv tbody tr:nth-child(even) td{background:#F6F8FA}
+table.dv tr{break-inside:avoid}
+.st{display:inline-block;padding:1px 7px;border-radius:10px;font-weight:700;font-size:7.6pt;white-space:nowrap}
+.c{text-align:center}.n{font-weight:700;white-space:nowrap}.sm{color:#6C757D;font-size:7.4pt}
+.vazio{padding:30px;text-align:center;color:#6C757D;border:1px dashed #ced4da;border-radius:8px}
+footer{margin-top:12px;color:#6C757D;font-size:8.5pt;border-top:1px solid #D0D7DE;padding-top:6px;display:flex;justify-content:space-between}
+@media screen{body{max-width:1120px;margin:16px auto;padding:0 12px}}</style></head><body>
+<header>${logo}<div class="t"><h1>Relatório de Divergências</h1><p>Health Log · Grupo VIVEO — conferência de cargas</p></div>
+<div class="q"><b>Período:</b> ${esc(p.t)}<br><b>Situação:</b> ${esc(DVR_ST[DVR.st])}<br>Gerado em ${new Date().toLocaleString('pt-BR')}${eu?'<br>por '+esc(eu):''}</div></header>
+<div class="kpis"><div class="kpi"><b>${fmtN(c.tot)}</b><span>Total</span></div><div class="kpi ab"><b>${fmtN(c.aberta)}</b><span>Abertas</span></div>
+<div class="kpi ap"><b>${fmtN(c.apareceu)}</b><span>Apareceram no romaneio</span></div><div class="kpi re"><b>${fmtN(c.resolvida)}</b><span>Resolvidas · ${c.pctRes}%</span></div>
+<div class="kpi"><b>${c.media==null?'—':String(c.media).replace('.',',')}</b><span>Dias até resolver (média)</span></div><div class="kpi vl"><b>${fmtN(c.velhas)}</b><span>Pendentes há +7 dias</span></div></div>
+<div class="grid3"><div class="cx"><h3>Por tipo</h3>${barra(c.tipo,'#0C3A40')}</div><div class="cx"><h3>Por remetente (10 maiores)</h3>${barra(c.rem,'#2C9C92')}</div><div class="cx"><h3>Por cliente (10 maiores)</h3>${barra(c.cli,'#4C6EF5')}</div></div>
+<h2>Detalhe (${fmtN(R.length)})</h2>
+${R.length?`<table class="dv"><thead><tr><th>Nº</th><th>Aberta</th><th class="c">Dias</th><th>Situação</th><th>Tipo</th><th>NF / Pedido</th><th>Cliente</th><th>Cidade</th><th>Remetente</th><th class="c">Vol.</th><th>Observação</th><th>Andamento</th></tr></thead><tbody>
+${R.map(x=>`<tr><td class="n">${esc(x.n)}</td><td>${esc(x.aberta)}<div class="sm">${esc(x.por)}</div></td><td class="c">${x.dias==null?'':x.dias}</td>
+<td><span class="st" style="color:${stc[x.stk]||'#495057'};background:${stf[x.stk]||'#eee'}">${esc(x.st)}</span></td><td>${esc(x.tipo)}</td>
+<td class="n">${esc(x.nf)}${x.ped?`<div class="sm">Ped. ${esc(x.ped)}</div>`:''}</td><td>${esc(x.cli)}</td><td>${esc(x.cid)}</td><td>${esc(x.rem)}</td>
+<td class="c">${esc(x.vol)}${x.falt?`<div class="sm">${esc(x.falt)}</div>`:''}</td><td>${esc(x.obs)}</td>
+<td>${x.apar?`<div class="sm">Apareceu ${esc(x.apar)}</div>`:''}${x.res?`<div><b>Resolvida ${esc(x.res)}</b></div>`:''}${x.sol?`<div class="sm">${esc(x.sol)}</div>`:''}</td></tr>`).join('')}
+</tbody></table>`:'<div class="vazio">Nenhuma divergência nesse período e situação.</div>'}
+<footer><span>© 2026 Health Log · Grupo VIVEO — uso interno</span><span>Health Search</span></footer>
+</body></html>`; }
+function dvrPDF(L,p){ const w=window.open('','_blank'); if(!w){ toast('Libere as janelas (pop-up) para gerar o PDF.'); return false; }
+  w.document.write(dvrHTML(L,p)); w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },500); return true; }
+
+/* ---------- janela de escolha ---------- */
+function dvrJanela(){ if(document.querySelector('#dvr-j')) return; const f=document.createElement('div'); f.className='fundo'; f.id='dvr-j'; f.style.zIndex='1700';
+  const op=(v,t,a)=>`<option value="${v}"${a===v?' selected':''}>${t}</option>`;
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="dvr-t" style="max-width:460px"><h2 id="dvr-t" style="margin-top:0">📑 Relatório de divergências</h2>
+    <label class="dvr-l">Período<select id="dvr-per" class="bus">${op('tudo','Todo o período',DVR.per)}${op('7','Últimos 7 dias',DVR.per)}${op('30','Últimos 30 dias',DVR.per)}${op('mes','Este mês',DVR.per)}${op('outro','Escolher as datas',DVR.per)}</select></label>
+    <div id="dvr-datas" class="dvr-datas"${DVR.per==='outro'?'':' hidden'}><label class="dvr-l">De<input type="date" id="dvr-de" class="bus" value="${DVR.de}"></label><label class="dvr-l">Até<input type="date" id="dvr-ate" class="bus" value="${DVR.ate}"></label></div>
+    <label class="dvr-l">Situação<select id="dvr-st" class="bus">${Object.entries(DVR_ST).map(([k,t])=>op(k,t,DVR.st)).join('')}</select></label>
+    <p id="dvr-n" class="sub" style="margin:10px 0 14px"></p>
+    <div class="botoes dvr-bt"><button class="btn" type="button" data-dvr="x">Fechar</button><button class="btn" type="button" data-dvr="xlsx">📊 Excel</button><button class="btn pri" type="button" data-dvr="pdf">📄 PDF</button></div></div>`;
+  document.body.appendChild(f);
+  const ler=()=>{ DVR.per=f.querySelector('#dvr-per').value; DVR.st=f.querySelector('#dvr-st').value; DVR.de=f.querySelector('#dvr-de').value; DVR.ate=f.querySelector('#dvr-ate').value;
+    f.querySelector('#dvr-datas').hidden=DVR.per!=='outro'; const n=dvrLista().length;
+    f.querySelector('#dvr-n').textContent=n?`${fmtN(n)} divergência(s) vão no relatório (${dvrPeriodo().t.toLowerCase()}).`:'Nenhuma divergência com esse filtro.'; };
+  f.addEventListener('change',ler); ler();
+  f.addEventListener('click',e=>{ if(e.target===f){ f.remove(); return; } const b=e.target.closest('[data-dvr]'); if(!b) return; const a=b.dataset.dvr;
+    if(a==='x'){ f.remove(); return; } ler(); const L=dvrLista(), p=dvrPeriodo();
+    if(a==='xlsx'){ try{ baixar(dvrXLSX(L,p),`Relatorio_Divergencias_${hojeISO()}.xlsx`); toast('✔ Planilha baixada.'); f.remove(); }catch(er){ console.error(er); toast('Não consegui gerar a planilha.'); } }
+    if(a==='pdf'){ try{ if(dvrPDF(L,p)) f.remove(); }catch(er){ console.error(er); toast('Não consegui gerar o PDF.'); } } });
+  f.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); f.remove(); } },true); }
+/* o botão antigo da aba Divergências passa a abrir a escolha (o clique é pego antes do onclick antigo) */
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#dv-csv'); if(!b) return; e.preventDefault(); e.stopPropagation(); dvrJanela(); },true);
+{ const rot=()=>{ const b=document.getElementById('dv-csv'); if(b&&b.dataset.dvr!=='1'){ b.dataset.dvr='1'; b.textContent='⬇ Relatório'; b.title='Relatório para a diretoria: Excel ou PDF'; } };
+  rot(); try{ const _ir=irPara; irPara=function(){ const r=_ir.apply(this,arguments); try{ rot(); }catch(e){} return r; }; }catch(e){} }
+(function(){ const st=document.createElement('style'); st.textContent=`
+.dvr-l{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.9rem;margin:0 0 10px}
+.dvr-l .bus{width:100%;font-weight:400}
+.dvr-datas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dvr-datas[hidden]{display:none}
+.dvr-bt{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:560px){ .dvr-bt .btn{flex:1 1 30%} }`; document.head.appendChild(st); })();
 </script>
 
 </body>

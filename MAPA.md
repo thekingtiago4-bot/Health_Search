@@ -560,3 +560,13 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   `opCamTratar` passa os números do QR em `p.qr`. Com a janela aberta as leituras são ignoradas (`ETQC.aberto`).
 - **Leitor de texto em foto inteira lê mal essas etiquetas** (testado com as 4 fotos do Tiago); na câmera ele recorta a
   etiqueta amarela e lê melhor, mas depende de chegar perto. Não deu para validar no aparelho real.
+
+### v10.6.18 · Relatório de Divergências (Excel + PDF para a diretoria)
+- O botão "Exportar Excel (CSV)" da aba Divergências virou **⬇ Relatório** (`dvrJanela`): escolhe período
+  (tudo, 7 dias, 30 dias, mês, datas) e situação (todas, pendentes, abertas, apareceram, resolvidas).
+- **Excel** (`dvrXLSX`, .xlsx de verdade): aba *Resumo* (números, % resolvidas, média de dias até resolver,
+  pendentes há +7 dias, por tipo/remetente/cliente) e aba *Divergências* (cabeçalho fixo, filtro, situação
+  colorida, dias em aberto, rodapé com página). Usa `RomExcel._i.zip/xesc/colL` (exportados do módulo do romaneio).
+- **PDF** (`dvrHTML`/`dvrPDF`): janela de impressão A4 deitada com logo, cartões, barras e a tabela.
+- Só lê: usa `dvSo()` (sem avarias antigas) e a cidade é buscada numa cópia — gerar relatório não grava nada.
+- O clique é pego em captura no `document` antes do `onclick` antigo (que continua no código, sem uso).
