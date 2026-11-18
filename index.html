@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.13', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.14', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -11828,6 +11828,18 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 .ck-leg-cores span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .ck-leg-cores i{width:12px;height:12px;border-radius:3px;display:inline-block}
 .ck-leg-l{margin:0;padding-left:18px;line-height:1.6}`; document.head.appendChild(st); })();
+
+/* ================= v10.6.14 · Nota em divergência sai das pendentes (também na conferência caixa a caixa) =================
+   Regra do Tiago: nota com divergência registrada CONTA COMO CONFERIDA (o Painel já fazia — gsContar).
+   Com a conferência caixa a caixa ligada, a nota de 15 volumes com 2 caixas em falta ficava "13 de 15" e
+   continuava em "Faltando", segurando a porcentagem. Agora sai das pendentes (e a % do NexBip e da
+   Conferência total bate com a do Painel). A divergência continua aberta até alguém dar baixa. */
+function opNotaTemDv(x){ try{ const nf=opK(x&&x.nf||''), ped=opK(x&&x.ped||''); if(!nf&&!ped) return false;
+    return dvSo().some(d=>(d.st!=='resolvida'||d.conferida)&&((nf&&opK(d.nf||'')===nf)||(ped&&opK(d.ped||'')===ped))); }catch(e){ return false; } }
+{ const _pdv=opPendentes; opPendentes=function(){ const l=_pdv.apply(this,arguments); try{ if(!Array.isArray(l)) return l; const D=dvSo(); if(!D.length) return l;
+    const nfs=new Set(), peds=new Set(); for(const d of D){ if(d.st==='resolvida'&&!d.conferida) continue; const a=opK(d.nf||''), b=opK(d.ped||''); if(a) nfs.add(a); if(b) peds.add(b); }
+    if(!nfs.size&&!peds.size) return l;
+    return l.filter(it=>{ const x=it&&it.x; if(!x) return true; const a=opK(x.nf||''), b=opK(x.ped||''); return !((a&&nfs.has(a))||(b&&peds.has(b))); }); }catch(e){ return l; } }; }
 </script>
 
 </body>

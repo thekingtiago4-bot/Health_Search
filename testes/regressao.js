@@ -668,6 +668,15 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(cx.bt,'cancelar dv: o cartão da divergência tinha que ter o ✕ Cancelar');
     ok(cx.ok&&cx.sumiu&&cx.bips===0&&cx.pend2,'cancelar dv: a divergência e o bipe tinham que sair e a nota voltar para pendente ('+JSON.stringify(cx)+')');
     ok(cx.padrao==='Ctrl+K'&&cx.alt5,'atalhos: o padrão (Ctrl+K / Alt+5) não funcionou ('+cx.padrao+', '+cx.alt5+')'); }
+  /* v10.6.14: nota marcada à mão como divergência (2 de 15 caixas faltando) sai das pendentes também caixa a caixa */
+  { const dvm=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const out={}; NV.perfil={papel:'admin',ativo:true,nome:'Teste'}; document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf'; const _q=window.opQuantosMao; window.opQuantosMao=async()=>({chegou:13,faltaram:[1,2]});
+      for(const pv of [false,true]){ S.opPorVolume=pv; S.divergencias=[];
+        S.romaneios=[{id:'dm1',numero:'EXTRA I',base:'CAJ',arquivo:a,rows:[{nf:'746346',ped:'740001',vol:'15',dest:'UNIMED',cid:'SAO CARLOS',uf:'SP'},{nf:'746347',ped:'740002',vol:'10',dest:'X',cid:'Y',uf:'SP'}]}]; OP.dia=h; OP.bipes=[]; renderTudo();
+        await opMarcarMao(S.romaneios[0].rows[0],'dv',false); await w(200);
+        OP._semFiltro=true; const pend=opPendentes(); OP._semFiltro=false; out[pv?'caixa':'nota']=pend.map(i=>opK(i.x.nf)).join(','); }
+      window.opQuantosMao=_q; S.opPorVolume=false; S.divergencias=[]; S.romaneios=[]; OP.bipes=[]; renderTudo(); return out; });
+    ok(dvm.nota==='746347'&&dvm.caixa==='746347','divergência à mão: a nota com caixas faltando tinha que sair das pendentes (nota: '+dvm.nota+' · caixa a caixa: '+dvm.caixa+')'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */

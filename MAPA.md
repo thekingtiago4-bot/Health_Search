@@ -534,3 +534,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 
 ## v10.6.13 (18/11/2026)
 - Legenda do Checklist virou um quadro (`.ck-leg`): validade, cores com quadradinho e regras do rastreador em lista.
+
+## v10.6.14 (18/11/2026) — GRAVE: nota em divergência ficava em "Faltando"
+- Com a conferência caixa a caixa (`opPorVol`), marcar à mão "faltaram 2 de 15" deixava a nota "13 de 15" nas
+  pendentes e segurava a %. Remendo final em `opPendentes`: nota com divergência aberta (ou `conferida`) sai das
+  pendentes — mesma regra do `gsContar` (Painel). Índice de NF/pedido montado uma vez por chamada (bipagem igual: ~98 ms).
+- Teste novo no `regressao.js` cobre os dois modos (nota e caixa a caixa).

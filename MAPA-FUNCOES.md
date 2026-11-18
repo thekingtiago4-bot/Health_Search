@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 18/11/2026 06:55 · versão 10.6.13
+Gerado em 18/11/2026 09:57 · versão 10.6.14
 
 
 ## ab
@@ -792,6 +792,7 @@ Gerado em 18/11/2026 06:55 · versão 10.6.13
 - `opMostrar` — linha 5220
 - `opMsgTrocar` — linha 5336
 - `opNomeMot` — linha 9097
+- `opNotaTemDv` — linha 11837
 - `opOcr` — linha 6752
 - `opOutraCaixa` — linha 9078
 - `opPendentes` — linha 5658
