@@ -609,3 +609,12 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   tirou o aal2 de `hs_eh_admin()`. O autenticador cadastrado no Supabase NÃO foi apagado.
 - **Religar antes de abrir para mais gente:** `HS_2ETAPAS=true` + migração nova devolvendo
   `and coalesce(auth.jwt()->>'aal','') = 'aal2'` (texto em sql/historico/supabase-v7.1.0-auditoria-2etapas.sql).
+
+### v10.6.24 · Prints de 18/11 (celular)
+- Toast (`#toast`): arrastar para cima (ou tocar) fecha na hora — pointer events + `translate` (o CSS do celular
+  usa `transform:none!important`, por isso não dá para animar por transform). Continua sumindo sozinho em 3,8 s.
+- Checklist: `input[type=date]` com `appearance:none` + `min-width:0` (o iPhone dava largura mínima própria e saía do cartão).
+- Cadastros: cada motorista (`.cad-m`) em cartão; formulário `.cad-add` com borda tracejada e "➕ Cadastrar novo".
+- Usuários: `#nv-users .tb-cartao td` com rótulo em cima e `overflow-wrap:anywhere` (e-mail longo).
+- Reentregas (celular): cartão com áreas (cliente grande, 📍cidade, caixinhas NF/Pedido/Qtd/Valor, motivo laranja);
+  perecível = faixa laranja (`:has(option:checked:last-child)`). No computador: NF e valor em negrito.

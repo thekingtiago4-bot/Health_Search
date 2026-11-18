@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.23', HS_DATA='18/11/2026';
+const HS_VERSAO='10.6.24', HS_DATA='18/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12202,6 +12202,79 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 .vol-cx.on[data-dcx],.vol-cx.on[data-mcx]{background:var(--ag);border-color:var(--ag);color:#fff}
 .dvr-bt{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 @media (max-width:560px){ .dvr-bt .btn{flex:1 1 30%} }`; document.head.appendChild(st); })();
+
+/* ================= v10.6.24 · Aviso do topo (toast): desliza para cima e some, como notificação de celular ================= */
+(function(){ const t=document.getElementById('toast'); if(!t) return; let y0=null, dy=0;
+  const solta=()=>{ t.style.removeProperty('translate'); t.style.removeProperty('opacity'); t.style.removeProperty('transition'); };
+  const some=()=>{ t.style.transition='translate .18s ease-out, opacity .18s'; t.style.setProperty('translate','0 -140%'); t.style.opacity='0';
+    setTimeout(()=>{ t.hidden=true; solta(); },190); };
+  t.addEventListener('pointerdown',e=>{ y0=e.clientY; dy=0; t.style.transition='none'; try{ t.setPointerCapture(e.pointerId); }catch(er){} });
+  t.addEventListener('pointermove',e=>{ if(y0==null) return; dy=Math.min(0,e.clientY-y0); t.style.setProperty('translate','0 '+dy+'px'); t.style.opacity=String(Math.max(.2,1+dy/120)); });
+  const fim=()=>{ if(y0==null) return; y0=null; if(dy<-28) some(); else { t.style.transition='translate .15s, opacity .15s'; t.style.setProperty('translate','0 0'); t.style.opacity='1'; setTimeout(solta,160); } };
+  t.addEventListener('pointerup',fim); t.addEventListener('pointercancel',fim);
+  /* um toque rápido sem arrastar também fecha */
+  t.addEventListener('click',()=>{ if(Math.abs(dy)<4) some(); });
+  const st=document.createElement('style'); st.textContent=`#toast{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+#toast::after{content:"";display:block;width:36px;height:4px;border-radius:2px;background:currentColor;opacity:.25;margin:6px auto -4px}`; document.head.appendChild(st); })();
+
+/* ================= v10.6.24 · Celular: Checklist, Cadastros, Usuários e Reentregas (prints de 18/11) ================= */
+(function(){ const st=document.createElement('style'); st.textContent=`
+/* Reentregas — em qualquer tela: nota e valor em destaque, perecível com faixa laranja */
+#re-tab td[data-l="Nota Fiscal"] input{font-weight:800;font-variant-numeric:tabular-nums}
+#re-tab td[data-l="Valor (R$)"] input{font-weight:800;color:var(--ok)}
+#re-tab tbody tr:has(td[data-l="Perecível"] option:checked:last-child)>td:first-child{box-shadow:inset 4px 0 0 var(--ag)}
+@media (max-width:860px){
+  /* Checklist: a data não passa da borda do cartão */
+  #t-checklist .ck-tab tr{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  #t-checklist .ck-tab input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0!important;width:100%!important;text-align:left}
+  #t-checklist .ck-tab input[type=date]::-webkit-date-and-time-value{text-align:left}
+  /* Cadastros: cada motorista num cartão; o "cadastrar novo" destacado */
+  #t-cadastros .cad-m,#re-motivos .cad-m{border:1px solid var(--linha)!important;border-left:5px solid var(--acento)!important;border-radius:12px;padding:12px!important;margin:0 0 12px;background:var(--sup2)}
+  #t-cadastros .cad-m .nm{font-weight:800}
+  #t-cadastros .cad-add,#re-motivos .cad-add{flex-wrap:wrap;gap:8px!important;padding:12px;margin:8px 0 14px!important;border:2px dashed var(--acento);border-radius:12px;background:color-mix(in srgb,var(--acento) 10%,var(--sup))}
+  #t-cadastros .cad-add::before,#re-motivos .cad-add::before{content:"➕ Cadastrar novo";flex:0 0 100%;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--acento)}
+  #t-cadastros .cad-add input{flex:1 1 140px!important;max-width:none!important;min-width:0}
+  #t-cadastros .cad-add .btn{flex:1 1 100%}
+  #t-cadastros .cad-col{padding:12px 0;border-top:2px solid var(--linha)}
+  #t-cadastros .cad-col:first-child{border-top:0;padding-top:0}
+  #re-motivos .cad-it{border:1px solid var(--linha)!important;border-radius:10px;padding:8px 10px!important;margin:0 0 8px;background:var(--sup2)}
+  /* Usuários: rótulo em cima, valor embaixo; e-mail quebra a linha em vez de sair da tela */
+  #nv-users table.tb-cartao td{flex-direction:column!important;align-items:flex-start!important;text-align:left!important;gap:2px}
+  #nv-users table.tb-cartao td::before{font-size:.66rem!important;text-transform:uppercase;letter-spacing:.05em}
+  #nv-users table.tb-cartao td{overflow-wrap:anywhere;word-break:break-word;max-width:100%}
+  #nv-users table.tb-cartao td select{max-width:none!important;width:100%}
+  #nv-users table.tb-cartao td.forte{font-size:1.1rem}
+  #nv-users table.tb-cartao td.nx-acoes{flex-direction:row!important;flex-wrap:wrap;gap:8px}
+  #nv-users table.tb-cartao td.nx-acoes .btn{flex:1 1 auto}
+  #nv-users table.tb-cartao tr{border-left:5px solid var(--acento)!important;border-radius:12px}
+  /* Reentregas: cartão no estilo das divergências */
+  #re-tab.tb-cartao tbody tr{grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-template-areas:"cli cli cli cli" "cid cid cid uf" "nf nf ped ped" "qtd qtd val val" "obs obs obs obs" "mot mot base base" "per per . .";
+    border:1px solid var(--linha)!important;border-left:6px solid var(--acento)!important;border-radius:14px!important;background:var(--sup)!important;padding:42px 12px 12px!important;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+  #re-tab.tb-cartao tbody tr:has(td[data-l="Perecível"] option:checked:last-child){border-left-color:var(--ag)!important}
+  #re-tab.tb-cartao tbody tr>td:first-child{box-shadow:none!important}
+  #re-tab.tb-cartao td[data-l="Cliente"]{grid-area:cli}
+  #re-tab.tb-cartao td[data-l="Cidade"]{grid-area:cid}#re-tab.tb-cartao td[data-l="UF"]{grid-area:uf}
+  #re-tab.tb-cartao td[data-l="Nota Fiscal"]{grid-area:nf}#re-tab.tb-cartao td[data-l="Pedido"]{grid-area:ped}
+  #re-tab.tb-cartao td[data-l="Qtd"]{grid-area:qtd}#re-tab.tb-cartao td[data-l="Valor (R$)"]{grid-area:val}
+  #re-tab.tb-cartao td[data-l="Observação / Motivo"]{grid-area:obs}
+  #re-tab.tb-cartao td[data-l="Motorista"]{grid-area:mot}#re-tab.tb-cartao td[data-l="Base"]{grid-area:base}#re-tab.tb-cartao td[data-l="Perecível"]{grid-area:per}
+  #re-tab.tb-cartao td[data-l="Cliente"] input{font-size:1.15rem!important;font-weight:800;border:0!important;background:transparent!important;padding:0!important;min-height:0}
+  #re-tab.tb-cartao td[data-l="Cidade"] input,#re-tab.tb-cartao td[data-l="UF"] input{border-color:transparent!important;background:transparent!important;padding:0!important;min-height:0;color:var(--tinta2)!important;font-size:.88rem!important}
+  #re-tab.tb-cartao td[data-l="Cliente"]::before,#re-tab.tb-cartao td[data-l="Cidade"]::before,#re-tab.tb-cartao td[data-l="UF"]::before{display:none}
+  #re-tab.tb-cartao td[data-l="Cidade"]{flex-direction:row!important;align-items:center!important;gap:4px}
+  #re-tab.tb-cartao td[data-l="Cidade"]::after{content:"📍";order:-1;font-size:.85rem}
+  /* caixinhas de número (como a NF/Pedido da divergência) */
+  #re-tab.tb-cartao :is(td[data-l="Nota Fiscal"],td[data-l="Pedido"],td[data-l="Qtd"],td[data-l="Valor (R$)"]){border:1px solid var(--linha)!important;border-radius:10px;padding:8px 10px!important;background:var(--sup2)!important}
+  #re-tab.tb-cartao :is(td[data-l="Nota Fiscal"],td[data-l="Pedido"],td[data-l="Qtd"],td[data-l="Valor (R$)"]) input{border:0!important;background:transparent!important;padding:0!important;min-height:0;font-size:1.15rem!important;font-weight:800;font-variant-numeric:tabular-nums}
+  #re-tab.tb-cartao td[data-l="Valor (R$)"]{border-color:var(--ok)!important;background:color-mix(in srgb,var(--ok) 12%,var(--sup2))!important}
+  #re-tab.tb-cartao td[data-l="Valor (R$)"] input{color:var(--ok)!important}
+  #re-tab.tb-cartao td[data-l="Qtd"]{border-color:var(--acento)!important}
+  /* motivo em destaque (o "porquê" da reentrega) */
+  #re-tab.tb-cartao td[data-l="Observação / Motivo"]{border:1px solid var(--ag)!important;border-radius:10px;padding:8px 10px!important;background:color-mix(in srgb,var(--ag) 12%,var(--sup2))!important}
+  #re-tab.tb-cartao td[data-l="Observação / Motivo"] input{border:0!important;background:transparent!important;padding:0!important;min-height:0;font-weight:800;color:var(--ag)!important;font-size:1rem!important}
+  #re-tab.tb-cartao td[data-l="Observação / Motivo"]::before{color:var(--ag)!important}
+  #re-tab.tb-cartao td[data-l="#"]{color:var(--acento)!important}
+}`; document.head.appendChild(st); })();
 </script>
 
 </body>
