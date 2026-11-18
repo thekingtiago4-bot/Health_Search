@@ -692,6 +692,18 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       const _c=window.confirmar; window.confirmar=async()=>true; await oresApagar('d1'); window.confirmar=_c; await w(100);
       const r=OP.bipes.map(b=>b.local_id).join(','); OP.bipes=[]; return r; });
     ok(dd==='c1,c2','apagar duplicado: só os duplicados podiam sair, a conferida tinha que ficar ('+dd+')'); }
+  /* v10.6.17: etiqueta MAFRA sem número que bata → acha pelo cliente; várias → escolher; nenhuma → ✕ lança fora com o pedido do QR */
+  { const eq=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); NV.perfil={papel:'admin',ativo:true,nome:'T'}; document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      const h=hojeISO(); const a='x '+h.split('-').reverse().join('-')+'.pdf';
+      S.romaneios=[{id:'eq1',numero:'0017824',base:'DF',arquivo:a,rows:[{nf:'46568',ped:'',vol:'1',dest:'ELAINE CRISTINA FARIA ABRAHAO',cid:'POCOS DE CALDAS',uf:'MG'},{nf:'46205',ped:'',vol:'1',dest:'CAROLINA FERNANDES PEREIRA',cid:'POUSO ALEGRE',uf:'MG'},{nf:'46300',ped:'',vol:'2',dest:'CAROLINA FERNANDES SILVA',cid:'POUSO ALEGRE',uf:'MG'}]}];
+      OP.dia=h; OP.bipes=[]; renderTudo(); const R={}; const P=(dest,cid,qr)=>({dest,cid,nfs:[],nums:[],qr:qr?[qr]:[],tot:1,modelo:''});
+      opLerEtiqueta(P('ELAINE CRISTINA FAR','CALDAS','045865')); await w(250); R.um=OP.bipes.map(b=>b.nf+':'+b.status).join(',');
+      opLerEtiqueta(P('CAROLINA FERNANDES','POUSO ALEGRE','046159')); await w(150); const j=document.getElementById('etq-escolha'); R.n=j?j.querySelectorAll('.etq-op').length:0; if(j) j.querySelector('[data-etq-i="0"]').click(); await w(250);
+      opLerEtiqueta(P('WALKIRIA SILVIA SANT','COTIA','051208')); await w(150); const j3=document.getElementById('etq-escolha'); if(j3) j3.querySelector('[data-etq-fora]').click(); await w(250);
+      const bf=OP.bipes[0]; R.fora=bf&&(bf.status+':'+bf.ped); S.romaneios=[]; OP.bipes=[]; renderTudo(); return R; });
+    ok(eq.um==='46568:ok','etiqueta por cliente: 1 nota batendo tinha que dar baixa direto ('+eq.um+')');
+    ok(eq.n===2,'etiqueta por cliente: com 2 notas iguais tinha que abrir a janela de escolha ('+eq.n+')');
+    ok(eq.fora==='fora:51208','etiqueta por cliente: o ✕ tinha que lançar fora com o pedido do QR ('+eq.fora+')'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */

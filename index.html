@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.16', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.17', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6802,6 +6802,7 @@ async function opCamTratar(lidos,v){ OCRK.ultCod=Date.now(); const idx=opIndice(
   if((p&&p.cremer)||(bom&&bom.tipo==='volume')){ const ac=cremerAchar(bom&&bom.ped,p); if(ac){ const k=opK(ac.x.nf)||opK(ac.x.ped); OP.extra={vol:bom&&bom.vol||null,tot:(bom&&bom.tot)||(p&&p.tot)||null}; opLer([k],'camera'); opCamPausa(); return; } }
   if(p&&p.pit){ opLerEtiqueta(p); opCamPausa(); return; }
   if(bom){ if(p) OP.extra={dest:p.dest,cid:p.cid}; opLer(lidos,'camera'); opCamPausa(); return; }
+  if(p) p.qr=it.filter(l=>l&&l.tipo==='numero'&&l.num).map(l=>l.num); /* v10.6.17: o número do QR (pedido Mafra) vai junto para o fora do romaneio */
   if(p&&opLerEtiqueta(p)){ opCamPausa(); return; }
   OP.ultLeitura=0; }
 /* sem nenhum código na imagem: tenta o texto (9 de Julho, Macromed, etiquetas só com NF) */
@@ -11845,6 +11846,71 @@ function opNotaTemDv(x){ try{ const nf=opK(x&&x.nf||''), ped=opK(x&&x.ped||''); 
     const nfs=new Set(), peds=new Set(); for(const d of D){ if(d.st==='resolvida'&&!d.conferida) continue; const a=opK(d.nf||''), b=opK(d.ped||''); if(a) nfs.add(a); if(b) peds.add(b); }
     if(!nfs.size&&!peds.size) return l;
     return l.filter(it=>{ const x=it&&it.x; if(!x) return true; const a=opK(x.nf||''), b=opK(x.ped||''); return !((a&&nfs.has(a))||(b&&peds.has(b))); }); }catch(e){ return l; } }; }
+
+/* ================= v10.6.17 · Etiqueta sem número que bata: achar pelo cliente e deixar escolher =================
+   Caso real (etiquetas amarelas MAFRA "SITE M30/M39"): o "Pedido" da etiqueta e o do QR NÃO são a NF do romaneio
+   (ex.: Elaine, Poços de Caldas: pedido 045865 na etiqueta, NF 46568 no romaneio, sem pedido). Só o cliente casa.
+   Fluxo pedido pelo Tiago:
+   - 1 nota do dia bate com cliente (+ cidade) → dá baixa direto;
+   - mais de uma → janela para escolher; embaixo "✕ Nenhuma — lançar fora do romaneio";
+   - nenhuma → a mesma janela, só com o ✕ grande.
+   O ✕ lança na hora em "Fora do romaneio" com cliente, cidade e o pedido do QR (para puxar no Salesforce).
+   Só entra quando NENHUM número lido bate (NF/pedido/QR/Health Log/Cremer/Pitágoras/Especialidades seguem iguais). */
+const ETQC={aberto:false};
+const ETQ_PALAVRA_FRACA=/^(LTDA|EIRELI|COMERCIO|COM|DISTRIBUIDORA|DIST|DE|DA|DO|DOS|DAS|E|ME|EPP|SA|S|A|HOSPITALAR|MEDICAMENTOS)$/;
+function etqTokens(s){ return etqNz(s||'').split(' ').filter(w=>w.length>=3&&!ETQ_PALAVRA_FRACA.test(w)); }
+function etqCandidatos(p){ const tp=etqTokens(p.dest); if(!tp.length) return [];
+  const cid=etqNz(p.cid||''); let pend=new Set(); try{ OP._semFiltro=true; pend=new Set(opPendentes().map(it=>it.x)); }catch(e){} finally{ OP._semFiltro=false; }
+  const out=[], vis=new Set();
+  for(const r of (typeof opRomsDoDia==='function'?opRomsDoDia():[])) for(const x of r.rows||[]){ const k=opK(x.nf||'')||('P'+opK(x.ped||'')); if(!k||vis.has(k)) continue;
+    const tx=etqTokens(x.dest); if(!tx.length) continue;
+    let comum=0; for(const w of tp) if(tx.some(t=>t===w||(w.length>=5&&(t.startsWith(w)||w.startsWith(t))))) comum++;
+    const pref=etqNz(x.dest).slice(0,8)===etqNz(p.dest).slice(0,8)&&etqNz(p.dest).length>=8;
+    if(comum<2&&!pref&&!(comum===1&&tp.length===1&&tp[0].length>=6)) continue;
+    let sc=comum*2+(pref?3:0); const xc=etqNz(x.cid||'');
+    if(cid&&xc){ if(xc===cid||xc.includes(cid)||cid.includes(xc)) sc+=3; else sc-=3; }
+    if(p.tot&&volNum(x.vol)===+p.tot) sc+=1;
+    vis.add(k); out.push({r,x,sc,pendente:pend.has(x)}); }
+  out.sort((a,b)=>(b.pendente-a.pendente)||(b.sc-a.sc)); const top=out.length?out[0].sc:0;
+  return out.filter(c=>c.sc>=Math.max(2,top-3)).slice(0,8); }
+function etqLancarFora(p){ const num=(p.qr||[]).find(n=>/^\d{5,9}$/.test(n))||(p.nums||[]).find(n=>/^\d{6}$/.test(n))||'';
+  OP.extra={dest:p.dest||'',cid:p.cid||'',tot:p.tot||null,ped:num,nf:'',status:'fora'}; try{ opLer([num||'000000'],'texto'); }catch(e){ console.error(e); }
+  try{ const b=OP.bipes[0]; if(b&&b.status==='fora'){ S.opForaInfo=S.opForaInfo||{}; S.opForaInfo[b.local_id]=Object.assign(S.opForaInfo[b.local_id]||{},{dest:p.dest||'',cid:p.cid||'',tot:p.tot||null}); salvar(); } }catch(e){}
+  try{ opRender(); }catch(e){} }
+function etqEscolher(p,C){ ETQC.aberto=true; const f=document.createElement('div'); f.className='fundo'; f.id='etq-escolha'; f.style.zIndex='4000';
+  const lin=(c,i)=>`<button type="button" class="etq-op" data-etq-i="${i}"><b>NF ${esc(opK(c.x.nf)||'—')}${c.x.ped?' · ped. '+esc(c.x.ped):''}</b><span>${esc(c.x.dest||'')}</span><small>${esc([c.x.cid,c.x.uf].filter(Boolean).join('/'))} · ${fmtN(volNum(c.x.vol)||1)} vol. · romaneio ${esc(c.r.numero||'')}${c.pendente?'':' · <em>já conferida</em>'}</small></button>`;
+  f.innerHTML=`<div class="modal etq-modal" role="dialog" aria-modal="true"><h2>${C.length?'Qual destas notas é esta caixa?':'Não achei essa caixa no romaneio de hoje'}</h2>
+    <p class="sub">Etiqueta: <b>${esc(p.dest||'?')}</b>${p.cid?' · '+esc(p.cid):''}${(p.qr||[])[0]?' · pedido '+esc(p.qr[0]):''}</p>
+    ${C.length?`<div class="etq-lista">${C.map(lin).join('')}</div>`:''}
+    <button type="button" class="etq-fora" data-etq-fora="1">✕ Nenhuma — lançar fora do romaneio</button>
+    <button type="button" class="btn etq-canc" data-etq-canc="1">Cancelar (não lançar nada)</button></div>`;
+  const fecha=()=>{ f.remove(); ETQC.aberto=false; OP.ultLeitura=Date.now(); };
+  f.addEventListener('click',e=>{ const b=e.target.closest('[data-etq-i],[data-etq-fora],[data-etq-canc]'); if(!b) return; e.stopPropagation();
+    if(b.dataset.etqCanc){ fecha(); return; }
+    if(b.dataset.etqFora){ fecha(); etqLancarFora(p); return; }
+    const c=C[+b.dataset.etqI]; fecha(); if(c){ OP.extra={tot:p.tot||null}; opLer([opK(c.x.nf)||opK(c.x.ped)],'texto+escolha'); try{ opRender(); }catch(er){} } });
+  document.body.appendChild(f); }
+{ const _lec=opLerEtiqueta; opLerEtiqueta=function(p){ if(!p) return false; if(ETQC.aberto) return true;
+    try{ if(OP.releitura||p.pit||p.cremer||p.espCaj||p.modelo==='Caixa Health Log') return _lec.apply(this,arguments);
+      const idx=opIndice(); const nums=[...(p.nfs||[]),...(p.nums||[]),...(p.qr||[])];
+      if(nums.some(n=>idx.nf.has(opK(n))||idx.ped.has(opK(n)))) return _lec.apply(this,arguments);
+      if(etqTokens(p.dest).length<1) return _lec.apply(this,arguments);
+      const C=etqCandidatos(p);
+      if(C.length===1&&C[0].pendente){ OP.extra={tot:p.tot||null}; opLer([opK(C[0].x.nf)||opK(C[0].x.ped)],'texto+cliente'); return true; }
+      if(C.length){ etqEscolher(p,C); return true; }
+      /* nenhuma nota bate: com NF legível segue o de sempre (fora automático); sem número, só pergunta se o nome parece nome */
+      if((p.nfs||[]).length) return _lec.apply(this,arguments);
+      if(etqTokens(p.dest).length>=2){ etqEscolher(p,C); return true; }
+      return _lec.apply(this,arguments); }catch(e){ console.error('etiqueta por cliente',e); return _lec.apply(this,arguments); } }; }
+(function(){ const st=document.createElement('style'); st.textContent=`
+.etq-modal{max-width:560px;width:calc(100% - 24px);max-height:88vh;display:flex;flex-direction:column}
+.etq-modal h2{margin:0 0 4px}.etq-modal .sub{margin:0 0 10px}
+.etq-lista{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;margin-bottom:12px}
+.etq-op{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1.5px solid var(--linha);border-radius:12px;background:var(--sup2)}
+.etq-op:hover,.etq-op:focus-visible{border-color:var(--teal);outline:none}
+.etq-op b{font-size:1.05rem}.etq-op span{font-weight:600}.etq-op small{color:var(--mudo)}.etq-op em{color:var(--ag);font-style:normal}
+.etq-fora{all:unset;cursor:pointer;display:block;text-align:center;width:100%;box-sizing:border-box;padding:16px;border-radius:14px;background:var(--no);color:#fff;font-size:1.1rem;font-weight:800;margin-top:auto}
+.etq-canc{margin-top:8px;width:100%;justify-content:center}`; document.head.appendChild(st); })();
 </script>
 
 </body>

@@ -548,3 +548,15 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 
 ## v10.6.16 (18/11/2026)
 - `oresGrupo`: ✕ num bipe **duplicado** agrupa só os duplicados da nota (a conferida NUNCA sai junto); ✕ num conferido continua tirando a nota inteira. Teste no `regressao.js`.
+
+## v10.6.17 (18/11/2026) — etiqueta MAFRA amarela (SITE M30/M39): achar pelo cliente
+- **Fato apurado no backup do robô (17/11):** o "Pedido" grande da etiqueta MAFRA e o número do QR (ex.: 045865)
+  NÃO são a NF nem o pedido do romaneio (Elaine/Poços de Caldas = NF 46568, sem pedido). Só o cliente casa.
+  No dia 17 ela entrou pelo Cérebro (apelido de cliente) — que saiu na v10.6.01.
+- Remendo final do `opLerEtiqueta` (bloco "Etiqueta sem número que bata"): só quando NENHUM número lido bate.
+  `etqCandidatos(p)` compara palavras do cliente (sem LTDA/DE/DA…) + cidade nas notas do dia: 1 pendente → baixa;
+  várias → janela `etqEscolher` (toque escolhe; "✕ Nenhuma" → `etqLancarFora` com cliente, cidade e pedido do QR);
+  nenhuma → com NF legível segue o fora automático de antes; sem número e nome com ≥2 palavras → janela só com o ✕.
+  `opCamTratar` passa os números do QR em `p.qr`. Com a janela aberta as leituras são ignoradas (`ETQC.aberto`).
+- **Leitor de texto em foto inteira lê mal essas etiquetas** (testado com as 4 fotos do Tiago); na câmera ele recorta a
+  etiqueta amarela e lê melhor, mas depende de chegar perto. Não deu para validar no aparelho real.
