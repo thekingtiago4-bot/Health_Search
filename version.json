@@ -1,1 +1,1 @@
-{"versao":"10.6.14","data":"2026-11-18","novidades":"Correcao: nota marcada como divergencia (com caixas faltando) sai do Faltando e conta como conferida, tambem na conferencia caixa a caixa."}
+{"versao":"10.6.15","data":"2026-11-18","novidades":"NexBip: o X num bipe de nota com varios volumes apaga a nota inteira de uma vez (pede confirmacao)."}

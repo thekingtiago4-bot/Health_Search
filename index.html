@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.14', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.15', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5621,16 +5621,19 @@ async function opApagar(id){ const b=OP.bipes.find(x=>(x.id||x.local_id)===id); 
   opFilaGravar(opFilaLer().filter(x=>x.local_id!==b.local_id)); OP.bipes=OP.bipes.filter(x=>x!==b); opLocalGravar(); opRender(); return true; }
 
 /* ================= v9.9.0 · apagar funciona em Conferência total e agrupado por pedido ================= */
-function oresGrupo(b){ if(!b||!['fora','pit','semnota'].includes(b.status)) return [b];
+function oresGrupo(b){ if(!b) return [b];
+  /* v10.6.15: nota conferida com vários volumes — o ✕ tira a NOTA inteira (todas as caixas dela no dia), não uma por uma */
+  if(!['fora','pit','semnota'].includes(b.status)){ const nf=opK(b.nf||''), ped=opK(b.ped||''); if(!nf&&!ped) return [b];
+    const g=OP.bipes.filter(x=>!['fora','pit','semnota'].includes(x.status)&&(nf?opK(x.nf||'')===nf:(!opK(x.nf||'')&&opK(x.ped||'')===ped))); return g.length?g:[b]; }
   const k=b.ped||('NF'+(b.nf||'')); if(!k||k==='NF') return [b];
   return OP.bipes.filter(x=>['fora','pit','semnota'].includes(x.status)&&(x.ped||('NF'+(x.nf||'')))===k); }
 async function oresApagar(lid){ if(!opAdmin()) return; const b=OP.bipes.find(x=>String(x.id||x.local_id)===String(lid)); if(!b) return;
   const grupo=oresGrupo(b), n=grupo.length, ped=b.ped||b.nf||'(sem pedido/NF)';
-  const msg=n>1?`Apagar o pedido <b>${esc(ped)}</b>? Serão removidas <b>${n} caixas</b> do histórico da operação, para toda a equipe.`:`Apagar esse registro (pedido <b>${esc(ped)}</b>)? Essa caixa some do histórico da operação para toda a equipe.`;
+  const msg=n>1?`Apagar a nota <b>${esc(b.nf?('NF '+b.nf):ped)}</b> inteira? Saem <b>${n} caixas</b> (todos os volumes dela) do histórico da operação, para toda a equipe. A nota volta a ficar pendente.`:`Apagar esse registro (pedido <b>${esc(ped)}</b>)? Essa caixa some do histórico da operação para toda a equipe.`;
   if(!await confirmar('Apagar bipe',msg,'Apagar')) return;
   let ok=0; const erros=[]; for(const x of grupo){ if(await opApagar(x.id||x.local_id)) ok++; else erros.push(x); }
   if(erros.length) toast(`Apagou ${ok} de ${n}. ${erros.length} não sa${erros.length>1?'íram':'iu'} do banco — veja o aviso acima.`);
-  else toast(n>1?`${n} caixas do pedido ${ped} apagadas.`:'Registro apagado.'); }
+  else toast(n>1?`${n} caixas da ${b.nf?'NF '+b.nf:'nota '+ped} apagadas.`:'Registro apagado.'); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-del]'); if(!b) return; if(!b.closest('#op-lista')&&!b.closest('#ct-lista')) return; oresApagar(b.dataset.del); });
 
 /* ---------- painel ---------- */

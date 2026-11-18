@@ -540,3 +540,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   pendentes e segurava a %. Remendo final em `opPendentes`: nota com divergência aberta (ou `conferida`) sai das
   pendentes — mesma regra do `gsContar` (Painel). Índice de NF/pedido montado uma vez por chamada (bipagem igual: ~98 ms).
 - Teste novo no `regressao.js` cobre os dois modos (nota e caixa a caixa).
+
+## v10.6.15 (18/11/2026) — ✕ do bipe tira a nota inteira
+- `oresGrupo`: para bipe conferido/duplicado, o grupo é TODAS as caixas da mesma NF (ou do pedido, se não tem NF) no dia.
+  `oresApagar` confirma dizendo quantas caixas saem. Fora do romaneio continua agrupando pelo pedido, como antes.
+  Banco: apagar bipe na nuvem continua só admin (ou o próprio nos 5 min).

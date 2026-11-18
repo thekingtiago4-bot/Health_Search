@@ -677,6 +677,13 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         OP._semFiltro=true; const pend=opPendentes(); OP._semFiltro=false; out[pv?'caixa':'nota']=pend.map(i=>opK(i.x.nf)).join(','); }
       window.opQuantosMao=_q; S.opPorVolume=false; S.divergencias=[]; S.romaneios=[]; OP.bipes=[]; renderTudo(); return out; });
     ok(dvm.nota==='746347'&&dvm.caixa==='746347','divergência à mão: a nota com caixas faltando tinha que sair das pendentes (nota: '+dvm.nota+' · caixa a caixa: '+dvm.caixa+')'); }
+  /* v10.6.15: ✕ num bipe de nota com vários volumes tira a nota inteira */
+  { const dx=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); NV.perfil={papel:'admin',ativo:true,nome:'Teste'}; document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      const h=hojeISO(); OP.dia=h; OP.bipes=[]; for(let i=1;i<=5;i++) OP.bipes.push({local_id:'v'+i,nf:'746274',ped:'739270',vol:i,tot:5,status:'ok',dia:h,criado_em:new Date().toISOString()});
+      OP.bipes.push({local_id:'o1',nf:'746159',ped:'739272',vol:1,tot:8,status:'ok',dia:h,criado_em:new Date().toISOString()});
+      const _c=window.confirmar; window.confirmar=async()=>true; await oresApagar('v3'); window.confirmar=_c; await w(100);
+      const r=OP.bipes.map(b=>b.local_id).join(','); OP.bipes=[]; return r; });
+    ok(dx==='o1','apagar bipe: o ✕ tinha que tirar as 5 caixas da nota e deixar a outra ('+dx+')'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */
