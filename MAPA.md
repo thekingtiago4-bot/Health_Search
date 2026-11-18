@@ -526,3 +526,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Remendo final do `duCard` (bloco "Cartão da divergência"): lê os `.du-l` que o cartão já monta e reorganiza —
   cliente grande + cidade, blocos NF / Pedido / Quanto falta (vermelho; sobra em laranja) / Volumes, resto no rodapé.
   Só aparência; campo novo cai sozinho no rodapé. **Classes `dvc-*` próprias** — `.du-topo` já existia e quebrou o layout.
+
+## v10.6.12 (18/11/2026) — Checklist legível no modo escuro
+- `.ck-amarelo/.ck-laranja/.ck-vermelho td` usam cor clara de fundo (boa no modo claro); no escuro a letra branca
+  sumia. Bloco "Checklist no modo escuro": no tema escuro o fundo vira um tom escuro da mesma cor, faixa forte na
+  esquerda e a Situação escrita na cor do alerta. Modo claro intocado; no celular continua o cartão (v10.6.10).
