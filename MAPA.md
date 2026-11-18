@@ -531,3 +531,6 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `.ck-amarelo/.ck-laranja/.ck-vermelho td` usam cor clara de fundo (boa no modo claro); no escuro a letra branca
   sumia. Bloco "Checklist no modo escuro": no tema escuro o fundo vira um tom escuro da mesma cor, faixa forte na
   esquerda e a Situação escrita na cor do alerta. Modo claro intocado; no celular continua o cartão (v10.6.10).
+
+## v10.6.13 (18/11/2026)
+- Legenda do Checklist virou um quadro (`.ck-leg`): validade, cores com quadradinho e regras do rastreador em lista.

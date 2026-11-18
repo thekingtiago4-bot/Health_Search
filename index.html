@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.12', HS_DATA='17/11/2026';
+const HS_VERSAO='10.6.13', HS_DATA='17/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8546,7 +8546,9 @@ function ckRender(){ const el=$('#ck-corpo'); if(!el) return; try{ ckSincronizar
    <datalist id="ck-mots">${[...new Set([...(S.cadMot||[]).map(m=>m.nome),...L.map(r=>r.mot)].filter(Boolean))].sort().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
    <datalist id="ck-placas">${[...new Set(L.map(r=>r.placa).filter(Boolean))].sort().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>
    <div class="rolagem"><table class="ck-tab"><thead><tr>${adm?'<th style="width:28px"></th>':''}<th>Motorista</th><th>Placa</th><th>Realização</th><th>Vencimento</th><th>Status</th><th>Rastreador</th>${adm?'<th></th>':''}</tr></thead><tbody id="ck-tbody">${L.map(linha).join('')}</tbody></table></div>
-   <p class="sub" style="margin-top:8px">Válido por 30 dias a partir da data de realização. 🟡 faltam 4 dias · 🟠 falta 1 dia ou venceu hoje · 🔴 vencido. O <b>rastreador</b> vem do Cadastro Agregado: <b>Não</b> tira o motorista desta planilha e <b>Desativado</b> deixa ele aqui como N/A.${adm?' Arraste ⠿ para reordenar.':''}</p>`;
+   <div class="ck-leg"><div class="ck-leg-t">📋 O checklist vale <b>30 dias</b> a partir da data de realização.</div>
+     <div class="ck-leg-cores"><span><i style="background:var(--ok)"></i>Válido</span><span><i style="background:#F4C94A"></i>Faltam até 4 dias</span><span><i style="background:#FF7A2E"></i>Falta 1 dia ou vence hoje</span><span><i style="background:#E25555"></i>Vencido</span><span><i style="background:var(--mudo)"></i>Sem data / desativado</span></div>
+     <ul class="ck-leg-l"><li><b>Rastreador</b> vem do Cadastro Agregado.</li><li><b>Não</b> tira o motorista desta planilha.</li><li><b>Desativado</b> deixa ele aqui como N/A (sem validade).</li>${adm?'<li>Arraste <b>⠿</b> para mudar a ordem.</li>':''}</ul></div>`;
   /* drag-and-drop: apenas admin */
   if(adm){ const tbody=$('#ck-tbody'); if(!tbody) return;
     const limpar=()=>tbody.querySelectorAll('.ck-dragging,.ck-drag-over').forEach(x=>x.classList.remove('ck-dragging','ck-drag-over'));
@@ -11818,6 +11820,14 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 :root[data-tema="escuro"] .ck-tab tr.ck-amarelo td small,:root[data-tema="escuro"] .ck-tab tr.ck-laranja td small,:root[data-tema="escuro"] .ck-tab tr.ck-vermelho td small{color:var(--tinta2)!important;opacity:1}
 @media (max-width:860px){ :root[data-tema="escuro"] #t-checklist .ck-tab tr td{background:transparent!important;box-shadow:none!important} }
 `; document.head.appendChild(st); })();
+
+/* v10.6.13: legenda do Checklist formatada (antes era um parágrafo corrido com emojis) */
+(function(){ const st=document.createElement('style'); st.textContent=`.ck-leg{margin:12px 0 0;padding:12px 14px;border:1px solid var(--linha);border-radius:12px;background:var(--sup);font-size:.88rem;color:var(--tinta2)}
+.ck-leg-t{color:var(--tinta);margin-bottom:8px}
+.ck-leg-cores{display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:8px}
+.ck-leg-cores span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.ck-leg-cores i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.ck-leg-l{margin:0;padding-left:18px;line-height:1.6}`; document.head.appendChild(st); })();
 </script>
 
 </body>
