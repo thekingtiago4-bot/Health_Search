@@ -4526,7 +4526,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.20', HS_DATA='18/11/2026';
+const HS_VERSAO='10.6.21', HS_DATA='18/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5435,12 +5435,51 @@ function opVolFaixa(k,t){ try{ const tb=document.querySelector('#op-cam .vtot');
 const VOL_GRADE_MAX=30;
 function volGradeHtml(tot,sel,attr,so){ const S0=new Set(sel||[]); const lista=so&&so.length?so:Array.from({length:tot},(_,i)=>i+1);
   return `<div class="vol-grade">${lista.map(i=>`<button type="button" class="vol-cx${S0.has(i)?' on':''}" data-${attr}="${i}">${i}/${tot}</button>`).join('')}</div>`; }
+/* v10.6.21 · caixas escritas à mão: a mesma nota pode vir segregada (1/3, 2/3, 3/3, 1/2, 2/2) ou ter
+   caixa fracionada (1/1). Ficam em d.faltM como texto ("3/10","1/1"); d.falt (grade 1..N) continua para o resto. */
+function volListaM(a){ a=(a||[]).filter(Boolean); if(!a.length) return ''; return a.length===1?a[0]:a.slice(0,-1).join(', ')+' e '+a[a.length-1]; }
+function dvCaixas(d,tot){ if(!d) return ''; if(Array.isArray(d.faltM)&&d.faltM.length) return volListaM(d.faltM); tot=tot||d.tot; return (d.falt&&d.falt.length&&tot)?volLista(d.falt,tot):''; }
+function volEscrever(tot,ini){ return new Promise(res=>{ const L=(ini||[]).slice(); const f=document.createElement('div'); f.className='fundo'; f.id='vol-esc'; f.style.zIndex='5000';
+  f.innerHTML=`<div class="modal" role="dialog" aria-modal="true" aria-labelledby="ve-t" style="max-width:420px"><h2 id="ve-t" style="margin:0 0 4px">✍ Caixas que faltaram</h2>
+    <p class="sub" style="margin:0 0 12px">Escreva como está na etiqueta (ex.: 3/10, 1/2, 1/1). <b>Enter</b> anota e já deixa pronto para a próxima.${tot?` A nota tem <b>${tot}</b> volume(s).`:''}</p>
+    <form id="ve-f" class="ve-f" autocomplete="off"><input id="ve-a" inputmode="numeric" enterkeyhint="next" maxlength="4" aria-label="Número da caixa" placeholder="3"><span>/</span><input id="ve-b" inputmode="numeric" enterkeyhint="done" maxlength="4" aria-label="Total da etiqueta" placeholder="10"><button class="btn pri" type="submit" aria-label="Anotar">＋</button></form>
+    <div id="ve-l" class="ve-l"></div>
+    <div class="botoes"><button class="btn" type="button" data-ve="x">Cancelar</button><button class="btn pri" type="button" data-ve="ok">Pronto</button></div></div>`;
+  document.body.appendChild(f); const A=f.querySelector('#ve-a'), B=f.querySelector('#ve-b');
+  const pinta=()=>{ f.querySelector('#ve-l').innerHTML=L.length?`<div class="ve-n">Faltaram <b>${L.length}</b>${tot?' de '+tot:''}: ${esc(volListaM(L))}</div>`+L.map((t,i)=>`<span class="ve-chip">${esc(t)}<button type="button" data-ve-x="${i}" aria-label="Tirar ${esc(t)}">✕</button></span>`).join(''):'<p class="sub" style="margin:0">Nenhuma anotada ainda.</p>'; };
+  const so=v=>String(v||'').replace(/\D/g,'');
+  const anota=()=>{ const a=+so(A.value), b=+so(B.value); if(!A.value&&!B.value) return true;
+    if(!a||!b){ toast('Escreva os dois números: caixa / total.'); (a?B:A).focus(); return false; }
+    if(a>b){ toast(a+'/'+b+' não existe: o primeiro número não passa do segundo.'); A.focus(); return false; }
+    if(tot&&L.length>=tot){ toast('A nota tem só '+tot+' volume(s).'); return false; }
+    L.push(a+'/'+b); A.value=''; B.value=''; pinta(); A.focus(); return true; };
+  A.addEventListener('input',()=>{ const v=A.value; if(v.includes('/')){ const [x,y]=v.split('/'); A.value=so(x); B.value=so(y); B.focus(); } else if(/\D/.test(v)) A.value=so(v); });
+  B.addEventListener('input',()=>{ if(/\D/.test(B.value)) B.value=so(B.value); });
+  const fecha=v=>{ f.remove(); res(v); };
+  f.addEventListener('keydown',e=>{ e.stopPropagation();
+    if(e.key==='Escape'){ e.preventDefault(); fecha(null); return; }
+    if(e.key==='Enter'&&e.target===A){ e.preventDefault(); if(A.value) B.focus(); return; }
+    if(e.key==='/'&&e.target===A){ e.preventDefault(); B.focus(); return; }
+    if(e.key==='Backspace'&&e.target===B&&!B.value){ e.preventDefault(); A.focus(); } });
+  f.querySelector('#ve-f').addEventListener('submit',e=>{ e.preventDefault(); anota(); });
+  f.addEventListener('click',e=>{ const x=e.target.closest('[data-ve-x]'); if(x){ L.splice(+x.dataset.veX,1); pinta(); A.focus(); return; }
+    const b=e.target.closest('[data-ve]'); if(!b) return; if(b.dataset.ve==='x'){ fecha(null); return; } if(anota()) fecha(L.slice()); });
+  pinta(); setTimeout(()=>A.focus(),60); }); }
 function volLista(a,tot){ a=(a||[]).slice().sort((x,y)=>x-y); if(!a.length) return '';
   const t=a.map(i=>i+'/'+tot); return t.length===1?t[0]:t.slice(0,-1).join(', ')+' e '+t[t.length-1]; }
 (function(){ const st=document.createElement('style'); st.textContent=`
 .vol-grade{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin:4px 0 2px}
 .vol-cx{min-width:62px;border:2px solid var(--linha);background:var(--sup);color:inherit;border-radius:12px;padding:10px 8px;font-family:inherit;font-size:1rem;font-weight:800;cursor:pointer}
 .vol-cx.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.ve-f{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.ve-f input{width:0;flex:1;min-width:0;font-size:1.8rem;font-weight:800;text-align:center;padding:10px 6px;border:2px solid var(--ag);border-radius:12px;background:var(--sup);color:inherit}
+.ve-f span{font-size:2rem;font-weight:800;color:var(--ag)}.ve-f .btn{font-size:1.5rem;padding:10px 16px}
+.ve-l{min-height:44px;margin:0 0 6px}.ve-n{margin:0 0 8px;font-size:.95rem}
+.ve-chip{display:inline-flex;align-items:center;gap:6px;margin:0 6px 6px 0;padding:5px 6px 5px 12px;border-radius:999px;background:var(--agBg);color:var(--ag);border:1.5px solid var(--ag);font-weight:800;font-size:1.05rem}
+.ve-chip button{all:unset;cursor:pointer;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;font-size:.85rem;background:var(--ag);color:#fff}
+.ve-mao{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 10px}.ve-mao .btn{border-color:var(--ag);color:var(--ag)}
+.ve-mao .ve-res{font-size:.92rem}
+#op-cam .ve-mao .btn{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.5)}#op-cam .ve-mao .ve-res{color:#fff}
 #op-cam .vol-cx{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.1);color:#fff}
 #op-cam .vol-cx.on{background:#16a34a;border-color:#16a34a;color:#fff}
 `; document.head.appendChild(st); })();
@@ -5532,6 +5571,7 @@ function opConfQuantos(b,tot){ const cam=document.querySelector('#op-cam'); if(!
     ${grade?volGradeHtml(tot,[],'cx'):''}
     <input id="op-qt-n" type="number" min="0" max="${tot}" inputmode="numeric" placeholder="quantidade que chegou"${grade?' hidden':''}>
     <input id="op-qt-o" placeholder="observação (opcional)">
+    ${tot>1?'<div class="ve-mao"><button type="button" class="btn mini" data-a="mao">✍ Escrever as que faltaram</button></div>':''}
     <div class="pe"><button type="button" data-a="x" style="background:#f1f3f5;color:#111">Voltar</button><button type="button" data-a="ok" style="background:#C2255C;color:#fff">Confirmar<span id="op-qt-c"></span></button></div>`;
   cam.appendChild(d);
   const resumo=()=>{ const c=d.querySelector('#op-qt-c'); if(!c) return;
@@ -5544,6 +5584,7 @@ function opConfQuantos(b,tot){ const cam=document.querySelector('#op-cam'); if(!
     if(cx){ e.stopPropagation(); const i=+cx.dataset.cx; if(sel.has(i)) sel.delete(i); else sel.add(i); cx.classList.toggle('on',sel.has(i)); resumo(); return; }
     if(!a) return; e.stopPropagation();
     if(a.dataset.a==='x'){ opConfPedir({_b:b}); return; }
+    if(a.dataset.a==='mao'){ volEscrever(tot,[]).then(L=>{ if(!L||!L.length) return; opConfFalta(b,tot,Math.max(0,tot-L.length),obs(),L); }); return; }
     if(grade){ const falt=[...Array(tot).keys()].map(i=>i+1).filter(i=>!sel.has(i)); opConfFalta(b,tot,sel.size,obs(),falt); return; }
     const v=d.querySelector('#op-qt-n').value; if(v===''){ toast('Diga quantos volumes chegaram.'); return; }
     opConfFalta(b,tot,Math.max(0,Math.min(tot,+v||0)),obs()); }); }
@@ -5561,14 +5602,15 @@ function opConfFalta(b,tot,chegou,obs,faltaram){ const falta=Math.max(0,Math.max
   if(!falta){ opConfMarcar(b,'ok',chegou); opVolFaixa(tot,tot); try{ opSom('ok'); }catch(e){} toast('✔ Tudo certo: nenhuma divergência.'); opConfFechar(); return; }
   opConfMarcar(b,'falta',chegou); opVolFaixa(chegou,tot);
   const L=dvS(), eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString();
-  const quais=(faltaram&&faltaram.length)?volLista(faltaram,tot):'';
+  const M=!!(faltaram&&faltaram.length&&typeof faltaram[0]==='string'); /* v10.6.21: escritas à mão */
+  const quais=(faltaram&&faltaram.length)?(M?volListaM(faltaram):volLista(faltaram,tot)):'';
   const texto=obs||(quais?`faltaram as caixas ${quais}`:`chegaram ${chegou} de ${tot} volume(s) — faltaram ${falta}`);
   let d=dvAcha(b.ped,b.nf);
-  if(d){ Object.assign(d,{tipo:'Falta de volume',qtd:falta,obs:texto,tot}); if(faltaram&&faltaram.length) d.falt=faltaram.slice();
+  if(d){ Object.assign(d,{tipo:'Falta de volume',qtd:falta,obs:texto,tot}); if(faltaram&&faltaram.length){ if(M){ d.faltM=faltaram.slice(); d.falt=null; } else { d.falt=faltaram.slice(); d.faltM=null; } }
     (d.hist=d.hist||[]).push({em:ag,por:eu,t:`Atualizada na conferência do bipe (chegaram ${chegou} de ${tot}${quais?'; faltaram '+quais:''})`}); }
   else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1;
     d={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped:b.ped,nf:b.nf,tipo:'Falta de volume',qtd:falta,
-       tot,falt:(faltaram&&faltaram.length)?faltaram.slice():null,
+       tot,falt:(faltaram&&faltaram.length&&!M)?faltaram.slice():null,faltM:M?faltaram.slice():null,
        cli:String(b.dest||'').toUpperCase(),rem:'',obs:texto,st:'aberta',por:eu,em:ag,rom:b.romaneio||'',
        hist:[{em:ag,por:eu,t:`Aberta na conferência do bipe (chegaram ${chegou} de ${tot}${quais?'; faltaram '+quais:''})`}]}; L.push(d); }
   salvar(); try{ dvRender(); }catch(e){}
@@ -6143,19 +6185,28 @@ function dvJanelaFalta(l){ return new Promise(res=>{ const ja=dvAcha(l.ped,l.nf)
     <h2>${ja?'Atualizar divergência '+esc(dvNum(ja)):'Registrar divergência'}</h2>
     <p style="margin:0 0 10px"><b>Pedido ${esc(l.ped||'—')} · NF ${esc(l.nf||'—')}</b><br>${esc(row.dest||'')}${row.cid?' · '+esc(row.cid):''}${vol?` · nota com <b>${vol}</b> vol.`:''}${l.rom?' · romaneio '+esc(l.rom.numero||''):''}${l.doBanco?'<br><span class="sub" style="margin:0">Achei esta nota no Banco de romaneios ('+esc(fmtData(l.doBanco))+').</span>':''}${!l.row?'<br><span style="color:var(--no)">Não está nos romaneios carregados nem no Banco de romaneios — preencha o que souber.</span>':''}</p>
     ${(vol&&vol>1&&vol<=VOL_GRADE_MAX)?`<div style="font-weight:600;margin-bottom:4px">Quais caixas <u>faltaram</u>? <span class="sub" style="margin:0;font-weight:400">a nota tem ${vol} — marque as que não chegaram</span></div>${volGradeHtml(vol,(ja&&ja.falt)||[],'dcx')}<p class="sub" id="dvj-r" style="margin:2px 0 8px"></p>`:''}
+    ${vol===1?'':'<div class="ve-mao"><button type="button" class="btn mini" data-dvj-mao="1">✍ Escrever as caixas à mão</button><span class="ve-res" id="dvj-m"></span></div>'}
     <label style="display:flex;flex-direction:column;gap:4px;font-weight:600">Quantos volumes faltam?${vol?` <span class="sub" style="margin:0;font-weight:400">a nota tem ${vol} volume(s)</span>`:''}<input type="number" min="1" ${vol?`max="${vol}"`:''} inputmode="numeric" id="dvj-q" value="${ja&&ja.qtd?ja.qtd:''}" style="font-size:1.6rem;padding:10px;border:2px solid #C2255C;border-radius:10px;background:var(--sup);color:inherit"></label>
     <label style="display:flex;flex-direction:column;gap:4px;font-weight:600;margin-top:10px">Tipo<select id="dvj-t" style="padding:8px;border:1.5px solid var(--linha);border-radius:8px;background:var(--sup);color:inherit">${DV_TIPOS.map(t=>`<option ${(ja?ja.tipo:'Falta de volume')===t?'selected':''}>${t}</option>`).join('')}</select></label>
     <label style="display:flex;flex-direction:column;gap:4px;font-weight:600;margin-top:10px">Observação (opcional)<input id="dvj-o" value="${esc(ja&&ja.obs||'')}" style="padding:8px;border:1.5px solid var(--linha);border-radius:8px;background:var(--sup);color:inherit"></label>
     <div class="botoes"><button class="btn" data-r="0" type="button">Cancelar</button><button class="btn pri" data-r="1" type="button">Salvar</button></div></div>`;
   document.body.appendChild(f); const q=f.querySelector('#dvj-q'); setTimeout(()=>q.focus(),30);
   /* v9.26.0: marcando as caixas que faltaram, a quantidade e a observação saem sozinhas */
-  const sel=new Set(((ja&&ja.falt)||[])); const resumo=()=>{ const el=f.querySelector('#dvj-r'); if(!el) return;
-    el.innerHTML=sel.size?`Faltaram <b>${esc(volLista([...sel],vol))}</b>`:'Nenhuma caixa marcada.'; q.value=sel.size||q.value; };
+  let mao=(ja&&Array.isArray(ja.faltM)&&ja.faltM.length)?ja.faltM.slice():null; /* v10.6.21: caixas escritas à mão */
+  const sel=new Set(mao?[]:((ja&&ja.falt)||[])); const resumo=()=>{ const m=f.querySelector('#dvj-m');
+    if(m) m.innerHTML=mao&&mao.length?`Faltaram <b>${esc(volListaM(mao))}</b> (${mao.length} caixa${mao.length>1?'s':''})`:'';
+    if(mao&&mao.length) q.value=mao.length;
+    const el=f.querySelector('#dvj-r'); if(!el) return;
+    el.innerHTML=sel.size?`Faltaram <b>${esc(volLista([...sel],vol))}</b>`:(mao&&mao.length?'Escritas à mão (abaixo).':'Nenhuma caixa marcada.'); if(sel.size) q.value=sel.size; };
   resumo();
-  const fim=ok=>{ const v={qtd:+q.value||null,tipo:f.querySelector('#dvj-t').value,obs:f.querySelector('#dvj-o').value.trim(),falt:[...sel].sort((a,b)=>a-b)};
-    if(v.falt.length){ v.qtd=v.falt.length; if(!v.obs) v.obs='faltaram as caixas '+volLista(v.falt,vol); }
+  const auto=o=>!o||/^faltaram as caixas /.test(o);
+  const fim=ok=>{ const v={qtd:+q.value||null,tipo:f.querySelector('#dvj-t').value,obs:f.querySelector('#dvj-o').value.trim(),falt:[...sel].sort((a,b)=>a-b),faltM:null};
+    if(mao&&mao.length){ v.faltM=mao.slice(); v.falt=[]; v.qtd=mao.length; if(auto(v.obs)) v.obs='faltaram as caixas '+volListaM(mao); }
+    else if(v.falt.length){ v.qtd=v.falt.length; if(auto(v.obs)) v.obs='faltaram as caixas '+volLista(v.falt,vol); }
     f.remove(); res(ok?v:null); };
-  f.onclick=e=>{ const cx=e.target.closest('[data-dcx]'); if(cx){ const i=+cx.dataset.dcx; if(sel.has(i)) sel.delete(i); else sel.add(i); cx.classList.toggle('on',sel.has(i)); resumo(); return; }
+  f.onclick=e=>{ const mb=e.target.closest('[data-dvj-mao]'); if(mb){ volEscrever(vol,mao||[]).then(L=>{ if(L===null) return; mao=L.length?L:null;
+        if(mao){ sel.clear(); f.querySelectorAll('[data-dcx].on').forEach(x=>x.classList.remove('on')); } resumo(); }); return; }
+    const cx=e.target.closest('[data-dcx]'); if(cx){ const i=+cx.dataset.dcx; if(sel.has(i)) sel.delete(i); else sel.add(i); cx.classList.toggle('on',sel.has(i)); if(sel.size) mao=null; resumo(); return; }
     const b=e.target.closest('[data-r]'); if(b) fim(b.dataset.r==='1'); };
   f.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); fim(true); } if(e.key==='Escape') fim(false); }); }); }
 async function dvBipar(textos){ const l=dvLeitura(textos); if(!l||(!l.ped&&!l.nf)){ toast('Não reconheci o código.'); return; } opSom('info');
@@ -6163,11 +6214,11 @@ async function dvBipar(textos){ const l=dvLeitura(textos); if(!l||(!l.ped&&!l.nf
   const L=dvS(), eu=(NV.perfil&&NV.perfil.nome)||'Este aparelho', ag=new Date().toISOString(), row=l.row||{}; let d=dvAcha(l.ped,l.nf);
   const obs=v.obs||(v.tipo==='Falta de volume'&&v.qtd?`faltavam ${v.qtd} volume(s)${volNum(row.vol)?' de '+volNum(row.vol):''}`:'');
   const totNota=volNum(row.vol)||l.tot||null; /* v9.23.1: guarda quantos volumes a nota tem */
-  if(d){ Object.assign(d,{tipo:v.tipo,qtd:v.qtd,obs}); if(v.falt&&v.falt.length) d.falt=v.falt.slice(); if(totNota&&!d.tot) d.tot=totNota;
+  if(d){ Object.assign(d,{tipo:v.tipo,qtd:v.qtd,obs}); if(v.faltM&&v.faltM.length){ d.faltM=v.faltM.slice(); d.falt=null; } else if(v.falt&&v.falt.length){ d.falt=v.falt.slice(); d.faltM=null; } if(totNota&&!d.tot) d.tot=totNota;
     if(!d.cli&&row.dest) d.cli=String(row.dest).toUpperCase(); if(!d.cid&&row.cid) d.cid=String(row.cid).toUpperCase(); if(!d.uf&&row.uf) d.uf=String(row.uf).toUpperCase();
     if(!d.ped&&l.ped) d.ped=l.ped; if(!d.nf&&l.nf) d.nf=l.nf;
     (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Atualizada pelo bipe'}); }
-  else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped:l.ped,nf:l.nf,tipo:v.tipo,qtd:v.qtd,tot:totNota,falt:(v.falt&&v.falt.length)?v.falt.slice():null,cli:String(row.dest||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),uf:String(row.uf||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pelo bipe'}]}; L.push(d); }
+  else { const n=L.reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),n,d:hojeISO(),ped:l.ped,nf:l.nf,tipo:v.tipo,qtd:v.qtd,tot:totNota,falt:(v.falt&&v.falt.length)?v.falt.slice():null,faltM:(v.faltM&&v.faltM.length)?v.faltM.slice():null,cli:String(row.dest||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),uf:String(row.uf||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pelo bipe'}]}; L.push(d); }
   salvar(); dvRender(); toast(`✔ Divergência ${dvNum(d)} salva: ${v.tipo}${v.qtd?' · '+v.qtd+' vol.':''}.`); setTimeout(()=>{ const c=$('#dv-bip'); if(c&&!TOQUE) c.focus(); },50); }
 (function(){ const c=$('#dv-bip'); if(!c) return; c.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=c.value.trim(); c.value=''; if(v) dvBipar(v); } });
   $('#dv-bt-cam').onclick=()=>{ OP.destino=dvBipar; opCamAbrir().then(()=>{ const m=document.querySelector('#op-cam .msg'); if(m) m.innerHTML='<b>Divergência</b>Aponte para a etiqueta ou a nota. Depois informe quantos volumes faltam.'; }); }; })();
@@ -9131,11 +9182,13 @@ function opQuantosMao(x,tot,dv){ return new Promise(res=>{ const f=document.crea
    <p class="sub" style="margin:0 0 12px">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</p>
    <p style="margin:0 0 8px"><b>${dv?'Quais caixas faltaram?':'Chegaram todos os '+fmtN(tot)+' volumes?'}</b></p>
    ${volGradeHtml(tot,[],'mcx')}
+   <div class="ve-mao" style="justify-content:center;margin-top:8px"><button type="button" class="btn mini" data-a="mao">✍ Escrever as que faltaram</button></div>
    <p class="sub" style="margin:8px 0 14px">${dv?'Toque nas caixas que faltaram. Sem tocar em nada, conta como se faltasse só 1.':'Se faltou alguma caixa, toque nela. Sem tocar em nada = chegaram todas.'}</p>
    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn" type="button" data-a="c">Cancelar</button><button class="btn pri" type="button" data-a="ok">Confirmar</button></div></div>`;
   f.addEventListener('click',e=>{ const c=e.target.closest('[data-mcx]');
     if(c){ const i=+c.dataset.mcx; if(falt.has(i)){ falt.delete(i); c.classList.remove('on'); } else { falt.add(i); c.classList.add('on'); } return; }
     const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='c')){ f.remove(); res(null); return; }
+    if(b&&b.dataset.a==='mao'){ volEscrever(tot,[]).then(L=>{ if(!L||!L.length) return; f.remove(); res({chegou:Math.max(0,tot-L.length),faltaram:L}); }); return; }
     if(b&&b.dataset.a==='ok'){ const fa=[...falt].sort((p,q)=>p-q); f.remove(); res({chegou:Math.max(0,tot-fa.length),faltaram:fa}); } });
   document.body.appendChild(f); }); }
 async function opMarcarMao(x,modo,semDialogo){ const dv=modo==='dv'; const tot=Math.max(1,volNum(x.vol)||1); let chegou=tot, faltaram=[];
@@ -9530,7 +9583,7 @@ function gsTabDv(dia){ try{
   if(!L.length) return '<h2>Divergências do dia</h2><p style="font-size:13pt">Nenhuma divergência registrada neste dia.</p>';
   const st=d=>{ try{ return (DV_ST[d.st]||{}).t||d.st||'—'; }catch(e){ return d.st||'—'; } };
   const vol=d=>{ const q=+d.qtd||0, t=+d.tot||0; return q?(t?`faltam <b>${q}</b> de ${t}`:`faltam <b>${q}</b>`):'—'; };
-  const cx=d=>{ try{ return (d.falt&&d.falt.length&&d.tot)?volLista(d.falt,d.tot):''; }catch(e){ return ''; } };
+  const cx=d=>{ try{ return dvCaixas(d); }catch(e){ return ''; } };
   const cid=d=>{ try{ return (typeof dvCidade==='function')?(dvCidade(d)||''):(d.cid||''); }catch(e){ return d.cid||''; } };
   const apar=d=>{ try{ return d.apareceu?(fmtData(d.apareceu.d)+(d.apareceu.rom?' · rom. '+d.apareceu.rom:'')):'—'; }catch(e){ return '—'; } };
   const baixa=d=>{ const r=d.res||{}; if(!r.d) return '—';
@@ -9984,7 +10037,7 @@ function duLinha(t,v){ return v?`<div class="du-l"><small>${t}</small><b>${esc(S
 function duCard(d,av){
   const tot=+d.tot||0, falt=+d.qtd||0, chegou=Math.max(0,tot-falt);
   const vols=tot?`${fmtN(chegou)} de ${fmtN(tot)}`:(falt?fmtN(falt)+' faltando':'');
-  const caixas=(d.falt&&d.falt.length&&tot)?volLista(d.falt,tot):'';
+  const caixas=dvCaixas(d,tot);
   const st=av?(AV_ST[d.avst]||AV_ST.aguardando):(DV_ST[d.st]||DV_ST.aberta);
   return `<article class="du-c${duPend(d)?'':' feita'}" data-du="${esc(d.id||'')}">
     <header><b>${av?avNum(d):dvNum(d)}</b><span class="du-st" style="color:${st.c};border-color:${st.c}">${esc(st.t)}</span></header>
@@ -10072,8 +10125,9 @@ const dvNovoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6)
 async function dvRegistrar(l){ const v=await dvJanelaFalta(l); if(!v) return null; if(v.tipo==='Falta de volume'&&!v.qtd){ toast('Informe quantos volumes faltam.'); return dvRegistrar(l); }
   const L=dvS(), eu=dvEu(), ag=new Date().toISOString(), row=l.row||{}; let d=dvAcha(l.ped,l.nf);
   const obs=v.obs||(v.tipo==='Falta de volume'&&v.qtd?`faltavam ${v.qtd} volume(s)${volNum(row.vol)?' de '+volNum(row.vol):''}`:'');
-  if(d){ Object.assign(d,{tipo:v.tipo,qtd:v.qtd,obs}); (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Atualizada'}); }
-  else { const n=dvSo().reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:dvNovoId(),n,d:hojeISO(),ped:z(l.ped),nf:z(l.nf),tipo:v.tipo,qtd:v.qtd,cli:String(row.dest||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pela Busca'}]}; L.push(d); }
+  const totB=volNum(row.vol)||null;
+  if(d){ Object.assign(d,{tipo:v.tipo,qtd:v.qtd,obs}); if(v.faltM&&v.faltM.length){ d.faltM=v.faltM.slice(); d.falt=null; } else if(v.falt&&v.falt.length){ d.falt=v.falt.slice(); d.faltM=null; } if(totB&&!d.tot) d.tot=totB; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Atualizada'}); }
+  else { const n=dvSo().reduce((m,x)=>Math.max(m,x.n||0),0)+1; d={id:dvNovoId(),n,d:hojeISO(),ped:z(l.ped),nf:z(l.nf),tipo:v.tipo,qtd:v.qtd,tot:totB,falt:(v.falt&&v.falt.length)?v.falt.slice():null,faltM:(v.faltM&&v.faltM.length)?v.faltM.slice():null,cli:String(row.dest||'').toUpperCase(),rem:String(row.rem||'').toUpperCase(),cid:String(row.cid||'').toUpperCase(),obs,st:'aberta',por:eu,em:ag,rom:l.rom&&l.rom.numero||'',hist:[{em:ag,por:eu,t:'Aberta pela Busca'}]}; L.push(d); }
   salvar(); try{ dvRender(); }catch(e){} toast(`✔ Divergência ${dvNum(d)} salva em Dados → Divergências: ${v.tipo}${v.qtd?' · '+v.qtd+' vol.':''}.`); return d; }
 
 /* ---- Busca: quadrado "Divergência" em cada nota encontrada ---- */
@@ -11098,7 +11152,7 @@ setInterval(()=>{ try{ simAvisos(); }catch(e){} },5000);
     const cidade=dvCidade(d); if(cidade) L.push(`*Cidade:* ${cidade}`);
     L.push(`*Tipo:* ${(ehAvaria?d.sub:d.tipo)||'-'}`);
     if(ehAvaria) L.push(`*Volumes avariados:* ${(d.vols&&d.vols.length)?volLista(d.vols,total||d.vols.length)+' ('+d.vols.length+')':(d.qtd||'-')}`);
-    else L.push(`*Volumes que faltaram:* ${(d.falt&&d.falt.length&&total)?volLista(d.falt,total)+' ('+d.falt.length+' de '+total+')':(d.qtd||'-')}`);
+    else L.push(`*Volumes que faltaram:* ${(d.faltM&&d.faltM.length)?dvCaixas(d)+' ('+d.faltM.length+(total?' de '+total:'')+')':(d.falt&&d.falt.length&&total)?volLista(d.falt,total)+' ('+d.falt.length+' de '+total+')':(d.qtd||'-')}`);
     if(d.rom) L.push(`*Romaneio:* ${d.rom}`);
     L.push(`*Quem registrou:* ${d.por||'-'}`);
     L.push(`*Situação:* ${ehAvaria?(AV_ST[d.avst]||AV_ST.aguardando).t:(DV_ST[d.st]||DV_ST.aberta).t}`);
@@ -11939,7 +11993,7 @@ function dvrLista(){ const p=dvrPeriodo();
     .sort((a,b)=>(dvrDia(b.d)).localeCompare(dvrDia(a.d))||(b.n||0)-(a.n||0)); }
 function dvrLinha(d){ return { n:dvNum(d), aberta:fmtData(dvrDia(d.d)), dias:dvrDias(d), st:(DV_ST[d.st]||{t:d.st||''}).t, stk:d.st, tipo:d.tipo||'',
   nf:d.nf||'', ped:d.ped||'', cli:d.cli||'', cid:dvCidade(Object.assign({},d))||'', rem:d.rem||'',
-  vol:(d.qtd?d.qtd:'')+(d.tot?' de '+d.tot:''), falt:(d.falt&&d.falt.length&&d.tot)?volLista(d.falt,d.tot):'',
+  vol:(d.qtd?d.qtd:'')+(d.tot?' de '+d.tot:''), falt:dvCaixas(d),
   obs:d.obs||'', por:d.por||'', apar:d.apareceu?fmtData(dvrDia(d.apareceu.d))+(d.apareceu.rom?' · rom. '+d.apareceu.rom:''):'',
   res:d.res?fmtData(dvrDia(d.res.d)):'', sol:d.res?(d.res.obs||''):'' }; }
 function dvrConta(L){ const c={tot:L.length,aberta:0,apareceu:0,resolvida:0,velhas:0,diasRes:[]}; const tipo={},rem={},cli={};

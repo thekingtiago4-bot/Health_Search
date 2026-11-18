@@ -723,6 +723,20 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(rl.esc&&rl.htmlEsc,'relatório: texto do cliente não foi protegido no Excel/PDF');
     ok(rl.rod,'relatório: PDF sem o rodapé da empresa'); ok(rl.media===4,'relatório: média de dias até resolver errada ('+rl.media+')');
     ok(rl.intacto,'relatório: gerar o relatório mexeu nos dados'); }
+  { /* v10.6.21 · caixas escritas à mão (3/10, 10/10, 1/1): guardadas em faltM e mostradas em todo lugar */
+    const cm=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); const guard=S.divergencias; S.divergencias=[];
+      const r={}; r.lista=volListaM(['3/10','10/10','1/1']); r.grade=dvCaixas({falt:[2,4],tot:5}); r.mao=dvCaixas({falt:[2],tot:5,faltM:['1/2','2/2']});
+      const pr=volEscrever(12,[]); await w(80); const A=document.querySelector('#ve-a'),B=document.querySelector('#ve-b');
+      A.value='03'; B.value='10'; document.querySelector('#ve-f button').click(); A.value='5'; B.value='2'; document.querySelector('#ve-f button').click();
+      r.travou=document.querySelectorAll('.ve-chip').length; A.value=''; B.value=''; A.value='1'; B.value='1'; document.querySelector('[data-ve="ok"]').click(); r.esc=JSON.stringify(await pr);
+      const b={ped:'P77',nf:'N77',dest:'X'}; try{ opConfFalta(b,12,10,'',['3/10','1/1']); }catch(e){ r.err=e.message; }
+      const d=dvAcha('P77','N77'); r.d=d?[d.qtd,JSON.stringify(d.faltM),String(d.falt),d.obs].join('|'):'sem';
+      document.querySelectorAll('.fundo').forEach(f=>f.remove()); S.divergencias=guard; return r; });
+    ok(cm.lista==='3/10, 10/10 e 1/1','caixas à mão: lista mal escrita ('+cm.lista+')');
+    ok(cm.grade==='2/5 e 4/5'&&cm.mao==='1/2 e 2/2','caixas à mão: grade/escritas mostradas errado ('+cm.grade+' | '+cm.mao+')');
+    ok(cm.travou===1,'caixas à mão: 5/2 não podia entrar ('+cm.travou+')');
+    ok(cm.esc==='["3/10","1/1"]','caixas à mão: a janela devolveu errado ('+cm.esc+')');
+    ok(cm.d==='2|["3/10","1/1"]|null|faltaram as caixas 3/10 e 1/1','caixas à mão: divergência gravada errada ('+cm.d+(cm.err?' '+cm.err:'')+')'); }
   /* v10.0.1: o Painel do gestor mostra o dia escolhido e começa no último dia que teve bipe */
   { const gs=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       const ont=diaLocal(new Date(Date.now()-864e5).toISOString()); /* ontem no fuso local: às 21h o UTC já virou e o teste quebrava sozinho */

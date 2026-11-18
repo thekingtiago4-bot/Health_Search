@@ -578,3 +578,14 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 ### v10.6.20 · Grade "Quais caixas faltaram?" em laranja
 - `.vol-cx.on[data-dcx]` (janela de divergência) e `[data-mcx]` (marcar à mão) usam `var(--ag)`.
   A grade da câmera (`data-cx`, marca as que CHEGARAM) continua verde.
+
+### v10.6.21 · Caixas que faltaram escritas à mão
+- Nota segregada (1/3, 2/3, 3/3, 1/2, 2/2) ou com caixa fracionada (1/1): botão **✍ Escrever as caixas à mão**
+  na janela de divergência (aba Divergências e Busca), na marcação à mão (Conferência total) e no ✗ da câmera.
+- `volEscrever(tot,ini)` abre a janela "caixa / total": Enter (ou ＋) anota, limpa e volta para o primeiro campo;
+  "/" ou Enter no primeiro pula para o segundo; recusa 5/2 e mais caixas que a nota tem. No iPhone o teclado
+  numérico não tem Enter: usa o ＋.
+- Gravado em `d.faltM` (texto, ex. ["3/10","1/1"]); `d.falt` (grade) fica null. `dvCaixas(d)` mostra qualquer um dos
+  dois (cartão, PDF do Painel, WhatsApp, relatório). `opConfFalta` aceita lista de texto. `dvRegistrar` (Busca)
+  passou a guardar também as caixas da grade e o total da nota (antes perdia).
+- Aparelho com versão antiga não conhece `faltM`, mas a quantidade e a observação ("faltaram as caixas …") vão iguais.
