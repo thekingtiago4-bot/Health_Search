@@ -995,8 +995,10 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       irPara('operacao'); await w(200);
       opMostrar({titulo:'NF 820001',linha:'teste',status:'ok',_ped:opK('B1'),_nf:opK('820001')}); await w(150);
       const bar=document.getElementById('op-dvacao');
-      const tem=!!(bar&&bar.querySelector('[data-dvbaixa]'));
-      if(tem) bar.querySelector('[data-dvbaixa]').click(); await w(300);
+      let R2perg=null; const tem=!!(bar&&bar.querySelector('[data-dvbaixa]'));
+      if(tem) bar.querySelector('[data-dvbaixa]').click(); await w(150);
+      /* v10.6.26: faltando 2 ou mais, pergunta quantos chegaram — aqui chegaram todos */
+      { const ok2=document.querySelector('[data-dpc="ok"]'); R2perg=!!ok2; if(ok2){ ok2.click(); } } await w(300);
       const d=(S.divergencias||[])[0];
       const r={tem,st:d&&d.st,obs:(d&&d.res&&d.res.obs)||'',avisos:(S.dvAvisos||[]).length,
         para:((S.dvAvisos||[])[0]||{}).para||'',sumiu:!document.getElementById('op-dvacao')};
@@ -1414,5 +1416,33 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(nx.completou,'nex: ao receber a mesma aparição com mais informação, o campo não foi preenchido');
     ok(nx.juntou,'nex: conflito nos dois lados deveria virar união');
     ok(nx.velho,'nex: s:nex de aparelho desatualizado apagou o histórico novo'); }
+  { /* v10.6.26 · desbipar (✕ vermelho na Conferência total) e chegada parcial da divergência */
+    const db=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); NV.perfil={papel:'admin',ativo:true,nome:'T'}; document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      const h=hojeISO(), arq='x '+h.split('-').reverse().join('-')+'.pdf', rs=S.romaneios, ds=S.divergencias, bs=OP.bipes;
+      S.romaneios=[{id:'db1',numero:'1',base:'CAJ',arquivo:arq,rows:[{nf:'81001',ped:'91001',vol:'3',dest:'A'},{nf:'81002',ped:'91002',vol:'35',dest:'B'},{nf:'81003',ped:'91003',vol:'15',dest:'C'}]}];
+      S.divergencias=[]; OP.dia=h; OP.bipes=[]; renderTudo(); const R={};
+      const pend=()=>{ OP._semFiltro=true; try{ return opPendentes().map(it=>opK(it.x.nf)).sort().join(','); }finally{ OP._semFiltro=false; } };
+      opLer(['81001'],'teclado'); await w(20);
+      const _q=window.opQuantosMao; window.opQuantosMao=async()=>({chegou:23,faltaram:[]}); await opMarcarMao(S.romaneios[0].rows[1],'dv'); window.opQuantosMao=_q;
+      S.divergencias.push({id:'dbx',n:9,d:'2026-01-02',nf:'81003',ped:'91003',tipo:'Falta de volume',qtd:13,tot:15,st:'aberta',hist:[]}); const dx=S.divergencias[S.divergencias.length-1];
+      dvChegou(dx,10,'teste'); R.parcial=dx.st+'|'+dx.qtd;
+      opLer(['81003'],'teclado'); await w(20); opDvChegaram(OP.bipes[0],dx,3); R.bateu=dx.st;
+      R.antes=pend();
+      for(const nf of ['81001','81002','81003']){ document.querySelectorAll('.fundo').forEach(f=>f.remove()); opRomLista('db1');
+        const bt=[...document.querySelectorAll('[data-rl-des]')].find(b=>b.closest('div[style*="padding:6px 0"]').textContent.includes('NF '+nf)); if(!bt){ R.falta=(R.falta||'')+nf; continue; }
+        bt.click(); await w(60); document.querySelector('[data-sn="1"]').click(); await w(250); }
+      const d1=dvAcha('91002','81002');
+      R.depois=pend(); R.bips=OP.bipes.length; R.d1=d1?[d1.st,d1.qtd,d1.conferida,!!d1.desbip].join('|'):'sumiu'; R.dx=[dx.st,dx.qtd,!!dx.res,dx.d].join('|');
+      R.painel=gsDvDoDia(h).nf.has('81002');
+      opLer(['81002'],'teclado'); await w(20); R.rebip=pend();
+      document.querySelectorAll('.fundo').forEach(f=>f.remove()); S.romaneios=rs; S.divergencias=ds; OP.bipes=bs; renderTudo(); return R; });
+    ok(db.parcial==='aberta|3','chegada parcial: 10 de 13 tinha que deixar aberta faltando 3 ('+db.parcial+')');
+    ok(db.bateu==='resolvida'&&db.antes==='','desbipar: preparação errada ('+db.bateu+' · pendentes "'+db.antes+'")');
+    ok(!db.falta,'desbipar: faltou o ✕ vermelho na nota '+db.falta);
+    ok(db.depois==='81001,81002,81003'&&db.bips===0,'desbipar: as 3 notas tinham que voltar para Faltando sem bipes ('+db.depois+' · '+db.bips+' bipes)');
+    ok(db.d1==='aberta|12|false|true','desbipar: a divergência da nota tinha que continuar aberta faltando 12 ('+db.d1+')');
+    ok(db.dx==='aberta|13|false|2026-01-02','desbipar: a divergência que bateu hoje tinha que reabrir faltando 13, com a data dela ('+db.dx+')');
+    ok(db.painel===false,'desbipar: o Painel ainda contava a nota desbipada como conferida em divergência');
+    ok(db.rebip==='81001,81003','desbipar: rebipada, a nota em divergência tinha que sair de Faltando de novo ('+db.rebip+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

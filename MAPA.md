@@ -635,3 +635,18 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   o bloco de conflito de divergências e a recusa de motivo na tabela; o teste de regressão pegou e foi restaurado.
 - `testes/idb.js` cenário 5 usava a chave do estado do app (`healthSearch.v1`) e o salvamento automático às vezes gravava
   por cima no meio do teste (falha intermitente, não perda de dado). Agora usa `healthSearch.db.testeFalha`.
+
+### v10.6.26 · Desbipar na Conferência total + chegada parcial da divergência
+- Janela do romaneio (Conferência total, `opRomLista`): ✕ vermelho nas **Bipadas**, no lugar dos botões ✔/⚠ das Faltando.
+  `opDesbipar(x)` pergunta (`simNao`: ✔ Sim verde / ✕ Não vermelho), apaga os bipes da nota (mesma regra do banco:
+  admin qualquer; os outros só os próprios até 5 min — avisa o que ficou) e a marcação manual do dia (`gsAjuste`).
+- Divergência da nota NUNCA é apagada no desbipar: continua na aba, mesma data. As chegadas de HOJE são desfeitas
+  (`dvDesfazChegadas`: entradas do histórico com `chegou` ou "Chegaram N…") e a resolvida hoje reabre. Ganha
+  `d.desbip={dia,em,por}`: enquanto a nota não for bipada de novo, `dvDesbipada()` faz o filtro de pendentes e o
+  `gsDvDoDia` (Painel) ignorarem essa divergência — a nota volta a ser cobrada. Rebipou: volta ao normal sozinho.
+- Chegada parcial: `dvChegou(d,n,onde)` — em "Reentregas detectadas" (campo "chegaram __ de N") e no "📦 Dar baixa agora"
+  (`dvPerguntarChegou`, quando faltam 2+). Parcial = continua aberta com o resto + histórico + aviso a quem abriu.
+- "Não é reentrega" desalinhado: o ✕ das notificações reaproveitava a classe `.nx-ign` (círculo de 34px) → agora
+  `button.nx-ign`; a etiqueta `label.nx-ign` volta a ser quadradinho + texto na mesma linha.
+- Estilos que saíram por engano no corte das Avarias (10.6.01) e ainda eram usados voltaram: `.dvav-leg` (legenda de
+  cores), `.dvav-bar/.dvav-q` (quadrado Divergência da Busca), `.dvav-selo` (selo laranja), `.av-l`. Legenda sem "Avaria".
