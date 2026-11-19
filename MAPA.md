@@ -650,3 +650,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   `button.nx-ign`; a etiqueta `label.nx-ign` volta a ser quadradinho + texto na mesma linha.
 - Estilos que saíram por engano no corte das Avarias (10.6.01) e ainda eram usados voltaram: `.dvav-leg` (legenda de
   cores), `.dvav-bar/.dvav-q` (quadrado Divergência da Busca), `.dvav-selo` (selo laranja), `.av-l`. Legenda sem "Avaria".
+
+### v10.6.27 · O ✕ "não funcionava" na nota tirada da conta
+- Caso real: NF 448310 (715 vol.) com a Simulação ligada. `opRomLista` punha em "Bipadas" tudo que não estava em
+  Faltando — inclusive nota fora da conta (`opForaFiltro`: Simulação/Retiradas), que nunca foi bipada. O ✕ não tinha
+  o que desfazer e mesmo assim dizia "cancelada". Agora: grupo "🚫 Fora da conta" sem ✕; `opDesbipar` sem bipe,
+  sem marcação e sem divergência avisa e não faz nada; e NUNCA apaga a marcação `m:'fora'` do Painel (gsAjuste).

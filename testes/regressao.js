@@ -1444,5 +1444,23 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(db.dx==='aberta|13|false|2026-01-02','desbipar: a divergência que bateu hoje tinha que reabrir faltando 13, com a data dela ('+db.dx+')');
     ok(db.painel===false,'desbipar: o Painel ainda contava a nota desbipada como conferida em divergência');
     ok(db.rebip==='81001,81003','desbipar: rebipada, a nota em divergência tinha que sair de Faltando de novo ('+db.rebip+')'); }
+  { /* v10.6.27 · nota tirada da conta não aparece como bipada e o ✕ não "cancela" o que não existe */
+    const fc=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); NV.perfil={papel:'admin',ativo:true,nome:'T'}; document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      const h=hojeISO(), arq='x '+h.split('-').reverse().join('-')+'.pdf', rs=S.romaneios, bs=OP.bipes, aj0=JSON.stringify(S.gsAjuste||{}), fo0=JSON.stringify(nexS().fora||{});
+      S.romaneios=[{id:'fc1',numero:'0236908',base:'CAJ',arquivo:arq,rows:[{nf:'448310',ped:'',vol:'715',dest:'HDL LOGISTICA'},{nf:'82002',ped:'92002',vol:'2',dest:'B'}]}];
+      OP.dia=h; OP.bipes=[]; const n=nexS(); n.fora=n.fora||{}; n.fora[nexK(S.romaneios[0].rows[0])]={motivo:'teste',em:new Date().toISOString()};
+      S.gsAjuste=S.gsAjuste||{}; S.gsAjuste[h]=S.gsAjuste[h]||{}; S.gsAjuste[h][gsAjK('82002','92002')]={m:'fora',por:'T'}; renderTudo();
+      opLer(['82002'],'teclado'); await w(20);
+      opRomLista('fc1'); const f=document.querySelector('.fundo'); const R={};
+      const blocos=[...f.querySelectorAll('h3')].map(x=>x.textContent); R.grupos=blocos.join('|');
+      R.xHdl=[...f.querySelectorAll('[data-rl-des]')].some(b=>b.closest('div[style*="padding:6px 0"]').textContent.includes('448310'));
+      R.semX=await opDesbipar(S.romaneios[0].rows[0]);
+      const bt=[...f.querySelectorAll('[data-rl-des]')].find(b=>b.closest('div[style*="padding:6px 0"]').textContent.includes('82002')); if(bt){ bt.click(); await w(60); document.querySelector('[data-sn="1"]').click(); await w(250); }
+      R.foraFicou=!!(S.gsAjuste[h]&&S.gsAjuste[h][gsAjK('82002','92002')]);
+      document.querySelectorAll('.fundo').forEach(f=>f.remove()); S.romaneios=rs; OP.bipes=bs; S.gsAjuste=JSON.parse(aj0); n.fora=JSON.parse(fo0); renderTudo(); return R; });
+    ok(/Fora da conta \(1\)/.test(fc.grupos)&&/Bipadas \(1\)/.test(fc.grupos),'fora da conta: a nota tirada da conta tinha que ir para o grupo próprio ('+fc.grupos+')');
+    ok(!fc.xHdl,'fora da conta: a nota tirada da conta não pode ter o ✕');
+    ok(fc.semX===false,'fora da conta: o ✕ não pode dizer que cancelou o que não existe');
+    ok(fc.foraFicou,'desbipar: a marcação "tirada da conta" da Simulação não pode sair'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

@@ -4450,7 +4450,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.26', HS_DATA='19/11/2026';
+const HS_VERSAO='10.6.27', HS_DATA='19/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9124,11 +9124,13 @@ function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) re
   const lin=(x,extra,mk,des)=>{ const d=temDv(x); const lar=d&&mk==null;
     return `<div style="padding:6px 0;border-bottom:1px solid var(--linha)${lar?';box-shadow:inset 3px 0 0 #E8590C;padding-left:8px':''}"><div style="display:flex;align-items:flex-start;gap:6px">${mk!=null?`<span style="display:flex;gap:4px;flex-shrink:0;margin-top:1px"><button type="button" class="btn mini rl-mk" data-rl-mk="${mk}" style="background:#16a34a;color:#fff;border-color:#16a34a;padding:2px 6px;font-size:.75em">✔</button><button type="button" class="btn mini rl-dv" data-rl-dv="${mk}" style="background:#f97316;color:#fff;border-color:#f97316;padding:2px 6px;font-size:.75em">⚠</button></span>`:''}${des!=null?`<span style="display:flex;gap:4px;flex-shrink:0;margin-top:1px"><button type="button" class="btn mini rl-des" data-rl-des="${des}" title="Cancelar a conferência desta nota (volta para Faltando)" aria-label="Cancelar a conferência" style="background:#dc2626;color:#fff;border-color:#dc2626;padding:2px 7px;font-size:.75em">✕</button></span>`:''}<div style="flex:1;min-width:0"><b${lar?' style="color:#E8590C"':''}>NF ${esc(opK(x.nf)||'—')}</b>${x.ped?` <small class="sub">ped. ${esc(opK(x.ped))}</small>`:''} <small style="float:right">${extra}</small><br><small class="sub">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}${lar?` · <b style="color:#E8590C">⚠ divergência ${esc(dvNum(d))}${d.qtd?' · faltam '+d.qtd:''}</b>`:''}</small></div></div></div>`; };
   const rows=(r.rows||[]).filter(x=>(opK(x.ped)||opK(x.nf))&&volNum(x.vol)!==0);
-  const feitasX=rows.filter(x=>!falta.has(x)); const feitas=feitasX.map((x,j)=>{ const quem=bs.filter(b=>(opK(x.nf)&&b.nf===opK(x.nf))||(opK(x.ped)&&b.ped===opK(x.ped))); return lin(x,`${fmtN(volNum(x.vol)||1)} vol. · ${esc([...new Set(quem.map(b=>(b.usuario||'').split(' ')[0]))].join(', '))}`,null,j); });
+  /* v10.6.27: nota tirada da conta (Simulação / Retiradas) não foi bipada — tem grupo próprio, sem ✕ */
+  const foraX=rows.filter(x=>!falta.has(x)&&(()=>{ try{ return opForaFiltro(x); }catch(e){ return false; } })());
+  const feitasX=rows.filter(x=>!falta.has(x)&&!foraX.includes(x)); const feitas=feitasX.map((x,j)=>{ const quem=bs.filter(b=>(opK(x.nf)&&b.nf===opK(x.nf))||(opK(x.ped)&&b.ped===opK(x.ped))); return lin(x,`${fmtN(volNum(x.vol)||1)} vol. · ${esc([...new Set(quem.map(b=>(b.usuario||'').split(' ')[0]))].join(', '))}`,null,j); });
   const falt=pend.map((it,i)=>lin(it.x,`${opPorVol()?fmtN(it.lidos)+' de '+fmtN(it.esp):fmtN(volNum(it.x.vol)||1)+' vol.'}${volNum(it.x.vol)>=10?' · <b style="color:#7950F2">alta</b>':''}`,i));
   const f=document.createElement('div'); f.className='fundo'; f.style.zIndex='1600';
   f.innerHTML=`<div class="modal" role="dialog" style="max-width:900px;width:calc(100% - 24px);max-height:88vh;display:flex;flex-direction:column"><h2 style="margin:0 0 4px">${esc(r.base||'')} · ${esc(r.numero||'')}</h2><p class="sub" style="margin:0 0 10px">${esc(r.motorista||'')} · ${fmtN(rows.length)} nota(s) · <span style="color:var(--ok)">marque o quadradinho para dar a nota como bipada</span></p>
-   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;overflow:auto;flex:1;min-height:0"><div><h3 style="color:var(--ok);margin:0 0 6px;position:sticky;top:0;background:var(--papel,#0c2b31)">✔ Bipadas (${feitas.length})</h3>${feitas.join('')||'<p class="sub">Nenhuma ainda.</p>'}</div>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;overflow:auto;flex:1;min-height:0"><div><h3 style="color:var(--ok);margin:0 0 6px;position:sticky;top:0;background:var(--papel,#0c2b31)">✔ Bipadas (${feitas.length})</h3>${feitas.join('')||'<p class="sub">Nenhuma ainda.</p>'}${foraX.length?`<h3 style="color:var(--mudo);margin:14px 0 2px">🚫 Fora da conta (${foraX.length})</h3><p class="sub" style="margin:0 0 6px">Tiradas da conta (Simulação ou Retiradas): não foram bipadas e não são cobradas hoje.</p>${foraX.map(x=>lin(x,`${fmtN(volNum(x.vol)||1)} vol.`)).join('')}`:''}</div>
    <div><h3 style="color:var(--amar);margin:0 0 6px;position:sticky;top:0;background:var(--papel,#0c2b31)">⏳ Faltando (${falt.length})</h3>${falt.join('')||'<p class="sub" style="color:var(--ok)">Nada faltando ✅</p>'}</div></div>
    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px"><button class="btn" data-a="f">Filtrar a Operação por este romaneio</button><button class="btn pri" data-a="x">Fechar</button></div></div>`;
   const refaz=async(i,modo,el)=>{ const it=pend[i]; if(!it) return; if(el) el.disabled=true;
@@ -12130,6 +12132,10 @@ async function opDesbipar(x){ if(!x) return false; const nf=opK(x.nf||''), ped=o
   const bate=opNotaBate(x), dia=OP.dia||hojeISO();
   const bips=(OP.bipes||[]).filter(b=>bate(b)&&b.status!=='fora');
   const dvs=dvSo().filter(d=>dvDaNota(d,x)&&(d.st!=='resolvida'||(d.res&&String(d.res.d||'').slice(0,10)===dia)));
+  /* v10.6.27: sem bipe, sem marcação à mão e sem divergência = não há conferência para cancelar */
+  const mao=(()=>{ try{ const a=gsAjLer(dia)[gsAjK(x.nf,x.ped)]; return a&&a.m!=='fora'?a:null; }catch(e){ return null; } })();
+  if(!bips.length&&!mao&&!dvs.length){ let pq=''; try{ if(opForaFiltro(x)) pq=' Ela está fora da conta (Simulação ou Retiradas).'; }catch(e){}
+    toast(`A NF ${nf||ped} não tem bipe nem marcação para cancelar.${pq}`); return false; }
   const ok=await simNao('Cancelar conferência',`Tem certeza que deseja cancelar essa conferência?<br><b>NF ${esc(nf||'—')}</b>${ped?' · pedido '+esc(ped):''}<br><small class="sub">A nota volta para <b>Faltando</b> para ser bipada de novo${bips.length?` (sai${bips.length>1?'m os '+bips.length+' bipes':' o bipe'} dela)`:''}.${dvs.length?` A divergência ${dvs.map(dvNum).join(', ')} continua na aba Divergências, faltando os mesmos volumes.`:''}</small>`);
   if(!ok) return false;
   const eu=(typeof opEu==='function'?opEu():''), ag=new Date().toISOString();
@@ -12138,7 +12144,7 @@ async function opDesbipar(x){ if(!x) return false; const nf=opK(x.nf||''), ped=o
     if(d.st==='resolvida'){ d.st=d.apareceu?'apareceu':'aberta'; delete d.res; try{ (NUV.apagar=NUV.apagar||new Set()).delete('dv:'+d.id); }catch(e){} }
     d.conferida=false; d.desbip={dia,em:ag,por:eu};
     (d.hist=d.hist||[]).push({em:ag,por:eu,t:`Conferência da nota cancelada (desbipada)${volta?` — os ${volta} volume(s) que tinham chegado voltam a faltar`:''}. Continuam faltando ${+d.qtd||0} volume(s).`}); }
-  try{ const aj=gsAjLer(dia); const k=gsAjK(x.nf,x.ped); if(aj&&aj[k]) delete aj[k]; }catch(e){}
+  try{ const aj=gsAjLer(dia); const k=gsAjK(x.nf,x.ped); if(aj&&aj[k]&&aj[k].m!=='fora') delete aj[k]; }catch(e){} /* v10.6.27: "tirada da conta" da Simulação NÃO é conferência — fica */
   salvar(); try{ nuvJa(); }catch(e){ try{ nuvSinc(); }catch(x2){} }
   let ficou=0; for(const b of bips){ let foi=false; try{ foi=await opApagar(b.id||b.local_id); }catch(e){} if(!foi) ficou++; }
   try{ dvRender(); }catch(e){} try{ opRender(); }catch(e){} try{ ctMontar&&ctMontar(); }catch(e){} try{ gsFotoAgendar(); }catch(e){}
