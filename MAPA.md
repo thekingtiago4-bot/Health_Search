@@ -684,3 +684,11 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 ### v10.6.31 · Bússola da abertura: N/S/L/O visíveis
 - Letras eram `#d9fffa` (quase branco) e S/L/O com 60% — sumiam quando o anel claro passava. Agora brancas com contorno
   escuro (`stroke #062227`, `paint-order="stroke"`), opacidade cheia, 23px.
+
+### v10.6.32 · NexBip volta a ser simples (etiqueta fracionada ignorada)
+- Pedido do Tiago: "bipar a etiqueta, me entregar o total do pedido e só". Saíram a pergunta "etiqueta igual"
+  (`opMesmaEtiqueta`), a caixa por série (`opEtqB`, número+total) no duplicado, na contagem e na conferência entre aparelhos.
+  Duplicada = mesmo número de caixa no pedido, como era antes da 10.6.22.
+- O total do bipe agora é o do PEDIDO no romaneio (soma das linhas do pedido); o total da etiqueta só vale sem romaneio.
+- Fica: "✍ Escrever as caixas à mão" na divergência (10.6.21) e o pallet de 8 dígitos (`opEhPallet`).
+  Bipes `:outra` já gravados (18–19/11) continuam contando como caixa própria.
