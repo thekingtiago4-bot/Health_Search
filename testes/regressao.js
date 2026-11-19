@@ -1479,5 +1479,20 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(/Bipadas \(1\)\|⏳ Faltando \(1\)/.test(rt.na_hora),'tempo real: a nota tinha que mudar de lado antes do servidor responder ('+rt.na_hora+')');
     ok(/Bipadas \(0\)/.test(rt.b_na_hora)&&/Bipadas \(1\)/.test(rt.b_depois),'tempo real: o bipe recusado pelo servidor tinha que voltar ('+rt.b_na_hora+' → '+rt.b_depois+')');
     ok(rt.chamadas===2,'tempo real: tinha que ser UMA chamada ao servidor por nota ('+rt.chamadas+')'); }
+  { /* v10.6.29 · clientes fixos / agendamentos não somem pela sincronização */
+    const ls=await p.evaluate(async()=>{ const R={}; const cliO=NV.cli, usO=NV.user, c0=S.clientesReq, t0=S.listaTirados, h0=NV&&NUV.h['s:clientesReq']; NV.user={id:'u'};
+      const C=n=>({id:'c'+n,nome:'CLIENTE '+n,em:'2026-11-1'+n+'T00:00:00Z',fixo:true}); const nuvem=[C(1),C(2),C(3),C(4),C(5)];
+      NV.cli={from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{valor:nuvem,apagado:false},error:null})})})})};
+      try{ S.listaTirados={};
+        S.clientesReq=[]; NUV.h['s:clientesReq']=nuvHash(nuvem); await listasProteger(); R.voltou=S.clientesReq.map(c=>c.id).join(',');
+        S.clientesReq=[C(1),C(2),C(9)]; NUV.h['s:clientesReq']=nuvHash([C(1),C(2)]); await listasProteger(); R.juntou=S.clientesReq.map(c=>c.id).sort().join(',');
+        listaTirar('clientesReq',['c3']); S.clientesReq=S.clientesReq.filter(c=>c.id!=='c3'); NUV.h['s:clientesReq']='velho'; await listasProteger(); R.excluido=S.clientesReq.map(c=>c.id).sort().join(',');
+        R.conflito=nuvJuntar('s:clientesReq',[C(1)],[C(2),C(3)]).map(c=>c.id).sort().join(',');
+      } finally { NV.cli=cliO; NV.user=usO; S.clientesReq=c0; S.listaTirados=t0; NUV.h['s:clientesReq']=h0; }
+      return R; });
+    ok(ls.voltou==='c1,c2,c3,c4,c5','listas: aparelho com a lista vazia tinha que trazer da nuvem ('+ls.voltou+')');
+    ok(ls.juntou==='c1,c2,c3,c4,c5,c9','listas: cadastrar com cópia velha tinha que juntar com a nuvem, não sobrescrever ('+ls.juntou+')');
+    ok(ls.excluido==='c1,c2,c4,c5,c9','listas: excluído pelo botão não pode voltar ('+ls.excluido+')');
+    ok(ls.conflito==='c1,c2','listas: conflito tinha que juntar e respeitar o excluído (c3) ('+ls.conflito+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

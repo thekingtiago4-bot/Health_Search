@@ -661,3 +661,16 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `opApagarLote(bips,depoisLocal)`: tira da tela/aparelho na hora (otimista), redesenha a janela e só então apaga no
   servidor numa chamada (`delete().in('id',…).select('id')`); o que o servidor não apagou (regra dos 5 min) volta e avisa.
   Antes `opDesbipar` usava `opApagar` um a um (35 idas ao servidor + 35 redesenhos numa nota de 35 caixas).
+
+### v10.6.29 · Clientes fixos (e agendamentos) sumiam pela sincronização — CORRIGIDO
+- Caso real 19/11: lista de Clientes fixos vazia. Backups: 5 clientes até 15/11 → trocados por 3 em 16/11 (SUPERMED foi
+  recadastrado depois, então não foi exclusão) → 7 em 18/11 → vazio hoje.
+- Brecha 1: cópia local vazia + nuvem sem mudança desde `NUV.desde` + `NUV.h` com o hash antigo = o aparelho nunca
+  baixava de novo (a linha não vinha na consulta e o vazio não entra no `nuvLocal`).
+- Brecha 2: quem cadastrava nesse estado subia só a lista local por cima da nuvem (sem conflito, porque a linha da nuvem
+  não tinha mudado desde a última vez).
+- `listasProteger()` (antes de cada `nuvSinc`, para `LISTAS_SEGURAS=['clientesReq','agendamentos']`): lista vazia aqui com
+  versão conhecida → busca e aplica; lista que vai subir → junta com a nuvem antes (`listaJuntar`: um por id, vale o `em`
+  mais novo, agendamentos `pac` só do local). Exclusão só pelo botão: `listaTirar(campo,ids)` grava em `S.listaTirados`
+  (sincronizado) — sumiço sem botão NUNCA vira exclusão. O conflito (`nuvJuntar`) dessas listas usa a mesma junção.
+- Recuperação dos clientes: migração `sql/migracoes/2026-11-19-001-restaurar-clientes-fixos.sql` (união com a nuvem).

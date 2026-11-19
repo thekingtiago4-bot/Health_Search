@@ -3079,7 +3079,7 @@ document.addEventListener('click',async e=>{
   const rm=e.target.closest('[data-remover]'); if(rm){ const r=S.romaneios.find(x=>x.id===rm.dataset.remover); if(r && await confirmar(`Remover o romaneio ${r.numero}?`,`As ${r.rows.length} notas dele deixam de aparecer na busca. Os agendamentos continuam salvos.`,'Remover')){ S.romaneios=S.romaneios.filter(x=>x.id!==r.id); abertos.delete(r.id); salvar(); renderTudo(); toast(`Romaneio ${r.numero} removido.`); } return; }
   const dh=e.target.closest('[data-del-hist]'); if(dh){ S.historico=(S.historico||[]).filter(h=>h.id!==dh.dataset.delHist); salvar(); renderHistorico(); renderResumo(); return; }
   const rf=e.target.closest('[data-refazer]'); if(rf){ const h=(S.historico||[]).find(x=>x.id===rf.dataset.refazer); if(h){ irPara('buscar'); executar(h.q,h.tipo==='auto'?undefined:h.tipo); } return; }
-  const da=e.target.closest('[data-del-ag]'); if(da){ S.agendamentos=S.agendamentos.filter(a=>a.id!==da.dataset.delAg); salvar(); renderTudo(); toast('Agendamento excluído.'); return; }
+  const da=e.target.closest('[data-del-ag]'); if(da){ try{ listaTirar('agendamentos',[da.dataset.delAg]); }catch(er){} S.agendamentos=S.agendamentos.filter(a=>a.id!==da.dataset.delAg); salvar(); renderTudo(); toast('Agendamento excluído.'); return; }
 });
 document.addEventListener('input',e=>{ const f=e.target.closest('[data-filtro]'); if(!f) return; const t=N(f.value); const tb=f.parentElement.querySelector('tbody'); for(const tr of tb.rows) tr.hidden = t && !t.split(' ').every(p=>tr.dataset.busca.includes(p)); });
 $('#bt-reset').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrador pode remover romaneios.'); return; } if(!S.romaneios.length){ toast('Não há romaneios carregados.'); return; } if(await confirmar('Remover todos os romaneios?',`Vou tirar os ${S.romaneios.length} romaneios e as ${todasLinhas().length} notas da busca, para começar o próximo dia limpo. Os agendamentos continuam salvos.`,'Remover todos')){ S.romaneios=[]; S.pacoteInfo=null; S.romLimpoEm=new Date().toISOString(); abertos.clear(); salvar(); renderTudo(); toast('Romaneios removidos. Pronto para o próximo dia.'); } };
@@ -3090,7 +3090,7 @@ $('#bt-hist-limpar').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrad
 $('#bt-ag').onclick=salvarAg;
 $$('#form-ag input').forEach(i=>i.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); salvarAg(); } }));
 $$('#form-ag .seg button').forEach(b=>b.onclick=()=>{ setTipo(b.dataset.tipo); $('#ag-valor').focus(); });
-$('#bt-ag-passados').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrador pode excluir agendamentos.'); return; } const hj=hojeISO(); const n=S.agendamentos.filter(a=>a.data<hj).length; if(!n){ toast('Nenhum agendamento passado.'); return; } if(await confirmar('Excluir agendamentos passados?',`São ${n} agendamento(s) com data anterior a hoje.`,'Excluir')){ S.agendamentos=S.agendamentos.filter(a=>a.data>=hj); salvar(); renderTudo(); } };
+$('#bt-ag-passados').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrador pode excluir agendamentos.'); return; } const hj=hojeISO(); const n=S.agendamentos.filter(a=>a.data<hj).length; if(!n){ toast('Nenhum agendamento passado.'); return; } if(await confirmar('Excluir agendamentos passados?',`São ${n} agendamento(s) com data anterior a hoje.`,'Excluir')){ try{ listaTirar('agendamentos',S.agendamentos.filter(a=>a.data<hj).map(a=>a.id)); }catch(er){} S.agendamentos=S.agendamentos.filter(a=>a.data>=hj); salvar(); renderTudo(); } };
 $('#bt-tema').onclick=()=>{ const agora=document.documentElement.dataset.tema; S.tema= agora==='escuro'?'claro':'escuro'; aplicarTema(); salvar(); };
 const sol=$('#soltar');
 $('#arq').addEventListener('change',e=>importar(e.target.files));
@@ -4450,7 +4450,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.28', HS_DATA='19/11/2026';
+const HS_VERSAO='10.6.29', HS_DATA='19/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5828,7 +5828,7 @@ function cliHoje(){ const m=new Map(); for(const r of S.romaneios||[]) for(const
     const L=cliS(), i=L.findIndex(x=>x.id===id); if(i>=0) L[i]=c; else L.push(c);
     salvar(); limpar(); cliRender(); toast(i>=0?'Cliente atualizado.':'Cliente cadastrado.'); };
   $('#cli-lista').onclick=async e=>{ const b=e.target.closest('[data-cli-ed],[data-cli-del]'); if(!b) return; const L=cliS(), c=L.find(x=>x.id===(b.dataset.cliEd||b.dataset.cliDel)); if(!c) return;
-    if(b.dataset.cliDel){ if(!nvAdmin()){ toast('Só o administrador exclui clientes.'); return; } if(!await confirmar('Excluir cliente',`Excluir <b>${esc(c.nome)}</b> do cadastro de clientes fixos? Os dados e as exigências saem para todos.`,'Excluir')) return; S.clientesReq=L.filter(x=>x!==c); salvar(); cliRender(); return; }
+    if(b.dataset.cliDel){ if(!nvAdmin()){ toast('Só o administrador exclui clientes.'); return; } if(!await confirmar('Excluir cliente',`Excluir <b>${esc(c.nome)}</b> do cadastro de clientes fixos? Os dados e as exigências saem para todos.`,'Excluir')) return; try{ listaTirar('clientesReq',[c.id]); }catch(er){} S.clientesReq=L.filter(x=>x!==c); salvar(); cliRender(); return; }
     limpar(); $('#cli-id').value=c.id; $('#cli-nome').value=c.nome; $('#cli-doc').value=c.doc||''; $('#cli-cid').value=(c.cids||[]).join(', '); $('#cli-alt').value=c.alt||''; $('#cli-peso').value=c.peso||''; $('#cli-hora').value=c.hora||''; $('#cli-obs').value=c.obs||''; const dd=c.dd||{}; for(const k of ['end','nro','bai','mun','uf','cep','fone']) $('#cli-'+k).value=dd[k]||'';
     for(const [k] of CLI_CAMPOS) document.querySelector(`[data-cli="${k}"]`).checked=!!c[k]; for(const x of c.extras||[]) extra(x.n,x.v);
     $('#cli-ok').textContent='Salvar alterações'; $('#cli-form').scrollIntoView({behavior:'smooth',block:'start'}); $('#cli-nome').focus(); };
@@ -12209,6 +12209,39 @@ label.nx-ign input{margin:0;flex:none}
 .dvav-q.on{background:var(--c);color:#fff}
 .dvav-q{display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:7px 12px;border:2px solid var(--c);border-radius:10px;font-weight:700;color:var(--c);user-select:none;background:transparent}
 .dvav-selo{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;color:#fff;font-size:.78rem;font-weight:700;white-space:nowrap}`; document.head.appendChild(st); })();
+
+/* ================= v10.6.29 · Clientes fixos e agendamentos NUNCA mais somem pela sincronização =================
+   Caso real (19/11): a lista de Clientes fixos apareceu vazia. Nos backups: 5 clientes até 15/11, trocados por 3
+   em 16/11 (o SUPERMED foi recadastrado depois — não foi exclusão) e 7 em 18/11 que sumiram hoje.
+   Duas brechas juntas:
+   1) cópia do aparelho vazia + nuvem sem mudança desde a última conversa = o aparelho não baixava de novo
+      (achava que já tinha aquela versão). → agora, lista vazia aqui com versão conhecida na nuvem: busca e aplica.
+   2) quem cadastrava nesse estado subia SÓ a lista dele, por cima da nuvem. → agora, antes de subir, junta com o que
+      está na nuvem (um item por id; vale o mais novo) e tira só o que foi EXCLUÍDO de verdade pelo botão.
+   Exclusão: os botões Excluir gravam S.listaTirados[campo][id] (sincronizado) — sumiço sem botão nunca vira exclusão. */
+const LISTAS_SEGURAS=['clientesReq','agendamentos'];
+NUV_CAMPOS.push('listaTirados');
+function listaTirar(campo,ids){ const T=S.listaTirados=S.listaTirados||{}; const t=T[campo]=T[campo]||{}; const ag=new Date().toISOString(); for(const id of (ids||[])) if(id) t[id]=ag; }
+function listaTirado(campo,x){ const t=((S.listaTirados||{})[campo])||{}; return !!(x&&x.id&&t[x.id]); }
+function listaJuntar(campo,local,nuvem){ const m=new Map(); const ts=x=>String((x&&(x.em||x.criado))||'');
+  for(const x of [...(nuvem||[]),...(local||[])]){ if(!x||typeof x!=='object') continue; if(campo==='agendamentos'&&x.pac&&!(local||[]).includes(x)) continue;
+    const k=x.id||JSON.stringify(x); const ja=m.get(k); if(!ja||ts(x)>=ts(ja)) m.set(k,x); }
+  return [...m.values()].filter(x=>!listaTirado(campo,x)); }
+async function listasProteger(){ if(!opOnline()||typeof NV==='undefined'||!NV.cli) return 0; let mexeu=0;
+  for(const campo of LISTAS_SEGURAS){ const k='s:'+campo; const loc=Array.isArray(S[campo])?S[campo]:[]; const hLoc=loc.length?nuvHash(loc):null;
+    const vazioAqui=!loc.length&&NUV.h[k]&&NUV.h[k]!=='x';          /* brecha 1 */
+    const vaiSubir=loc.length&&NUV.h[k]!==hLoc;                      /* brecha 2 */
+    if(!vazioAqui&&!vaiSubir) continue;
+    let nuvem=null; try{ const {data,error}=await NV.cli.from('hs_sync').select('valor,apagado').eq('chave',k).maybeSingle(); if(error) throw error; if(data&&!data.apagado&&Array.isArray(data.valor)) nuvem=data.valor; }catch(e){ console.error('listas',e); continue; }
+    if(!nuvem||!nuvem.length) continue;
+    const j=listaJuntar(campo,loc,nuvem);
+    if(nuvHash(j)!==nuvHash(loc)){ S[campo]=j; mexeu++; if(vazioAqui) NUV.h[k]=nuvHash(nuvem); }
+    if(vazioAqui&&j.length) try{ toast(`🛡 ${j.length} ${campo==='clientesReq'?'cliente(s) fixo(s)':'agendamento(s)'} trazido(s) de volta da nuvem.`); }catch(e){} }
+  if(mexeu){ salvar(); try{ renderTudo(); }catch(e){} try{ if(typeof cliRender==='function') cliRender(); }catch(e){} }
+  return mexeu; }
+{ const _ns=nuvSinc; nuvSinc=async function(){ if(!NUV.rodando){ try{ await listasProteger(); }catch(e){ console.error(e); } } return _ns.apply(this,arguments); }; }
+/* junção de conflito dessas listas também respeita as exclusões e o mais novo por item */
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ const c=String(chave).slice(2); if(String(chave).startsWith('s:')&&LISTAS_SEGURAS.includes(c)&&Array.isArray(local)&&Array.isArray(remoto)) return listaJuntar(c,local,remoto); return _nj.apply(this,arguments); }; }
 </script>
 
 </body>
