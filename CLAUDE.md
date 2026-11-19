@@ -25,6 +25,7 @@ O `index.html` tem ~2,3 MB (as partes pesadas ficam em `a/`, desde a v10.6.00). 
   persistência, união entre abas, sessão intacta e falha de gravação virando erro.
 - `node testes/abas.js` também: passa por todas as abas e acusa erro de código.
 - `node testes/partes.js` também: leitor de PDF, OCR, manual, malha e abertura sem internet (pasta `a/`).
+- `node testes/camera.js` também: a câmera do NexBip não trava (tratamento preso, espera presa, janela na frente).
 - Versão: `10.6.NN` — só os dois últimos dígitos sobem; o do meio só quando o Tiago pedir.
 - Antes dos testes, checar a sintaxe do script (um `\n` dentro de string quebra o app inteiro):
   `python3 -c "import re;s=open('index.html',encoding='utf-8').read();b=max(re.findall(r'<script>(.*?)</script>',s,re.S),key=len);open('/tmp/app.js','w',encoding='utf-8').write(b)" && node --check /tmp/app.js`

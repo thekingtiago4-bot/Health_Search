@@ -703,3 +703,13 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - **Reentrega voltando:** os ✕ (Reentregas → Excluir, Correção → "Não é reentrega" e "Excluir linha") tiravam só do
   aparelho; a junção da sincronização e o "atualização devolve o que sumiu" traziam de volta. Agora gravam
   `S.reTirados[dia#nf|motivo]` (`reTirar`) — vale só para aquele dia; `reTirado(l,dia)`.
+
+### v10.6.34 · Câmera do NexBip não trava mais (janela respondida / internet caindo)
+- Causa: o laço da câmera fazia `await opCamTratar()` com a trava `ocupado`; se o tratamento não terminava (leitor de
+  texto carregando sem internet, janela esperando), a câmera parava até ser reaberta. `OP.espera` também podia ficar
+  presa quando o painel fechava por outro caminho.
+- Agora (`opCamAbrir`): detecção com prazo de 1,5 s; tratamento solto (`OP.tratando`, libera a próxima leitura em 2,5 s);
+  com janela `.fundo` aberta a câmera não lê por trás (visível = `getClientRects().length`, pois é position:fixed);
+  vigia de 1 s: solta `OP.espera` sem painel, zera `OP.tratando` preso >8 s, dá play no vídeo pausado e reabre a
+  câmera se o sistema desligar a trilha (`readyState==='ended'`). `opCamFechar` limpa tudo.
+- Testado com câmera falsa do Chromium + leitor simulado (tratamento que nunca termina, espera presa, janela na frente).

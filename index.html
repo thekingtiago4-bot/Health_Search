@@ -4462,7 +4462,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.33', HS_DATA='19/11/2026';
+const HS_VERSAO='10.6.34', HS_DATA='19/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5328,13 +5328,35 @@ async function opCamAbrir(){
   try{ const c=tr.getCapabilities&&tr.getCapabilities(); if(c&&c.focusMode&&c.focusMode.includes('continuous')) tr.applyConstraints({advanced:[{focusMode:'continuous'}]}); if(!(c&&c.torch)) f.querySelector('[data-a="luz"]').hidden=true; }catch(e){}
   f.onclick=e=>{ const a=e.target.closest('[data-a]'); if(!a) return; if(a.dataset.a==='sair') opCamFechar(); if(a.dataset.a==='luz'){ luz=!luz; tr.applyConstraints({advanced:[{torch:luz}]}).catch(()=>{}); } };
   f.tabIndex=-1; f.focus(); f.onkeydown=e=>{ if(e.key==='Escape') opCamFechar(); };
-  let ocupado=false, ult=0;
-  const passo=async ts=>{ if(!OP.cam) return; OP.loop=requestAnimationFrame(passo); if(ocupado||OP.espera||ts-ult<90||v.readyState<2) return; ocupado=true; ult=ts;
-    try{ const lidos=[...new Set(await OP.det(v))].filter(Boolean); if(lidos.length){ const prin=lidos.find(t=>t.includes('@'))||lidos.find(t=>t.replace(/\D/g,'').length===44)||lidos[0];
-        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=OP_ESPERA&&agora-vez>OP_ESPERA){ OP.camGap=vez?agora-vez:1e9; OP.visto.set(prin,agora); OP.ultLeitura=agora; OP.ultPrin=prin; if(OP.destino){ const fn=OP.destino; opCamFechar(); fn(lidos); return; } await opCamTratar(lidos,v); } else OP.visto.set(prin,agora); } else if(!OP.destino&&!OP.espera){ opCamSemCodigo(v); } }catch(e){}
-    ocupado=false; };
-  OP.loop=requestAnimationFrame(passo); }
-function opCamFechar(){ OP.destino=null; OP.espera=false; OP.confB=null; cancelAnimationFrame(OP.loop); if(OP.cam) OP.cam.getTracks().forEach(t=>t.stop()); OP.cam=null; const f=$('#op-cam'); if(f) f.remove(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
+  /* v10.6.34 · câmera nunca mais "trava": antes o laço esperava (await) o tratamento de cada leitura; se ele não terminava
+     (janela esperando resposta, leitor de texto carregando sem internet), a câmera parava até ser reaberta. Agora:
+     a detecção tem prazo de 1,5 s, o tratamento roda solto (com prazo de 2,5 s para liberar a próxima leitura),
+     com janela aberta na frente a câmera não lê por trás, e um vigia destrava/religa o que ficar preso. */
+  let ocupado=false, ult=0; OP.tratando=0;
+  const comPrazo=(pr,ms)=>Promise.race([pr,new Promise(r=>setTimeout(()=>r(null),ms))]);
+  const janelaAberta=()=>{ for(const x of document.querySelectorAll('.fundo')) if(x.isConnected&&!x.hidden&&x.getClientRects().length) return true; return false; }; /* janela é position:fixed: offsetParent é sempre null */
+  const passo=async ts=>{ if(!OP.cam) return; OP.loop=requestAnimationFrame(passo);
+    if(ocupado||OP.espera||ts-ult<90||v.readyState<2) return;
+    if(OP.tratando&&Date.now()-OP.tratando<2500) return;
+    if(janelaAberta()) return;
+    ocupado=true; ult=ts;
+    try{ const r=await comPrazo(OP.det(v),1500); if(!OP.cam) return; const lidos=[...new Set(r||[])].filter(Boolean); if(lidos.length){ const prin=lidos.find(t=>t.includes('@'))||lidos.find(t=>t.replace(/\D/g,'').length===44)||lidos[0];
+        const agora=Date.now(), vez=OP.visto.get(prin)||0; if(agora-(OP.ultLeitura||0)>=OP_ESPERA&&agora-vez>OP_ESPERA){ OP.camGap=vez?agora-vez:1e9; OP.visto.set(prin,agora); OP.ultLeitura=agora; OP.ultPrin=prin; if(OP.destino){ const fn=OP.destino; opCamFechar(); fn(lidos); return; }
+          const t0=OP.tratando=Date.now(); Promise.resolve().then(()=>opCamTratar(lidos,v)).catch(e=>console.error('bipe',e)).finally(()=>{ if(OP.tratando===t0) OP.tratando=0; }); }
+        else OP.visto.set(prin,agora); } else if(!OP.destino&&!OP.espera){ opCamSemCodigo(v); } }catch(e){ console.error('camera',e); }
+    finally{ ocupado=false; } };
+  OP.loop=requestAnimationFrame(passo);
+  /* vigia: a cada 1 s confere se algo ficou preso */
+  clearInterval(OP.vigia); OP.vigia=setInterval(()=>{ try{ if(!OP.cam){ clearInterval(OP.vigia); return; }
+      const cam=document.querySelector('#op-cam');
+      if(OP.espera&&!(cam&&cam.querySelector('.op-conf,.op-qt'))&&!janelaAberta()){ OP.espera=false; OP.confB=null; }
+      if(OP.tratando&&Date.now()-OP.tratando>8000) OP.tratando=0;
+      if(!document.hidden&&v.paused) v.play().catch(()=>{});
+      const t=OP.cam.getVideoTracks&&OP.cam.getVideoTracks()[0];
+      if(t&&t.readyState==='ended'&&!document.hidden){ clearInterval(OP.vigia); const dest=OP.destino; opCamFechar(); setTimeout(()=>{ opCamAbrir().then(()=>{ if(dest) OP.destino=dest; }); },200); }
+    }catch(e){} },1000);
+}
+function opCamFechar(){ OP.destino=null; OP.espera=false; OP.confB=null; OP.tratando=0; clearInterval(OP.vigia); cancelAnimationFrame(OP.loop); if(OP.cam) OP.cam.getTracks().forEach(t=>t.stop()); OP.cam=null; const f=$('#op-cam'); if(f) f.remove(); setTimeout(()=>{ if(!TOQUE) $('#op-campo').focus(); },0); }
 
 /* ================= v9.20.0 · Conferência do bipe: a câmera para e o conferente responde ✓ ou ✗ =================
    Antes: a câmera seguia lendo por trás do aviso e gerava bipe fantasma (etiqueta levantada, chão, caixa ao lado).
