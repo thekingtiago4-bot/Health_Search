@@ -4450,7 +4450,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.27', HS_DATA='19/11/2026';
+const HS_VERSAO='10.6.28', HS_DATA='19/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9143,8 +9143,9 @@ function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) re
   /* v10.6.26: ✕ vermelho = desbipar (a nota volta para Faltando) */
   f.addEventListener('click',async e=>{ const c=e.target.closest('[data-rl-des]'); if(!c) return; e.preventDefault(); e.stopPropagation(); const x=feitasX[+c.dataset.rlDes]; if(!x) return;
     const rolagem=(f.querySelector('.modal div[style*="grid-template-columns"]')||{}).scrollTop||0; c.disabled=true;
-    const fez=await opDesbipar(x); if(!fez){ c.disabled=false; return; }
-    f.remove(); opRomLista(id); const novo=document.querySelector('.fundo .modal div[style*="grid-template-columns"]'); if(novo) novo.scrollTop=rolagem; },true);
+    /* v10.6.28: redesenha assim que sai da tela local — não espera a internet */
+    let atual=f; const redesenha=()=>{ if(atual&&atual.isConnected) atual.remove(); opRomLista(id); const fs=document.querySelectorAll('.fundo'); atual=fs[fs.length-1]; const novo=atual&&atual.querySelector('.modal div[style*="grid-template-columns"]'); if(novo) novo.scrollTop=rolagem; };
+    const fez=await opDesbipar(x,redesenha); if(!fez&&f.isConnected) c.disabled=false; },true);
   f.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(e.target===f||(b&&b.dataset.a==='x')){ f.remove(); return; } if(b&&b.dataset.a==='f'){ f.remove(); OP.romFiltro=id; opRender(); } });
   document.body.appendChild(f); }
 
@@ -12128,7 +12129,20 @@ function simNao(titulo,html){ return new Promise(res=>{ const f=document.createE
 function dvDiaLocal(iso){ try{ const t=new Date(iso); if(isNaN(t)) return ''; t.setMinutes(t.getMinutes()-t.getTimezoneOffset()); return t.toISOString().slice(0,10); }catch(e){ return ''; } }
 function dvDesfazChegadas(d,dia){ let n=0; for(const h of (d.hist||[])){ if(!h||h.desfeito||(h.dia||dvDiaLocal(h.em))!==dia) continue;
     let q=+h.chegou||0; if(!q){ const m=/^Chegaram (\d+)/.exec(String(h.t||'')); if(m) q=+m[1]; } if(q>0){ n+=q; h.desfeito=true; } } return n; }
-async function opDesbipar(x){ if(!x) return false; const nf=opK(x.nf||''), ped=opK(x.ped||''); if(!nf&&!ped) return false;
+/* v10.6.28: apaga vários bipes de uma vez — some da tela NA HORA (otimista) e o servidor apaga tudo numa chamada só.
+   O que o servidor recusar (bipe de outra pessoa com mais de 5 min) volta para a tela. Antes era um por um, esperando
+   a rede a cada bipe e redesenhando tudo a cada um: nota de 35 caixas demorava e parecia que não tinha funcionado. */
+async function opApagarLote(bips,depoisLocal){ bips=(bips||[]).filter(Boolean); const lids=new Set(bips.map(b=>b.local_id));
+  OP.bipes=(OP.bipes||[]).filter(x=>!bips.includes(x)); try{ opFilaGravar(opFilaLer().filter(x=>!lids.has(x.local_id))); }catch(e){} opLocalGravar();
+  try{ if(depoisLocal) depoisLocal(); }catch(e){ console.error(e); }
+  const noServ=bips.filter(b=>b.id); if(!noServ.length||!opOnline()||typeof NV==='undefined'||!NV.cli) return [];
+  let ficou=[];
+  try{ const {data,error}=await NV.cli.from('hs_bipagens').delete().in('id',noServ.map(b=>b.id)).select('id'); if(error) throw error;
+    const foi=new Set((data||[]).map(r=>r.id)); ficou=noServ.filter(b=>!foi.has(b.id)); }
+  catch(e){ console.error('apagar lote',e); ficou=noServ; }
+  if(ficou.length){ OP.bipes.push(...ficou); opLocalGravar(); }
+  return ficou; }
+async function opDesbipar(x,redesenha){ if(!x) return false; const nf=opK(x.nf||''), ped=opK(x.ped||''); if(!nf&&!ped) return false;
   const bate=opNotaBate(x), dia=OP.dia||hojeISO();
   const bips=(OP.bipes||[]).filter(b=>bate(b)&&b.status!=='fora');
   const dvs=dvSo().filter(d=>dvDaNota(d,x)&&(d.st!=='resolvida'||(d.res&&String(d.res.d||'').slice(0,10)===dia)));
@@ -12146,8 +12160,8 @@ async function opDesbipar(x){ if(!x) return false; const nf=opK(x.nf||''), ped=o
     (d.hist=d.hist||[]).push({em:ag,por:eu,t:`Conferência da nota cancelada (desbipada)${volta?` — os ${volta} volume(s) que tinham chegado voltam a faltar`:''}. Continuam faltando ${+d.qtd||0} volume(s).`}); }
   try{ const aj=gsAjLer(dia); const k=gsAjK(x.nf,x.ped); if(aj&&aj[k]&&aj[k].m!=='fora') delete aj[k]; }catch(e){} /* v10.6.27: "tirada da conta" da Simulação NÃO é conferência — fica */
   salvar(); try{ nuvJa(); }catch(e){ try{ nuvSinc(); }catch(x2){} }
-  let ficou=0; for(const b of bips){ let foi=false; try{ foi=await opApagar(b.id||b.local_id); }catch(e){} if(!foi) ficou++; }
-  try{ dvRender(); }catch(e){} try{ opRender(); }catch(e){} try{ ctMontar&&ctMontar(); }catch(e){} try{ gsFotoAgendar(); }catch(e){}
+  const tudo=()=>{ try{ dvRender(); }catch(e){} try{ opRender(); }catch(e){} try{ ctMontar&&ctMontar(); }catch(e){} try{ gsFotoAgendar(); }catch(e){} try{ if(redesenha) redesenha(); }catch(e){} };
+  const volta=await opApagarLote(bips,tudo); const ficou=volta.length; if(ficou) tudo();
   toast(ficou?`${ficou} bipe(s) dessa nota só o administrador apaga (passou de 5 min) — peça para ele, senão a nota continua conferida.`:`✔ Conferência cancelada: a NF ${nf||ped} voltou para Faltando.`);
   return !ficou; }
 /* chegada (parcial ou total) dos volumes que faltavam */

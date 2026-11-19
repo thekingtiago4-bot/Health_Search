@@ -656,3 +656,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   Faltando — inclusive nota fora da conta (`opForaFiltro`: Simulação/Retiradas), que nunca foi bipada. O ✕ não tinha
   o que desfazer e mesmo assim dizia "cancelada". Agora: grupo "🚫 Fora da conta" sem ✕; `opDesbipar` sem bipe,
   sem marcação e sem divergência avisa e não faz nada; e NUNCA apaga a marcação `m:'fora'` do Painel (gsAjuste).
+
+### v10.6.28 · ✕ do desbipar em tempo real
+- `opApagarLote(bips,depoisLocal)`: tira da tela/aparelho na hora (otimista), redesenha a janela e só então apaga no
+  servidor numa chamada (`delete().in('id',…).select('id')`); o que o servidor não apagou (regra dos 5 min) volta e avisa.
+  Antes `opDesbipar` usava `opApagar` um a um (35 idas ao servidor + 35 redesenhos numa nota de 35 caixas).

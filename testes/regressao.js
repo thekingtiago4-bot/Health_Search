@@ -1462,5 +1462,22 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(!fc.xHdl,'fora da conta: a nota tirada da conta não pode ter o ✕');
     ok(fc.semX===false,'fora da conta: o ✕ não pode dizer que cancelou o que não existe');
     ok(fc.foraFicou,'desbipar: a marcação "tirada da conta" da Simulação não pode sair'); }
+  { /* v10.6.28 · ✕ em tempo real: some da tela na hora, apaga tudo numa chamada e devolve o que o servidor recusar */
+    const rt=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms)); NV.perfil={papel:'admin',ativo:true,nome:'T'}; document.querySelectorAll('.fundo').forEach(f=>f.remove());
+      const h=hojeISO(), arq='x '+h.split('-').reverse().join('-')+'.pdf', rs=S.romaneios, bs=OP.bipes, ds=S.divergencias;
+      S.romaneios=[{id:'rt1',numero:'1',base:'CAJ',arquivo:arq,rows:[{nf:'83001',ped:'93001',vol:'35',dest:'A'},{nf:'83002',ped:'93002',vol:'2',dest:'B'}]}]; S.divergencias=[];
+      OP.dia=h; OP.bipes=[]; renderTudo();
+      for(let i=1;i<=35;i++) opLer(['X@'+String(i).padStart(4,'0')+'@0035@93001'],'teclado'); opLer(['X@0001@0002@93002'],'teclado'); opLer(['X@0002@0002@93002'],'teclado');
+      OP.bipes.forEach((b,i)=>b.id=5000+i); const recusado=OP.bipes.find(b=>b.ped==='93002').id;
+      let chamadas=0; const cliO=NV.cli, usO=NV.user; NV.user={id:'u'};
+      NV.cli={from:()=>({delete:()=>({in:(c,ids)=>({select:async()=>{ chamadas++; await w(800); return {data:ids.filter(i=>i!==recusado).map(id=>({id})),error:null}; }})})})};
+      opRomLista('rt1'); await w(30); const st=()=>[...document.querySelectorAll('.fundo h3')].map(x=>x.textContent).join('|'); const R={};
+      const clica=async nf=>{ const bt=[...document.querySelectorAll('[data-rl-des]')].find(b=>b.closest('div[style*="padding:6px 0"]').textContent.includes('NF '+nf)); bt.click(); await w(40); document.querySelector('[data-sn="1"]').click(); };
+      try{ await clica('83001'); await w(100); R.na_hora=st(); await w(900); await clica('83002'); await w(100); R.b_na_hora=st(); await w(900); R.b_depois=st(); R.chamadas=chamadas; }
+      finally{ NV.cli=cliO; NV.user=usO; document.querySelectorAll('.fundo').forEach(f=>f.remove()); S.romaneios=rs; OP.bipes=bs; S.divergencias=ds; renderTudo(); }
+      return R; });
+    ok(/Bipadas \(1\)\|⏳ Faltando \(1\)/.test(rt.na_hora),'tempo real: a nota tinha que mudar de lado antes do servidor responder ('+rt.na_hora+')');
+    ok(/Bipadas \(0\)/.test(rt.b_na_hora)&&/Bipadas \(1\)/.test(rt.b_depois),'tempo real: o bipe recusado pelo servidor tinha que voltar ('+rt.b_na_hora+' → '+rt.b_depois+')');
+    ok(rt.chamadas===2,'tempo real: tinha que ser UMA chamada ao servidor por nota ('+rt.chamadas+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
