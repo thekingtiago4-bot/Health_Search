@@ -1188,6 +1188,8 @@ const LS={
   get length(){ return this.chaves().length; },
   key(i){ const l=this.chaves(); return i>=0&&i<l.length?l[i]:null; },
   eDado, diag, pronto:null, aoFalhar:null, aoVoltar:null, simularFalha:null,
+  /* v10.6.33: antes do banco do aparelho carregar, ler um dado devolve "vazio" — quem guarda o que leu precisa saber */
+  confiavel(){ return pronto||!temMarca||modo==='ls'; },
   /* promessa que só resolve quando tudo que foi gravado até agora está no disco; rejeita se a gravação falhou */
   assentar(){ if(modo!=='idb') return Promise.resolve(); if(!sujo.size&&!gravando) return falhas.size?Promise.reject(new Error(diag.erro||'gravação pendente')):Promise.resolve();
     return new Promise((ok,er)=>esperando.push([ok,er])); },
@@ -2821,8 +2823,18 @@ $$('.nav button').forEach(b=>b.onclick=()=>irPara(b.dataset.tela));
 /* ================= REENTREGAS / DIVERGÊNCIAS ================= */
 const RE={chave:'healthSearch.reentregas',
   d:null,
-  ler(){ if(!this.d){ try{ this.d=JSON.parse(LS.getItem(this.chave)||'null'); }catch(e){} if(!this.d) this.d={dias:{},apiKey:'',atual:null}; } return this.d; },
-  gravar(){ try{ LS.setItem(this.chave,JSON.stringify(this.d)); }catch(e){ toast('O navegador não deixou gravar as reentregas.'); } }
+  /* v10.6.33: a tela de Reentregas lia isto ANTES do banco do aparelho carregar (1 em ~20 aberturas), guardava o
+     "vazio" e depois gravava por cima — a Api-Key do Meu Danfe sumia (as reentregas voltavam pela nuvem, a chave não).
+     Agora: leitura cedo não grava; assim que o banco fica pronto, relê e junta com o que estava guardado. */
+  ler(){ const ok=!LS.confiavel||LS.confiavel();
+    if(this.d&&this.cedo&&ok) this.reconciliar();
+    if(!this.d){ try{ this.d=JSON.parse(LS.getItem(this.chave)||'null'); }catch(e){} if(!this.d) this.d={dias:{},apiKey:'',atual:null}; this.cedo=!ok; }
+    return this.d; },
+  reconciliar(){ this.cedo=false; let g=null; try{ g=JSON.parse(LS.getItem(this.chave)||'null'); }catch(e){} if(!g||typeof g!=='object') return; const c=this.d||{};
+    g.dias=g.dias||{}; for(const [d,ls] of Object.entries(c.dias||{})){ if(!g.dias[d]){ g.dias[d]=ls; continue; } const tem=new Set(g.dias[d].map(x=>JSON.stringify(x))); for(const l of ls||[]) if(!tem.has(JSON.stringify(l))) g.dias[d].push(l); }
+    if(!g.apiKey&&c.apiKey) g.apiKey=c.apiKey; if(!g.atual) g.atual=c.atual; this.d=g; },
+  gravar(){ if(this.cedo){ if(LS.confiavel&&LS.confiavel()) this.reconciliar(); else return; }
+    try{ LS.setItem(this.chave,JSON.stringify(this.d)); }catch(e){ toast('O navegador não deixou gravar as reentregas.'); } }
 };
 const reHoje=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const reDataBR=iso=>iso.split('-').reverse().join('/');
@@ -3062,7 +3074,7 @@ function reSub(t){ $$('[data-re-sub]').forEach(b=>b.setAttribute('aria-pressed',
     if(/^\d{44}$/.test(String(v).replace(/\D/g,''))&&String(v).replace(/\D/g,'').length===String(v).trim().length&&el.dataset.f!=='nf'){ el.value=l[el.dataset.f]||''; reLancar(v); return; }
     l[el.dataset.f]=v; RE.gravar(); const foco=document.activeElement; const fi=foco&&foco.dataset&&foco.dataset.i, ff=foco&&foco.dataset&&foco.dataset.f; reTela();
     if(fi!=null&&ff){ const n=$(`#re-tab [data-i="${fi}"][data-f="${ff}"]`); if(n) n.focus(); } });
-  tb.addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if(!b) return; const ls=reDia(), i=+b.dataset.del; if(!confirm('Excluir a NF '+(ls[i].nf||'')+'?')) return; ls.splice(i,1); RE.gravar(); reTela(); });
+  tb.addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if(!b) return; const ls=reDia(), i=+b.dataset.del; if(!confirm('Excluir a NF '+(ls[i].nf||'')+'?')) return; try{ reTirar(ls[i],RE.ler().atual); }catch(er){} ls.splice(i,1); RE.gravar(); reTela(); });
   tb.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.matches('input')){ e.preventDefault(); e.target.blur(); $('#re-bip').focus(); } });
   try{ reTela(); }catch(e){}
 })();
@@ -4407,7 +4419,7 @@ document.addEventListener('click',e=>{ const t=e.target; if(!t.closest||!t.close
   if((b=t.closest('[data-cor-ok]'))){ geoEnsinar(b.dataset.corOk,b.dataset.tipo,b.dataset.id); renderTudo(); renderCorrecao(); toast('Confirmado. O programa aprendeu.'); return; }
   if((b=t.closest('[data-cor-naore]'))){ const [dia,i]=b.dataset.corNaore.split('|'); const D=RE.ler(); const l=(D.dias[dia]||[])[+i]; if(!l) return;
     confirmar('Não é reentrega',`Tirar a NF ${esc(l.nf||'')} de ${esc(l.cli||'')} da lista de reentregas? Ela sai do painel e dos relatórios.`,'Tirar')
-      .then(ok=>{ if(!ok) return; D.dias[dia].splice(+i,1); RE.gravar(); renderCorrecao(); try{ rpRender(); }catch(e){} toast('Nota tirada das reentregas.'); }); return; }
+      .then(ok=>{ if(!ok) return; try{ reTirar(D.dias[dia][+i],dia); }catch(er){} D.dias[dia].splice(+i,1); RE.gravar(); renderCorrecao(); try{ rpRender(); }catch(e){} toast('Nota tirada das reentregas.'); }); return; }
 });
 document.addEventListener('change',e=>{ const t=e.target; if(!t.closest||!t.closest('#t-correcao')) return; const d=t.dataset;
   if(d.corEns!=null){ if(!t.value) return; geoEnsinar(d.corEns,d.tipo,t.value==='-'?'-':t.value); renderTudo(); renderCorrecao(); toast('Ensinado. Já vale em todo o programa.'); return; }
@@ -4450,7 +4462,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.32', HS_DATA='19/11/2026';
+const HS_VERSAO='10.6.33', HS_DATA='19/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6428,7 +6440,7 @@ document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.
   if(b.dataset.corIrRe){ D.atual=b.dataset.corIrRe; RE.gravar(); irPara('reentregas'); return; }
   const [d,i]=b.dataset.corDelRe.split('|'); const l=(D.dias[d]||[])[+i]; if(!l) return;
   if(!await confirmar('Excluir linha',`Excluir de Reentregas (${esc(reDataBR(d))}) a linha "<b>${esc(l.nf||'—')}</b>"?`,'Excluir')) return;
-  D.dias[d].splice(+i,1); RE.gravar(); renderCorrecao(); toast('Linha excluída.'); },true);
+  try{ reTirar(D.dias[d][+i],d); }catch(er){} D.dias[d].splice(+i,1); RE.gravar(); renderCorrecao(); toast('Linha excluída.'); },true);
 
 
 /* ================= v6.3.18 · bipe consulta o HISTÓRICO direto (não depende só da lista de suspeitas) ================= */
@@ -6909,9 +6921,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#rx')){ e.stopP
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-cor-aceita]'); if(!b) return; const sel=b.parentElement.querySelector('select[data-cor-ens]'); if(!sel) return; sel.value=b.dataset.corAceita; sel.dispatchEvent(new Event('change',{bubbles:true})); });
 /* ================= v6.7.0 · Banco online: reentregas e divergências sincronizadas (hs_sync) ================= */
 const NUV={tab:Math.random().toString(36).slice(2,8),sessao:new Set(),chH:'healthSearch.nuvHash',chD:'healthSearch.nuvDesde',h:{},desde:'',ok:null,timer:null,rodando:false,aplicando:false,ult:null,erro:''};
-try{ NUV.h=JSON.parse(LS.getItem(NUV.chH)||'{}'); NUV.desde=LS.getItem(NUV.chD)||''; }catch(e){}
+try{ NUV.h=JSON.parse(LS.getItem(NUV.chH)||'{}'); NUV.desde=LS.getItem(NUV.chD)||''; NUV.cedo=!!(LS.confiavel&&!LS.confiavel()); }catch(e){}
+/* v10.6.33: lido antes do banco do aparelho carregar = vazio; relê e junta antes de usar ou gravar */
+function nuvReconciliar(){ if(!NUV.cedo||!(LS.confiavel&&LS.confiavel())) return; NUV.cedo=false; try{ const h=JSON.parse(LS.getItem(NUV.chH)||'{}'); NUV.h=Object.assign({},h,NUV.h); if(!NUV.desde) NUV.desde=LS.getItem(NUV.chD)||''; }catch(e){} }
 function nuvHash(v){ const s=JSON.stringify(v)||''; let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36)+'.'+s.length; }
-function nuvGuardar(){ try{ LS.setItem(NUV.chH,JSON.stringify(NUV.h)); LS.setItem(NUV.chD,NUV.desde||''); }catch(e){} }
+function nuvGuardar(){ if(NUV.cedo){ if(LS.confiavel&&LS.confiavel()) nuvReconciliar(); else return; } try{ LS.setItem(NUV.chH,JSON.stringify(NUV.h)); LS.setItem(NUV.chD,NUV.desde||''); }catch(e){} }
 /* tudo o que vai para o banco, com a sua chave */
 function nuvLocal(){ const m=new Map(); const D=RE.ler(); for(const [d,ls] of Object.entries(D.dias||{})) if(ls&&ls.length) m.set('re:'+d,{tipo:'re',valor:ls});
   for(const x of dvS()) if(x&&x.id) m.set('dv:'+x.id,{tipo:'dv',valor:x}); return m; }
@@ -11333,16 +11347,18 @@ try{ const s=document.querySelector('#t-gestor > p.sub'); if(s) s.textContent='C
       e nexParaReentrega recusa motivo de divergência. */
 NUV_CAMPOS.push('reTirados','motivos2');
 const reChaveT=l=>z(l&&l.nf)+'|'+rpNz(l&&l.obs);
-function reTirado(l){ const T=S.reTirados; return !!(T&&T[reChaveT(l)]); }
+function reTirado(l,dia){ const T=S.reTirados; if(!T) return false; const k=reChaveT(l); return !!(T[k]||(dia&&T[dia+'#'+k])); }
+/* v10.6.33: tirada pelo ✕ vale só para aquele dia (a mesma NF pode voltar a ser reentrega outro dia) */
+function reTirar(l,dia){ if(!l||!dia) return; const T=S.reTirados=S.reTirados||{}; T[dia+'#'+reChaveT(l)]=new Date().toISOString(); try{ salvar(); }catch(e){} }
 function reVarrerTirados(){ const T=S.reTirados; if(!T||!Object.keys(T).length) return 0; const D=RE.ler(); let n=0;
-  for(const d of Object.keys(D.dias||{})){ const L=D.dias[d]||[]; const f=L.filter(l=>!reTirado(l));
+  for(const d of Object.keys(D.dias||{})){ const L=D.dias[d]||[]; const f=L.filter(l=>!reTirado(l,d));
     if(f.length!==L.length){ n+=L.length-f.length; if(f.length) D.dias[d]=f; else delete D.dias[d]; } }
   if(n) RE.gravar(); return n; }
 { const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){
-    if(!apagado&&String(chave).startsWith('re:')&&Array.isArray(valor)&&S.reTirados) valor=valor.filter(l=>!reTirado(l));
+    if(!apagado&&String(chave).startsWith('re:')&&Array.isArray(valor)&&S.reTirados){ const dia=String(chave).slice(3); valor=valor.filter(l=>!reTirado(l,dia)); }
     return _na.call(this,chave,valor,apagado); }; }
 { const _ad=atuDevolver; atuDevolver=function(){ try{ const sn=ATU.snap; if(sn){
-      if(S.reTirados&&sn.re) for(const d of Object.keys(sn.re)) sn.re[d]=(sn.re[d]||[]).filter(l=>!reTirado(l));
+      if(S.reTirados&&sn.re) for(const d of Object.keys(sn.re)) sn.re[d]=(sn.re[d]||[]).filter(l=>!reTirado(l,d));
       if(S.motivos2) sn.cadMotivos=[]; } }catch(e){} return _ad.apply(this,arguments); }; }
 /* motivos: S.motivos2 manda; S.cadMotivos vira só o espelho que as telas antigas leem */
 { const _ci=cadInit; cadInit=function(){ if(S.motivos2&&Array.isArray(S.motivos2.l)) S.cadMotivos=S.motivos2.l.slice(); return _ci.apply(this,arguments); }; }
@@ -12234,6 +12250,10 @@ async function listasProteger(){ if(!opOnline()||typeof NV==='undefined'||!NV.cl
   const st=document.createElement('style'); st.textContent=`#t-agenda .ag-velho{display:none!important}
 #t-agenda .ag-topo{align-items:center;margin-top:0}#t-agenda .ag-topo h1{margin:0}`; document.head.appendChild(st);
 }catch(e){ console.error('agenda',e); } })();
+
+/* ================= v10.6.33 · sincronização só depois que o banco do aparelho carregou ================= */
+{ const _ns=nuvSinc; nuvSinc=async function(){ try{ await LS.pronto; }catch(e){} try{ nuvReconciliar(); }catch(e){} try{ RE.ler(); }catch(e){} return _ns.apply(this,arguments); }; }
+LS.pronto.then(()=>{ try{ nuvReconciliar(); }catch(e){} try{ if(RE.cedo){ RE.ler(); RE.gravar(); if(!$('#t-reentregas').hidden) reTela(); } }catch(e){} });
 </script>
 
 </body>

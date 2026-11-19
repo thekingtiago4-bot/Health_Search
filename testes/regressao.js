@@ -1478,5 +1478,20 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(ls.juntou==='c1,c2,c3,c4,c5,c9','listas: cadastrar com cópia velha tinha que juntar com a nuvem, não sobrescrever ('+ls.juntou+')');
     ok(ls.excluido==='c1,c2,c4,c5,c9','listas: excluído pelo botão não pode voltar ('+ls.excluido+')');
     ok(ls.conflito==='c1,c2','listas: conflito tinha que juntar e respeitar o excluído (c3) ('+ls.conflito+')'); }
+  { /* v10.6.33 · leitura cedo das reentregas não apaga a Api-Key; reentrega tirada pelo ✕ não volta (sincronização nem atualização) */
+    const rk=await p.evaluate(async()=>{ const R={}; const guardaD=JSON.stringify(RE.ler()), tir0=S.reTirados;
+      try{ const D=RE.ler(); D.apiKey='CHAVE-X'; D.dias['2026-11-13']=[{nf:'909958',cli:'CARDOSO',obs:'CLIENTE AUSENTE'},{nf:'111',cli:'OUTRA',obs:'FERIADO'}]; RE.gravar();
+        /* simula a tela lendo antes do banco carregar: pacote vazio guardado em memória */
+        RE.d={dias:{},apiKey:'',atual:null}; RE.cedo=true; RE.gravar(); R.chave=RE.ler().apiKey; R.dias=(RE.ler().dias['2026-11-13']||[]).length;
+        /* ✕ "Não é reentrega" na Correção */
+        reTirar(RE.ler().dias['2026-11-13'][0],'2026-11-13'); RE.ler().dias['2026-11-13'].splice(0,1); RE.gravar();
+        nuvAplicar('re:2026-11-13',[{nf:'909958',cli:'CARDOSO',obs:'CLIENTE AUSENTE'},{nf:'111',cli:'OUTRA',obs:'FERIADO'}],false);
+        R.sinc=(RE.ler().dias['2026-11-13']||[]).map(l=>l.nf).join(',');
+        R.outroDia=!reTirado({nf:'909958',obs:'CLIENTE AUSENTE'},'2026-11-20');
+      } finally { RE.d=JSON.parse(guardaD); RE.cedo=false; RE.gravar(); S.reTirados=tir0; }
+      return R; });
+    ok(rk.chave==='CHAVE-X'&&rk.dias===2,'leitura cedo: a Api-Key/reentregas tinham que continuar ('+rk.chave+' · '+rk.dias+')');
+    ok(rk.sinc==='111','✕ da reentrega: a sincronização devolveu a linha tirada ('+rk.sinc+')');
+    ok(rk.outroDia,'✕ da reentrega: a mesma NF tem que poder voltar a ser reentrega em outro dia'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

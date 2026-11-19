@@ -692,3 +692,14 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - O total do bipe agora é o do PEDIDO no romaneio (soma das linhas do pedido); o total da etiqueta só vale sem romaneio.
 - Fica: "✍ Escrever as caixas à mão" na divergência (10.6.21) e o pallet de 8 dígitos (`opEhPallet`).
   Bipes `:outra` já gravados (18–19/11) continuam contando como caixa própria.
+
+### v10.6.33 · Api-Key sumindo e reentrega tirada voltando — CORRIGIDOS
+- **Api-Key:** `reInit` (tela de Reentregas) lia `healthSearch.reentregas` ANTES do banco do aparelho carregar (1 em ~20
+  aberturas, reproduzido com 24 recargas). `RE.d` guardava o vazio e depois gravava por cima: as reentregas voltavam pela
+  nuvem, a Api-Key (só local) não. Também `NUV.h/NUV.desde` eram lidos cedo (o aparelho "esquecia" o que já combinou
+  com a nuvem e tratava tudo como conflito/união — ressuscitava coisas). Agora: `LS.confiavel()`; `RE.ler/gravar` e
+  `nuvGuardar` não gravam o que foi lido cedo e, quando o banco fica pronto, relêem e juntam (`RE.reconciliar`,
+  `nuvReconciliar`); `nuvSinc` espera `LS.pronto`.
+- **Reentrega voltando:** os ✕ (Reentregas → Excluir, Correção → "Não é reentrega" e "Excluir linha") tiravam só do
+  aparelho; a junção da sincronização e o "atualização devolve o que sumiu" traziam de volta. Agora gravam
+  `S.reTirados[dia#nf|motivo]` (`reTirar`) — vale só para aquele dia; `reTirado(l,dia)`.
