@@ -680,3 +680,7 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   "Memória de romaneios"; o título "Clientes fixos · …" vira o "Agendamentos" do topo (h1 movido para a barra da busca).
   Elementos marcados `.ag-velho` (display:none) — nada apagado: `S.agendamentos` e `nexS().regras` seguem guardados.
 - A Memória de romaneios parou de agir sozinha (`window.HS_MEMORIA_ROM` liga de novo) em `nexVarrer` e `nexForaDaRegra`.
+
+### v10.6.31 · Bússola da abertura: N/S/L/O visíveis
+- Letras eram `#d9fffa` (quase branco) e S/L/O com 60% — sumiam quando o anel claro passava. Agora brancas com contorno
+  escuro (`stroke #062227`, `paint-order="stroke"`), opacidade cheia, 23px.

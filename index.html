@@ -4450,7 +4450,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.30', HS_DATA='19/11/2026';
+const HS_VERSAO='10.6.31', HS_DATA='19/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -10766,7 +10766,7 @@ function hsCineHtml(){ let ticks=''; for(let i=0;i<60;i++){ const g=i%5===0; tic
   <g class="hc-ticks vb">${ticks}</g>
   <circle class="hc-anel" cx="200" cy="200" r="112" fill="none" stroke="url(#hcA)" stroke-width="12" stroke-linecap="round" pathLength="100" transform="rotate(-90 200 200)"/>
   <circle class="hc-anel2" cx="200" cy="200" r="92" fill="none" stroke="#6fe3d6" stroke-width="2" pathLength="100" transform="rotate(90 200 200)"/>
-  <g class="hc-card" fill="#d9fffa" font-family="Barlow Semi Condensed,Arial" font-weight="700" font-size="20" text-anchor="middle"><text x="200" y="100">N</text><text x="200" y="314" opacity=".6">S</text><text x="307" y="207" opacity=".6">L</text><text x="93" y="207" opacity=".6">O</text></g>
+  <g class="hc-card" fill="#ffffff" stroke="#062227" stroke-width="5" stroke-linejoin="round" paint-order="stroke" font-family="Barlow Semi Condensed,Arial" font-weight="800" font-size="23" text-anchor="middle"><!-- v10.6.31: contorno escuro para não sumir no anel claro --><text x="200" y="101">N</text><text x="200" y="315">S</text><text x="307" y="208">L</text><text x="93" y="208">O</text></g>
   <circle class="hc-flash vb" cx="200" cy="200" r="90" fill="#d9fffa"/>
   <g class="hc-agulha vb"><path d="M200 108 L226 200 L200 292 L174 200 Z" fill="url(#hcA)"/><path d="M200 108 L226 200 L200 200 Z" fill="#fff"/><path d="M200 292 L174 200 L200 200 Z" fill="#2c9c92"/>
    <path d="M132 200 L200 182 L268 200 L200 218 Z" fill="#6fe3d6" opacity=".85"/><circle cx="200" cy="200" r="13" fill="#062427" stroke="#d9fffa" stroke-width="4"/></g>
