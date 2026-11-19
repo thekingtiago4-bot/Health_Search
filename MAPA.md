@@ -674,3 +674,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   mais novo, agendamentos `pac` só do local). Exclusão só pelo botão: `listaTirar(campo,ids)` grava em `S.listaTirados`
   (sincronizado) — sumiço sem botão NUNCA vira exclusão. O conflito (`nuvJuntar`) dessas listas usa a mesma junção.
 - Recuperação dos clientes: migração `sql/migracoes/2026-11-19-001-restaurar-clientes-fixos.sql` (união com a nuvem).
+
+### v10.6.30 · Aba Agendamentos = só clientes fixos (bipar nota)
+- Pedido do Tiago: some da tela o agendamento por NF/pedido/cliente com data, "Cadastrados", "Agendadas fora da MESA" e
+  "Memória de romaneios"; o título "Clientes fixos · …" vira o "Agendamentos" do topo (h1 movido para a barra da busca).
+  Elementos marcados `.ag-velho` (display:none) — nada apagado: `S.agendamentos` e `nexS().regras` seguem guardados.
+- A Memória de romaneios parou de agir sozinha (`window.HS_MEMORIA_ROM` liga de novo) em `nexVarrer` e `nexForaDaRegra`.

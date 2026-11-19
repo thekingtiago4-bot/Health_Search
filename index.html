@@ -3776,7 +3776,7 @@ function nexVarrer(){ const n=nexS(); let novas=0, mud=false;
         h.push({d,rom:r.id,num:r.numero||''}); mud=true;
         if(ant && !(n.reent[k]&&n.reent[k].d===d)){ n.reent[k]={d,rom:r.id,num:r.numero||'',anterior:ant.d,romAnt:ant.num||'',status:'suspeita',motivo:'',em:new Date().toISOString()}; novas++; } } } }
   // regras da memória
-  for(const g of n.regras){ const p=N(g.texto); if(!p) continue; const alvo=S.romaneios.filter(r=>nexTxtRom(r).includes(p));
+  for(const g of (window.HS_MEMORIA_ROM?n.regras:[])){ /* v10.6.30: Memória de romaneios desligada — as regras ficam guardadas */ const p=N(g.texto); if(!p) continue; const alvo=S.romaneios.filter(r=>nexTxtRom(r).includes(p));
     for(const r of alvo){ const ch=g.id+'|'+r.id; if(n.regraFeita[ch]) continue; const d=nexDataRom(r); let q=0;
       for(const row of r.rows){ const k=nexK(row); if(!k) continue; let a=agDaLinha(row);
         if(!a && g.todas){ a={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),tipo:'nf',valor:k,data:d,hora:'',obs:'Memória: romaneio '+g.texto,criadoEm:new Date().toISOString(),nex:true}; S.agendamentos.push(a); q++; }
@@ -3787,7 +3787,7 @@ function nexVarrer(){ const n=nexS(); let novas=0, mud=false;
   if(mud) salvar(); return novas; }
 /* agendadas que estão em romaneio que NÃO casa com uma regra, quando no mesmo dia existe romaneio da regra */
 function nexForaDaRegra(){ const n=nexS(), out=[];
-  for(const g of n.regras){ const p=N(g.texto); if(!p) continue; const dias=new Set(S.romaneios.filter(r=>nexTxtRom(r).includes(p)).map(nexDataRom)); if(!dias.size) continue;
+  for(const g of (window.HS_MEMORIA_ROM?n.regras:[])){ /* v10.6.30: Memória de romaneios desligada — as regras ficam guardadas */ const p=N(g.texto); if(!p) continue; const dias=new Set(S.romaneios.filter(r=>nexTxtRom(r).includes(p)).map(nexDataRom)); if(!dias.size) continue;
     for(const r of S.romaneios){ if(nexTxtRom(r).includes(p) || !dias.has(nexDataRom(r))) continue;
       for(const row of r.rows){ if(agDaLinha(row) && !n.fora[nexK(row)]) out.push({row,rom:r,regra:g}); } } }
   return out; }
@@ -4450,7 +4450,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.29', HS_DATA='19/11/2026';
+const HS_VERSAO='10.6.30', HS_DATA='19/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12242,6 +12242,23 @@ async function listasProteger(){ if(!opOnline()||typeof NV==='undefined'||!NV.cl
 { const _ns=nuvSinc; nuvSinc=async function(){ if(!NUV.rodando){ try{ await listasProteger(); }catch(e){ console.error(e); } } return _ns.apply(this,arguments); }; }
 /* junção de conflito dessas listas também respeita as exclusões e o mais novo por item */
 { const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ const c=String(chave).slice(2); if(String(chave).startsWith('s:')&&LISTAS_SEGURAS.includes(c)&&Array.isArray(local)&&Array.isArray(remoto)) return listaJuntar(c,local,remoto); return _nj.apply(this,arguments); }; }
+
+/* ================= v10.6.30 · Aba Agendamentos = só os clientes fixos (bipar nota) =================
+   Pedido do Tiago (19/11): cadastro só pelo "Bipar nota do cliente". Saem da tela o formulário de agendamento por
+   NF/pedido/cliente com data, a lista "Cadastrados" e a "Memória de romaneios" (que também parou de agir sozinha:
+   window.HS_MEMORIA_ROM liga de novo). O título "Clientes fixos · dados e exigências de entrega" deu lugar ao
+   "Agendamentos" do topo. Nada foi apagado: S.agendamentos e as regras continuam guardados e sincronizados. */
+(function(){ try{ const sec=document.getElementById('t-agenda'); if(!sec) return;
+  const h1=document.getElementById('h-ag'), f=document.getElementById('cli-filtro'); if(!h1||!f) return;
+  const velhos=[h1.nextElementSibling,document.getElementById('form-ag'),document.getElementById('lista-ag'),document.getElementById('nx-regras'),
+    ...[...sec.querySelectorAll(':scope>.barra')].filter(b=>!b.contains(f)),...sec.querySelectorAll(':scope>.nx-regra')];
+  for(const x of sec.querySelectorAll(':scope>p.sub')) if(/Ensine uma vez|não são da MESA/.test(x.textContent)) velhos.push(x);
+  velhos.push(document.getElementById('agf-lista'));
+  for(const el of velhos) if(el&&el!==h1) el.classList.add('ag-velho');
+  const bar=f.closest('.barra'); const h2=bar&&bar.querySelector('h2'); if(h2){ h2.replaceWith(h1); bar.classList.add('ag-topo'); }
+  const st=document.createElement('style'); st.textContent=`#t-agenda .ag-velho{display:none!important}
+#t-agenda .ag-topo{align-items:center;margin-top:0}#t-agenda .ag-topo h1{margin:0}`; document.head.appendChild(st);
+}catch(e){ console.error('agenda',e); } })();
 </script>
 
 </body>
