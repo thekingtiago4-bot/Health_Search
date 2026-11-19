@@ -4462,7 +4462,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.34', HS_DATA='19/11/2026';
+const HS_VERSAO='10.6.35', HS_DATA='19/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5167,7 +5167,7 @@ function opMostrar(r){ OP.resultadoAte=Date.now()+3500; opSom(r.status); const c
 
 const OP_LEG=`<b>Como bipar:</b> 1) coloque a etiqueta inteira dentro da moldura · 2) segure firme até o bipe · 3) <b>a câmera para sozinha</b>: confira os volumes e toque em ✓ (tudo certo) ou ✗ (faltou volume) · 4) ela volta a ler a próxima etiqueta. Sem QR Code? Eu leio o texto (NF) sozinho.<br>
 <span class="pt" style="background:#16a34a"></span>Conferido <span class="pt" style="background:#eab308"></span>Sem nota <span class="pt" style="background:#dc2626"></span>Fora do romaneio (separe) <span class="pt" style="background:#AE3EC9"></span>Reentrega <span class="pt" style="background:#E8590C"></span>Agendada (não vai) <span class="pt" style="background:#C2255C"></span>Divergência <span class="pt" style="background:#0B7285"></span>Caixa que faltou <span class="pt" style="background:#4F7CF7"></span>Duplicado`;
-function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el) return; el.hidden=false; el.querySelector('b').textContent='1,5'; clearTimeout(opCamPausa.t); opCamPausa.t=setTimeout(()=>{ el.hidden=true; },OP_ESPERA); }
+function opCamPausa(){ const el=document.querySelector('#op-cam .pausa'); if(!el) return; el.hidden=false; el.querySelector('b').textContent=String(OP_ESPERA/1000).replace('.',','); clearTimeout(opCamPausa.t); opCamPausa.t=setTimeout(()=>{ el.hidden=true; },OP_ESPERA); }
 /* v9.20.0 · o tempo entre bipes é sempre OP_ESPERA (1,5 s) e, com a câmera aberta, ela trava
    até o conferente responder ✓ ou ✗ (opConfPedir). Nada de leitura por trás do aviso. */
 { const _opM=opMostrar; opMostrar=function(r){ _opM.apply(this,arguments);
@@ -5286,7 +5286,25 @@ async function opDetector(){
   try{ await new Promise((ok,er)=>{ if(window.ZXingBrowser||window.ZXing) return ok();
       const sc=document.createElement('script'); sc.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js'; sc.crossOrigin='anonymous';
       sc.onload=ok; sc.onerror=()=>er(new Error('sem zxing')); document.head.appendChild(sc); setTimeout(()=>er(new Error('demorou')),9000); });
-    const Z=window.ZXing; if(Z&&Z.BrowserMultiFormatReader){ const rd=new Z.BrowserMultiFormatReader(); const cv=document.createElement('canvas'), cx=cv.getContext('2d',{willReadFrequently:true});
+    const Z=window.ZXing;
+    /* v10.6.35 · iPhone (Safari não tem leitor próprio): até 3 códigos por quadro (a etiqueta tem 3 QR e o que importa é o
+       de "Volumes"), só os formatos das etiquetas/DANFE (mais rápido) e quadros alternados entre a imagem inteira e o
+       centro ampliado (a mira) — QR pequeno/de longe passa a ser lido. Qualquer falha cai no leitor antigo abaixo. */
+    try{ if(Z&&Z.MultiFormatReader&&Z.HTMLCanvasElementLuminanceSource&&Z.BinaryBitmap&&Z.HybridBinarizer){
+        const F=Z.BarcodeFormat, hints=new Map(); hints.set(Z.DecodeHintType.POSSIBLE_FORMATS,[F.QR_CODE,F.CODE_128,F.DATA_MATRIX,F.ITF,F.EAN_13,F.CODE_39].filter(x=>x!=null)); hints.set(Z.DecodeHintType.TRY_HARDER,true);
+        const rd2=new Z.MultiFormatReader(); rd2.setHints(hints); const cv2=document.createElement('canvas'), cx2=cv2.getContext('2d',{willReadFrequently:true}); let nq=0;
+        OP.formatos=['QR, Code128, DataMatrix… (ZXing, 3 por quadro)'];
+        return async v=>{ const vw=v.videoWidth||v.naturalWidth||v.width, vh=v.videoHeight||v.naturalHeight||v.height; if(!vw||!vh) return []; nq++;
+          const centro=nq%2===0; let sx=0,sy=0,sw=vw,sh=vh; if(centro){ sw=Math.round(vw*0.6); sh=Math.round(vh*0.6); sx=(vw-sw)>>1; sy=(vh-sh)>>1; }
+          const w=Math.min(centro?1280:1024,sw), h=Math.round(sh*w/sw); cv2.width=w; cv2.height=h; cx2.drawImage(v,sx,sy,sw,sh,0,0,w,h);
+          const out=[]; for(let i=0;i<3;i++){ let r=null; try{ r=rd2.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv2)))); }catch(e){ break; } if(!r) break;
+            const t=String(r.getText()); if(out.includes(t)) break; out.push(t);
+            const pts=(r.getResultPoints()||[]).filter(Boolean).map(p=>[p.getX(),p.getY()]); if(pts.length<2) break;
+            const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]); let x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+            const m=Math.max(14,(x1-x0)*0.35,(y1-y0)*0.35); x0-=m; x1+=m; y0-=m; y1+=m; if(y1-y0<40){ y0-=30; y1+=30; }
+            cx2.fillStyle='#fff'; cx2.fillRect(x0,y0,x1-x0,y1-y0); }
+          return out; }; } }catch(e){ console.error('zxing novo',e); }
+    if(Z&&Z.BrowserMultiFormatReader){ const rd=new Z.BrowserMultiFormatReader(); const cv=document.createElement('canvas'), cx=cv.getContext('2d',{willReadFrequently:true});
       OP.formatos=['todos (ZXing)'];
       return async v=>{ const w=Math.min(1280,v.videoWidth), h=Math.round(v.videoHeight*w/(v.videoWidth||1)); if(!w||!h) return [];
         cv.width=w; cv.height=h; cx.drawImage(v,0,0,w,h);
@@ -6631,7 +6649,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 
 /* ================= v6.5.0 · leitura de texto (OCR) por modelo de etiqueta, dia isolado, relatório XML Softlog ================= */
 OP_ST.pit={t:'Fora · Pitágoras',c:'#E8590C'};
-const OP_ESPERA=1500; /* v9.20.0: 1,5 s entre bipes (pedido do Tiago) */
+const OP_ESPERA=1000; /* v10.6.35: 1 s entre bipes (era 1,5 s — pedido do Tiago) */
 
 /* ---- dia da operação: só os romaneios do dia ---- */
 function opDiaRom(r){ return rbDataDoNome(r.arquivo||'')||String(r.importadoEm||'').slice(0,10); }

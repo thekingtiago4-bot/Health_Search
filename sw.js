@@ -1,5 +1,5 @@
 /* Health Search · aplicativo: abre mesmo sem internet e sempre busca a versão nova quando há conexão */
-const CACHE='hs-app-v214';
+const CACHE='hs-app-v215';
 /* v10.6.00: partes pesadas (pasta a/, com ?v=) ficam num cache proprio que nao e apagado a cada versao.
    Mudou algum arquivo de a/? Suba o V no HSA (index.html) E este PARTES. */
 const PARTES='hs-partes-v1';

@@ -713,3 +713,12 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   vigia de 1 s: solta `OP.espera` sem painel, zera `OP.tratando` preso >8 s, dá play no vídeo pausado e reabre a
   câmera se o sistema desligar a trilha (`readyState==='ended'`). `opCamFechar` limpa tudo.
 - Testado com câmera falsa do Chromium + leitor simulado (tratamento que nunca termina, espera presa, janela na frente).
+
+### v10.6.35 · NexBip: 1 s entre bipes e leitor do iPhone mais preciso
+- `OP_ESPERA` 1500 → 1000 ms (pedido do Tiago); a contagem "Próxima leitura em …" usa o valor.
+- iPhone/Safari (sem BarcodeDetector) usava `BrowserMultiFormatReader.decodeFromCanvas`: 1 código por quadro, todos os
+  formatos, quadro inteiro. Agora `MultiFormatReader` com TRY_HARDER e só QR/Code128/DataMatrix/ITF/EAN13/Code39, até 3
+  códigos por quadro (pinta de branco o que já leu e procura de novo — a etiqueta tem 3 QR e o que importa é o de
+  "Volumes"), quadros alternados entre imagem inteira (1024px) e centro ampliado (60% → 1280px). O antigo fica de reserva.
+- Nas fotos reais: leitor antigo leu o QR de Volumes em 0 de 25 posições de mira; o novo em 5–6 de 25 (as que deixam o QR
+  perto do centro), ~60–95 ms por quadro. Android/tablet continuam no leitor nativo (BarcodeDetector).
