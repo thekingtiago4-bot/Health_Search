@@ -730,3 +730,11 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Anel do total (`.ct-anel`): `--d` = % em divergência; o conic-gradient pinta verde até p−d e laranja de p−d até p,
   e o subtítulo mostra "N em divergência (x%)". Passar o mouse/tocar no anel (`.ct-temdv:hover/:focus`) troca o 100%
   pelo % em divergência.
+
+### v10.6.37 · "Em divergência" = só as divergências do dia (Conferência total e Painel)
+- Antes (`gsDvDoDia`, regra da 10.2.0): qualquer divergência com a mesma NF/pedido, de qualquer data e situação — contava
+  de novo a caixa que faltou e voltou na MESA, a já resolvida e as outras NFs do mesmo pedido (DF 6, MESA 10 no print).
+- Agora `opDvDoDiaSo(dia)`: só `d.d===dia`, sem avarias antigas e sem as desbipadas. `gsDvDoDia` usa a mesma.
+- `GS_REGRA` ficou em 10.2.2 de propósito: as fotos de dias passados não se refazem (histórico preservado).
+- Cartões de origem: grade `auto-fit` (minmax 190px) — ocupam o espaço livre e o texto não quebra. Botões de filtro de
+  romaneio (`opRomChips`) mostram "· N div." em laranja.
