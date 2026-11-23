@@ -722,3 +722,11 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   "Volumes"), quadros alternados entre imagem inteira (1024px) e centro ampliado (60% → 1280px). O antigo fica de reserva.
 - Nas fotos reais: leitor antigo leu o QR de Volumes em 0 de 25 posições de mira; o novo em 5–6 de 25 (as que deixam o QR
   perto do centro), ~60–95 ms por quadro. Android/tablet continuam no leitor nativo (BarcodeDetector).
+
+### v10.6.36 · Conferência total: fatia em divergência nas barras
+- `opPorRom` devolve `dn` (notas conferidas que têm divergência — mesma regra do Painel: `gsDvDoDia` + `gsTemDv`).
+- Barras do "Por romaneio" (origem e cada romaneio) e dos cartões de origem do topo: fatia `dn` em laranja listrado
+  (`repeating-linear-gradient` — o DF já é laranja) + texto "N em divergência"/"N div.". O % continua o de conferidas.
+- Anel do total (`.ct-anel`): `--d` = % em divergência; o conic-gradient pinta verde até p−d e laranja de p−d até p,
+  e o subtítulo mostra "N em divergência (x%)". Passar o mouse/tocar no anel (`.ct-temdv:hover/:focus`) troca o 100%
+  pelo % em divergência.
