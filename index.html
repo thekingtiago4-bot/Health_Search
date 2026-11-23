@@ -4462,7 +4462,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.37', HS_DATA='23/11/2026';
+const HS_VERSAO='10.6.38', HS_DATA='23/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12303,6 +12303,53 @@ async function listasProteger(){ if(!opOnline()||typeof NV==='undefined'||!NV.cl
 /* ================= v10.6.33 · sincronização só depois que o banco do aparelho carregou ================= */
 { const _ns=nuvSinc; nuvSinc=async function(){ try{ await LS.pronto; }catch(e){} try{ nuvReconciliar(); }catch(e){} try{ RE.ler(); }catch(e){} return _ns.apply(this,arguments); }; }
 LS.pronto.then(()=>{ try{ nuvReconciliar(); }catch(e){} try{ if(RE.cedo){ RE.ler(); RE.gravar(); if(!$('#t-reentregas').hidden) reTela(); } }catch(e){} });
+
+/* ================= v10.6.38 · Menu lateral cabe inteiro na tela, sem rolar =================
+   Pedido do Tiago: tudo visível sem rolagem, nem que diminua. O app mede o menu e vai compactando (5 níveis:
+   espaçamento, letra e ícone menores) até caber; refaz ao mudar o tamanho da janela ou o menu. */
+(function(){ const st=document.createElement('style'); st.textContent=`
+.rail.rc1 .nav button{padding-top:6px!important;padding-bottom:6px!important}
+.rail.rc1 .nav-grupo{margin-top:8px!important;margin-bottom:2px!important}
+.rail.rc2 .nav button{padding-top:4px!important;padding-bottom:4px!important;font-size:.92rem!important}
+.rail.rc2 .nav button .ico{width:18px!important;height:18px!important}
+.rail.rc2 .nav-grupo{margin-top:6px!important;margin-bottom:1px!important;font-size:.62rem!important}
+.rail.rc2 .marca{margin-bottom:6px!important}
+.rail.rc3 .nav button{padding-top:3px!important;padding-bottom:3px!important;font-size:.86rem!important;min-height:0!important}
+.rail.rc3 .nav button .ico{width:16px!important;height:16px!important}
+.rail.rc3 .nav-grupo{margin-top:4px!important;margin-bottom:0!important;font-size:.58rem!important}
+.rail.rc3 .resumo{gap:4px!important;margin-top:6px!important;padding-top:6px!important}
+.rail.rc3 .resumo .autoria,.rail.rc3 .resumo small{font-size:.66rem!important;line-height:1.25!important}
+.rail.rc3 .resumo .btn{padding-top:5px!important;padding-bottom:5px!important;min-height:0!important}
+.rail.rc4 .nav button{padding-top:2px!important;padding-bottom:2px!important;font-size:.8rem!important}
+.rail.rc4 .nav-grupo{margin-top:3px!important}
+.rail.rc4 .marca img,.rail.rc4 .marca svg{width:30px!important;height:30px!important}
+.rail.rc4 .marca b{font-size:.95rem!important}.rail.rc4 .marca span{font-size:.65rem!important}
+.rail.rc5 .nav button{padding-top:1px!important;padding-bottom:1px!important;font-size:.76rem!important}
+.rail.rc5 .nav button .ico{width:14px!important;height:14px!important}
+.rail.rc5 .resumo .autoria{font-size:.6rem!important}
+.rail.rc5{padding-top:10px!important;padding-bottom:8px!important}
+.rail.rc6 .nav button{padding:0 8px!important;font-size:.72rem!important;gap:8px!important}
+.rail.rc6 .nav button .ico{width:13px!important;height:13px!important}
+.rail.rc6 .nav-grupo{margin:2px 0 0!important;font-size:.52rem!important;line-height:1.3!important}
+.rail.rc6 .marca{margin-bottom:2px!important}.rail.rc6 .marca img,.rail.rc6 .marca svg{width:24px!important;height:24px!important}
+.rail.rc6 .resumo{margin-top:2px!important;padding-top:4px!important;gap:2px!important}
+.rail.rc6 .resumo .btn{padding:3px 8px!important;font-size:.72rem!important}
+.rail.rc6 .resumo,.rail.rc6 .resumo *{line-height:1.2!important}
+.rail.rc6 .app-ver{display:flex!important;flex-wrap:wrap;align-items:center;gap:2px 6px!important;margin:0 0 3px!important;padding:0!important;border:0!important}
+.rail.rc6 .app-ver .app-ver-num,.rail.rc6 .app-ver .app-ver-data{display:inline!important;font-size:.68rem!important;margin:0!important}
+.rail.rc6 .app-ver #app-ver-bt{flex:1 1 100%;margin:2px 0 0!important;padding:2px 6px!important;font-size:.68rem!important;min-height:0!important}
+.rail.rc6 .autoria{font-size:.58rem!important;margin-top:2px!important;padding-top:4px!important}
+.rail.rc6 .nav-grupo{padding-top:0!important;padding-bottom:0!important}`; document.head.appendChild(st);
+  const NIV=['rc1','rc2','rc3','rc4','rc5','rc6']; let rodando=false;
+  window.railAjustar=function(){ const r=document.querySelector('.rail'); if(!r||rodando) return; rodando=true;
+    try{ r.classList.remove(...NIV); let n=0; while(r.scrollHeight>r.clientHeight+1&&n<NIV.length){ r.classList.add(NIV[n]); n++; } }catch(e){} finally{ rodando=false; } };
+  let t=null; const agenda=()=>{ clearTimeout(t); t=setTimeout(railAjustar,120); };
+  addEventListener('resize',agenda); addEventListener('load',agenda); setTimeout(railAjustar,600); setTimeout(railAjustar,3000);
+  try{ const r=document.querySelector('.rail'); if(r) new MutationObserver(m=>{ if(m.some(x=>x.type==='childList'||x.attributeName==='hidden')) agenda(); }).observe(r,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden']}); }catch(e){}
+})();
+
+/* v10.6.38 · a linha de botões "Romaneio: Todos / … " saiu (pedido do Tiago). O filtro continua pelo "Por romaneio". */
+(function(){ const st=document.createElement('style'); st.textContent='#op-romchips{display:none!important}'; document.head.appendChild(st); })();
 </script>
 
 </body>

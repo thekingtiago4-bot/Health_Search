@@ -738,3 +738,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `GS_REGRA` ficou em 10.2.2 de propósito: as fotos de dias passados não se refazem (histórico preservado).
 - Cartões de origem: grade `auto-fit` (minmax 190px) — ocupam o espaço livre e o texto não quebra. Botões de filtro de
   romaneio (`opRomChips`) mostram "· N div." em laranja.
+
+### v10.6.38 · Menu lateral cabe na tela sem rolar
+- `railAjustar()`: mede `.rail` e adiciona `rc1`…`rc6` (espaçamento, letra, ícone, logo e rodapé menores) até
+  `scrollHeight<=clientHeight`. Refaz em resize, load e quando o menu muda (MutationObserver em childList/hidden).
+- Medido: 1000px de altura → nível 3; 860 → 5; 720 → 6 (cabe). Abaixo de ~650px sobra rolagem como reserva.
+  Testei 2 colunas para telas baixas: ficou ruim (corta nomes) e saiu.
+- Linha de botões de romaneio (`#op-romchips`) escondida a pedido do Tiago; o filtro continua pelo "Por romaneio".
