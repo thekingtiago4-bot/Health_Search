@@ -766,3 +766,7 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 
 ### v10.6.42 · Divergência resolvida sai do laranja
 - `opDvDoDiaSo` (Conferência total e Painel) ignora `st==='resolvida'`: só conta a divergência do dia ainda aberta.
+
+### v10.6.43 · % em divergência nunca aparece "0%" quando existe
+- `pctDv(v)`: ≥10 inteiro; 1–10 uma casa; <1 dois algarismos significativos (1 em 382 → 0,26%; 1 em 1 milhão → 0,0001%).
+  Usado no anel (passar o mouse) e no subtítulo. A fatia do anel tem no mínimo 1% de largura para aparecer.
