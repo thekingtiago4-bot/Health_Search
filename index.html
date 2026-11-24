@@ -3819,9 +3819,11 @@ function nexPedirMotivo(titulo,texto,inicial){ return new Promise(res=>{ const f
   f.addEventListener('keydown',e=>{ if(e.key==='Enter') fim(inp.value.trim()); if(e.key==='Escape') fim(null); }); }); }
 
 /* ---- jogar para reentregas (cria a linha no dia seguinte útil) ---- */
+/* v10.6.40: o romaneio em PDF quase nunca traz o valor — ele vem do XML da nota (valNota: XML do NexBip e Relatório XML) */
+function reValorDe(o){ let v=reNum(o&&o.valor); if(!v){ try{ v=+valNota({nf:o&&o.nf})||0; }catch(e){} } if(!v){ try{ v=+opValor(opK(o&&o.ped||''),opK(o&&o.nf||''),o)||0; }catch(e){} } return Math.round((+v||0)*100)/100; }
 function nexParaReentrega(o,dia,origem){ if(o&&reEhDivergencia({obs:o.motivo})){ toast('Divergência não é reentrega: essa nota não entrou nas Reentregas.'); return null; } const D=RE.ler(); D.dias[dia]=D.dias[dia]||[]; if(D.apagados) D.apagados=D.apagados.filter(x=>x!==dia);
   if(D.dias[dia].some(l=>z(l.nf)===z(o.nf))) return false;
-  D.dias[dia].push({nf:String(o.nf||''),ped:o.ped||'',cli:String(o.dest||'').toUpperCase(),cid:String(o.cid||'').toUpperCase(),uf:String(o.uf||'').toUpperCase(),qtd:volNum(o.vol)||1,obs:o.motivo||'',per:'Não',val:reNum(o.valor),chave:'',peso:o.peso||'',origem:origem||'nex'});
+  D.dias[dia].push({nf:String(o.nf||''),ped:o.ped||'',cli:String(o.dest||'').toUpperCase(),cid:String(o.cid||'').toUpperCase(),uf:String(o.uf||'').toUpperCase(),qtd:volNum(o.vol)||1,obs:o.motivo||'',per:'Não',val:reValorDe(o),chave:'',peso:o.peso||'',origem:origem||'nex'});
   RE.gravar(); return true; }
 
 /* ---- romaneio aberto como lista: checkbox (entra/não entra), prioridade, etiquetas e peso ---- */
@@ -4462,7 +4464,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.39', HS_DATA='24/11/2026';
+const HS_VERSAO='10.6.40', HS_DATA='24/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12371,6 +12373,14 @@ function cadSemDuplicado(){ const L=S.cadMot; if(!Array.isArray(L)) return 0; co
 { const _cm=cadMudou; cadMudou=function(){ try{ cadCarimbar(); }catch(e){} return _cm.apply(this,arguments); }; }
 { const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ const r=_na.apply(this,arguments); if(chave==='s:cadMot'){ try{ cadSemDuplicado(); cadFoto(); }catch(e){} } return r; }; }
 try{ (LS.pronto||Promise.resolve()).then(()=>{ try{ cadInit(); cadFoto(); }catch(e){} }); }catch(e){}
+
+/* ================= v10.6.40 · Reentrega sem valor recebe o valor do XML assim que ele estiver no app =================
+   Só preenche o que está VAZIO (valor digitado à mão nunca muda). Últimos 45 dias. */
+function reValoresCompletar(semTela){ try{ const D=RE.ler(); const lim=(()=>{ const t=new Date(); t.setDate(t.getDate()-45); return t.toISOString().slice(0,10); })(); let n=0;
+    for(const [dia,ls] of Object.entries(D.dias||{})){ if(dia<lim) continue; for(const l of ls||[]){ if(reNum(l.val)) continue; const v=reValorDe({nf:l.nf,ped:l.ped,valor:''}); if(v>0){ l.val=v; n++; } } }
+    if(n){ RE.gravar(); if(!semTela) try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} } return n; }catch(e){ return 0; } }
+{ const _rt=reTela; reTela=function(){ reValoresCompletar(true); return _rt.apply(this,arguments); }; }
+{ const _rd=renderTudo; renderTudo=function(){ const r=_rd.apply(this,arguments); setTimeout(reValoresCompletar,0); return r; }; }
 </script>
 
 </body>

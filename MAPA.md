@@ -752,3 +752,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   (`'n:'+rpNz(nome)`); `cadCarimbar` (no `cadMudou`) põe `em` em quem mudou (compara com `CAD_FOTO`); vale o `em` mais
   novo; exclusão, "juntar com" e troca de nome gravam `S.listaTirados.cadMot` (recadastrar depois volta — `em` mais novo
   que a exclusão). `cadSemDuplicado` (no `cadInit` e ao receber da nuvem) junta duplicados: mais novo, senão mais completo.
+
+### v10.6.40 · Valor da reentrega vem do XML
+- `nexParaReentrega` usava só `row.valor` do romaneio (o PDF do Softlog quase nunca traz) → reentrega sem valor.
+  Agora `reValorDe(o)`: valor da linha → `valNota` (XML do NexBip `S.opXml` e Relatório XML `S.rdXml`) → `opValor`.
+- `reValoresCompletar()` (em `reTela` e depois do `renderTudo`): reentregas dos últimos 45 dias com valor VAZIO recebem o
+  valor do XML assim que ele estiver no app. Valor digitado nunca muda.

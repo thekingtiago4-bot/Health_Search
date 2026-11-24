@@ -1513,5 +1513,17 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       return R; });
     ok(cm.j==='1|123.456.789-01|CAJ','motoristas: a junção com a lista antiga tinha que manter a edição e não duplicar ('+cm.j+')');
     ok(cm.dup==='1|111.111.111-11','motoristas: duplicado antigo tinha que virar um só, o mais completo ('+cm.dup+')'); }
+  { /* v10.6.40 · reentrega leva o valor do XML (o romaneio em PDF não traz valor) e as antigas sem valor são completadas */
+    const rv=await p.evaluate(()=>{ const x0=JSON.stringify(S.opXml||{}), d0=JSON.stringify(RE.ler()); const R={};
+      try{ S.opXml=Object.assign({},S.opXml||{},{[opK('362484')]:{nf:opK('362484'),ped:'',valor:1234.56,vols:[]},[opK('453114')]:{nf:opK('453114'),ped:opK('448598'),valor:99.9,vols:[]}});
+        const dia='2026-11-24'; const D=RE.ler(); D.dias[dia]=[{nf:'000453114',ped:'448598',cli:'ROGERIO',obs:'FORA DO HORÁRIO',val:0},{nf:'777',cli:'MAO',obs:'X',val:55}]; RE.gravar();
+        nexParaReentrega({nf:'000362484',ped:'',dest:'HOSPITAL',cid:'LAVRAS',uf:'MG',vol:'1',valor:'',motivo:'FORA DO HORÁRIO COMERCIAL'},dia,'automatica');
+        reValoresCompletar(true); const L=RE.ler().dias[dia];
+        R.nova=(L.find(l=>z(l.nf)===z('000362484'))||{}).val; R.antiga=(L.find(l=>l.nf==='000453114')||{}).val; R.mao=(L.find(l=>l.nf==='777')||{}).val;
+      } finally { S.opXml=JSON.parse(x0); RE.d=JSON.parse(d0); RE.gravar(); }
+      return R; });
+    ok(rv.nova===1234.56,'reentrega: o valor do XML tinha que ir junto ('+rv.nova+')');
+    ok(rv.antiga===99.9,'reentrega: a antiga sem valor tinha que ser completada pelo XML ('+rv.antiga+')');
+    ok(rv.mao===55,'reentrega: valor digitado à mão não pode mudar ('+rv.mao+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
