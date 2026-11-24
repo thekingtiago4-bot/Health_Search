@@ -773,3 +773,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 
 ### v10.6.44 · NF curta não é "linha sem dados" na Correção
 - `reLinhaInvalida` exigia 3–12 dígitos; NF de 1–2 dígitos (NF 87) agora vale quando a linha tem cliente e cidade.
+
+### v10.6.45 · Excel do romaneio completa as notas com o XML
+- `cardDoRomaneio` (RomExcel) só copiava a linha do romaneio; romaneio criado no app (MESA EXTRA) não tem remetente/peso/
+  valor. Agora completa com `hsXmlDaNota(nf)` (XML do NexBip `S.opXml` + Relatório XML `S.rdXml`) — só o que está vazio.
+- Colunas que estavam sempre em branco ganharam fonte: CNPJ/CPF, CEP, endereço, número, bairro, valor produtos, chave.
+- `opXmlLer` passa a guardar `rem` (emitente), `peso` (pesoB) e `vprod` — XMLs já importados antes não têm remetente/peso.
+- Número do XML vai como texto BR ("12,345") porque a planilha lê no formato brasileiro (ponto = milhar).

@@ -1534,5 +1534,13 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(nc.a&&nc.b&&nc.nfs==='5:ok,87:ok','marcar à mão: NF de 1–2 dígitos tinha que ser marcada ('+JSON.stringify(nc)+')'); }
   { const li=await p.evaluate(()=>[reLinhaInvalida({nf:'87',cli:'ASSOCIACAO PRUDENTINA',cid:'PRESIDENTE PRUDENTE'}),reLinhaInvalida({nf:'87',cli:'',cid:''}),reLinhaInvalida({nf:'01/11/2026 a 30/11',cli:'X',cid:'Y'})].join());
     ok(li==='false,true,true','correção: NF 87 com cliente e cidade é linha válida; lixo continua inválido ('+li+')'); }
+  { /* v10.6.45 · Excel do romaneio completa a nota com o XML (romaneio criado no app não tem remetente/peso/valor) */
+    const xr=await p.evaluate(()=>{ const x0=JSON.stringify(S.opXml||{});
+      try{ const xml='<nfeProc><NFe><infNFe Id="NFe35251112345678000199550010000000871000000871"><ide><nNF>87</nNF></ide><emit><xNome>Viveo SA</xNome></emit><dest><CNPJ>55666777000188</CNPJ><xNome>APEC</xNome><enderDest><xLgr>Rua A</xLgr><nro>700</nro><xBairro>Centro</xBairro><xMun>Presidente Prudente</xMun><UF>SP</UF><CEP>19050920</CEP></enderDest></dest><total><ICMSTot><vProd>1500.00</vProd><vNF>1530.50</vNF></ICMSTot></total><transp><vol><qVol>1</qVol><pesoB>12.345</pesoB></vol></transp></infNFe></NFe></nfeProc>';
+        const n=opXmlLer(xml,'87.xml'); S.opXml=Object.assign({},S.opXml||{},{[n.nf]:n});
+        const c=RomExcel.cardDoRomaneio({numero:'EXTRA I',base:'MESA',rows:[{nf:'87',ped:'146190',vol:'1',dest:'APEC',cid:'PRESIDENTE PRUDENTE',uf:'SP',rem:'',peso:'',valor:''},{nf:'88',dest:'B',rem:'JA TINHA',peso:'1,5',valor:'10,00'}]});
+        const a=c.rows[0], b=c.rows[1]; return [a.rem,a.peso,a.valor,a.cep,a.chave.length,b.rem,b.peso,b.valor].join('|'); }
+      finally{ S.opXml=JSON.parse(x0); } });
+    ok(xr==='VIVEO SA|12,345|1530,5|19050-920|44|JA TINHA|1,5|10,00','excel do romaneio: dados do XML tinham que entrar sem trocar o que o romaneio já tinha ('+xr+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

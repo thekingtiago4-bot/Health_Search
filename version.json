@@ -1,1 +1,1 @@
-{"versao":"10.6.44","data":"2026-11-24","novidades":"Correcao: nota com numero curto (ex.: NF 87) nao aparece mais como linha sem dados em Reentregas."}
+{"versao":"10.6.45","data":"2026-11-24","novidades":"Excel do romaneio: as notas saem completas com os dados do XML (remetente, CNPJ, endereco, peso, valor, chave), inclusive em romaneio criado no app."}

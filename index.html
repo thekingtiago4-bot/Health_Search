@@ -2005,8 +2005,8 @@ function conferir(card){
 
 /* ================= Excel no modelo do "Relatório de notas fiscais para conferência" ================= */
 const COLS=[
-  {t:'NÚMERO NF',k:'nf',w:12},{t:'REMETENTE',k:'rem',w:34},{t:'CNPJ/CPF DESTINATÁRIO',k:'',w:22},{t:'DESTINATÁRIO',k:'dest',w:40},{t:'CEP',k:'',w:10},{t:'ENDEREÇO',k:'',w:30},{t:'NÚMERO',k:'',w:9},{t:'BAIRRO',k:'',w:18},
-  {t:'CIDADE DESTINO',k:'cid',w:24},{t:'UF',k:'uf',w:5},{t:'REGIÃO',k:'',w:9},{t:'VOLUMES',k:'vol',w:10,n:'int'},{t:'PESO',k:'peso',w:12,n:'p4'},{t:'VALOR NF IND',k:'valor',w:15,n:'p2'},{t:'VALOR PRODUTOS',k:'',w:16,n:'p2'},{t:'CHAVE NFE',k:'',w:47},{t:'PEDIDO',k:'ped',w:12}];
+  {t:'NÚMERO NF',k:'nf',w:12},{t:'REMETENTE',k:'rem',w:34},{t:'CNPJ/CPF DESTINATÁRIO',k:'doc',w:22},{t:'DESTINATÁRIO',k:'dest',w:40},{t:'CEP',k:'cep',w:10},{t:'ENDEREÇO',k:'end',w:30},{t:'NÚMERO',k:'nro',w:9},{t:'BAIRRO',k:'bai',w:18},
+  {t:'CIDADE DESTINO',k:'cid',w:24},{t:'UF',k:'uf',w:5},{t:'REGIÃO',k:'',w:9},{t:'VOLUMES',k:'vol',w:10,n:'int'},{t:'PESO',k:'peso',w:12,n:'p4'},{t:'VALOR NF IND',k:'valor',w:15,n:'p2'},{t:'VALOR PRODUTOS',k:'vprod',w:16,n:'p2'},{t:'CHAVE NFE',k:'chave',w:47},{t:'PEDIDO',k:'ped',w:12}];
 function valorCelula(c,r){ if(!c.k) return c.n?null:''; const v=r[c.k];
   if(c.k==='nf'){ const d=String(v||'').replace(/\D/g,''); return d?d.padStart(9,'0'):''; }
   if(c.n==='int'){ const n=parseInt(String(v||'').replace(/\D/g,''),10); return isFinite(n)?n:null; }
@@ -2226,7 +2226,11 @@ async function ajustarCantos(card,ip){
 
 /* romaneio já carregado na busca -> mesmo formato */
 function cidInteira(c,uf){ if(!cortado(c)) return c; const m=acharCidade(c,uf); return m&&m.d===0?m.nome:c; }
-function cardDoRomaneio(r){ const rows=r.rows.map(x=>({nf:x.nf,ped:x.ped||'',rem:x.rem,dest:x.dest,cid:cidInteira(x.cid,x.uf),uf:x.uf,vol:x.vol,peso:x.peso,valor:x.valor,d:{}})); return {numero:r.numero,base:r.base,dataViagem:r.dataViagem,dataEmissao:r.dataEmissao,rows}; }
+/* v10.6.45: completa cada nota com o XML dela (NexBip ou Relatório XML) — só o que estiver vazio na linha do romaneio */
+function cardDoRomaneio(r){ const X=nf=>{ try{ return typeof hsXmlDaNota==='function'?(hsXmlDaNota(nf)||{}):{}; }catch(e){ return {}; } };
+  const rows=r.rows.map(x=>{ const m=X(x.nf), so=(a,b)=>(a!=null&&String(a).trim()!=='')?a:(b??a), sn=(a,b)=>(a!=null&&String(a).trim()!==''&&+String(a).replace(/[^\d]/g,'')!==0)?a:(typeof b==='number'?String(b).replace('.',','):(b??a)); /* número do XML vira "12,345" (a planilha lê no formato BR) */
+    return {nf:x.nf,ped:x.ped||m.ped||'',rem:so(x.rem,m.rem),dest:so(x.dest,m.dest),cid:cidInteira(x.cid||m.mun,x.uf||m.uf),uf:x.uf||m.uf,vol:sn(x.vol,m.vol),peso:sn(x.peso,m.peso),valor:sn(x.valor,m.valor),
+      doc:x.doc||m.doc||'',cep:x.cep||m.cep||'',end:x.end||m.end||'',nro:x.nro||m.nro||'',bai:x.bai||m.bai||'',vprod:sn(x.vprod,m.vprod),chave:x.chave||m.chave||'',d:{}}; }); return {numero:r.numero,base:r.base,dataViagem:r.dataViagem,dataEmissao:r.dataEmissao,rows}; }
 function paraBusca(card){
   const rows=card.rows.filter(r=>r.nf).map(r=>({rem:r.rem,dest:r.dest,cid:r.cid,uf:r.uf,nf:r.nf,ped:r.ped||'',pedCortado:false,peso:r.peso,vol:r.vol,valor:r.valor}));
   if(!rows.length){ toast('Nenhuma nota com NF para colocar na busca.'); return; }
@@ -4466,7 +4470,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.44', HS_DATA='24/11/2026';
+const HS_VERSAO='10.6.45', HS_DATA='24/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -5125,7 +5129,9 @@ function opXmlLer(txt,nome){ const d=new DOMParser().parseFromString(txt,'text/x
     const g=/G/i.test(cp)||/\(G\)/i.test(xp); const med=/^300[1-6]/.test(ncm)||!!det.getElementsByTagName('med').length||!!tx('cProdANVS',pr);
     return {c:cp,d:xp.slice(0,70),ncm,q:+tx('qCom',pr)||0,g,med}; });
   const vols=[...(inf.getElementsByTagName('transp')[0]||inf).getElementsByTagName('vol')].map(v=>({q:parseInt(tx('qVol',v))||0,esp:tx('esp',v)}));
+  let pesoB=0; for(const v of ((inf.getElementsByTagName('transp')[0]||{getElementsByTagName:()=>[]}).getElementsByTagName('vol'))) pesoB+=parseFloat(tx('pesoB',v)||tx('pesoL',v))||0;
   return {chave:(inf.getAttribute('Id')||'').replace(/^NFe/,''),nf:opK(tx('nNF')),ped:opK(ped),cli:tx('xNome',inf.getElementsByTagName('dest')[0]).toUpperCase(),dd:cfDestXml(inf),
+    rem:tx('xNome',inf.getElementsByTagName('emit')[0]).toUpperCase(),peso:+pesoB.toFixed(3),vprod:+tx('vProd',inf.getElementsByTagName('ICMSTot')[0])||0, /* v10.6.45 */
     valor:+tx('vNF',inf.getElementsByTagName('ICMSTot')[0])||0,g:itens.some(i=>i.g),s:itens.some(i=>!i.g),med:itens.some(i=>i.med),mat:itens.some(i=>!i.med),vols,itens:itens.slice(0,40),em:hojeISO()}; }
 async function opXmlImportar(files){ const xs=files.filter(f=>/\.xml$/i.test(f.name)||/xml/.test(f.type)); if(!xs.length){ toast('Escolha arquivos .xml das notas.'); return; }
   S.opXml=S.opXml||{}; let ok=0,rep=0; const erros=[];
@@ -12386,6 +12392,16 @@ function reValoresCompletar(semTela){ try{ const D=RE.ler(); const lim=(()=>{ co
     if(n){ RE.gravar(); if(!semTela) try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} } return n; }catch(e){ return 0; } }
 { const _rt=reTela; reTela=function(){ reValoresCompletar(true); return _rt.apply(this,arguments); }; }
 { const _rd=renderTudo; renderTudo=function(){ const r=_rd.apply(this,arguments); setTimeout(reValoresCompletar,0); return r; }; }
+
+/* ================= v10.6.45 · Dados do XML de uma nota (para o Excel do romaneio e afins) =================
+   Junta o XML do NexBip (S.opXml) e o do Relatório XML (S.rdXml, o mais recente que tiver a nota). */
+function hsXmlDaNota(nf){ const k=opK(nf); if(!k) return null; const o={}; let tem=false;
+  try{ const R=S.rdXml||{}; for(const d of Object.keys(R).sort()){ const n=R[d]&&R[d][k]; if(n&&typeof n==='object'){ tem=true;
+        Object.assign(o,{dest:n.dest||o.dest,cep:n.cep||o.cep,end:n.end||o.end,nro:n.nro||o.nro,bai:n.bai||o.bai,mun:n.mun||o.mun,uf:n.uf||o.uf,peso:n.peso||o.peso,vprod:n.vprod||o.vprod,chave:n.chave||o.chave,rem:n.rem||o.rem,vol:n.vol||o.vol}); } } }catch(e){}
+  try{ const x=(S.opXml||{})[k]; if(x){ tem=true; const dd=x.dd||{}; const vt=(x.vols||[]).reduce((t,v)=>t+(+v.q||0),0);
+      Object.assign(o,{dest:o.dest||x.cli,doc:o.doc||dd.doc,cep:o.cep||dd.cep,end:o.end||dd.end,nro:o.nro||dd.nro,bai:o.bai||dd.bai,mun:o.mun||dd.mun,uf:o.uf||dd.uf,
+        valor:x.valor||o.valor,vprod:o.vprod||x.vprod,chave:o.chave||x.chave,rem:o.rem||x.rem,peso:o.peso||x.peso,vol:o.vol||vt||null,ped:x.ped}); } }catch(e){}
+  return tem?o:null; }
 </script>
 
 </body>
