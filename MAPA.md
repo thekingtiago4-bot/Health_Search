@@ -763,3 +763,6 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `opMarcarMao` simulava o bipe com o número; `opInterpretar` ignora número com menos de 3 dígitos (lixo de câmera) e
   o formato "NF…" pedia 3–9 dígitos → "Não consegui marcar a NF 87". Agora a marcação vai como "NF"+nf (aceita 1–9
   dígitos); sem NF, vai pelo pedido.
+
+### v10.6.42 · Divergência resolvida sai do laranja
+- `opDvDoDiaSo` (Conferência total e Painel) ignora `st==='resolvida'`: só conta a divergência do dia ainda aberta.

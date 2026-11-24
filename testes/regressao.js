@@ -1497,7 +1497,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     const cb=await p.evaluate(async()=>{ try{ irPara('conftotal'); }catch(e){} const h=hojeISO(), arq='x '+h.split('-').reverse().join('-')+'.pdf', rs=S.romaneios, ds=S.divergencias, bs=OP.bipes;
       try{ S.romaneios=[{id:'cb1',numero:'1',base:'DF',arquivo:arq,rows:[1,2,3,4].map(i=>({nf:'9100'+i,ped:'9200'+i,vol:'1',dest:'C'}))}]; OP.dia=h; OP.bipes=[]; renderTudo();
         for(const x of S.romaneios[0].rows) opLer([x.nf],'teclado');
-        S.divergencias=[{id:'cbd',n:1,d:h,nf:'91001',tipo:'Falta de volume',qtd:1,st:'aberta',hist:[]},{id:'cbv',n:2,d:'2026-01-05',nf:'91002',tipo:'Falta de volume',qtd:1,st:'resolvida',hist:[]}]; /* a de outro dia não conta (v10.6.37) */
+        S.divergencias=[{id:'cbd',n:1,d:h,nf:'91001',tipo:'Falta de volume',qtd:1,st:'aberta',hist:[]},{id:'cbv',n:2,d:'2026-01-05',nf:'91002',tipo:'Falta de volume',qtd:1,st:'aberta',hist:[]},{id:'cbr',n:3,d:h,nf:'91003',tipo:'Falta de volume',qtd:1,st:'resolvida',hist:[]}]; /* outro dia e resolvida não contam */ /* a de outro dia não conta (v10.6.37) */
         await new Promise(r=>setTimeout(r,0)); /* fora do redesenho (o cache dele vale só dentro dele) */
         const L=opPorRom(); const html=opPorRomHtml(); ctMontar(); const anel=(document.querySelector('#ct-geral .ct-anel')||{}).getAttribute?document.querySelector('#ct-geral .ct-anel').getAttribute('style'):''; return {dn:L[0].dn, txt:/1 em divergência/.test(html), faixa:/width:25%;background:repeating-linear-gradient/.test(html), anel}; }
       finally{ S.romaneios=rs; S.divergencias=ds; OP.bipes=bs; renderTudo(); } });

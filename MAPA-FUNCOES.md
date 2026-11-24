@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 24/11/2026 08:02 · versão 10.6.41
+Gerado em 24/11/2026 09:50 · versão 10.6.42
 
 
 ## ab
