@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 23/11/2026 12:16 · versão 10.6.38
+Gerado em 24/11/2026 06:05 · versão 10.6.39
 
 
 ## ab
@@ -121,8 +121,10 @@ Gerado em 23/11/2026 12:16 · versão 10.6.38
 - `cadBaseSet` — linha 7747
 - `cadBases` — linha 7744
 - `cadBasesNome` — linha 7746
+- `cadCarimbar` — linha 12364
 - `cadDatalists` — linha 7752
 - `cadFaltam` — linha 7478
+- `cadFoto` — linha 12363
 - `cadInit` — linha 7728
 - `cadMotivosHtml` — linha 7809
 - `cadMudou` — linha 7816
@@ -130,6 +132,7 @@ Gerado em 23/11/2026 12:16 · versão 10.6.38
 - `cadRastDe` — linha 7749
 - `cadRastNome` — linha 7751
 - `cadRender` — linha 7786
+- `cadSemDuplicado` — linha 12365
 - `cadTipo` — linha 7748
 - `cadUsados` — linha 7727
 - `camLiberar` — linha 6640
@@ -573,10 +576,11 @@ Gerado em 23/11/2026 12:16 · versão 10.6.38
 - `linhasDe` — linha 1789
 - `linhasPlanilha` — linha 2018
 - `linhasQueFaltavam` — linha 11045
-- `listaJuntar` — linha 12266
-- `listaTirado` — linha 12265
+- `listaChave` — linha 12266
+- `listaJuntar` — linha 12268
+- `listaTirado` — linha 12267
 - `listaTirar` — linha 12264
-- `listasProteger` — linha 12270
+- `listasProteger` — linha 12272
 
 ## lo
 - `loadDict` — linha 1407

@@ -4462,7 +4462,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.38', HS_DATA='23/11/2026';
+const HS_VERSAO='10.6.39', HS_DATA='24/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7826,11 +7826,11 @@ document.addEventListener('submit',e=>{ const f=e.target; const tipoNovo=f.datas
 document.addEventListener('change',e=>{ const t=e.target; if(!t.closest||!t.closest('#t-cadastros, #re-motivos')) return;
   if(t.dataset.cadMot!=null){ const m=S.cadMot[+t.dataset.cadMot]; if(!m) return; const k=t.dataset.k;
     let v=k==='cpf'?cpfFmt(t.value):(k==='rast'||k==='tipo'||k==='base')?t.value:t.value.trim().toUpperCase();
-    if(k==='nome'&&!v){ toast('O nome não pode ficar vazio.'); t.value=m.nome; return; } m[k]=v; cadMudou();
+    if(k==='nome'&&!v){ toast('O nome não pode ficar vazio.'); t.value=m.nome; return; } if(k==='nome'&&rpNz(v)!==rpNz(m.nome)){ try{ listaTirar('cadMot',[listaChave('cadMot',m)]); }catch(er){} } m[k]=v; cadMudou();
     try{ ckSincronizar(); if(!$('#t-checklist').hidden) ckRender(); }catch(e){}
     if(k==='base'||k==='nome'||k==='alias'){ try{ v61Rebase(); }catch(e){} } return; }
   if(t.dataset.cadMtv!=null){ const v=t.value.trim().toUpperCase(); if(!v) return; S.cadMotivos[+t.dataset.cadMtv]=v; cadMudou(); return; }
-  if(t.dataset.cadMerge!=null&&t.value!==''){ const de=S.cadMot[+t.dataset.cadMerge], para=S.cadMot[+t.value]; para.alias=[para.alias,de.nome,de.alias].filter(Boolean).join(', '); S.cadMot.splice(+t.dataset.cadMerge,1); cadMudou(); toast(de.nome+' juntado em '+para.nome+'.'); return; }
+  if(t.dataset.cadMerge!=null&&t.value!==''){ const de=S.cadMot[+t.dataset.cadMerge], para=S.cadMot[+t.value]; try{ listaTirar('cadMot',[listaChave('cadMot',de)]); }catch(er){} para.alias=[para.alias,de.nome,de.alias].filter(Boolean).join(', '); S.cadMot.splice(+t.dataset.cadMerge,1); cadMudou(); toast(de.nome+' juntado em '+para.nome+'.'); return; }
   if(t.dataset.cadJunta!=null&&t.value!==''){ const m=S.cadMot[+t.value]; m.alias=[m.alias,t.dataset.cadJunta].filter(Boolean).join(', '); cadMudou(); toast(t.dataset.cadJunta+' agora conta como '+m.nome+'.'); } });
 document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.closest('#t-cadastros button[type="button"], #re-motivos button[type="button"]'); if(!t) return; const d=t.dataset;
   if(d.cadLimpa){ const {mots}=cadUsados(); const usa=n=>[...mots.keys()].some(k=>motCanon(k)===n); const sem=S.cadMot.filter(m=>!usa(m.nome)); if(!sem.length){ toast('Todos têm reentregas.'); return; } if(await confirmar('Excluir sem uso',`Tirar ${sem.length} nome(s) sem nenhuma reentrega do cadastro?`,'Excluir')){ S.cadMot=S.cadMot.filter(m=>usa(m.nome)); cadMudou(); } return; }
@@ -7838,7 +7838,7 @@ document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.
   if(d.cadBase!=null){ const m=S.cadMot[+d.cadBase]; if(!m) return; const bs=cadBases(m); const b=d.b;
     cadBaseSet(m,bs.includes(b)?bs.filter(x=>x!==b):[...bs,b]); cadMudou(); try{ v61Rebase(); }catch(er){} return; }
   if(d.cadNovo){ S.cadMot.push({nome:d.cadNovo,alias:'',cpf:'',tipo:'agregado',rast:'sim'}); S.cadMot.sort((a,b)=>a.nome.localeCompare(b.nome)); cadMudou(); }
-  else if(d.cadMotDel!=null){ const m=S.cadMot[+d.cadMotDel]; if(await confirmar('Excluir motorista',`Tirar ${m.nome} do cadastro? As reentregas antigas não mudam.`,'Excluir')){ S.cadMot.splice(+d.cadMotDel,1); cadMudou(); } }
+  else if(d.cadMotDel!=null){ const m=S.cadMot[+d.cadMotDel]; if(await confirmar('Excluir motorista',`Tirar ${m.nome} do cadastro? As reentregas antigas não mudam.`,'Excluir')){ try{ listaTirar('cadMot',[listaChave('cadMot',m)]); }catch(er){} S.cadMot.splice(+d.cadMotDel,1); cadMudou(); } }
   else if(d.cadMtvDel!=null){ S.cadMotivos.splice(+d.cadMtvDel,1); cadMudou(); }
   else if(d.cadSobe!=null){ const i=+d.cadSobe; if(i>0){ const a=S.cadMotivos; [a[i-1],a[i]]=[a[i],a[i-1]]; cadMudou(); } } });
 { const _rt2=renderTudo; renderTudo=function(){ try{ if(cadInit()) salvar(); cadDatalists(); }catch(e){} return _rt2.apply(this,arguments); }; }
@@ -12259,13 +12259,15 @@ label.nx-ign input{margin:0;flex:none}
    2) quem cadastrava nesse estado subia SÓ a lista dele, por cima da nuvem. → agora, antes de subir, junta com o que
       está na nuvem (um item por id; vale o mais novo) e tira só o que foi EXCLUÍDO de verdade pelo botão.
    Exclusão: os botões Excluir gravam S.listaTirados[campo][id] (sincronizado) — sumiço sem botão nunca vira exclusão. */
-const LISTAS_SEGURAS=['clientesReq','agendamentos'];
+const LISTAS_SEGURAS=['clientesReq','agendamentos','cadMot']; /* v10.6.39: + motoristas (Cadastros) */
 NUV_CAMPOS.push('listaTirados');
 function listaTirar(campo,ids){ const T=S.listaTirados=S.listaTirados||{}; const t=T[campo]=T[campo]||{}; const ag=new Date().toISOString(); for(const id of (ids||[])) if(id) t[id]=ag; }
-function listaTirado(campo,x){ const t=((S.listaTirados||{})[campo])||{}; return !!(x&&x.id&&t[x.id]); }
+/* v10.6.39: motorista não tem id — a chave é o nome */
+function listaChave(campo,x){ if(!x||typeof x!=='object') return JSON.stringify(x); if(x.id) return x.id; if(campo==='cadMot') return 'n:'+rpNz(x.nome); return JSON.stringify(x); }
+function listaTirado(campo,x){ const t=((S.listaTirados||{})[campo])||{}; const k=listaChave(campo,x); if(!x||!t[k]) return false; return !(x.em&&String(x.em)>String(t[k])); }
 function listaJuntar(campo,local,nuvem){ const m=new Map(); const ts=x=>String((x&&(x.em||x.criado))||'');
   for(const x of [...(nuvem||[]),...(local||[])]){ if(!x||typeof x!=='object') continue; if(campo==='agendamentos'&&x.pac&&!(local||[]).includes(x)) continue;
-    const k=x.id||JSON.stringify(x); const ja=m.get(k); if(!ja||ts(x)>=ts(ja)) m.set(k,x); }
+    const k=listaChave(campo,x); const ja=m.get(k); if(!ja||ts(x)>=ts(ja)) m.set(k,x); }
   return [...m.values()].filter(x=>!listaTirado(campo,x)); }
 async function listasProteger(){ if(!opOnline()||typeof NV==='undefined'||!NV.cli) return 0; let mexeu=0;
   for(const campo of LISTAS_SEGURAS){ const k='s:'+campo; const loc=Array.isArray(S[campo])?S[campo]:[]; const hLoc=loc.length?nuvHash(loc):null;
@@ -12350,6 +12352,25 @@ LS.pronto.then(()=>{ try{ nuvReconciliar(); }catch(e){} try{ if(RE.cedo){ RE.ler
 
 /* v10.6.38 · a linha de botões "Romaneio: Todos / … " saiu (pedido do Tiago). O filtro continua pelo "Por romaneio". */
 (function(){ const st=document.createElement('style'); st.textContent='#op-romchips{display:none!important}'; document.head.appendChild(st); })();
+
+/* ================= v10.6.39 · Motoristas (Cadastros) não "resetam" mais pela sincronização =================
+   Caso real (24/11): o motorista de transferência voltava ao que era (CPF/origem sumiam). Motorista não tem id: a
+   junção da sincronização juntava "por conteúdo" e ficava o editado E o antigo (GIOVANNI 2x), e o aparelho que não tinha
+   mexido aplicava a versão velha por cima. Agora: chave = nome, cada alteração ganha data (em) e vale a mais nova;
+   antes de subir junta com a nuvem (listasProteger); exclusão/troca de nome só pelo botão (S.listaTirados);
+   duplicados que já existem são juntados ficando com o cadastro mais completo/mais novo. */
+const CAD_FOTO=new Map();
+function cadFoto(){ CAD_FOTO.clear(); for(const m of (S.cadMot||[])){ const {em,...r}=m||{}; CAD_FOTO.set(listaChave('cadMot',m),JSON.stringify(r)); } }
+function cadCarimbar(){ const ag=new Date().toISOString(); let n=0; for(const m of (S.cadMot||[])){ if(!m) continue; const {em,...r}=m; const j=JSON.stringify(r), k=listaChave('cadMot',m); if(CAD_FOTO.get(k)!==j){ m.em=ag; n++; } } cadFoto(); return n; }
+function cadSemDuplicado(){ const L=S.cadMot; if(!Array.isArray(L)) return 0; const g=new Map(); let tirou=0;
+  const peso=m=>(m.cpf?2:0)+((m.bases&&m.bases.length)||m.base?2:0)+(m.alias?1:0)+(m.rast?1:0);
+  for(const m of L){ const k=listaChave('cadMot',m); const ja=g.get(k); if(!ja){ g.set(k,m); continue; } tirou++;
+    const novo=String(m.em||'')>String(ja.em||'')||(!m.em&&!ja.em&&peso(m)>peso(ja)); if(novo) g.set(k,m); }
+  if(tirou) S.cadMot=[...g.values()].sort((a,b)=>String(a.nome).localeCompare(String(b.nome))); return tirou; }
+{ const _ci=cadInit; cadInit=function(){ let mud=_ci.apply(this,arguments); try{ if(cadSemDuplicado()) mud=true; }catch(e){} return mud; }; }
+{ const _cm=cadMudou; cadMudou=function(){ try{ cadCarimbar(); }catch(e){} return _cm.apply(this,arguments); }; }
+{ const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ const r=_na.apply(this,arguments); if(chave==='s:cadMot'){ try{ cadSemDuplicado(); cadFoto(); }catch(e){} } return r; }; }
+try{ (LS.pronto||Promise.resolve()).then(()=>{ try{ cadInit(); cadFoto(); }catch(e){} }); }catch(e){}
 </script>
 
 </body>

@@ -1503,5 +1503,15 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       finally{ S.romaneios=rs; S.divergencias=ds; OP.bipes=bs; renderTudo(); } });
     ok(cb.dn===1&&cb.txt&&cb.faixa,'conferência total: a fatia em divergência tinha que aparecer em laranja ('+JSON.stringify(cb)+')');
     ok(/--d:25/.test(cb.anel||''),'conferência total: o anel do total tinha que ter a fatia em divergência ('+cb.anel+')'); }
+  { /* v10.6.39 · motorista editado não volta ao antigo pela sincronização; duplicado antigo se junta */
+    const cm=await p.evaluate(()=>{ const c0=JSON.stringify(S.cadMot||[]), t0=S.listaTirados; const R={};
+      try{ S.listaTirados={}; S.cadMot=[{nome:'GIOVANNI',alias:'',cpf:'',tipo:'transf'}]; cadInit(); cadFoto(); const velho=JSON.parse(JSON.stringify(S.cadMot));
+        S.cadMot[0].cpf='123.456.789-01'; S.cadMot[0].bases=['CAJ']; cadMudou();
+        const j=nuvJuntar('s:cadMot',JSON.parse(JSON.stringify(S.cadMot)),velho); R.j=j.length+'|'+j[0].cpf+'|'+(j[0].bases||[]).join();
+        S.cadMot=[{nome:'X',alias:'',cpf:''},{nome:'X',alias:'',cpf:'111.111.111-11'}]; cadInit(); R.dup=S.cadMot.length+'|'+S.cadMot[0].cpf;
+      } finally { S.cadMot=JSON.parse(c0); S.listaTirados=t0; try{ cadFoto(); }catch(e){} }
+      return R; });
+    ok(cm.j==='1|123.456.789-01|CAJ','motoristas: a junção com a lista antiga tinha que manter a edição e não duplicar ('+cm.j+')');
+    ok(cm.dup==='1|111.111.111-11','motoristas: duplicado antigo tinha que virar um só, o mais completo ('+cm.dup+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

@@ -745,3 +745,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Medido: 1000px de altura → nível 3; 860 → 5; 720 → 6 (cabe). Abaixo de ~650px sobra rolagem como reserva.
   Testei 2 colunas para telas baixas: ficou ruim (corta nomes) e saiu.
 - Linha de botões de romaneio (`#op-romchips`) escondida a pedido do Tiago; o filtro continua pelo "Por romaneio".
+
+### v10.6.39 · Motoristas (Cadastros) voltavam ao que eram — CORRIGIDO
+- `S.cadMot` não tem id: a junção (`nuvMesclar`) usava o conteúdo como chave → editado + antigo (duplicado) e o aparelho
+  que não mexeu aplicava a versão velha. Agora `cadMot` entra em `LISTAS_SEGURAS` com `listaChave` = nome
+  (`'n:'+rpNz(nome)`); `cadCarimbar` (no `cadMudou`) põe `em` em quem mudou (compara com `CAD_FOTO`); vale o `em` mais
+  novo; exclusão, "juntar com" e troca de nome gravam `S.listaTirados.cadMot` (recadastrar depois volta — `em` mais novo
+  que a exclusão). `cadSemDuplicado` (no `cadInit` e ao receber da nuvem) junta duplicados: mais novo, senão mais completo.
