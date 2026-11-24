@@ -770,3 +770,6 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 ### v10.6.43 · % em divergência nunca aparece "0%" quando existe
 - `pctDv(v)`: ≥10 inteiro; 1–10 uma casa; <1 dois algarismos significativos (1 em 382 → 0,26%; 1 em 1 milhão → 0,0001%).
   Usado no anel (passar o mouse) e no subtítulo. A fatia do anel tem no mínimo 1% de largura para aparecer.
+
+### v10.6.44 · NF curta não é "linha sem dados" na Correção
+- `reLinhaInvalida` exigia 3–12 dígitos; NF de 1–2 dígitos (NF 87) agora vale quando a linha tem cliente e cidade.

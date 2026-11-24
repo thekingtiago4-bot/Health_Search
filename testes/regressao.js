@@ -1532,5 +1532,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         return {a,b,nfs:OP.bipes.map(x=>x.nf+':'+x.status).sort().join(',')}; }
       finally{ S.romaneios=rs; OP.bipes=bs; renderTudo(); } });
     ok(nc.a&&nc.b&&nc.nfs==='5:ok,87:ok','marcar à mão: NF de 1–2 dígitos tinha que ser marcada ('+JSON.stringify(nc)+')'); }
+  { const li=await p.evaluate(()=>[reLinhaInvalida({nf:'87',cli:'ASSOCIACAO PRUDENTINA',cid:'PRESIDENTE PRUDENTE'}),reLinhaInvalida({nf:'87',cli:'',cid:''}),reLinhaInvalida({nf:'01/11/2026 a 30/11',cli:'X',cid:'Y'})].join());
+    ok(li==='false,true,true','correção: NF 87 com cliente e cidade é linha válida; lixo continua inválido ('+li+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

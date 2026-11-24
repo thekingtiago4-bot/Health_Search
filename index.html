@@ -4355,7 +4355,9 @@ document.addEventListener('keydown',e=>{ if(ED.on&&e.key==='Escape'&&!document.q
 
 /* ---------- aba Correção ---------- */
 const reSemNF=v=>/^\s*(N\s*\/\s*A|S\s*\/\s*N|SEM\s*NF)\s*$/i.test(String(v||''));
-const reLinhaInvalida=l=>{ const nf=String(l.nf||''); if(reSemNF(nf)) return !String(l.cid||'').trim(); return /\d{2}\/\d{2}\/\d{2,4}/.test(nf)||!/^\d{3,12}$/.test(z(nf))||!String(l.cid||'').trim(); };
+const reLinhaInvalida=l=>{ const nf=String(l.nf||''); if(reSemNF(nf)) return !String(l.cid||'').trim();
+  /* v10.6.44: NF de 1–2 dígitos existe (ex.: NF 87) — vale quando a linha tem cliente e cidade */
+  if(/^\d{1,2}$/.test(z(nf))) return !String(l.cli||'').trim()||!String(l.cid||'').trim(); return /\d{2}\/\d{2}\/\d{2,4}/.test(nf)||!/^\d{3,12}$/.test(z(nf))||!String(l.cid||'').trim(); };
 function corItens(){ const out={geo:[],fora:[],nrec:[],reMot:[],reSemMot:[],reBase:[],ret:[],sus:0,inval:[]};
   try{ out.geo=geoParaConferir(); }catch(e){}
   const vist=new Set();
@@ -4464,7 +4466,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.43', HS_DATA='24/11/2026';
+const HS_VERSAO='10.6.44', HS_DATA='24/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
