@@ -4464,7 +4464,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.40', HS_DATA='24/11/2026';
+const HS_VERSAO='10.6.41', HS_DATA='24/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9066,7 +9066,7 @@ function reJaLancada(k,d){ try{ const D=RE.ler(); const L=D.dias[d]||[]; const k
 { const _le=opLerEtiqueta; opLerEtiqueta=function(p){ if(p&&p.espCaj&&p.nfs&&p.nfs[0]&&!OP.releitura){ const nf=opK(p.nfs[0]); const idx=opIndice();
       OP.extra={dest:p.dest,cid:p.cid,tot:p.tot,nf,ped:''}; if(idx.nf.has(nf)){ opLer([nf],'texto'); return true; } opLer(['NF'+nf],'texto'); return true; } return _le(p); }; }
 /* "NF123" digitado ou vindo da etiqueta = procurar só como nota fiscal */
-{ const _oi=opInterpretar; opInterpretar=function(t){ const s=String(t||'').trim(); const m=s.match(/^NF\s*0*(\d{3,9})$/i); if(m) return {tipo:'danfe',nf:m[1],codigo:s}; return _oi(t); }; }
+{ const _oi=opInterpretar; opInterpretar=function(t){ const s=String(t||'').trim(); const m=s.match(/^NF\s*0*(\d{1,9})$/i); if(m) return {tipo:'danfe',nf:m[1],codigo:s}; /* v10.6.41: NF de 1–2 dígitos também */ return _oi(t); }; }
 
 /* v7.9.11: sem nota/fora — procura cliente/cidade/volumes em qualquer romaneio (carregados e Banco) que tenha esses dados */
 function opAcharDados(ped,nf){ const P=opK(ped), N=opK(nf); const ok=x=>x&&(x.dest||x.cid); const bate=x=>(N&&opK(x.nf)===N)||(P&&opK(x.ped)===P);
@@ -9148,7 +9148,8 @@ async function opMarcarMao(x,modo,semDialogo){ const dv=modo==='dv'; const tot=M
   if(dv&&chegou>=tot){ chegou=tot-1<0?0:(tot>1?tot-1:0); if(tot===1){ chegou=0; faltaram=[1]; } }
   const cod=String(opK(x.nf)||opK(x.ped)||''); if(!cod) return false;
   const bruto=String(x.nf||x.ped||'').replace(/\D/g,'');
-  const txt=bruto.length>=4?bruto:(cod.length>=3?('NF'+cod):cod);
+  /* v10.6.41: NF curta (ex.: NF 87) não marcava — a leitura ignora número com menos de 3 dígitos; agora vai como "NF87" */
+  const nfk=opK(x.nf); const txt=nfk?(bruto.length>=4?bruto:('NF'+nfk)):(bruto||cod);
   OP.extra={tot,dest:x.dest||'',cid:x.cid||''};
   /* v10.5.5: marcar à mão é decisão de quem clicou — não pergunta "É outra caixa?" quando outro conferente já bipou parte da nota */
   OP.forcarOutra=true; const antes=OP.bipes.length; try{ opLer([txt],'mão'); }catch(e){ console.error(e); } OP.forcarOutra=false;

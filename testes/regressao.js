@@ -1525,5 +1525,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(rv.nova===1234.56,'reentrega: o valor do XML tinha que ir junto ('+rv.nova+')');
     ok(rv.antiga===99.9,'reentrega: a antiga sem valor tinha que ser completada pelo XML ('+rv.antiga+')');
     ok(rv.mao===55,'reentrega: valor digitado à mão não pode mudar ('+rv.mao+')'); }
+  { /* v10.6.41 · marcar à mão nota de NF curta (NF 87) */
+    const nc=await p.evaluate(async()=>{ const h=hojeISO(), arq='x '+h.split('-').reverse().join('-')+'.pdf', rs=S.romaneios, bs=OP.bipes;
+      try{ S.romaneios=[{id:'nc1',numero:'EXTRA I',base:'MESA',arquivo:arq,rows:[{nf:'87',ped:'146190',vol:'1',dest:'ASSOCIACAO PRUDENTINA'},{nf:'5',ped:'',vol:'1',dest:'SEM PEDIDO'}]}]; OP.dia=h; OP.bipes=[]; renderTudo();
+        const a=await opMarcarMao(S.romaneios[0].rows[0],'ok',true); const b=await opMarcarMao(S.romaneios[0].rows[1],'ok',true);
+        return {a,b,nfs:OP.bipes.map(x=>x.nf+':'+x.status).sort().join(',')}; }
+      finally{ S.romaneios=rs; OP.bipes=bs; renderTudo(); } });
+    ok(nc.a&&nc.b&&nc.nfs==='5:ok,87:ok','marcar à mão: NF de 1–2 dígitos tinha que ser marcada ('+JSON.stringify(nc)+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
