@@ -823,3 +823,15 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   (`banned_until=infinity`) e derruba `auth.sessions`. Cópia do perfil em `hs_versoes` (`perfil:<id>`). Nada em bipes/sync/auditoria.
 - Aba Usuários: botão Excluir com confirmação; excluídos escondidos (botão "Mostrar excluídos"); `NV.lista` = linhas visíveis
   (a coluna Cargo casa linha por índice). `nvTraduz`: "banned" → "Este acesso foi excluído".
+
+### v10.6.50 (26/11/2026) — barra de ícones, tela do conferente, insistência offline, trava no banco
+- **Trava no banco** (`2026-11-26-001-trava-nunca-diminui.sql`): gatilho `hs_sync_nunca_diminui` (BEFORE UPDATE) — clientesReq/
+  agendamentos/cadMot: item que some volta, menos o excluído no botão (`s:listaTirados`, chave `hs_chave_item`); gsSnap, listaTirados,
+  reTirados: só somam; nenhuma dessas chaves pode ser apagada (`hs_sync_nao_apaga` recusa DELETE). Vale para app velho também.
+- **Offline**: `opFila` a cada 8 s enquanto houver fila; selo `#op-fila-selo` "N bipes guardados — sobem sozinhos" (toque = enviar).
+- **Barra de ícones** (tela > 860 px, `html.rail-ic`): `ricMontar` (nome curto `RIC_CURTO` em `.lbl[data-curto]`, selos em laranja,
+  zeros escondidos), o que não cabe vai para `#ric-mais`/`#ric-pop` (que também recebe `.resumo` e `#esp-st` enquanto aberto).
+  `railAjustar` desligado nesse modo. Celular sem mudança.
+- **Conferente** (`html[data-cf="1"]`, cargo conferente): `CARGO_TELAS.conferente=[cfinicio,operacao,conftotal,buscar,geo]`, geo
+  liberado só para consulta; tela `#t-cfinicio` (opção B), topo `#cf-topo` com voltar e selo de conexão; `opMarcarMao/opDesbipar/
+  opApagarLote` recusam; esconde ✔/⚠/✕, busca de marcar, Publicar/Editor/Alimentar do mapa, sino e Salvar.

@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 25/11/2026 21:59 · versão 10.6.49
+Gerado em 25/11/2026 22:41 · versão 10.6.50
 
 
 ## ab
@@ -153,8 +153,15 @@ Gerado em 25/11/2026 21:59 · versão 10.6.49
 - `celulasParaLinha` — linha 1845
 
 ## cf
+- `cfAplicar` — linha 12807
+- `cfAtivo` — linha 12730
 - `cfBuscarDest` — linha 5798
 - `cfDestXml` — linha 5796
+- `cfIco` — linha 12772
+- `cfInicioDesenhar` — linha 12782
+- `cfSelo` — linha 12773
+- `cfTopo` — linha 12775
+- `cfTravas` — linha 12804
 
 ## ch
 - `checar` — linha 4485
@@ -815,6 +822,7 @@ Gerado em 25/11/2026 21:59 · versão 10.6.49
 - `opFaltaAnt` — linha 5708
 - `opFicha` — linha 7902
 - `opFila` — linha 5628
+- `opFilaSelo` — linha 12635
 - `opForaAtualizar` — linha 6729
 - `opForaEditar` — linha 7928
 - `opForaFiltro` — linha 5699
@@ -1056,6 +1064,15 @@ Gerado em 25/11/2026 21:59 · versão 10.6.49
 - `resolver` — linha 1208
 - `resolverCidade` — linha 3159
 - `resumoFontes` — linha 2100
+
+## ri
+- `ricAbrir` — linha 12706
+- `ricBotoes` — linha 12684
+- `ricDevolver` — linha 12713
+- `ricFechar` — linha 12716
+- `ricMontar` — linha 12686
+- `ricPopDesenhar` — linha 12703
+- `ricVisivel` — linha 12685
 
 ## rm
 - `rmXmlStatus` — linha 8914

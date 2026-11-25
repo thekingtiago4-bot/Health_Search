@@ -4476,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.49', HS_DATA='25/11/2026';
+const HS_VERSAO='10.6.50', HS_DATA='25/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12626,6 +12626,189 @@ async function listasConferir(forcar){ if(!opOnline()||typeof NV==='undefined'||
   return mexeu; }
 { const _ns=nuvSinc; nuvSinc=async function(){ if(!NUV.rodando){ try{ await listasConferir(); }catch(e){} } return _ns.apply(this,arguments); }; }
 setTimeout(async()=>{ try{ if(LS.pronto) await LS.pronto; }catch(e){} try{ await listasConferir(true); }catch(e){} },5000);
+/* ================= v10.6.50 · Sem internet: o app insiste até o bipe subir =================
+   Bipe feito sem sinal fica guardado no aparelho (fila). Antes: tentava a cada 45 s ou quando o aparelho avisava
+   que a internet voltou (nem sempre avisa em Wi-Fi fraco). Agora: enquanto tiver bipe guardado, tenta a cada 8 s;
+   e aparece um selo "N bipes guardados — sobem sozinhos" em qualquer tela até tudo subir. */
+setInterval(()=>{ try{ if(document.hidden&&!OP_FILA_INSISTIR_OCULTO) return; if(opEnviando) return; if(opFilaLer().length) opFila(); }catch(e){} },8000);
+var OP_FILA_INSISTIR_OCULTO=true;
+function opFilaSelo(){ try{ const n=opFilaLer().length; let el=document.getElementById('op-fila-selo');
+    if(!n){ if(el) el.remove(); return; }
+    if(!el){ el=document.createElement('div'); el.id='op-fila-selo'; el.setAttribute('role','status'); document.body.appendChild(el);
+      el.addEventListener('click',()=>{ try{ opFila(); toast('Tentando enviar agora…'); }catch(e){} }); }
+    el.innerHTML=`⚠ <b>${fmtN(n)}</b> bipe(s) guardado(s) no aparelho — sobem sozinhos${OP_ULT_ERRO?' <small>(sem conexão com o banco)</small>':''}`; }catch(e){} }
+setInterval(opFilaSelo,2000);
+(function(){ const st=document.createElement('style'); st.textContent='#op-fila-selo{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:1250;background:var(--amarBg);color:var(--amarTxt);border:1.5px solid var(--amar);border-radius:999px;padding:7px 14px;font-size:.85rem;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer;max-width:calc(100vw - 32px);text-align:center}#op-fila-selo small{font-weight:500;opacity:.85}'; document.head.appendChild(st); })();
+/* ================= v10.6.50 · Barra lateral só com ícones (opção 2 escolhida pelo Tiago, 25/11) =================
+   No computador (tela > 860 px) a barra vira uma coluna fina: ícone grande + nome curto embaixo + selo de aviso.
+   O que não cabe na altura vai para o "⋯ Mais" (que também guarda usuário, versão, espaço e Buscar atualização).
+   Os botões continuam os MESMOS (só muda o visual), então tudo que já abria uma tela continua igual.
+   No celular (≤ 860 px) nada muda: continua o menu ☰. */
+const RIC_CURTO={operacao:'NexBip',conftotal:'Conferência',buscar:'Buscar',viaminas:'Via Minas',reentregas:'Reentregas',divergencias:'Divergências',agenda:'Agenda',feriados:'Feriados',romaneios:'Romaneios',geo:'Mapa',checklist:'Checklist',gestor:'Painel',ajustes:'Ajustes',manual:'Manual',correcao:'Correção',cadastros:'Cadastros',usuarios:'Usuários',backups:'Backups',retiradas:'Retiradas',fora:'Fora rom.',historico:'Histórico'};
+const RIC={mq:matchMedia('(min-width:861px)'),aberto:false};
+(function(){ const st=document.createElement('style'); st.textContent=`
+@media (min-width:861px){
+ html.rail-ic .app{grid-template-columns:92px 1fr!important}
+ html.rail-ic body.so-mapa .app{grid-template-columns:1fr!important}
+ html.rail-ic .rail{padding:12px 6px 8px!important;align-items:center;overflow:visible!important;gap:4px}
+ html.rail-ic .rail .marca{justify-content:center;margin:0 0 6px!important;padding:0!important}
+ html.rail-ic .rail .marca > :not(:first-child){display:none!important}
+ html.rail-ic #nuv-st{font-size:0!important;padding:0!important;width:14px;height:14px;min-width:0;border-radius:50%;margin:0 0 6px!important;overflow:hidden}
+ html.rail-ic #nuv-st::before{font-size:0}
+ html.rail-ic #esp-st,html.rail-ic .rail > .resumo,html.rail-ic .nav .ng2,html.rail-ic .nav .nav-grupo{display:none!important}
+ html.rail-ic #nv-offline{font-size:0!important;width:14px;height:14px;padding:0!important;border-radius:50%;margin:0 0 6px!important}
+ html.rail-ic .nav{width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;overflow:visible!important}
+ html.rail-ic .nav .ng2-box{display:contents!important}
+ html.rail-ic .nav button[data-tela]{flex-direction:column!important;gap:3px!important;width:80px;box-sizing:border-box;padding:7px 2px!important;font-size:11.5px!important;font-weight:600!important;text-align:center;justify-content:center;line-height:1.1;position:relative;border-radius:12px}
+ html.rail-ic .nav button[data-tela] .ico{width:25px!important;height:25px!important;margin:0!important}
+ html.rail-ic .nav button[data-tela] .lbl{font-size:0!important;white-space:nowrap}
+ html.rail-ic .nav button[data-tela] .lbl::after{content:attr(data-curto);font-size:11.5px}
+ html.rail-ic .nav button[data-tela] .qt{position:absolute;top:2px;right:8px;margin:0!important;font-size:10.5px!important;line-height:16px;min-width:18px;padding:0 5px!important;background:var(--ag)!important;color:#062024!important}
+ html.rail-ic .nav button[data-tela].ric-fora{display:none!important}
+ html.rail-ic .nav button[data-tela] .qt.ric-zero{display:none!important}
+ html.rail-ic #ric-mais.on{background:rgba(110,225,220,.14);color:#fff}
+ html.rail-ic #ric-mais{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;width:80px;padding:7px 2px;border-radius:12px;color:#D5ECEA;font-size:11.5px;font-weight:600;position:relative}
+ html.rail-ic #ric-mais b{font-size:22px;line-height:25px;letter-spacing:2px}
+ html.rail-ic #ric-mais.on,html.rail-ic #ric-mais:hover,html.rail-ic .nav button[data-tela]:hover{background:rgba(110,225,220,.12)}
+ html.rail-ic #ric-mais .qt{position:absolute;top:2px;right:8px;font-size:10.5px;line-height:16px;min-width:18px;padding:0 5px;border-radius:20px;background:var(--ag);color:#062024;text-align:center}
+ #ric-pop{position:fixed;left:96px;bottom:10px;z-index:2000;width:290px;max-height:calc(100vh - 20px);overflow:auto;background:var(--sup);color:var(--tinta);border:1.5px solid var(--linha);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.35);padding:8px}
+ #ric-pop .ric-it{all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;padding:9px 10px;border-radius:10px;font-weight:600;font-size:.95rem}
+ #ric-pop .ric-it:hover,#ric-pop .ric-it.on{background:var(--tealBg)}
+ #ric-pop .ric-it .ico{width:20px;height:20px}
+ #ric-pop .ric-it .qt{margin-left:auto;font-size:.75rem;background:var(--ag);color:#062024;border-radius:20px;padding:0 7px}
+ #ric-pop .ric-tit{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mudo);font-weight:700;padding:6px 10px 4px}
+ #ric-pop .resumo{display:block!important;border-top:1px solid var(--linha);margin-top:6px;padding:10px 6px 4px;color:var(--tinta2)}
+ #ric-pop .resumo *{color:inherit}
+ #ric-pop #esp-st{display:inline-flex!important;margin:6px 10px}
+}`; document.head.appendChild(st); })();
+function ricBotoes(){ return [...document.querySelectorAll('.nav button[data-tela]')]; }
+function ricVisivel(b){ if(b.hidden) return false; const box=b.closest('[hidden]'); if(box) return false; const cs=getComputedStyle(b); return !(cs.display==='none'&&!b.classList.contains('ric-fora')); }
+function ricMontar(){ const html=document.documentElement; const nav=document.querySelector('.nav'), rail=document.querySelector('.rail'); if(!nav||!rail) return;
+  const liga=RIC.mq.matches&&!document.body.classList.contains('so-mapa');
+  if(!liga){ if(html.classList.contains('rail-ic')){ html.classList.remove('rail-ic'); ricDevolver(); for(const b of ricBotoes()) b.classList.remove('ric-fora'); const m=document.getElementById('ric-mais'); if(m) m.remove(); ricFechar(); } return; }
+  html.classList.add('rail-ic'); try{ rail.classList.remove('rc1','rc2','rc3','rc4','rc5','rc6'); }catch(e){}
+  for(const q of document.querySelectorAll('.nav button[data-tela] .qt')) q.classList.toggle('ric-zero',/^\s*0\s*$/.test(q.textContent||''));
+  for(const b of ricBotoes()){ const l=b.querySelector('.lbl'); if(l){ const c=RIC_CURTO[b.dataset.tela]||l.textContent.trim(); if(l.dataset.curto!==c) l.dataset.curto=c; if(!b.title) b.title=l.textContent.trim(); } }
+  let mais=document.getElementById('ric-mais'); if(!mais){ mais=document.createElement('button'); mais.id='ric-mais'; mais.type='button'; mais.title='Mais telas, usuário e versão'; mais.innerHTML='<b>⋯</b>Mais<span class="qt" hidden></span>'; mais.addEventListener('click',e=>{ e.stopPropagation(); RIC.aberto?ricFechar():ricAbrir(); }); }
+  if(mais.parentNode!==nav||nav.lastElementChild!==mais) nav.appendChild(mais);
+  /* quantos cabem: altura da barra menos o que vem antes da lista e o próprio "Mais" */
+  const vis=ricBotoes().filter(b=>{ b.classList.remove('ric-fora'); return ricVisivel(b); });
+  const topo=nav.getBoundingClientRect().top, alt=window.innerHeight-topo-8, cada=Math.max(54,(vis[0]&&vis[0].getBoundingClientRect().height)||58)+2;
+  const cabem=Math.max(3,Math.floor(alt/cada)-1);
+  const fora=vis.length>cabem+1?vis.slice(cabem):[]; for(const b of fora) b.classList.add('ric-fora');
+  const ativoFora=fora.some(b=>b.getAttribute('aria-current')==='page'); mais.classList.toggle('on',ativoFora||RIC.aberto);
+  const soma=fora.reduce((a,b)=>{ const q=b.querySelector('.qt'); const n=q&&!q.hidden?parseInt(q.textContent,10):0; return a+(isFinite(n)?n:0); },0);
+  const qm=mais.querySelector('.qt'); qm.hidden=!soma; qm.textContent=soma>99?'99+':String(soma);
+  RIC.fora=fora; if(RIC.aberto) ricPopDesenhar(); }
+function ricPopDesenhar(){ const p=document.getElementById('ric-pop'); if(!p) return; const fora=RIC.fora||[];
+  let box=p.querySelector('.ric-lista'); if(!box){ box=document.createElement('div'); box.className='ric-lista'; p.prepend(box); }
+  box.innerHTML=(fora.length?'<div class="ric-tit">Mais telas</div>':'')+fora.map(b=>{ const q=b.querySelector('.qt'); const ico=b.querySelector('.ico'); return `<button class="ric-it${b.getAttribute('aria-current')==='page'?' on':''}" type="button" data-ric="${b.dataset.tela}">${ico?ico.outerHTML:''}<span>${esc(b.title||b.dataset.tela)}</span>${q&&!q.hidden?`<span class="qt">${esc(q.textContent)}</span>`:''}</button>`; }).join(''); }
+function ricAbrir(){ RIC.aberto=true; let p=document.getElementById('ric-pop'); if(!p){ p=document.createElement('div'); p.id='ric-pop'; p.setAttribute('role','menu'); document.body.appendChild(p);
+    p.addEventListener('click',e=>{ const it=e.target.closest('[data-ric]'); if(!it) return; const b=document.querySelector(`.nav button[data-tela="${it.dataset.ric}"]`); ricFechar(); if(b) b.click(); }); }
+  ricPopDesenhar();
+  /* usuário, versão, espaço e "Buscar atualização" moram aqui enquanto a barra é fina (são os mesmos elementos, só mudam de lugar) */
+  const r=document.querySelector('.rail > .resumo'); if(r){ RIC.resumoPai=r.parentNode; RIC.resumoProx=r.nextSibling; p.appendChild(r); }
+  const es=document.getElementById('esp-st'); if(es&&es.parentNode!==p){ RIC.espPai=es.parentNode; RIC.espProx=es.nextSibling; p.insertBefore(es,p.querySelector('.resumo')); }
+  const m=document.getElementById('ric-mais'); if(m) m.classList.add('on'); }
+function ricDevolver(){ const p=document.getElementById('ric-pop'); if(!p) return;
+  const r=p.querySelector('.resumo'); if(r&&RIC.resumoPai) RIC.resumoPai.insertBefore(r,RIC.resumoProx&&RIC.resumoProx.parentNode===RIC.resumoPai?RIC.resumoProx:null);
+  const es=p.querySelector('#esp-st'); if(es&&RIC.espPai) RIC.espPai.insertBefore(es,RIC.espProx&&RIC.espProx.parentNode===RIC.espPai?RIC.espProx:null); }
+function ricFechar(){ RIC.aberto=false; ricDevolver(); const p=document.getElementById('ric-pop'); if(p) p.remove(); const m=document.getElementById('ric-mais'); if(m) m.classList.toggle('on',(RIC.fora||[]).some(b=>b.getAttribute('aria-current')==='page')); }
+document.addEventListener('click',e=>{ if(!RIC.aberto) return; if(e.target.closest('#ric-pop,#ric-mais')) return; ricFechar(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&RIC.aberto) ricFechar(); });
+{ const _ra=window.railAjustar; window.railAjustar=function(){ if(document.documentElement.classList.contains('rail-ic')){ try{ document.querySelector('.rail').classList.remove('rc1','rc2','rc3','rc4','rc5','rc6'); }catch(e){} return; } if(_ra) return _ra.apply(this,arguments); }; }
+{ let t=null; const ag=()=>{ clearTimeout(t); t=setTimeout(ricMontar,80); }; addEventListener('resize',ag); try{ RIC.mq.addEventListener('change',ag); }catch(e){}
+  setTimeout(ricMontar,300); setTimeout(ricMontar,1500); setInterval(ricMontar,2000);
+  document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('.nav button[data-tela]')) setTimeout(ricMontar,60); }); }
+/* ================= v10.6.50 · Tela do CONFERENTE (opção B escolhida pelo Tiago, 25/11) =================
+   Quem tem o cargo Conferente não vê barra lateral: abre numa tela de início com o resumo do dia e 4 cartões
+   grandes (NexBip, Conferência, Buscar, Geolocalização). Cada tela tem "‹ voltar" no topo e o selo de conexão.
+   Conferência e Geolocalização são SÓ CONSULTA: sem ✔/⚠/✕ de baixa manual, sem desbipar, sem editar mapa.
+   A trava não é só visual: opMarcarMao/opDesbipar/opApagarLote recusam para o conferente. */
+const CF={tit:{cfinicio:'Health Search',operacao:'NexBip',conftotal:'Conferência',buscar:'Buscar',geo:'Geolocalização'}};
+CARGO_TELAS.conferente=['cfinicio','operacao','conftotal','buscar','geo'];
+function cfAtivo(){ try{ return cargoLogado()&&cargoMeu()==='conferente'; }catch(e){ return false; } }
+{ const _cp=cargoPodeVer; cargoPodeVer=function(tela,c){ c=c||cargoMeu(); if(c==='conferente') return CARGO_TELAS.conferente.includes(tela); return _cp.apply(this,arguments); }; }
+{ const _ct=cargoTelaInicial; cargoTelaInicial=function(){ return cfAtivo()?'cfinicio':_ct.apply(this,arguments); }; }
+/* travas de verdade (não só esconder botão) */
+const cfRecusa=()=>{ toast('Só consulta: dar baixa ou desfazer é com o líder/supervisor.'); return Promise.resolve(false); };
+{ const _f=opMarcarMao; opMarcarMao=function(){ return cfAtivo()?cfRecusa():_f.apply(this,arguments); }; }
+{ const _f=opDesbipar; opDesbipar=function(){ return cfAtivo()?cfRecusa():_f.apply(this,arguments); }; }
+{ const _f=opApagarLote; opApagarLote=function(){ return cfAtivo()?cfRecusa():_f.apply(this,arguments); }; }
+(function(){ const st=document.createElement('style'); st.textContent=`
+html[data-cf="1"] .rail,html[data-cf="1"] #ric-pop{display:none!important}
+html[data-cf="1"] .app{grid-template-columns:1fr!important;display:block!important}
+html[data-cf="1"] main,html[data-cf="1"] .principal{padding-top:0!important}
+#cf-topo{display:none}
+html[data-cf="1"] #cf-topo{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:70;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;background:var(--papel);border-bottom:1px solid var(--linha)}
+#cf-topo .cf-logo{width:36px;height:36px;border-radius:10px;background:var(--teal);color:var(--priTxt);display:grid;place-items:center;font-weight:800;flex:none}
+#cf-topo .cf-volta{all:unset;cursor:pointer;width:38px;height:38px;border-radius:12px;background:var(--sup);border:1.5px solid var(--linha);display:grid;place-items:center;font-size:22px;font-weight:700;flex:none}
+#cf-topo .cf-nome b{display:block;font-size:1.1rem;line-height:1.2}#cf-topo .cf-nome small{color:var(--mudo);font-size:.8rem}
+#cf-topo .cf-selo{margin-left:auto;font-size:.78rem;font-weight:700;padding:5px 11px;border-radius:999px;white-space:nowrap;background:var(--okBg);color:var(--ok)}
+#cf-topo .cf-selo.amar{background:var(--amarBg);color:var(--amarTxt)}
+#t-cfinicio{max-width:720px!important;margin:0 auto!important;padding:14px 16px 40px!important}
+html[data-cf="1"] #cf-topo{max-width:none}
+#t-cfinicio .cf-ola{font-size:1.6rem;font-weight:700;margin:6px 2px 2px}
+#t-cfinicio .cf-dia{color:var(--mudo);margin:0 2px 14px}
+#t-cfinicio .cf-card{background:var(--sup);border:1.5px solid var(--linha);border-radius:16px;padding:16px}
+#t-cfinicio .cf-card .cf-l{display:flex;justify-content:space-between;align-items:baseline;font-weight:700}
+#t-cfinicio .cf-card .cf-l b{font-size:1.6rem}
+#t-cfinicio .cf-barra{height:14px;border-radius:999px;background:var(--linha);overflow:hidden;display:flex;margin:10px 0 8px}
+#t-cfinicio .cf-barra i{display:block;height:100%}
+#t-cfinicio .cf-grade{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+#t-cfinicio .cf-tile{all:unset;cursor:pointer;box-sizing:border-box;border-radius:20px;padding:18px 16px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;border:1.5px solid var(--linha);background:var(--sup)}
+#t-cfinicio .cf-tile:focus-visible{outline:2px solid var(--teal)}
+#t-cfinicio .cf-tile .cf-ic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:var(--sup2)}
+#t-cfinicio .cf-tile .cf-ic .ico{width:28px;height:28px}
+#t-cfinicio .cf-tile b{font-size:1.2rem;display:block}#t-cfinicio .cf-tile small{color:var(--mudo)}
+#t-cfinicio .cf-tile.pri{background:var(--aqua);border-color:var(--aqua);color:#062024}#t-cfinicio .cf-tile.pri small{color:#0b4a4a}#t-cfinicio .cf-tile.pri .cf-ic{background:rgba(6,32,36,.12)}
+#t-cfinicio .cf-pe{margin-top:22px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--mudo);font-size:.85rem}
+html[data-cf="1"] .cf-trava{display:flex;gap:10px;align-items:center;background:var(--sup2);border:1.5px dashed var(--linha);border-radius:12px;padding:10px 12px;font-size:.9rem;color:var(--tinta2);margin:0 0 12px}
+.cf-trava{display:none}
+html[data-cf="1"] .rl-mk,html[data-cf="1"] .rl-dv,html[data-cf="1"] .rl-des,html[data-cf="1"] [data-ctb],html[data-cf="1"] #ct-busca,
+html[data-cf="1"] #geo-pub-bar,html[data-cf="1"] #geo-bt-alim,html[data-cf="1"] #ged-abrir,html[data-cf="1"] #geo-diag,html[data-cf="1"] #geo-voltar,
+html[data-cf="1"] [data-op-desbipar],html[data-cf="1"] .op-desbipar{display:none!important}
+html[data-cf="1"] .sino,html[data-cf="1"] #sino,html[data-cf="1"] #nx-sino,html[data-cf="1"] #hs-salvar{display:none!important}`; document.head.appendChild(st); })();
+function cfIco(tela){ const b=document.querySelector(`.nav button[data-tela="${tela}"] .ico`); return b?b.outerHTML:''; }
+function cfSelo(){ const n=(()=>{ try{ return opFilaLer().length; }catch(e){ return 0; } })(); const off=(typeof NV!=='undefined'&&NV.offline)||!navigator.onLine;
+  if(n) return `<span class="cf-selo amar">⚠ ${fmtN(n)} guardado(s)</span>`; if(off) return '<span class="cf-selo amar">⚠ sem internet</span>'; return '<span class="cf-selo">● online · tudo enviado</span>'; }
+function cfTopo(){ if(!cfAtivo()) return; let el=document.getElementById('cf-topo'); const main=document.querySelector('main')||document.querySelector('.app > :not(.rail)');
+  if(!el){ el=document.createElement('header'); el.id='cf-topo'; (main||document.body).prepend(el);
+    el.addEventListener('click',e=>{ if(e.target.closest('.cf-volta')) irPara('cfinicio'); }); }
+  const t=(typeof telaAtual==='function'&&telaAtual())||'cfinicio', ini=t==='cfinicio'; const p=(NV&&NV.perfil)||{};
+  const h=ini?`<div class="cf-logo">H</div><div class="cf-nome"><b>Health Search</b><small>${esc((p.nome||'').split(' ')[0])} · Conferente</small></div>${cfSelo()}`
+             :`<button class="cf-volta" type="button" aria-label="Voltar para o início">‹</button><div class="cf-nome"><b>${esc(CF.tit[t]||'')}</b></div>${cfSelo()}`;
+  if(el.dataset.h!==h){ el.innerHTML=h; el.dataset.h=h; } }
+function cfInicioDesenhar(){ const sec=document.getElementById('t-cfinicio'); if(!sec) return; const p=(NV&&NV.perfil)||{}; const nome=(p.nome||'').split(' ')[0];
+  const h=new Date().getHours(), ola=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+  let f=null; try{ f=gsFotoLer(hojeISO()); }catch(e){}
+  const dia=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit'});
+  const card=f&&f.tn?`<div class="cf-card"><div class="cf-l"><span>Conferência de hoje</span><b>${esc(typeof pctDv==='function'?String(f.pct)+'%':f.pct+'%')}</b></div>
+     <div class="cf-barra"><i style="width:${Math.max(0,Math.min(100,+f.pctOk||0))}%;background:var(--ok)"></i><i style="width:${Math.max(0,Math.min(100,+f.pctDv||0))}%;background:var(--ag)"></i></div>
+     <div class="sub">${fmtN(f.tn)} nota(s) · ${fmtN(f.fn||0)} faltando · ${fmtN(f.dn||0)} em divergência</div></div>`
+   :`<div class="cf-card"><div class="cf-l"><span>Conferência de hoje</span></div><div class="sub" style="margin-top:6px">Nenhum romaneio do dia carregado ainda.</div></div>`;
+  const tile=(t,cl,tit,sub)=>`<button class="cf-tile${cl}" type="button" data-cf-ir="${t}"><span class="cf-ic">${cfIco(t)}</span><span><b>${tit}</b><small>${sub}</small></span></button>`;
+  sec.innerHTML=`<div class="cf-ola">${ola}${nome?', '+esc(nome):''}</div><div class="cf-dia">${esc(dia.charAt(0).toUpperCase()+dia.slice(1))}${f&&f.roms?' · '+fmtN(f.roms)+' romaneio(s)':''}</div>${card}
+   <div class="cf-grade">${tile('operacao',' pri','NexBip','Bipar volumes')}${tile('conftotal','','Conferência','Ver o que falta')}${tile('buscar','','Buscar','NF, pedido, cliente')}${tile('geo','','Geolocalização','Região e base')}</div>
+   <div class="cf-pe">Versão ${esc(HS_VERSAO)} · <button class="btn mini" type="button" data-cf-atu="1">Buscar atualização</button><button class="btn mini" type="button" data-cf-sair="1">Sair</button></div>`; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-cf-ir],[data-cf-atu],[data-cf-sair]'); if(!b) return;
+  if(b.dataset.cfIr) return irPara(b.dataset.cfIr);
+  if(b.dataset.cfAtu){ const o=document.getElementById('app-ver-bt'); if(o) o.click(); return; }
+  if(b.dataset.cfSair){ const o=document.getElementById('nv-sair'); if(o) o.click(); } });
+{ const _ir=irPara; irPara=function(t){
+    if(t==='cfinicio'){ if(!document.getElementById('t-cfinicio')){ const ref=document.querySelector('.tela'); const s=document.createElement('section'); s.className='tela'; s.id='t-cfinicio'; s.hidden=true; if(ref) ref.parentNode.insertBefore(s,ref); else document.body.appendChild(s); }
+      $$('.nav button').forEach(b=>b.removeAttribute('aria-current')); $$('.tela').forEach(s=>s.hidden=s.id!=='t-cfinicio'); try{ fecharSug(); }catch(er){} cfInicioDesenhar(); cfTopo(); window.scrollTo(0,0); return; }
+    if(cfAtivo()&&!CARGO_TELAS.conferente.includes(t)) t='cfinicio';
+    if(t==='cfinicio') return irPara('cfinicio');
+    const r=_ir.apply(this,[t]); try{ cfTopo(); cfTravas(); }catch(e){} return r; }; }
+function cfTravas(){ if(!cfAtivo()) return;
+  for(const [id,txt] of [['t-conftotal','<b>Só consulta.</b> Dar baixa à mão é com o líder/supervisor.'],['t-geo','<b>Só consulta.</b> Digite a cidade para ver região e base.']]){ const s=document.getElementById(id); if(!s||s.querySelector('.cf-trava')) continue;
+    const h=s.querySelector('h1,h2'); const d=document.createElement('div'); d.className='cf-trava'; d.innerHTML='🔒 <span>'+txt+'</span>'; (h&&h.parentNode===s?h:s.firstElementChild||s).insertAdjacentElement('afterend',d); } }
+function cfAplicar(){ const on=cfAtivo(); const html=document.documentElement; if(on!==(html.dataset.cf==='1')){ if(on) html.dataset.cf='1'; else delete html.dataset.cf; }
+  if(!on){ const t=document.getElementById('cf-topo'); if(t) t.remove(); return; }
+  cfTopo(); cfTravas(); const s=document.getElementById('t-cfinicio'); if(s&&!s.hidden) cfInicioDesenhar(); }
+{ const _ca=cargoAplicar; cargoAplicar=function(){ const r=_ca.apply(this,arguments); try{ cfAplicar(); }catch(e){} return r; }; }
+setInterval(()=>{ try{ cfAplicar(); }catch(e){} },3000);
 </script>
 
 </body>

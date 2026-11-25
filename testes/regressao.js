@@ -1618,5 +1618,17 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         return [linhas,temExc,meu,/Nada do que ele fez é apagado/.test(txt),rpc,comExc,/histórico mantido/.test(exTxt)].join('|'); }
       finally{ NV.cli=cli; NV.user=us; Store.modo=mo; NV.perfil=pf; NV.verExcluidos=false; irPara('operacao'); } });
     ok(ux==='2|true|false|true|hs_excluir_usuario:b|3|true','usuários: excluir acesso com confirmação, sem apagar histórico ('+ux+')'); }
+  { const cf=await p.evaluate(async()=>{ const mo=Store.modo, us=NV.user, pf=NV.perfil, cg=JSON.stringify(S.cargos||{}); const R=[];
+      try{ Store.modo='nuvem'; NV.user={id:'u-cf'}; NV.perfil={id:'u-cf',nome:'Carlos',papel:'usuario',ativo:true}; S.cargos=Object.assign({},S.cargos,{'u-cf':'conferente'}); cargoAplicar();
+        irPara(cargoTelaInicial()); R.push(telaAtual()); irPara('correcao'); R.push(telaAtual()); irPara('conftotal'); R.push(telaAtual());
+        R.push(await opMarcarMao({nf:'1',vol:'1'},'ok',true)); R.push(await opDesbipar({nf:'1'}));
+        R.push(document.documentElement.dataset.cf||''); R.push(!!document.querySelector('#t-conftotal .cf-trava'));
+        S.cargos['u-cf']='lider'; cargoAplicar(); R.push(document.documentElement.dataset.cf||'-'); }
+      finally{ Store.modo=mo; NV.user=us; NV.perfil=pf; S.cargos=JSON.parse(cg); try{ cargoAplicar(); }catch(e){} irPara('operacao'); }
+      return R.join('|'); });
+    ok(cf==='cfinicio|cfinicio|conftotal|false|false|1|true|-','conferente: tela própria, só 4 telas, conferência só consulta ('+cf+')'); }
+  { const sel=await p.evaluate(()=>{ const f0=LS.getItem(OP_FILA); try{ LS.setItem(OP_FILA,JSON.stringify([{local_id:'z1'},{local_id:'z2'}])); opFilaSelo(); const a=(document.getElementById('op-fila-selo')||{}).textContent||'';
+        LS.setItem(OP_FILA,'[]'); opFilaSelo(); return /2/.test(a)+'|'+!document.getElementById('op-fila-selo'); } finally{ LS.setItem(OP_FILA,f0||'[]'); } });
+    ok(sel==='true|true','sem internet: selo mostra bipes guardados e some quando sobem ('+sel+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
