@@ -780,3 +780,24 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Colunas que estavam sempre em branco ganharam fonte: CNPJ/CPF, CEP, endereço, número, bairro, valor produtos, chave.
 - `opXmlLer` passa a guardar `rem` (emitente), `peso` (pesoB) e `vprod` — XMLs já importados antes não têm remetente/peso.
 - Número do XML vai como texto BR ("12,345") porque a planilha lê no formato brasileiro (ponto = milhar).
+
+### v10.6.46 (25/11/2026) — a mais nova substitui a antiga, nada some
+- **"98 bipes o banco recusou"**: `opSubirLote` tratava QUALQUER erro (internet, sessão vencida, servidor) como recusa
+  definitiva e tirava o bipe da fila para sempre. Agora `opErroDeDado` (código 22xxx/23xxx ou texto de regra violada) é a
+  única recusa; duplicado (23505) conta como subiu; o resto fica na fila e tenta de novo (`OP_ULT_ERRO` aparece na
+  Conferência total). `opLinhaBanco` arruma dia (dd/mm/aaaa → ISO), vol/tot/valor fora da faixa. `opRuinsDevolver` põe os
+  recusados antigos de volta na fila uma vez ao abrir (marca `healthSearch.op.ruinsDevolvido.v1046`) e pelo botão do aviso.
+  `opRuinsGravar` não corta mais em 500.
+- **Correções que voltavam (reentregas)**: a junção `re:` casava linha por NF+cliente+OBS+qtd e preferia a cópia da nuvem —
+  motivo/motorista/base corrigidos voltavam ou a linha velha duplicava. Agora `reJuntarDia`: linha = mesma NF (`reIdLinha`),
+  campo a campo vale o mais novo (`_ems` por campo, carimbado em `RE.gravar` comparando com a foto `RE_EMS`),
+  `reSemCopiaVelha` tira linha que só repete o que a nova já tem (limpeza única com cópia em
+  `healthSearch.re.antesSemCopia.v1046`).
+- **Mapa ensinado na Correção**: livro `S.geoEnsino` (s:geoEnsino, só admin) anotado em `geoMudou` (`geoEnsCapturar`) e
+  reaplicado quando o mapa é trocado pelo publicado (`geoEnsAplicar`).
+- **Cidades (cidAlias/cidAtend)**: carimbo por chave (`__em` dentro de cidAlias, `_em` em cada cidade) em `Store.salvar`;
+  junção pelo mais novo (`cmJuntarAlias`, `cmJuntarAtend`).
+- **s: com `em`**: a nuvem "nova desde a última sincronização" não ganha mais de edição daqui MAIS NOVA.
+- **Painel de Gestão com furo 13–23/11**: `s:gsSnap` da nuvem foi trocado por uma cópia com 2 dias (backup 24/11). Agora
+  `gsSnapUniao` em `nuvAplicar` e `nuvJuntar` (dia nunca sai, vale a foto mais nova do dia), `gsCompletarDeFotos` puxa os dias
+  de `hs_fotos` ao abrir, limite de 120 dias tirado. Migração `2026-11-25-001-restaurar-painel-gestao.sql` devolve os dias.

@@ -1,1 +1,1 @@
-{"versao":"10.6.45","data":"2026-11-24","novidades":"Excel do romaneio: as notas saem completas com os dados do XML (remetente, CNPJ, endereco, peso, valor, chave), inclusive em romaneio criado no app."}
+{"versao":"10.6.46","data":"2026-11-25","novidades":"Dados nao voltam nem somem: bipes que falharam por internet ou sessao voltam para a fila e sobem sozinhos; correcoes (reentregas, cidades, mapa) valem sempre a mais nova; Painel de Gestao nunca perde dia e se completa com as fotos permanentes."}

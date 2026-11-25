@@ -4470,7 +4470,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.45', HS_DATA='24/11/2026';
+const HS_VERSAO='10.6.46', HS_DATA='25/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7087,7 +7087,7 @@ const nuvVazio=v=>v==null||(Array.isArray(v)?!v.length:typeof v==='object'?!Obje
     salvar(); }finally{ NUV.aplicando=false; } }; }
 function nuvMesclar(l,r){ if(Array.isArray(l)&&Array.isArray(r)){ const ch=x=>x&&typeof x==='object'?(x.id||x.chave||JSON.stringify(x)):JSON.stringify(x); const m=new Map(); for(const x of l) m.set(ch(x),x); for(const x of r) m.set(ch(x),x); return [...m.values()]; }
   if(l&&r&&typeof l==='object'&&typeof r==='object'){ const o=Object.assign({},l); for(const k of Object.keys(r)) o[k]=(o[k]&&typeof o[k]==='object'&&r[k]&&typeof r[k]==='object')?nuvMesclar(o[k],r[k]):r[k]; return o; } return r; }
-{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')){ const tl=local&&local.em, tr=remoto&&remoto.em; const base=nuvBase(chave); if(tr&&(!base||String(tr)>base)){ if(chave==='s:geo') setTimeout(()=>toast('O mapa deste aparelho estava desatualizado: usei a versão online.'),300); return NUV_MAPA_DIA.has(chave)?nuvSoDias(remoto):remoto; } if(tl&&tr) return NUV_MAPA_DIA.has(chave)?nuvSoDias(String(tl)>String(tr)?local:remoto):(String(tl)>String(tr)?local:remoto); const j=nuvMesclar(local,remoto); return NUV_MAPA_DIA.has(chave)?nuvSoDias(j):j; } return remoto; }; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave.startsWith('re:')||chave.startsWith('dv:')) return _nj(chave,local,remoto); if(chave.startsWith('s:')||chave.startsWith('ls:')){ const tl=local&&local.em, tr=remoto&&remoto.em; const base=nuvBase(chave); if(tr&&(!base||String(tr)>base)&&!(tl&&String(tl)>String(tr))){ /* v10.6.46: edição daqui mais nova não perde para a nuvem */ if(chave==='s:geo') setTimeout(()=>toast('O mapa deste aparelho estava desatualizado: usei a versão online.'),300); return NUV_MAPA_DIA.has(chave)?nuvSoDias(remoto):remoto; } if(tl&&tr) return NUV_MAPA_DIA.has(chave)?nuvSoDias(String(tl)>String(tr)?local:remoto):(String(tl)>String(tr)?local:remoto); const j=nuvMesclar(local,remoto); return NUV_MAPA_DIA.has(chave)?nuvSoDias(j):j; } return remoto; }; }
 { const NM=window.HS_NOMES, _ns=NM&&NM.salvar; if(typeof _ns==='function') NM.salvar=function(...a){ const r=_ns.apply(NM,a); nuvAgendar(); return r; }; }
 
 /* v6.9.0: chaves que só o admin grava + atualização ao vivo */
@@ -8688,30 +8688,68 @@ function opLinhaBanco(b){ const o={}; for(const c of OP_COLS){ if(b[c]!==undefin
   if(o.valor!=null){ const v=Number(String(o.valor).replace(',','.')); o.valor=isFinite(v)?v:null; }
   return o; }
 function opRuinsLer(){ try{ return JSON.parse(LS.getItem(OP_RUINS)||'[]'); }catch(e){ return []; } }
-function opRuinsGravar(L){ try{ LS.setItem(OP_RUINS,JSON.stringify(L.slice(-500))); }catch(e){} }
-async function opSubirLote(lote){ /* devolve {ok:[local_id], ruins:[{b,erro}]} */
+function opRuinsGravar(L){ try{ LS.setItem(OP_RUINS,JSON.stringify(L)); }catch(e){} } /* v10.6.46: sem corte — nunca joga bipe fora */
+/* v10.6.46 — "98 bipes o banco recusou": antes QUALQUER falha (internet caindo, sessão vencida,
+   servidor ocupado) virava "recusado" e o bipe saía da fila para sempre, sem nova tentativa.
+   Agora só é "recusado de verdade" o erro de DADO (código 22xxx/23xxx do Postgres). Duplicado
+   (23505) quer dizer que já está lá = subiu. O resto fica na fila e tenta de novo sozinho. */
+function opErroDeDado(err){ const c=String((err&&err.code)||''); if(c==='23505') return false; if(/^2[23]/.test(c)) return true; if(c) return false;
+  return /violates (check|not-null|foreign key)|invalid input (syntax|value)|out of range|null value in column|value too long|date\/time field/i.test(String((err&&err.message)||'')); }
+function opErroDuplicado(err){ return String((err&&err.code)||'')==='23505'||/duplicate key/i.test((err&&err.message)||''); }
+function opDiaIso(d,criado){ d=String(d||'').trim(); let m=d.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return m[1]+'-'+m[2]+'-'+m[3];
+  m=d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  const t=new Date(criado||Date.now()); if(isNaN(t)) return new Date().toISOString().slice(0,10);
+  return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'); }
+/* deixa a linha dentro da regra do banco sem perder o que foi lido */
+{ const _lb=opLinhaBanco; opLinhaBanco=function(b){ const o=_lb(b);
+    o.dia=opDiaIso(o.dia,b.criado_em);
+    for(const k of ['vol','tot']) if(o[k]!=null&&!(Number.isInteger(o[k])&&o[k]>=0&&o[k]<=2000000000)) o[k]=null;
+    if(o.valor!=null&&!(isFinite(o.valor)&&Math.abs(o.valor)<1e12)) o.valor=null;
+    if(o.criado_em&&isNaN(new Date(o.criado_em))) delete o.criado_em;
+    for(const k of ['local_id','codigo','tipo','ped','nf','pallet','romaneio','dest','cid','conteudo','usuario']) if(o[k]!=null&&typeof o[k]!=='string') o[k]=String(o[k]);
+    if(!o.codigo) o.codigo=String(b.local_id||'sem-codigo');
+    return o; }; }
+async function opSubirLote(lote){ /* devolve {ok:[local_id], ruins:[{b,erro}], parou:erro} */
   if(!lote.length) return {ok:[],ruins:[]};
   const {error}=await NV.cli.from('hs_bipagens').upsert(lote.map(opLinhaBanco),{onConflict:'local_id',ignoreDuplicates:true});
   if(!error) return {ok:lote.map(b=>b.local_id),ruins:[]};
-  if(lote.length===1) return {ok:[],ruins:[{b:lote[0],erro:(error.message||'')+''}]};
+  if(!opErroDeDado(error)&&!opErroDuplicado(error)) return {ok:[],ruins:[],parou:error}; /* internet/sessão/servidor: fica na fila */
+  if(lote.length===1) return opErroDuplicado(error)?{ok:[lote[0].local_id],ruins:[]}:{ok:[],ruins:[{b:lote[0],erro:((error.code?error.code+' · ':'')+(error.message||'')+(error.details?' · '+error.details:''))}]};
   const meio=Math.ceil(lote.length/2);
-  const a=await opSubirLote(lote.slice(0,meio)), b=await opSubirLote(lote.slice(meio));
-  return {ok:a.ok.concat(b.ok),ruins:a.ruins.concat(b.ruins)}; }
+  const a=await opSubirLote(lote.slice(0,meio)); if(a.parou) return a;
+  const b=await opSubirLote(lote.slice(meio));
+  return {ok:a.ok.concat(b.ok),ruins:a.ruins.concat(b.ruins),parou:b.parou}; }
+/* os "recusados" antigos voltam para a fila (sem repetir) e tentam de novo */
+function opRuinsDevolver(){ const L=opRuinsLer(); if(!L.length) return 0;
+  const f=opFilaLer(); const tem=new Set(f.map(b=>b&&b.local_id)); let n=0;
+  for(const x of L){ const b=x&&x.b; if(!b||!b.local_id||tem.has(b.local_id)) continue; tem.add(b.local_id); f.push(b); n++; }
+  opFilaGravar(f); opRuinsGravar([]); return n; }
+let OP_ULT_ERRO='';
 opFila=async function(){ if(!opOnline()||opEnviando) return; let fila=opFilaLer(); if(!fila.length){ opSinc(); return; }
-  opEnviando=true; let subiram=0; const ruins=[];
+  opEnviando=true; let subiram=0; const ruins=[]; let parou=null;
   try{
     for(let i=0;i<fila.length;i+=200){
       const lote=fila.slice(i,i+200);
-      let r; try{ r=await opSubirLote(lote); }catch(e){ r={ok:[],ruins:[]}; break; }
+      let r; try{ r=await opSubirLote(lote); }catch(e){ parou=e; break; }
       subiram+=r.ok.length; if(r.ruins.length) ruins.push(...r.ruins);
       const feitos=new Set(r.ok.concat(r.ruins.map(x=>x.b.local_id)));
       if(feitos.size){ const rest=opFilaLer().filter(b=>!feitos.has(b.local_id)); opFilaGravar(rest); }
+      if(r.parou){ parou=r.parou; break; }
     }
-  }catch(e){}
-  if(ruins.length){ const L=opRuinsLer(); for(const x of ruins) L.push({b:x.b,erro:x.erro,em:new Date().toISOString()}); opRuinsGravar(L);
-    toast(`⚠ ${fmtN(ruins.length)} bipe(s) o banco recusou: ${nvTraduz(ruins[0].erro).slice(0,90)}. Guardei separado, nada foi perdido.`); }
+  }catch(e){ parou=e; }
+  OP_ULT_ERRO=parou?String((parou&&(parou.message||parou.code))||parou):'';
+  if(ruins.length){ const L=opRuinsLer(); const ja=new Set(L.map(x=>x&&x.b&&x.b.local_id)); for(const x of ruins){ if(ja.has(x.b.local_id)) continue; L.push({b:x.b,erro:x.erro,em:new Date().toISOString()}); } opRuinsGravar(L);
+    toast(`⚠ ${fmtN(ruins.length)} bipe(s) com dado que o banco não aceita: ${nvTraduz(ruins[0].erro).slice(0,90)}. Guardei separado, nada foi perdido.`); }
   if(subiram){ toast(`✔ ${fmtN(subiram)} bipe(s) deste aparelho subiram.`); try{ await opPuxarDia(); }catch(e){} }
-  opEnviando=false; opSinc(); };
+  opEnviando=false; opSinc(); try{ if(document.querySelector('#t-conftotal.ativa')) ctMontar(); }catch(e){} };
+/* ao abrir: o que ficou preso como "recusado" pelas versões antigas volta para a fila uma vez */
+setTimeout(async()=>{ try{ if(LS.pronto) await LS.pronto; }catch(e){} try{ if(!LS.getItem('healthSearch.op.ruinsDevolvido.v1046')){ const n=opRuinsDevolver(); LS.setItem('healthSearch.op.ruinsDevolvido.v1046','1'); if(n){ console.log('bipes devolvidos à fila',n); setTimeout(()=>{ try{ opFila(); }catch(e){} },1500); } } }catch(e){} },2500);
+/* clique no aviso: mostra o motivo e deixa tentar de novo */
+document.addEventListener('click',async e=>{ const g=e.target.closest&&e.target.closest('[data-op-ruins]'); if(!g) return; e.preventDefault();
+  const L=opRuinsLer(); const mot={}; for(const x of L){ const m=nvTraduz(x.erro||'sem motivo').slice(0,160); mot[m]=(mot[m]||0)+1; }
+  const txt=Object.entries(mot).map(([m,n])=>`${fmtN(n)} × ${esc(m)}`).join('<br>')||'Nenhum.';
+  if(await confirmar('Bipes que o banco não aceitou',`Estão guardados neste aparelho, nada se perdeu.<br><br><b>Motivo:</b><br>${txt}<br><br>Tentar enviar de novo agora?`,'Tentar de novo')){
+    const n=opRuinsDevolver(); toast(`Devolvi ${fmtN(n)} bipe(s) para a fila. Enviando…`); await opFila(); try{ ctMontar(); }catch(er){} } });
 function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   /* BUG#1-FIX v9.11.0: só mover elementos DOM quando a tela estiver visível.
      Mover #op-cards para dentro da seção hidden causava renderização vazia no NexBip. */
@@ -8728,7 +8766,7 @@ function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   const q=$('#qt-ct'); if(q){ q.textContent=pct+'%'; q.hidden=!tn; }
   /* v10.2.6 · a conta é de todo mundo: botão para repuxar e aviso de bipe que não subiu */
   try{ if(g&&tn){ const fila=opFilaLer().filter(b=>b.dia===OP.dia).length;
-    g.insertAdjacentHTML('beforeend',`<div class="ct-juntar"><button class="btn mini" type="button" data-op-puxar="1" title="Traz os bipes das outras pessoas agora">🔄 Atualizar a conta</button>${fila?`<span class="ct-fila">⚠ <b>${fmtN(fila)}</b> bipe(s) deste aparelho ainda não subiram${opOnline()?'':' (sem internet)'}</span><button class="btn mini pri" type="button" data-op-enviar="1">⬆ Enviar agora</button>`:'<span class="sub">a conta soma os bipes de todas as pessoas</span>'}${(typeof opRuinsLer==='function'&&opRuinsLer().length)?`<span class="ct-fila">⚠ ${fmtN(opRuinsLer().length)} bipe(s) o banco recusou (guardados aqui)</span>`:''}</div>`); } }catch(e){}
+    g.insertAdjacentHTML('beforeend',`<div class="ct-juntar"><button class="btn mini" type="button" data-op-puxar="1" title="Traz os bipes das outras pessoas agora">🔄 Atualizar a conta</button>${fila?`<span class="ct-fila">⚠ <b>${fmtN(fila)}</b> bipe(s) deste aparelho ainda não subiram${opOnline()?'':' (sem internet)'}</span><button class="btn mini pri" type="button" data-op-enviar="1">⬆ Enviar agora</button>`:'<span class="sub">a conta soma os bipes de todas as pessoas</span>'}${(typeof opRuinsLer==='function'&&opRuinsLer().length)?`<button class="btn mini" type="button" data-op-ruins="1" title="Ver o motivo e tentar de novo">⚠ ${fmtN(opRuinsLer().length)} bipe(s) com dado recusado · ver e tentar de novo</button>`:''}${(typeof OP_ULT_ERRO==='string'&&OP_ULT_ERRO&&fila)?`<span class="ct-fila sub">última tentativa: ${esc(nvTraduz(OP_ULT_ERRO).slice(0,80))} — tento de novo sozinho</span>`:''}</div>`); } }catch(e){}
   try{ ctBuscaRender(); }catch(e){} }
 /* v9.26.7 · aparelho sem os romaneios de hoje: sem isso todo bipe cai como "fora do romaneio" sem explicação */
 function opSemRomaneios(){ try{ return OP.dia===hojeISO()&&opRomsDoDia().length===0; }catch(e){ return false; } }
@@ -9530,7 +9568,7 @@ function gsFotoMontar(){ try{
 }catch(e){ return null; } }
 function gsFotoGravar(){ const f=gsFotoMontar(); if(!f) return null;
   try{ if(!gsDiaOk(f.dia)) return null; S.gsSnap=S.gsSnap||{}; S.gsSnap[f.dia]=f;
-    const ds=Object.keys(S.gsSnap).sort(); while(ds.length>120) delete S.gsSnap[ds.shift()];
+    /* v10.6.46: nenhum dia sai do painel */
     salvar(); }catch(e){} return f; }
 let _gsT=null; function gsFotoAgendar(){ if(_gsT) return; _gsT=setTimeout(()=>{ _gsT=null; gsFotoGravar(); },8000); }
 function gsFotoLer(dia){ try{ if(dia===hojeISO()){ const f=gsFotoMontar(); if(f) return f; } const f2=(S.gsSnap||{})[dia]; return (f2&&typeof f2==='object'&&!Array.isArray(f2))?f2:null; }catch(e){ return null; } }
@@ -12402,6 +12440,133 @@ function hsXmlDaNota(nf){ const k=opK(nf); if(!k) return null; const o={}; let t
       Object.assign(o,{dest:o.dest||x.cli,doc:o.doc||dd.doc,cep:o.cep||dd.cep,end:o.end||dd.end,nro:o.nro||dd.nro,bai:o.bai||dd.bai,mun:o.mun||dd.mun,uf:o.uf||dd.uf,
         valor:x.valor||o.valor,vprod:o.vprod||x.vprod,chave:o.chave||x.chave,rem:o.rem||x.rem,peso:o.peso||x.peso,vol:o.vol||vt||null,ped:x.ped}); } }catch(e){}
   return tem?o:null; }
+/* ================= v10.6.46 · A MAIS NOVA SUBSTITUI A ANTIGA (pedido do Tiago, 25/11) =================
+   1) Reentregas: a junção com a nuvem casava as linhas pela observação e dava preferência à cópia da
+      nuvem. Resultado: motivo, motorista, base ou valor corrigidos aqui eram trocados pela cópia velha,
+      ou a linha velha voltava duplicada ("sem motivo" de novo). Agora cada campo mexido ganha data/hora
+      (_ems) e, na junção, vale campo a campo o MAIS NOVO. A linha é a mesma NF (não muda de identidade
+      quando o motivo muda). Linha velha que só repete o que a nova já tem é descartada (nada se perde:
+      tudo o que ela tinha está na nova).
+   2) Mapa (Correção → região/base, "Não fazemos", confirmar etiquetas): o que se ensina vai para um
+      livro de ensinamentos (S.geoEnsino) que sincroniza sozinho entre os aparelhos do admin e é
+      reaplicado sempre que o mapa for trocado pelo publicado. */
+const RE_EMS=new WeakMap();
+const reCampos=l=>Object.keys(l||{}).filter(k=>k[0]!=='_');
+const reVal=v=>(v==null?'':(typeof v==='object'?JSON.stringify(v):String(v)));
+function reFoto(l){ const o={}; for(const k of reCampos(l)) o[k]=reVal(l[k]); return o; }
+function reRegistrar(D){ try{ for(const L of Object.values((D&&D.dias)||{})) for(const l of (L||[])) if(l&&typeof l==='object'&&!RE_EMS.has(l)) RE_EMS.set(l,reFoto(l)); }catch(e){} }
+function reCarimbar(D){ const agora=new Date().toISOString(); let n=0;
+  try{ for(const L of Object.values((D&&D.dias)||{})) for(const l of (L||[])){ if(!l||typeof l!=='object') continue; const f=RE_EMS.get(l);
+      if(f){ for(const k of new Set([...Object.keys(f),...reCampos(l)])){ if(reVal(l[k])!==(f[k]==null?'':f[k])){ (l._ems=l._ems||{})[k]=agora; n++; } } }
+      RE_EMS.set(l,reFoto(l)); } }catch(e){} return n; }
+{ const _l=RE.ler.bind(RE); RE.ler=function(){ const D=_l.apply(this,arguments); if(!NUV.aplicando) reRegistrar(D); return D; }; }
+{ const _g=RE.gravar; RE.gravar=function(){ try{ if(!NUV.aplicando&&this.d) reCarimbar(this.d); else if(this.d) reRegistrarForcado(this.d); }catch(e){} return _g.apply(this,arguments); }; }
+function reRegistrarForcado(D){ try{ for(const L of Object.values((D&&D.dias)||{})) for(const l of (L||[])) if(l&&typeof l==='object') RE_EMS.set(l,reFoto(l)); }catch(e){} }
+const reVazio=v=>v==null||v==='';
+const reIdLinha=l=>{ const n=opK(l&&l.nf); return n?('n:'+n):('c:'+rpNz(l&&l.cli)+'|'+rpNz(l&&l.cid)); };
+function reFundir(a,b){ /* a = daqui, b = da nuvem: campo a campo, vale o mais novo */
+  const ea=a._ems||{}, eb=b._ems||{}, o={}, ems={};
+  for(const k of new Set([...reCampos(a),...reCampos(b)])){ const va=a[k], vb=b[k], ta=ea[k]||'', tb=eb[k]||'';
+    let v; if(reVal(va)===reVal(vb)) v=va; else if(reVazio(va)) v=(ta>tb)?va:vb; else if(reVazio(vb)) v=(tb>ta)?vb:va; else v=(tb>ta)?vb:va;
+    if(v!==undefined) o[k]=v; const t=ta>tb?ta:tb; if(t) ems[k]=t; }
+  for(const k of Object.keys(a)) if(k[0]==='_'&&k!=='_ems') o[k]=a[k];
+  for(const k of Object.keys(b)) if(k[0]==='_'&&k!=='_ems'&&o[k]===undefined) o[k]=b[k];
+  if(Object.keys(ems).length) o._ems=ems; return o; }
+const RE_IGNORA=new Set(['per','origem','chave']);
+function reContida(a,b){ /* tudo o que a linha "a" diz, a "b" já diz */ for(const k of reCampos(a)){ if(RE_IGNORA.has(k)) continue; const v=a[k]; if(reVazio(v)) continue; if(k==='qtd'&&(+v||1)===1&&b.qtd!=null) continue; if(reVal(v)!==reVal(b[k])) return false; } return true; }
+function reSemCopiaVelha(L){ const out=[]; const porId=new Map();
+  for(const l of L){ if(!l) continue; const id=reIdLinha(l); const grupo=porId.get(id)||[]; let foi=false;
+    for(let i=0;i<grupo.length;i++){ const g=grupo[i]; if(reContida(l,g)){ foi=true; break; } if(reContida(g,l)){ const j=out.indexOf(g); out[j]=l; grupo[i]=l; foi=true; break; } }
+    if(!foi){ grupo.push(l); out.push(l); } porId.set(id,grupo); }
+  return out; }
+function reJuntarDia(local,remoto,dia){ local=Array.isArray(local)?local:[]; remoto=Array.isArray(remoto)?remoto:[];
+  const livres=new Map(); remoto.forEach((r,i)=>{ const k=reIdLinha(r); (livres.get(k)||livres.set(k,[]).get(k)).push(i); });
+  const par=new Map(), sobra=[];
+  for(const l of local){ const q=livres.get(reIdLinha(l)); if(q&&q.length) par.set(q.shift(),l); else sobra.push(l); }
+  let out=remoto.map((r,i)=>par.has(i)?reFundir(par.get(i),r):r).concat(sobra);
+  try{ if(S.reTirados&&dia) out=out.filter(l=>!reTirado(l,dia)); }catch(e){}
+  return reSemCopiaVelha(out); }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(String(chave).startsWith('re:')){ try{ return reJuntarDia(local,remoto,String(chave).slice(3)); }catch(e){ console.error(e); } } return _nj.apply(this,arguments); }; }
+/* uma vez: tira as cópias velhas que a junção antiga deixou (guarda antes uma cópia de segurança) */
+setTimeout(async()=>{ try{ if(LS.pronto) await LS.pronto; if(LS.getItem('healthSearch.re.semCopia.v1046')) return; const D=RE.ler(); let n=0;
+    const antes=JSON.stringify(D.dias||{});
+    for(const d of Object.keys(D.dias||{})){ const L=D.dias[d]||[]; const f=reSemCopiaVelha(L); if(f.length!==L.length){ n+=L.length-f.length; D.dias[d]=f; } }
+    if(n){ try{ LS.setItem('healthSearch.re.antesSemCopia.v1046',antes); }catch(e){} RE.gravar(); console.log('reentregas: cópias velhas tiradas',n); }
+    LS.setItem('healthSearch.re.semCopia.v1046','1'); }catch(e){ console.error(e); } },3000);
+
+/* ---------- 2) livro de ensinamentos do mapa ---------- */
+if(!NUV_CAMPOS.includes('geoEnsino')) NUV_CAMPOS.push('geoEnsino');
+try{ NUV_ADMIN.add('s:geoEnsino'); }catch(e){}
+const GENS={obj:null,foto:''};
+function geoEnsFoto(){ try{ return JSON.stringify((S.geo&&S.geo.aprend)||{}); }catch(e){ return ''; } }
+function geoEnsAnotar(c,tipo,id,em){ const E=S.geoEnsino=(S.geoEnsino&&typeof S.geoEnsino==='object')?S.geoEnsino:{itens:{}}; E.itens=E.itens||{};
+  E.itens[c+'|'+tipo]={id:id==null?null:id,em}; E.em=em; }
+/* compara o aprendizado com a última foto e anota o que mudou (só se o mapa não foi trocado inteiro) */
+function geoEnsCapturar(){ try{ if(!S.geo) return 0; if(GENS.obj!==S.geo){ return 0; }
+    const antes=JSON.parse(GENS.foto||'{}'), agora=S.geo.aprend||{}; const em=new Date().toISOString(); let n=0;
+    for(const c of new Set([...Object.keys(antes),...Object.keys(agora)])){ const a=antes[c]||{}, b=agora[c]||{};
+      for(const t of new Set([...Object.keys(a),...Object.keys(b)])) if(a[t]!==b[t]){ geoEnsAnotar(c,t,b[t]===undefined?null:b[t],em); n++; } }
+    return n; }catch(e){ return 0; } }
+/* reaplica o livro no mapa atual (vale o ensinamento, mesmo que o mapa tenha sido trocado pelo publicado) */
+function geoEnsAplicar(){ try{ const E=S.geoEnsino; if(!S.geo||!E||!E.itens){ GENS.obj=S.geo; GENS.foto=geoEnsFoto(); return 0; }
+    S.geo.aprend=S.geo.aprend||{}; let n=0;
+    for(const [k,v] of Object.entries(E.itens)){ const i=k.lastIndexOf('|'), c=k.slice(0,i), t=k.slice(i+1); const atual=(S.geo.aprend[c]||{})[t];
+      if(v.id==null){ if(atual!==undefined){ delete S.geo.aprend[c][t]; if(!Object.keys(S.geo.aprend[c]).length) delete S.geo.aprend[c]; n++; } }
+      else if(atual!==v.id){ (S.geo.aprend[c]=S.geo.aprend[c]||{})[t]=v.id; n++; } }
+    GENS.obj=S.geo; GENS.foto=geoEnsFoto();
+    if(n){ try{ GEO.idx={}; GEO.cls={}; }catch(e){} try{ salvar(); }catch(e){} }
+    return n; }catch(e){ return 0; } }
+{ const _gm=geoMudou; geoMudou=function(){ geoEnsCapturar(); const r=_gm.apply(this,arguments); GENS.obj=S.geo; GENS.foto=geoEnsFoto(); return r; }; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave==='s:geoEnsino'&&local&&remoto&&local.itens&&remoto.itens){
+      const it=Object.assign({},remoto.itens); for(const [k,v] of Object.entries(local.itens)){ if(!it[k]||String(v.em||'')>String(it[k].em||'')) it[k]=v; }
+      return {itens:it,em:String(local.em||'')>String(remoto.em||'')?local.em:remoto.em}; }
+    return _nj.apply(this,arguments); }; }
+{ const _ns=nuvSinc; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); geoEnsAplicar(); return r; }; }
+setTimeout(async()=>{ try{ if(LS.pronto) await LS.pronto; }catch(e){} geoEnsAplicar(); },2000);
+setInterval(()=>{ if(S.geo&&GENS.obj!==S.geo) geoEnsAplicar(); },2000);
+/* ---------- 3) Cidades (Correção → "Cidades não reconhecidas"): cada chave com data/hora, vale a mais nova ---------- */
+const CMB={pronto:false,alias:'{}',atend:'{}'};
+const cmSemEm=e=>{ if(!e||typeof e!=='object') return JSON.stringify(e); const {_em,...r}=e; return JSON.stringify(r); };
+function cmFoto(){ try{ CMB.alias=JSON.stringify(S.cidAlias||{}); CMB.atend=JSON.stringify(S.cidAtend||{}); CMB.pronto=true; }catch(e){} }
+function cmCarimbar(){ if(!CMB.pronto) return cmFoto(); const em=new Date().toISOString();
+  try{ const a=JSON.parse(CMB.alias), b=S.cidAlias; if(b&&typeof b==='object') for(const k of Object.keys(b)){ if(k==='__em') continue; if(a[k]!==b[k]){ b.__em=b.__em||{}; b.__em[k]=em; } } }catch(e){}
+  try{ const a=JSON.parse(CMB.atend), b=S.cidAtend; if(b&&typeof b==='object') for(const k of Object.keys(b)){ const e=b[k]; if(e&&typeof e==='object'&&cmSemEm(a[k])!==cmSemEm(e)) e._em=em; } }catch(e){}
+  cmFoto(); }
+{ const _sv=Store.salvar; Store.salvar=function(){ try{ if(!NUV.aplicando) cmCarimbar(); }catch(e){} return _sv.apply(this,arguments); }; }
+{ const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ const r=_na.apply(this,arguments); if(chave==='s:cidAlias'||chave==='s:cidAtend') cmFoto(); return r; }; }
+setTimeout(async()=>{ try{ if(LS.pronto) await LS.pronto; }catch(e){} cmFoto(); },1500);
+function cmJuntarAlias(l,r){ const el=l.__em||{}, er=r.__em||{}, o={}, em={};
+  for(const k of new Set([...Object.keys(l),...Object.keys(r)])){ if(k==='__em') continue; const tl=el[k]||'', tr=er[k]||'';
+    if(!(k in r)) o[k]=l[k]; else if(!(k in l)) o[k]=r[k]; else o[k]=(tr>tl)?r[k]:l[k]; const t=tl>tr?tl:tr; if(t) em[k]=t; }
+  if(Object.keys(em).length) o.__em=em; return o; }
+function cmJuntarAtend(l,r){ const o={};
+  for(const k of new Set([...Object.keys(l),...Object.keys(r)])){ const a=l[k], b=r[k];
+    if(b===undefined) o[k]=a; else if(a===undefined) o[k]=b;
+    else if((a&&a._em)||(b&&b._em)) o[k]=String((b&&b._em)||'')>String((a&&a._em)||'')?b:a;
+    else o[k]=nuvMesclar(a,b); }
+  return o; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ const ob=x=>x&&typeof x==='object'&&!Array.isArray(x);
+    if(chave==='s:cidAlias'&&ob(local)&&ob(remoto)) return cmJuntarAlias(local,remoto);
+    if(chave==='s:cidAtend'&&ob(local)&&ob(remoto)) return cmJuntarAtend(local,remoto);
+    return _nj.apply(this,arguments); }; }
+/* ---------- 4) Painel de Gestão nunca encolhe (furo 13–23/11) ----------
+   Um aparelho subiu uma cópia com só 2 dias e ela trocou a da nuvem inteira. Agora o que chega da nuvem é
+   SOMADO ao que está aqui, dia por dia (vale a foto mais nova de cada dia), e o painel se completa sozinho
+   com a tabela permanente hs_fotos. Dia nenhum sai. */
+function gsSnapUniao(a,b){ const o={}; const ok=x=>x&&typeof x==='object'&&!Array.isArray(x);
+  for(const m of [a,b]) if(ok(m)) for(const [d,f] of Object.entries(m)){ if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!ok(f)) continue; const j=o[d]; if(!j||(+f.ts||0)>(+j.ts||0)) o[d]=f; }
+  return o; }
+{ const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ if(chave==='s:gsSnap'){ valor=gsSnapUniao(S.gsSnap,apagado?null:valor); apagado=false; } return _na.call(this,chave,valor,apagado); }; }
+{ const _nj=nuvJuntar; nuvJuntar=function(chave,local,remoto){ if(chave==='s:gsSnap') return gsSnapUniao(local,remoto); return _nj.apply(this,arguments); }; }
+let GS_FOTOS_OK=false;
+async function gsCompletarDeFotos(){ if(GS_FOTOS_OK||!opOnline()||!window.NV||!NV.cli||!NV.user) return 0;
+  try{ const {data,error}=await NV.cli.from('hs_fotos').select('dia,dados').order('dia',{ascending:false}).limit(1000); if(error) return 0;
+    GS_FOTOS_OK=true; S.gsSnap=(S.gsSnap&&typeof S.gsSnap==='object')?S.gsSnap:{}; let n=0;
+    for(const x of (data||[])){ const d=String(x.dia).slice(0,10); const f=x.dados; if(!f||!f.tn||!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue; const j=S.gsSnap[d]; if(!j||!j.tn){ S.gsSnap[d]=f; n++; } }
+    if(n){ salvar(); try{ gestorRender(); }catch(e){} console.log('painel: dias completados de hs_fotos',n); }
+    return n; }catch(e){ return 0; } }
+setTimeout(()=>{ try{ gsCompletarDeFotos(); }catch(e){} },6000);
+setInterval(()=>{ try{ gsCompletarDeFotos(); }catch(e){} },60000);
 </script>
 
 </body>

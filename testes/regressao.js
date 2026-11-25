@@ -1542,5 +1542,48 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         const a=c.rows[0], b=c.rows[1]; return [a.rem,a.peso,a.valor,a.cep,a.chave.length,b.rem,b.peso,b.valor].join('|'); }
       finally{ S.opXml=JSON.parse(x0); } });
     ok(xr==='VIVEO SA|12,345|1530,5|19050-920|44|JA TINHA|1,5|10,00','excel do romaneio: dados do XML tinham que entrar sem trocar o que o romaneio já tinha ('+xr+')'); }
+  { /* v10.6.46 · a mais nova substitui a antiga: reentrega corrigida não volta; mapa ensinado não volta; bipe com falha de internet fica na fila */
+    const nv=await p.evaluate(async()=>{ const R={}; const d0=JSON.stringify(RE.ler()), g0=JSON.stringify(S.geo), e0=S.geoEnsino, f0=LS.getItem(OP_FILA), r0=LS.getItem(OP_RUINS);
+      try{ const dia='2026-11-20'; const D=RE.ler(); D.dias[dia]=[{nf:'87',cli:'APEC',cid:'PP',obs:'',mot:'',qtd:1}]; RE.gravar();
+        const velha=JSON.parse(JSON.stringify(D.dias[dia])); /* cópia que ficou na nuvem */
+        const l=RE.ler().dias[dia][0]; l.obs='CLIENTE FECHADO'; l.mot='JOAO'; RE.gravar();
+        const j=nuvJuntar('re:'+dia,RE.ler().dias[dia],velha); R.j=j.length+'|'+j[0].obs+'|'+j[0].mot+'|'+!!(j[0]._ems&&j[0]._ems.obs);
+        /* outro aparelho (cópia velha + valor preenchido depois) junta com a nova da nuvem: a correção tem que ganhar */
+        const outro=JSON.parse(JSON.stringify(velha)); outro[0].val=50; outro[0]._ems={val:new Date(Date.now()+1000).toISOString()};
+        const j2=nuvJuntar('re:'+dia,outro,j); R.j2=j2.length+'|'+j2[0].obs+'|'+j2[0].mot+'|'+j2[0].val;
+        /* cópia velha duplicada (junção antiga) some; linha diferente de verdade fica */
+        R.dup=reSemCopiaVelha([{nf:'87',cli:'APEC',obs:'',qtd:1},{nf:'87',cli:'APEC',obs:'CLIENTE FECHADO',qtd:1},{nf:'87',cli:'APEC',obs:'OUTRO',qtd:2}]).map(x=>x.obs).join(',');
+        /* mapa: ensinado aqui, mapa trocado pelo publicado → o ensinamento volta sozinho */
+        const c=Object.keys(GEO.mun||{})[0]||'3106200'; const lb=S.geo.listas.find(x=>x.tipo==='base'); geoEnsAplicar();
+        geoEnsinar(c,'base',lb.id); S.geo=JSON.parse(JSON.stringify(S.geo)); delete S.geo.aprend[c]; geoEnsAplicar();
+        R.geo=((S.geo.aprend[c]||{}).base===lb.id)+'|'+!!(S.geoEnsino&&S.geoEnsino.itens[c+'|base']);
+        const m=nuvJuntar('s:geoEnsino',{itens:{a:{id:'1',em:'2026-11-25T10:00'}},em:'2026-11-25T10:00'},{itens:{a:{id:'0',em:'2026-11-24T10:00'},b:{id:'2',em:'2026-11-24'}},em:'2026-11-24'});
+        R.ens=m.itens.a.id+'|'+m.itens.b.id;
+        /* bipe: erro de rede fica na fila; dado ruim vai para separado; duplicado = subiu */
+        R.cls=[opErroDeDado({code:'PGRST301'}),opErroDeDado({message:'Failed to fetch'}),opErroDeDado({code:'42501'}),opErroDeDado({code:'22007'}),opErroDeDado({code:'23505'}),opErroDuplicado({code:'23505'})].join();
+        const lb2=opLinhaBanco({local_id:'x',dia:'20/11/2026',codigo:'',vol:'99999999999',tot:'3',valor:'abc',status:'pit'}); R.lin=[lb2.dia,lb2.vol,lb2.tot,lb2.valor,lb2.codigo,lb2.status].join('|');
+        LS.setItem(OP_FILA,JSON.stringify([{local_id:'a1'}])); LS.setItem(OP_RUINS,JSON.stringify([{b:{local_id:'a1'},erro:'x'},{b:{local_id:'a2'},erro:'y'}]));
+        R.dev=opRuinsDevolver()+'|'+opFilaLer().map(x=>x.local_id).join(',')+'|'+opRuinsLer().length;
+      } finally { RE.d=JSON.parse(d0); RE.gravar(); S.geo=JSON.parse(g0); S.geoEnsino=e0; LS.setItem(OP_FILA,f0||'[]'); LS.setItem(OP_RUINS,r0||'[]'); geoEnsAplicar(); }
+      return R; });
+    ok(nv.j==='1|CLIENTE FECHADO|JOAO|true','reentrega: correção feita aqui tinha que ganhar da cópia velha da nuvem, sem duplicar ('+nv.j+')');
+    ok(nv.j2==='1|CLIENTE FECHADO|JOAO|50','reentrega: aparelho com cópia velha não pode desfazer a correção ('+nv.j2+')');
+    ok(nv.dup==='CLIENTE FECHADO,OUTRO','reentrega: cópia velha some, linha diferente fica ('+nv.dup+')');
+    ok(nv.geo==='true|true','mapa: ensinamento tinha que voltar depois do mapa ser trocado ('+nv.geo+')');
+    ok(nv.ens==='1|2','mapa: livro de ensinamentos junta pelo mais novo ('+nv.ens+')');
+    ok(nv.cls==='false,false,false,true,false,true','bipe: só erro de dado é recusa; rede/sessão ficam na fila; duplicado é subiu ('+nv.cls+')');
+    ok(nv.lin==='2026-11-20||3||x|ok','bipe: linha arrumada para o banco aceitar ('+nv.lin+')');
+    ok(nv.dev==='1|a1,a2|0','bipe: recusados voltam para a fila sem repetir ('+nv.dev+')'); }
+  { const cm=await p.evaluate(()=>{ const a=cmJuntarAlias({'LAVRA|MG':1,__em:{'LAVRA|MG':'2026-11-25'}},{'LAVRA|MG':9,'X|SP':3,__em:{'LAVRA|MG':'2026-11-20'}});
+      const b=cmJuntarAtend({k:{nome:'A',c:5,_em:'2026-11-25'}},{k:{nome:'A',c:null,cand:[1,2],_em:'2026-11-01'},j:{nome:'J'}});
+      const a0=JSON.stringify(S.cidAlias||{}); try{ cmFoto(); S.cidAlias=Object.assign({},S.cidAlias||{},{'TESTE|MG':42}); cmCarimbar(); const st=!!(S.cidAlias.__em&&S.cidAlias.__em['TESTE|MG']);
+        return [a['LAVRA|MG'],a['X|SP'],b.k.c,!!b.j,st].join('|'); } finally{ S.cidAlias=JSON.parse(a0); cmFoto(); } });
+    ok(cm==='1|3|5|true|true','cidades: correção mais nova ganha da cópia velha ('+cm+')'); }
+  { const gu=await p.evaluate(()=>{ const s0=JSON.stringify(S.gsSnap||{}); try{
+        S.gsSnap={'2026-11-16':{tn:10,ts:1},'2026-11-19':{tn:5,ts:1}}; nuvAplicar('s:gsSnap',{'2026-11-23':{tn:7,ts:2},'2026-11-19':{tn:6,ts:3}},false);
+        const a=Object.keys(S.gsSnap).sort().join(',')+'|'+S.gsSnap['2026-11-19'].tn;
+        const j=nuvJuntar('s:gsSnap',{'2026-11-13':{tn:1,ts:1}},{'2026-11-24':{tn:1,ts:1}}); return a+'|'+Object.keys(j).sort().join(','); }
+      finally{ S.gsSnap=JSON.parse(s0); } });
+    ok(gu==='2026-11-16,2026-11-19,2026-11-23|6|2026-11-13,2026-11-24','painel: cópia da nuvem com menos dias não pode apagar dia ('+gu+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();
