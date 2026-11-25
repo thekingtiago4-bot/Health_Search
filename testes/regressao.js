@@ -1595,5 +1595,15 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         return q+'|'+pop; }
       finally{ nexAvisos=n0; notifMostrar=nm; nexAbrirSuspeitas=ab; nexSuspeitas=ns; } });
     ok(nt==='1|2','aviso de reentrega: não pode repetir sem nota nova ('+nt+')'); }
+  { const ls=await p.evaluate(async()=>{ const c0=JSON.stringify(S.clientesReq||[]), t0=JSON.stringify(S.listaTirados||{}), cli=NV.cli, us=NV.user, h0=NUV.h['s:clientesReq'];
+      try{ S.listaTirados={clientesReq:{c9:'2026-11-25T00:00:00Z'}};
+        S.clientesReq=[{id:'c1',nome:'HDL',em:'2026-11-16'}];
+        nuvAplicar('s:clientesReq',[{id:'c2',nome:'ATACADAO',em:'2026-11-18'}],false); const a=S.clientesReq.map(x=>x.id).sort().join(',');
+        const nuvem=[{id:'c1',nome:'HDL',em:'2026-11-16'},{id:'c2',nome:'ATACADAO',em:'2026-11-18'},{id:'c3',nome:'NATUS',em:'2026-11-18'},{id:'c9',nome:'EXCLUIDO',em:'2026-11-10'}];
+        NV.cli={from:()=>({select:()=>({eq:(c,k)=>({maybeSingle:async()=>({data:k==='s:clientesReq'?{valor:nuvem,apagado:false}:null,error:null})})})})}; NV.user={id:'u'};
+        S.clientesReq=[{id:'c1',nome:'HDL',em:'2026-11-16'}]; NUV.h['s:clientesReq']=nuvHash(S.clientesReq);
+        await listasConferir(true); return a+'|'+S.clientesReq.map(x=>x.id).sort().join(','); }
+      finally{ NV.cli=cli; NV.user=us; S.clientesReq=JSON.parse(c0); S.listaTirados=JSON.parse(t0); NUV.h['s:clientesReq']=h0; } });
+    ok(ls==='c1,c2|c1,c2,c3','agendamentos: lista menor aqui ou na nuvem não pode apagar cliente; excluído no botão não volta ('+ls+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

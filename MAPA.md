@@ -809,3 +809,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `notifVarrer` reescrito: chave sem números (`avisoBase`), memória `healthSearch.notifUltimos`; o mesmo aviso só volta se o
   número subir e no máximo 1 vez a cada 30 min.
 - `toast`: o mesmo texto dentro de 20 s não repete.
+
+### v10.6.48 (25/11/2026) — clientes fixos sumiram de novo (aparelho com 1, nuvem com 12)
+- Brecha 3 das listas seguras: lista MENOR (não vazia) com hash "em dia" não conferia a nuvem; e `nuvAplicar` trocava a
+  lista inteira. Agora `nuvAplicar` soma (`listaJuntar`) para `LISTAS_SEGURAS` e `listasConferir` (a cada sincronização,
+  no máximo 1×/min, e 5 s depois de abrir) busca a lista da nuvem, soma e, se a soma difere da nuvem, sobe.
+- Migração `2026-11-25-002-restaurar-agendamentos.sql`: soma pelas versões do próprio banco (`hs_versoes`, desde 18/11),
+  vale a versão mais nova de cada item, respeita `s:listaTirados`. Nenhum dado de cliente vai para o repositório (é público).

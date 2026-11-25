@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 25/11/2026 07:53 · versão 10.6.47
+Gerado em 25/11/2026 09:43 · versão 10.6.48
 
 
 ## ab
@@ -593,6 +593,7 @@ Gerado em 25/11/2026 07:53 · versão 10.6.47
 - `listaJuntar` — linha 12319
 - `listaTirado` — linha 12318
 - `listaTirar` — linha 12315
+- `listasConferir` — linha 12612
 - `listasProteger` — linha 12323
 
 ## lo

@@ -4470,7 +4470,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.47', HS_DATA='25/11/2026';
+const HS_VERSAO='10.6.48', HS_DATA='25/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12598,6 +12598,28 @@ notifVarrer=function(){ try{ const a=nexAvisos(); let U={}; try{ U=JSON.parse(LS
     if(mud) try{ LS.setItem(NOTIF_UL,JSON.stringify(U)); }catch(e){}
     _notifIni=true; }catch(e){} };
 { const _t=toast; const ult={}; toast=function(m){ const k=String(m||''); const ag=Date.now(); if(ult[k]&&ag-ult[k]<20000) return; ult[k]=ag; return _t.apply(this,arguments); }; }
+/* ================= v10.6.48 · Agendamentos (clientes fixos) / motoristas: a lista NUNCA encolhe sozinha =================
+   Caso real (25/11): o aparelho ficou com 1 cliente fixo (cópia velha de 16/11) e a nuvem com 12. A proteção da
+   v10.6.29 só conferia a nuvem com a lista VAZIA ou indo subir — uma lista menor "achando que estava em dia" passava.
+   E o que chegava da nuvem trocava a lista inteira. Agora:
+   1) o que chega da nuvem é SOMADO ao daqui (um por id/nome, vale o mais novo; só sai o que foi Excluído no botão);
+   2) a cada sincronização (no máximo 1 vez por minuto) o aparelho confere a lista da nuvem e soma; se a soma tem
+      mais do que a nuvem, ela sobe. */
+{ const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ const c=String(chave).slice(2);
+    if(String(chave).startsWith('s:')&&LISTAS_SEGURAS.includes(c)){ const loc=Array.isArray(S[c])?S[c]:[]; valor=listaJuntar(c,loc,(!apagado&&Array.isArray(valor))?valor:[]); apagado=false; }
+    return _na.call(this,chave,valor,apagado); }; }
+let LISTAS_ULT=0;
+async function listasConferir(forcar){ if(!opOnline()||typeof NV==='undefined'||!NV.cli||!NV.user) return 0; const ag=Date.now(); if(!forcar&&ag-LISTAS_ULT<60000) return 0; LISTAS_ULT=ag; let mexeu=0;
+  for(const campo of LISTAS_SEGURAS){ const k='s:'+campo; let nuvem=null;
+    try{ const {data,error}=await NV.cli.from('hs_sync').select('valor,apagado').eq('chave',k).maybeSingle(); if(error) throw error; if(data&&!data.apagado&&Array.isArray(data.valor)) nuvem=data.valor; }catch(e){ continue; }
+    if(!nuvem) continue; const loc=Array.isArray(S[campo])?S[campo]:[]; const j=listaJuntar(campo,loc,nuvem);
+    const antes=loc.length;
+    if(nuvHash(j)!==nuvHash(loc)){ S[campo]=j; mexeu++; if(j.length>antes) try{ toast(`🛡 ${j.length-antes} ${campo==='clientesReq'?'cliente(s) fixo(s)':campo==='cadMot'?'motorista(s)':'agendamento(s)'} trazido(s) de volta da nuvem.`); }catch(e){} }
+    if(nuvHash(j)!==nuvHash(nuvem)) NUV.h[k]=nuvHash(nuvem); /* a soma é diferente da nuvem: sobe na próxima rodada */ }
+  if(mexeu){ salvar(); try{ renderTudo(); }catch(e){} try{ cliRender(); }catch(e){} }
+  return mexeu; }
+{ const _ns=nuvSinc; nuvSinc=async function(){ if(!NUV.rodando){ try{ await listasConferir(); }catch(e){} } return _ns.apply(this,arguments); }; }
+setTimeout(async()=>{ try{ if(LS.pronto) await LS.pronto; }catch(e){} try{ await listasConferir(true); }catch(e){} },5000);
 </script>
 
 </body>
