@@ -801,3 +801,11 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - **Painel de Gestão com furo 13–23/11**: `s:gsSnap` da nuvem foi trocado por uma cópia com 2 dias (backup 24/11). Agora
   `gsSnapUniao` em `nuvAplicar` e `nuvJuntar` (dia nunca sai, vale a foto mais nova do dia), `gsCompletarDeFotos` puxa os dias
   de `hs_fotos` ao abrir, limite de 120 dias tirado. Migração `2026-11-25-001-restaurar-painel-gestao.sql` devolve os dias.
+
+### v10.6.47 (25/11/2026) — aviso de reentrega repetindo
+- `reAvisarPopup` reescrito: memória gravada `healthSearch.rePopVistos` (nota|dia, 30 dias) — a janela "Reentregas
+  detectadas" só abre com suspeita que o aparelho nunca mostrou (antes a memória era só da sessão e o `RE_POP_VISTOS.clear()`
+  de `nexReverificar` reabria tudo).
+- `notifVarrer` reescrito: chave sem números (`avisoBase`), memória `healthSearch.notifUltimos`; o mesmo aviso só volta se o
+  número subir e no máximo 1 vez a cada 30 min.
+- `toast`: o mesmo texto dentro de 20 s não repete.

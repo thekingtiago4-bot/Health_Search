@@ -4470,7 +4470,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.46', HS_DATA='25/11/2026';
+const HS_VERSAO='10.6.47', HS_DATA='25/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12567,6 +12567,37 @@ async function gsCompletarDeFotos(){ if(GS_FOTOS_OK||!opOnline()||!window.NV||!N
     return n; }catch(e){ return 0; } }
 setTimeout(()=>{ try{ gsCompletarDeFotos(); }catch(e){} },6000);
 setInterval(()=>{ try{ gsCompletarDeFotos(); }catch(e){} },60000);
+/* ================= v10.6.47 · Aviso de reentrega repetindo a cada poucos segundos =================
+   Três travas, com memória GRAVADA no aparelho (sobrevive a recarregar a página e a sincronização):
+   1) janela "Reentregas detectadas": abre só quando aparece nota suspeita que este aparelho NUNCA mostrou;
+      fechou, não volta para as mesmas notas.
+   2) notificação do aparelho: a chave não leva mais a contagem ("3 reentregas" → "4 reentregas" era aviso novo);
+      o mesmo aviso só volta se o número SUBIR, e no máximo 1 vez a cada 30 min.
+   3) mesmo texto na faixa de aviso dentro de 20 s não repete. */
+const REPOP_CH='healthSearch.rePopVistos';
+function rePopLer(){ try{ return JSON.parse(LS.getItem(REPOP_CH)||'{}')||{}; }catch(e){ return {}; } }
+function rePopGravar(o){ try{ const lim=Date.now()-30*864e5; for(const k of Object.keys(o)) if(o[k]<lim) delete o[k]; LS.setItem(REPOP_CH,JSON.stringify(o)); }catch(e){} }
+reAvisarPopup=function(){ try{ if(Store.modo==='nuvem'&&!NUV.primeiraOk) return; }catch(e){} try{ reFeitoDeNex(); }catch(e){} try{ nexVarrer(); }catch(e){}
+  if(RE_POP_ABERTO) return; const l=nexSuspeitas(); if(!l.length) return;
+  const V=rePopLer(); const novas=l.filter(([k,r])=>!V[k+'|'+r.d]&&!RE_POP_VISTOS.has(k+'|'+r.d)); if(!novas.length) return;
+  const ag=Date.now(); for(const [k,r] of l){ V[k+'|'+r.d]=V[k+'|'+r.d]||ag; RE_POP_VISTOS.add(k+'|'+r.d); } rePopGravar(V);
+  RE_POP_ABERTO=true; setTimeout(()=>{ RE_POP_ABERTO=false; },3000);
+  const h=document.querySelector('.fundo .modal h2'); if(h&&/Reentregas detectadas/.test(h.textContent)) return;
+  try{ opSom&&opSom('reent'); }catch(e){} nexAbrirSuspeitas(); };
+/* o "limpar vistos" de nexReverificar não reabre mais o que já foi mostrado: a memória gravada manda */
+const NOTIF_UL='healthSearch.notifUltimos';
+const avisoBase=k=>String(k||'').replace(/\d+([.,]\d+)?/g,'#');
+const avisoNum=k=>{ const m=String(k||'').match(/\d+/); return m?+m[0]:0; };
+notifVarrer=function(){ try{ const a=nexAvisos(); let U={}; try{ U=JSON.parse(LS.getItem(NOTIF_UL)||'{}')||{}; }catch(e){}
+    const ag=Date.now(); let mud=false;
+    for(const x of a){ const k=avisoChave(x); if(!k) continue; const b=avisoBase(k), n=avisoNum(k), u=U[b];
+      if(!u){ U[b]={em:ag,n}; mud=true; if(_notifIni) notifMostrar('Health Search',String(x.txt||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim(),b.slice(0,60)); continue; }
+      if(n>u.n&&ag-u.em>30*60000){ U[b]={em:ag,n}; mud=true; if(_notifIni) notifMostrar('Health Search',String(x.txt||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim(),b.slice(0,60)); }
+      else if(n<u.n){ U[b]={em:u.em,n}; mud=true; } }
+    const lim=ag-3*864e5; for(const b of Object.keys(U)) if(U[b].em<lim){ delete U[b]; mud=true; }
+    if(mud) try{ LS.setItem(NOTIF_UL,JSON.stringify(U)); }catch(e){}
+    _notifIni=true; }catch(e){} };
+{ const _t=toast; const ult={}; toast=function(m){ const k=String(m||''); const ag=Date.now(); if(ult[k]&&ag-ult[k]<20000) return; ult[k]=ag; return _t.apply(this,arguments); }; }
 </script>
 
 </body>

@@ -1585,5 +1585,15 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         const j=nuvJuntar('s:gsSnap',{'2026-11-13':{tn:1,ts:1}},{'2026-11-24':{tn:1,ts:1}}); return a+'|'+Object.keys(j).sort().join(','); }
       finally{ S.gsSnap=JSON.parse(s0); } });
     ok(gu==='2026-11-16,2026-11-19,2026-11-23|6|2026-11-13,2026-11-24','painel: cópia da nuvem com menos dias não pode apagar dia ('+gu+')'); }
+  { const nt=await p.evaluate(async()=>{ const n0=nexAvisos, nm=notifMostrar, ab=nexAbrirSuspeitas, ns=nexSuspeitas; let q=0, pop=0, cont=3;
+      try{ LS.setItem('healthSearch.notifUltimos','{}'); LS.setItem('healthSearch.rePopVistos','{}');
+        nexAvisos=()=>[{acao:'sus',txt:`<b>${cont}</b> reentrega(s) detectada(s) esperando motivo`}]; notifMostrar=async()=>{ q++; };
+        _notifIni=true; notifVarrer(); cont=4; notifVarrer(); cont=2; notifVarrer(); cont=3; notifVarrer();
+        nexSuspeitas=()=>[['n:1',{d:'2026-11-25'}]]; nexAbrirSuspeitas=()=>{ pop++; }; NUV.primeiraOk=true;
+        reAvisarPopup(); RE_POP_ABERTO=false; RE_POP_VISTOS.clear(); reAvisarPopup(); RE_POP_ABERTO=false;
+        nexSuspeitas=()=>[['n:1',{d:'2026-11-25'}],['n:2',{d:'2026-11-25'}]]; reAvisarPopup(); RE_POP_ABERTO=false;
+        return q+'|'+pop; }
+      finally{ nexAvisos=n0; notifMostrar=nm; nexAbrirSuspeitas=ab; nexSuspeitas=ns; } });
+    ok(nt==='1|2','aviso de reentrega: não pode repetir sem nota nova ('+nt+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

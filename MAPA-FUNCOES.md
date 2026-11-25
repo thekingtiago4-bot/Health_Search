@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 25/11/2026 07:40 · versão 10.6.46
+Gerado em 25/11/2026 07:53 · versão 10.6.47
 
 
 ## ab
@@ -985,6 +985,8 @@ Gerado em 25/11/2026 07:40 · versão 10.6.46
 - `reMesmoRomaneio` — linha 6523
 - `reMotivosRender` — linha 7823
 - `reNoDia` — linha 5781
+- `rePopGravar` — linha 12579
+- `rePopLer` — linha 12578
 - `reRapida` — linha 10198
 - `reRapidaLancar` — linha 10207
 - `reRecuperarConfirmadas` — linha 6608

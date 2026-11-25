@@ -1,1 +1,1 @@
-{"versao":"10.6.46","data":"2026-11-25","novidades":"Dados nao voltam nem somem: bipes que falharam por internet ou sessao voltam para a fila e sobem sozinhos; correcoes (reentregas, cidades, mapa) valem sempre a mais nova; Painel de Gestao nunca perde dia e se completa com as fotos permanentes."}
+{"versao":"10.6.47","data":"2026-11-25","novidades":"Aviso de reentrega nao fica mais repetindo: so avisa quando aparece reentrega nova de verdade; o que ja foi mostrado nao volta, nem depois de recarregar."}
