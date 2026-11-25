@@ -1605,5 +1605,18 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         await listasConferir(true); return a+'|'+S.clientesReq.map(x=>x.id).sort().join(','); }
       finally{ NV.cli=cli; NV.user=us; S.clientesReq=JSON.parse(c0); S.listaTirados=JSON.parse(t0); NUV.h['s:clientesReq']=h0; } });
     ok(ls==='c1,c2|c1,c2,c3','agendamentos: lista menor aqui ou na nuvem não pode apagar cliente; excluído no botão não volta ('+ls+')'); }
+  { const ux=await p.evaluate(async()=>{ const cli=NV.cli, us=NV.user, mo=Store.modo, pf=NV.perfil; let rpc=null;
+      const lista=[{id:'a',nome:'Tiago',usuario:'tiago',email:'t@x.com',papel:'admin',ativo:true},{id:'b',nome:'Carlos',usuario:'carlos',email:'c@x.com',papel:'usuario',ativo:true},{id:'c',nome:'Ana',usuario:'ana.excluido.1',usuario_antes:'ana',email_antes:'a@x.com',papel:'usuario',ativo:false,excluido_em:'2026-11-25T10:00:00Z',excluido_por:'Tiago'}];
+      try{ Store.modo='nuvem'; NV.user={id:'a'}; NV.perfil={papel:'admin',ativo:true,nome:'Tiago'};
+        NV.cli={from:()=>({select:()=>({order:async()=>({data:lista,error:null})})}),rpc:async(f,a)=>{ if(f==='hs_excluir_usuario') rpc=f+':'+(a&&a.alvo); return {data:[],error:null}; }};
+        irPara('usuarios'); await renderUsuarios(); await new Promise(r=>setTimeout(r,50));
+        const linhas=document.querySelectorAll('#nv-users tbody tr').length, temExc=!!document.querySelector('[data-nv-excluir="b"]'), meu=!!document.querySelector('[data-nv-excluir="a"]');
+        document.querySelector('[data-nv-excluir="b"]').click(); await new Promise(r=>setTimeout(r,50));
+        const conf=[...document.querySelectorAll('.fundo .modal')].pop(); const txt=conf.textContent; conf.querySelector('[data-r="1"]').click(); await new Promise(r=>setTimeout(r,100));
+        document.querySelector('[data-nv-verexc]').click(); await new Promise(r=>setTimeout(r,80));
+        const comExc=document.querySelectorAll('#nv-users tbody tr').length, exTxt=(document.querySelector('#nv-users tr.nv-exc')||{}).textContent||'';
+        return [linhas,temExc,meu,/Nada do que ele fez é apagado/.test(txt),rpc,comExc,/histórico mantido/.test(exTxt)].join('|'); }
+      finally{ NV.cli=cli; NV.user=us; Store.modo=mo; NV.perfil=pf; NV.verExcluidos=false; irPara('operacao'); } });
+    ok(ux==='2|true|false|true|hs_excluir_usuario:b|3|true','usuários: excluir acesso com confirmação, sem apagar histórico ('+ux+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

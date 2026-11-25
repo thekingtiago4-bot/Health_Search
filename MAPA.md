@@ -816,3 +816,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   no máximo 1×/min, e 5 s depois de abrir) busca a lista da nuvem, soma e, se a soma difere da nuvem, sobe.
 - Migração `2026-11-25-002-restaurar-agendamentos.sql`: soma pelas versões do próprio banco (`hs_versoes`, desde 18/11),
   vale a versão mais nova de cada item, respeita `s:listaTirados`. Nenhum dado de cliente vai para o repositório (é público).
+
+### v10.6.49 (25/11/2026) — excluir usuário sem perder o histórico
+- Migração `2026-11-25-003-excluir-usuario.sql`: `hs_excluir_usuario(alvo)` (só admin, nunca a si mesmo) marca `perfis.excluido_em/_por`,
+  guarda `usuario_antes/email_antes`, troca usuário/e-mail por `*.excluido.*` (libera para outra pessoa), bane no `auth.users`
+  (`banned_until=infinity`) e derruba `auth.sessions`. Cópia do perfil em `hs_versoes` (`perfil:<id>`). Nada em bipes/sync/auditoria.
+- Aba Usuários: botão Excluir com confirmação; excluídos escondidos (botão "Mostrar excluídos"); `NV.lista` = linhas visíveis
+  (a coluna Cargo casa linha por índice). `nvTraduz`: "banned" → "Este acesso foi excluído".

@@ -4062,7 +4062,7 @@ function nvLib(){ return new Promise((ok,er)=>{ if(window.supabase) return ok();
 function nvTela(html){ let f=document.getElementById('nv-tela'); if(!f){ f=document.createElement('div'); f.id='nv-tela'; document.body.appendChild(f); } f.innerHTML=`<div class="nv-caixa"><div class="nv-marca"><b>Health Search</b><span>Acesso online</span></div>${html}</div>`; f.hidden=false; return f; }
 function nvFechar(){ const f=document.getElementById('nv-tela'); if(f) f.hidden=true; }
 const nvMsg=(f,m,erro)=>{ const e=f.querySelector('.nv-msg'); if(e){ e.textContent=m||''; e.classList.toggle('erro',!!erro); } };
-function nvTraduz(m){ m=String(m||''); if(/Invalid login/i.test(m)) return 'Usuário ou senha incorretos.'; if(/Email not confirmed/i.test(m)) return 'E-mail ainda não confirmado. Peça ao administrador.'; if(/already registered|already been registered/i.test(m)) return 'Esse e-mail já tem cadastro.'; if(/Password should be/i.test(m)) return 'A senha precisa ter pelo menos 8 caracteres.'; if(/fetch/i.test(m)) return 'Sem conexão com o servidor.'; return m; }
+function nvTraduz(m){ m=String(m||''); if(/banned/i.test(m)) return 'Este acesso foi excluído. Fale com o administrador.'; if(/Invalid login/i.test(m)) return 'Usuário ou senha incorretos.'; if(/Email not confirmed/i.test(m)) return 'E-mail ainda não confirmado. Peça ao administrador.'; if(/already registered|already been registered/i.test(m)) return 'Esse e-mail já tem cadastro.'; if(/Password should be/i.test(m)) return 'A senha precisa ter pelo menos 8 caracteres.'; if(/fetch/i.test(m)) return 'Sem conexão com o servidor.'; return m; }
 
 /* configuração inicial (só aparece se o arquivo não vier com URL/chave) */
 function nvConfigurar(){ return new Promise(res=>{ const f=nvTela(`<h2>Conectar ao banco online</h2><p>Cole os dados do projeto Supabase (Project Settings → API). Fica salvo neste aparelho.</p>
@@ -4170,11 +4170,11 @@ async function nvNovaSenha(){ await new Promise(res=>{ const f=nvTela(`<h2>Nova 
 
 /* ---------- tela Usuários (só administrador) ---------- */
 async function renderUsuarios(){ const el=$('#nv-users'); if(!el) return; if(Store.modo!=='nuvem'){ el.innerHTML='<div class="vazio-lista">Disponível só na versão online.</div>'; return; }
-  const {data,error}=await NV.cli.from('perfis').select('*').order('nome'); if(error){ el.innerHTML='<div class="vazio-lista">'+esc(nvTraduz(error.message))+'</div>'; return; } NV.lista=data;
-  el.innerHTML=`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Nome</th><th>Usuário</th><th>E-mail de recuperação</th><th>Perfil</th><th>Situação</th><th></th></tr></thead><tbody>${data.map(u=>{ const eu=u.id===NV.user.id;
+  const {data,error}=await NV.cli.from('perfis').select('*').order('nome'); if(error){ el.innerHTML='<div class="vazio-lista">'+esc(nvTraduz(error.message))+'</div>'; return; } NV.lista=data; const exc=data.filter(u=>u.excluido_em); const vis=NV.verExcluidos?data:data.filter(u=>!u.excluido_em); NV.lista=vis; NV.todos=data;
+  el.innerHTML=`<div class="rolagem"><table class="nx-tab"><thead><tr><th>Nome</th><th>Usuário</th><th>E-mail de recuperação</th><th>Perfil</th><th>Situação</th><th></th></tr></thead><tbody>${vis.map(u=>{ if(u.excluido_em) return `<tr class="nv-exc"><td class="forte">${esc(u.nome||'')}</td><td>${esc(u.usuario_antes||u.usuario||'—')}</td><td>${esc(u.email_antes||'')}</td><td>${u.papel==='admin'?'Administrador':'Usuário'}</td><td><span class="sec">Excluído</span><br><small class="sub">em ${esc(new Date(u.excluido_em).toLocaleDateString('pt-BR'))}${u.excluido_por?' por '+esc(u.excluido_por):''} · histórico mantido</small></td><td></td></tr>`; const eu=u.id===NV.user.id;
     return `<tr><td class="forte">${esc(u.nome||'')}${eu?' <small class="sec">(você)</small>':''}</td><td>${esc(u.usuario||'—')}</td><td>${nvEmailReal(u.email)?esc(u.email):'<span class="nv-falta">falta e-mail</span>'}</td>
     <td>${u.papel==='admin'?'Administrador':'Usuário'}</td><td>${u.ativo?'<span class="nx-ok">Ativo</span>':'<span class="sec">Bloqueado</span>'}${u.trocar_senha?'<br><small class="sub">troca de senha no 1º acesso</small>':''}</td>
-    <td class="nx-acoes"><button class="btn mini pri" type="button" data-nv-editar="${u.id}">Editar</button>${eu?'':`<button class="btn mini" type="button" data-nv-ativo="${u.id}" data-v="${u.ativo?0:1}">${u.ativo?'Bloquear':'Liberar'}</button>`}<button class="btn mini" type="button" data-nv-senha="${u.id}" data-nome="${esc(u.nome||'')}">Redefinir senha</button></td></tr>`; }).join('')}</tbody></table></div>`; }
+    <td class="nx-acoes"><button class="btn mini pri" type="button" data-nv-editar="${u.id}">Editar</button>${eu?'':`<button class="btn mini" type="button" data-nv-ativo="${u.id}" data-v="${u.ativo?0:1}">${u.ativo?'Bloquear':'Liberar'}</button>`}<button class="btn mini" type="button" data-nv-senha="${u.id}" data-nome="${esc(u.nome||'')}">Redefinir senha</button>${eu?'':`<button class="btn mini nv-del" type="button" data-nv-excluir="${u.id}" data-nome="${esc(u.nome||'')}">Excluir</button>`}</td></tr>`; }).join('')}</tbody></table></div>${exc.length?`<p class="sub" style="margin-top:8px"><button class="btn mini" type="button" data-nv-verexc="1">${NV.verExcluidos?'Esconder':'Mostrar'} excluídos (${exc.length})</button> Excluído não entra mais no app; tudo o que ele fez continua no histórico.</p>`:''}`; }
 function nvValidar(nome,usuario,email){ if(!nome) return 'Preencha o nome.'; if(!/^[a-z0-9._-]{3,40}$/.test(usuario)) return 'Usuário: 3 a 40 caracteres, só letras, números, ponto, hífen ou _ (ex.: tiago.souza).'; if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return 'E-mail inválido (ou deixe em branco).'; return ''; }
 function nvEditar(u){ const eu=u.id===NV.user.id; const f=document.createElement('div'); f.className='fundo';
   f.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h2>Editar ${esc(u.nome||'usuário')}</h2><p>Usuário e e-mail servem para entrar. O e-mail também recebe o link de troca de senha.</p>
@@ -4197,6 +4197,12 @@ document.addEventListener('click',async e=>{ const t=e.target; if(!t.closest||!t
       ['#nv-u-nome','#nv-u-usuario','#nv-u-email','#nv-u-senha'].forEach(s=>$(s).value=''); toast(`Usuário ${nome} criado. Entra com ${usuario} e a senha que você definiu; no 1º acesso troca a senha.`); renderUsuarios(); }
     catch(x){ toast('Não criei: '+nvTraduz(x.message)); } t.disabled=false; return; }
   if((b=t.closest('[data-nv-editar]'))){ const u=(NV.lista||[]).find(x=>x.id===b.dataset.nvEditar); if(u) nvEditar(u); return; }
+  if((b=t.closest('[data-nv-verexc]'))){ NV.verExcluidos=!NV.verExcluidos; renderUsuarios(); return; }
+  if((b=t.closest('[data-nv-excluir]'))){ const nome=b.dataset.nome||'este usuário';
+    if(!(await confirmar('Excluir acesso',`Excluir o acesso de <b>${esc(nome)}</b>?<br><br>Ele não entra mais no app (em nenhum aparelho) e o usuário/e-mail ficam livres para outra pessoa.<br><b>Nada do que ele fez é apagado</b>: bipes, baixas, divergências e porcentagens continuam no histórico com o nome dele.`,'Excluir acesso'))) return;
+    b.disabled=true; const {error}=await NV.cli.rpc('hs_excluir_usuario',{alvo:b.dataset.nvExcluir}); b.disabled=false;
+    if(error){ toast('Não excluí: '+nvTraduz(/function|does not exist|schema cache/i.test(error.message)?'o banco ainda não recebeu a atualização. Tente de novo em alguns minutos.':error.message)); return; }
+    toast(`Acesso de ${nome} excluído. O histórico dele continua.`); renderUsuarios(); return; }
   if((b=t.closest('[data-nv-ativo]'))){ await NV.cli.from('perfis').update({ativo:b.dataset.v==='1'}).eq('id',b.dataset.nvAtivo); renderUsuarios(); return; }
   if((b=t.closest('[data-nv-senha]'))){ /* v9.19.15 · senha provisória via modal (não prompt) */
     const nome=b.dataset.nome, alvo=b.dataset.nvSenha;
@@ -4470,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.48', HS_DATA='25/11/2026';
+const HS_VERSAO='10.6.49', HS_DATA='25/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -9505,7 +9511,7 @@ function perfilAplicar(){ const conf=perfilAcesso()==='conferente'; document.doc
 { const _ru2=renderUsuarios; renderUsuarios=async function(){ await _ru2.apply(this,arguments);
   try{ const tab=$('#nv-users table'); if(!tab||!NV.lista) return;
     const th=tab.querySelector('thead tr').children[3]; if(th) th.textContent='Cargo';
-    tab.querySelectorAll('tbody tr').forEach((tr,i)=>{ const u=NV.lista[i]; if(!u) return;
+    tab.querySelectorAll('tbody tr').forEach((tr,i)=>{ const u=NV.lista[i]; if(!u||u.excluido_em) return;
       const adm=u.papel==='admin', c=cargoDe(u.id,u.papel), eu=NV.user&&NV.user.id===u.id;
       const podeMexer=nvAdmin()||(cargoCompleto(cargoMeu())&&!adm);
       const opts=Object.entries(CARGOS).filter(([k])=>k!=='admin'||nvAdmin())
