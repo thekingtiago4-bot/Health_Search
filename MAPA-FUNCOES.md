@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 25/11/2026 22:41 · versão 10.6.50
+Gerado em 26/11/2026 05:26 · versão 10.6.51
 
 
 ## ab
@@ -620,6 +620,7 @@ Gerado em 25/11/2026 22:41 · versão 10.6.50
 ## mb
 - `mbChecarPC` — linha 6320
 - `mbFaixa` — linha 6315
+- `mbGradeRotulos` — linha 12834
 - `mbInstalarAviso` — linha 6321
 
 ## me

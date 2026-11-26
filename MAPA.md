@@ -835,3 +835,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - **Conferente** (`html[data-cf="1"]`, cargo conferente): `CARGO_TELAS.conferente=[cfinicio,operacao,conftotal,buscar,geo]`, geo
   liberado só para consulta; tela `#t-cfinicio` (opção B), topo `#cf-topo` com voltar e selo de conexão; `opMarcarMao/opDesbipar/
   opApagarLote` recusam; esconde ✔/⚠/✕, busca de marcar, Publicar/Editor/Alimentar do mapa, sino e Salvar.
+
+### v10.6.51 (26/11/2026) — menu do celular em ícones, cargo "Usuário" saiu
+- Celular (≤ 860 px): `.rail.mb-aberto .nav` vira grade de 4 colunas (ícone + nome curto `RIC_CURTO` + selo), grupos pelo
+  `data-grupo` do `.ng2`; `railAjustar` não compacta no celular (rola).
+- Cargos: `CARGOS` = conferente, lider, supervisor, admin (nessa ordem); `cargoDe` devolve conferente para "usuario"/sem cargo.

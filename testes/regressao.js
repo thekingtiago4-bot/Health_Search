@@ -768,10 +768,9 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       r.cargos=Object.keys(CARGOS).join(',');
       return r; });
     ok(cg.cfVe&&!cg.cfNao&&!cg.cfRe,'cargo: o Conferente vê Conferência total e não vê Usuários nem Reentregas');
-    ok(cg.usVe&&!cg.usNao,'cargo: o Usuário só chega no NexBip, não na Conferência total');
     ok(cg.supVe&&!cg.supNao,'cargo: o Supervisor vê tudo menos o que é só do Admin');
     ok(cg.ldVe,'cargo: o Líder vê os romaneios');
-    ok(cg.cargos==='admin,lider,supervisor,conferente,usuario','cargo: faltam cargos do Anexo I ('+cg.cargos+')'); }
+    ok(cg.cargos==='conferente,lider,supervisor,admin','cargo: Conferente, Líder, Supervisor e Admin, sem "Usuário" (v10.6.51) ('+cg.cargos+')'); }
   { const mu=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       muralAbrir(); await w(350); murArrumar();
       const g=document.querySelector('#mural .mural-g');
@@ -1600,7 +1599,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         S.clientesReq=[{id:'c1',nome:'HDL',em:'2026-11-16'}];
         nuvAplicar('s:clientesReq',[{id:'c2',nome:'ATACADAO',em:'2026-11-18'}],false); const a=S.clientesReq.map(x=>x.id).sort().join(',');
         const nuvem=[{id:'c1',nome:'HDL',em:'2026-11-16'},{id:'c2',nome:'ATACADAO',em:'2026-11-18'},{id:'c3',nome:'NATUS',em:'2026-11-18'},{id:'c9',nome:'EXCLUIDO',em:'2026-11-10'}];
-        NV.cli={from:()=>({select:()=>({eq:(c,k)=>({maybeSingle:async()=>({data:k==='s:clientesReq'?{valor:nuvem,apagado:false}:null,error:null})})})})}; NV.user={id:'u'};
+        const cadeia=(fim)=>{ const h={get:(o,k)=>k==='then'?(r=>Promise.resolve({data:[],error:null}).then(r)):(k==='maybeSingle'||k==='single')?(async()=>({data:null,error:null})):(k==='order'&&fim)?fim:(()=>new Proxy({},h))}; return new Proxy({},h); }; NV.cli={channel:()=>({on(){return this},subscribe(){return this},send(){}}),removeChannel(){},rpc:async()=>({data:[],error:null}),from:(tb)=>tb==='hs_sync'?{select:()=>({eq:(c,k)=>({maybeSingle:async()=>({data:k==='s:clientesReq'?{valor:nuvem,apagado:false}:null,error:null})})})}:cadeia()}; NV.user={id:'u'};
         S.clientesReq=[{id:'c1',nome:'HDL',em:'2026-11-16'}]; NUV.h['s:clientesReq']=nuvHash(S.clientesReq);
         await listasConferir(true); return a+'|'+S.clientesReq.map(x=>x.id).sort().join(','); }
       finally{ NV.cli=cli; NV.user=us; S.clientesReq=JSON.parse(c0); S.listaTirados=JSON.parse(t0); NUV.h['s:clientesReq']=h0; } });
@@ -1608,7 +1607,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
   { const ux=await p.evaluate(async()=>{ const cli=NV.cli, us=NV.user, mo=Store.modo, pf=NV.perfil; let rpc=null;
       const lista=[{id:'a',nome:'Tiago',usuario:'tiago',email:'t@x.com',papel:'admin',ativo:true},{id:'b',nome:'Carlos',usuario:'carlos',email:'c@x.com',papel:'usuario',ativo:true},{id:'c',nome:'Ana',usuario:'ana.excluido.1',usuario_antes:'ana',email_antes:'a@x.com',papel:'usuario',ativo:false,excluido_em:'2026-11-25T10:00:00Z',excluido_por:'Tiago'}];
       try{ Store.modo='nuvem'; NV.user={id:'a'}; NV.perfil={papel:'admin',ativo:true,nome:'Tiago'};
-        NV.cli={from:()=>({select:()=>({order:async()=>({data:lista,error:null})})}),rpc:async(f,a)=>{ if(f==='hs_excluir_usuario') rpc=f+':'+(a&&a.alvo); return {data:[],error:null}; }};
+        const cadeia=(fim)=>{ const h={get:(o,k)=>k==='then'?(r=>Promise.resolve({data:[],error:null}).then(r)):(k==='maybeSingle'||k==='single')?(async()=>({data:null,error:null})):(k==='order'&&fim)?fim:(()=>new Proxy({},h))}; return new Proxy({},h); }; NV.cli={channel:()=>({on(){return this},subscribe(){return this},send(){}}),removeChannel(){},from:(tb)=>tb==='perfis'?{select:()=>({order:async()=>({data:lista,error:null})})}:cadeia(),rpc:async(f,a)=>{ if(f==='hs_excluir_usuario') rpc=f+':'+(a&&a.alvo); return {data:[],error:null}; }};
         irPara('usuarios'); await renderUsuarios(); await new Promise(r=>setTimeout(r,50));
         const linhas=document.querySelectorAll('#nv-users tbody tr').length, temExc=!!document.querySelector('[data-nv-excluir="b"]'), meu=!!document.querySelector('[data-nv-excluir="a"]');
         document.querySelector('[data-nv-excluir="b"]').click(); await new Promise(r=>setTimeout(r,50));
@@ -1630,5 +1629,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
   { const sel=await p.evaluate(()=>{ const f0=LS.getItem(OP_FILA); try{ LS.setItem(OP_FILA,JSON.stringify([{local_id:'z1'},{local_id:'z2'}])); opFilaSelo(); const a=(document.getElementById('op-fila-selo')||{}).textContent||'';
         LS.setItem(OP_FILA,'[]'); opFilaSelo(); return /2/.test(a)+'|'+!document.getElementById('op-fila-selo'); } finally{ LS.setItem(OP_FILA,f0||'[]'); } });
     ok(sel==='true|true','sem internet: selo mostra bipes guardados e some quando sobem ('+sel+')'); }
+  { const cg=await p.evaluate(()=>{ const c0=JSON.stringify(S.cargos||{}); try{ S.cargos=Object.assign({},S.cargos,{x1:'usuario'}); return [Object.keys(CARGOS).join(','),cargoDe('x1','usuario'),cargoDe('x2','usuario'),cargoDe('x3','admin')].join('|'); } finally{ S.cargos=JSON.parse(c0); } });
+    ok(cg==='conferente,lider,supervisor,admin|conferente|conferente|admin','cargos: sem "Usuário"; quem não tem cargo é Conferente ('+cg+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

@@ -4476,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.50', HS_DATA='25/11/2026';
+const HS_VERSAO='10.6.51', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12809,6 +12809,40 @@ function cfAplicar(){ const on=cfAtivo(); const html=document.documentElement; i
   cfTopo(); cfTravas(); const s=document.getElementById('t-cfinicio'); if(s&&!s.hidden) cfInicioDesenhar(); }
 { const _ca=cargoAplicar; cargoAplicar=function(){ const r=_ca.apply(this,arguments); try{ cfAplicar(); }catch(e){} return r; }; }
 setInterval(()=>{ try{ cfAplicar(); }catch(e){} },3000);
+/* ================= v10.6.51 · Menu do CELULAR em grade de ícones (mesmo estilo aprovado para o computador) =================
+   O ☰ abria uma lista apertada e minúscula (a compactação para "caber sem rolar" encolhia tudo). Agora abre uma grade
+   de 4 colunas: ícone grande, nome curto embaixo, número de avisos em laranja, separada pelos grupos. Rola se precisar. */
+(function(){ const st=document.createElement('style'); st.textContent=`
+@media (max-width:860px){
+ .rail.mb-aberto{width:min(94vw,420px)!important}
+ .rail.mb-aberto .nav{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:6px 4px!important;align-content:start;overflow:visible!important;padding-bottom:8px}
+ .rail.mb-aberto .nav .ng2,.rail.mb-aberto .nav .nav-grupo{grid-column:1/-1;all:unset;display:block;grid-column:1/-1;font-size:11px!important;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#7FA3A3;padding:12px 4px 2px!important;pointer-events:none}
+ .rail.mb-aberto .nav .ng2 *{display:none!important}
+ .rail.mb-aberto .nav .ng2{font-size:0!important}
+ .rail.mb-aberto .nav .ng2::before{content:attr(data-grupo);font-size:11px}
+ .rail.mb-aberto .nav .ng2-box{display:contents!important}
+ .rail.mb-aberto .nav .ng2-box[hidden]{display:none!important}
+ .rail.mb-aberto .nav button[data-tela]{flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;gap:5px!important;padding:10px 2px 8px!important;border-radius:14px;background:rgba(255,255,255,.04);text-align:center;position:relative;min-height:74px;box-sizing:border-box;font-size:12px!important;font-weight:600!important;line-height:1.1}
+ .rail.mb-aberto .nav button[data-tela][hidden]{display:none!important}
+ .rail.mb-aberto .nav button[data-tela] .ico{width:27px!important;height:27px!important;margin:0!important}
+ .rail.mb-aberto .nav button[data-tela] .lbl{display:block!important;font-size:0!important;white-space:nowrap}
+ .rail.mb-aberto .nav button[data-tela] .lbl::after{content:attr(data-curto);font-size:12px}
+ .rail.mb-aberto .nav button[data-tela] .qt{position:absolute;top:4px;right:6px;margin:0!important;font-size:10.5px!important;line-height:16px;min-width:18px;padding:0 5px!important;background:var(--ag)!important;color:#062024!important}
+ .rail.mb-aberto .nav button[data-tela] .qt.ric-zero{display:none!important}
+ .rail.mb-aberto .nav button[aria-current="page"]{background:rgba(110,225,220,.18)!important;color:#fff}
+}`; document.head.appendChild(st); })();
+function mbGradeRotulos(){ for(const b of document.querySelectorAll('.nav button[data-tela]')){ const l=b.querySelector('.lbl'); if(!l) continue; const c=RIC_CURTO[b.dataset.tela]||l.textContent.trim(); if(l.dataset.curto!==c) l.dataset.curto=c; }
+  for(const q of document.querySelectorAll('.nav button[data-tela] .qt')) q.classList.toggle('ric-zero',/^\s*0\s*$/.test(q.textContent||'')); }
+setInterval(mbGradeRotulos,2000); setTimeout(mbGradeRotulos,500);
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('#mb-menu')) setTimeout(mbGradeRotulos,0); },true);
+/* a compactação antiga (rc1–rc6) não vale no celular: lá o menu rola */
+{ const _ra=window.railAjustar; window.railAjustar=function(){ if(!RIC.mq.matches){ try{ document.querySelector('.rail').classList.remove('rc1','rc2','rc3','rc4','rc5','rc6'); }catch(e){} return; } return _ra.apply(this,arguments); }; }
+/* ================= v10.6.51 · Cargos: sai o "Usuário" (pedido do Tiago, 26/11) =================
+   Ordem: Conferente → Líder → Supervisor (Líder e Supervisor com os mesmos acessos), Administrador acima de todos.
+   Quem não tinha cargo, ou tinha "Usuário", passa a ser Conferente (tela simples, conferência só consulta). */
+{ const novo={conferente:'Conferente',lider:'Líder',supervisor:'Supervisor(a)',admin:'Administrador'};
+  for(const k of Object.keys(CARGOS)) delete CARGOS[k]; Object.assign(CARGOS,novo); }
+{ const _cd=cargoDe; cargoDe=function(){ const c=_cd.apply(this,arguments); return (c==='usuario'||!CARGOS[c])?'conferente':c; }; }
 </script>
 
 </body>
