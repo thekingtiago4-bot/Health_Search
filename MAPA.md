@@ -862,3 +862,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   recolocava reentregas tiradas; o atualizado tirava (reTirados) e subia de novo → vai-e-volta em `re:2026-11-24`.
 - `NUV.reEquiv`: no `nuvAplicar` de `re:` que só difere pelas tiradas, guarda a versão crua; `nuvLocal` devolve a crua enquanto a
   local filtrada não mudar → não sobe. Simulação: 0 gravações repetidas (antes 10 em 10 rodadas).
+
+### v10.6.56 (26/11/2026) — aparelho desatualizado não grava na nuvem
+- App: `hsFetchComPrazo` (wrapper) põe " hs/<HS_VERSAO>" no `x-client-info` de toda chamada `/rest/v1/` (conferido com o
+  supabase-js 2.45.4 de verdade). `nvTraduz` traduz APP_DESATUALIZADO.
+- Banco (`2026-11-26-002-so-versao-atual-grava.sql`): gatilho `hs_sync_so_versao_atual` (BEFORE INSERT/UPDATE em hs_sync) recusa
+  gravação do app sem versão ou abaixo de `hs_versao_minima()` (10.6.56). Robô/SQL sem cabeçalho passa. Bipes não entram na trava.
+  Para subir a mínima no futuro: nova migração com `hs_versao_minima()` trocada.
