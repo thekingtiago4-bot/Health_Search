@@ -856,3 +856,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 ### v10.6.54 (26/11/2026) — bolinha de status com cor
 - `nuvStatus` (wrapper) marca `#nuv-st[data-st=ok|amar|erro|off]`; na barra de ícones a bolinha é pintada: verde salvo, amarela
   (pisca) salvando/falta subir, vermelha erro ou sem internet (`#nv-offline` também vermelho).
+
+### v10.6.55 (26/11/2026) — salvando sem fim entre aparelho atualizado e desatualizado
+- Reproduzido com 2 aparelhos simulados (nuvem falsa com o backup de 24/11 + trava do banco imitada): aparelho em 10.6.52
+  recolocava reentregas tiradas; o atualizado tirava (reTirados) e subia de novo → vai-e-volta em `re:2026-11-24`.
+- `NUV.reEquiv`: no `nuvAplicar` de `re:` que só difere pelas tiradas, guarda a versão crua; `nuvLocal` devolve a crua enquanto a
+  local filtrada não mudar → não sobe. Simulação: 0 gravações repetidas (antes 10 em 10 rodadas).

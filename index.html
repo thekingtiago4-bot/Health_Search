@@ -4476,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.54', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.55', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12898,6 +12898,18 @@ reRecuperarConfirmadas=function(){ const n=nexS(), D=RE.ler(); let v=0; let M={}
  html.rail-ic #nuv-st[data-st="amar"]{animation:ricPisca 1.2s ease-in-out infinite}
  @keyframes ricPisca{50%{opacity:.45}} }`; document.head.appendChild(st); })();
 setTimeout(()=>{ try{ nuvStatus(); }catch(e){} },500); setInterval(()=>{ try{ nuvStatus(); }catch(e){} },3000);
+/* ================= v10.6.55 · "Salvando" sem fim entre aparelhos (aparelho desatualizado × atualizado) =================
+   Reproduzido em simulação: um aparelho na versão antiga recoloca reentregas que foram TIRADAS (✕ / Não é reentrega);
+   o atualizado esconde de novo (reTirados) e subia a lista sem elas → o antigo recolocava → vai-e-volta eterno.
+   Agora o atualizado continua escondendo, mas considera "igual à nuvem" a lista que só difere pelas tiradas —
+   não sobe por causa disso. O dia só sobe quando alguém mexer de verdade nele. */
+NUV.reEquiv=NUV.reEquiv||{};
+{ const _na=nuvAplicar; nuvAplicar=function(chave,valor,apagado){ try{ if(String(chave).startsWith('re:')){
+      if(!apagado&&Array.isArray(valor)&&S.reTirados){ const dia=String(chave).slice(3); const f=valor.filter(l=>!reTirado(l,dia));
+        if(f.length<valor.length) NUV.reEquiv[chave]={raw:JSON.parse(JSON.stringify(valor)),hf:nuvHash(f)}; else delete NUV.reEquiv[chave]; }
+      else delete NUV.reEquiv[chave]; } }catch(e){} return _na.apply(this,arguments); }; }
+{ const _nl=nuvLocal; nuvLocal=function(){ const m=_nl.apply(this,arguments); try{ for(const [k,eq] of Object.entries(NUV.reEquiv||{})){ const o=m.get(k); if(!o) continue;
+      if(nuvHash(o.valor)===eq.hf) m.set(k,Object.assign({},o,{valor:eq.raw})); else delete NUV.reEquiv[k]; } }catch(e){} return m; }; }
 </script>
 
 </body>
