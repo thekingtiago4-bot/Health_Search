@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 26/11/2026 07:39 · versão 10.6.60
+Gerado em 26/11/2026 07:56 · versão 10.6.61
 
 
 ## ab
@@ -729,6 +729,7 @@ Gerado em 26/11/2026 07:39 · versão 10.6.60
 - `nuvPing` — linha 7001
 - `nuvPuxarTudo` — linha 8057
 - `nuvReconciliar` — linha 6984
+- `nuvReconstruir` — linha 13032
 - `nuvRestaurarBkp` — linha 8122
 - `nuvSinc` — linha 7014
 - `nuvSoDias` — linha 7074

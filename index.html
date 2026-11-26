@@ -4478,7 +4478,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.60', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.61', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -13024,6 +13024,24 @@ async function romConferirHoje(){ try{ if(!opOnline()||!window.__storeInitFeito)
     return n; }catch(e){ return 0; } }
 { const _ns=nuvSinc; let primeira=true; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); if(primeira&&!NUV.erro&&NUV.ult){ primeira=false; setTimeout(()=>{ try{ romConferirHoje(); }catch(e){} },1500); } return r; }; }
 setInterval(()=>{ try{ romConferirHoje(); }catch(e){} },120000);
+/* ================= v10.6.61 · Aparelho que perdeu a cópia local se reconstrói sozinho pela NUVEM =================
+   Caso real (26/11): divergências e reentregas sumiram de um aparelho, mas estavam todas na nuvem (86 divergências,
+   nenhuma apagada). A sincronização só baixa o que MUDOU; se o aparelho perde dados mas acha que "já tem tudo",
+   nunca mais baixa. Agora, depois da 1ª sincronização e a cada 5 min, o app pede à nuvem a LISTA de divergências,
+   dias de reentrega e cadastros; o que existe lá e falta aqui é baixado — sem depender da memória do aparelho. */
+async function nuvReconstruir(aviso){ try{ if(!opOnline()||!window.__storeInitFeito||NUV.rodando) return 0;
+    let chaves=[]; for(let pg=0;pg<20;pg++){ const {data,error}=await NV.cli.from('hs_sync').select('chave').eq('apagado',false).or('chave.like.dv:%,chave.like.re:%,chave.like.s:%').range(pg*1000,pg*1000+999); if(error) return 0; chaves=chaves.concat((data||[]).map(r=>r.chave)); if(!data||data.length<1000) break; }
+    const dvIds=new Set((S.divergencias||[]).map(x=>x&&x.id).filter(Boolean)); let reD={}; try{ reD=(RE.ler().dias)||{}; }catch(e){}
+    const falta=chaves.filter(k=>{ if(k.startsWith('dv:')) return !dvIds.has(k.slice(3))&&!(NUV.apagar&&NUV.apagar.has(k)); if(k.startsWith('re:')){ const d=k.slice(3); return !Array.isArray(reD[d])||!reD[d].length; } if(k.startsWith('s:')){ const c=k.slice(2); return (NUV_CAMPOS||[]).includes(c)&&nuvVazio(S[c]); } return false; });
+    if(!falta.length) return 0; let n=0;
+    const pedidas=new Set(falta);
+    for(let i=0;i<falta.length;i+=100){ const {data:d0,error}=await NV.cli.from('hs_sync').select('chave,valor,apagado').in('chave',falta.slice(i,i+100)); if(error) break; const data=(d0||[]).filter(r=>r&&pedidas.has(r.chave));
+      NUV.aplicando=true; try{ for(const r of (data||[])){ if(!r||r.apagado||nuvVazio(r.valor)) continue; if(String(r.chave).startsWith('re:')&&Array.isArray(r.valor)){ const dia=String(r.chave).slice(3); if(!r.valor.some(l=>{ try{ return !reTirado(l,dia); }catch(e){ return true; } })) continue; } try{ nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=nuvHash(r.valor); n++; }catch(e){} } }finally{ NUV.aplicando=false; } }
+    if(n){ try{ nuvGuardar(); RE.gravar(); salvar(); }catch(e){} try{ renderTudo(); }catch(e){} try{ dvRender(); }catch(e){} try{ rpRender(); }catch(e){}
+      toast(`✔ Este aparelho estava sem ${n} registro(s) (divergências/reentregas/cadastros) que estão na nuvem. Já baixei de volta.`); }
+    return n; }catch(e){ console.error('reconstruir',e); return 0; } }
+{ const _ns=nuvSinc; let primeira=true; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); if(primeira&&!NUV.erro&&NUV.ult){ primeira=false; setTimeout(()=>{ try{ nuvReconstruir(); }catch(e){} },2500); } return r; }; }
+setInterval(()=>{ try{ nuvReconstruir(); }catch(e){} },300000);
 </script>
 
 </body>

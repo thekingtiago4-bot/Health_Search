@@ -898,3 +898,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Banco: `hs_re_nunca_some` (linha de reentrega só sai se estiver em s:reTirados; dia não pode ser apagado); `hs_rom_banco_guardar`
   (cópia em hs_versoes antes de apagar do Banco de romaneios). "Era divergência" e "apagar o dia" agora gravam `reTirar`.
 - Migração `2026-11-26-004`: devolve os rom: apagados hoje a partir de hs_versoes.
+
+### v10.6.61 (26/11/2026) — aparelho se reconstrói pela nuvem
+- Caso real: divergências sumiram de um aparelho, mas a nuvem tinha as 86 (nenhuma apagada). `nuvReconstruir`: depois da 1ª
+  sincronização e a cada 5 min, lista na nuvem `dv:`/`re:`/`s:` não apagados; o que falta aqui é baixado (sem depender de `NUV.h`).
+  Pula divergência em `NUV.apagar` e dia de reentrega todo tirado (reTirados). Simulação: aparelho zerado volta inteiro, 2ª passada = 0.
