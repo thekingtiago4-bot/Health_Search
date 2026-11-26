@@ -852,3 +852,7 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `reRecuperarConfirmadas` (v6.4.5, roda a cada `nexVarrer`) recolocava reentregas confirmadas que foram tiradas de propósito;
   a trava `reTirados` tirava de novo → loop de gravação/aviso. Reescrita: pula dia apagado (`D.apagados`), NF com tombstone
   (`reTiradaNf`, qualquer obs) e só recoloca cada `nf|dia` UMA vez por aparelho (`healthSearch.reRecuperadas`).
+
+### v10.6.54 (26/11/2026) — bolinha de status com cor
+- `nuvStatus` (wrapper) marca `#nuv-st[data-st=ok|amar|erro|off]`; na barra de ícones a bolinha é pintada: verde salvo, amarela
+  (pisca) salvando/falta subir, vermelha erro ou sem internet (`#nv-offline` também vermelho).

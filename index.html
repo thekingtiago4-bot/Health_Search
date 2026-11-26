@@ -4476,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.53', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.54', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12886,6 +12886,18 @@ reRecuperarConfirmadas=function(){ const n=nexS(), D=RE.ler(); let v=0; let M={}
     if(nexParaReentrega({nf:nfF,ped:r.ped||(row&&row.ped)||'',dest:row&&row.dest,cid:row&&row.cid,uf:row&&row.uf,vol:row&&row.vol,peso:row&&row.peso,valor:row&&row.valor,motivo:r.motivo||''},r.d,'automatica')) v++; }
   if(mudouM) try{ LS.setItem(RE_RECUP,JSON.stringify(M)); }catch(e){}
   if(v){ toast(`${v} reentrega(s) confirmada(s) que tinham sumido foram recolocadas em Reentregas.`); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} } return v; };
+/* ================= v10.6.54 · Bolinha de status na barra de ícones com a cor certa (pedido do Tiago, 26/11) =================
+   vermelha = erro de rede / sem internet · amarela = salvando ou falta subir · verde = salvo. Passando o mouse, diz qual é. */
+{ const _st=nuvStatus; nuvStatus=function(){ const r=_st.apply(this,arguments); try{ const el=document.getElementById('nuv-st'); if(el){
+      const st=NUV.erro?'erro':!opOnline()?'off':(NUV.rodando||NUV.sujo)?'amar':'ok'; if(el.dataset.st!==st) el.dataset.st=st;
+      el.setAttribute('aria-label',st==='erro'?'Erro ao salvar — toque':st==='off'?'Sem internet':st==='amar'?'Salvando':'Salvo'); } }catch(e){} return r; }; }
+(function(){ const st=document.createElement('style'); st.textContent=`@media (min-width:861px){
+ html.rail-ic #nuv-st{width:14px!important;height:14px!important;background:var(--ok)!important;box-shadow:0 0 0 3px rgba(47,181,107,.22);cursor:pointer}
+ html.rail-ic #nuv-st[data-st="amar"]{background:#F4C21F!important;box-shadow:0 0 0 3px rgba(244,194,31,.25)}
+ html.rail-ic #nuv-st[data-st="erro"],html.rail-ic #nuv-st[data-st="off"],html.rail-ic #nv-offline{background:var(--no)!important;box-shadow:0 0 0 3px rgba(226,85,85,.25)}
+ html.rail-ic #nuv-st[data-st="amar"]{animation:ricPisca 1.2s ease-in-out infinite}
+ @keyframes ricPisca{50%{opacity:.45}} }`; document.head.appendChild(st); })();
+setTimeout(()=>{ try{ nuvStatus(); }catch(e){} },500); setInterval(()=>{ try{ nuvStatus(); }catch(e){} },3000);
 </script>
 
 </body>
