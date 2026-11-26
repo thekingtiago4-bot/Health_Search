@@ -4124,7 +4124,9 @@ Store.init=async function(){
       toast('Não consegui ler os dados online: '+nvTraduz(e.message)); } }
   let temCopia=false; try{ temCopia=!!LS.getItem('healthSearch.copiaEm')&&!!LS.getItem('healthSearch.nuvHash'); }catch(e){}
   if(temCopia){ if(row) NV.versao=row.atualizado_em; nvTempoReal(); return await _stInit(); } /* a cópia local + hs_sync trazem o mais novo */
-  if(row&&row.dados){ nvAplicarRE(row.dados.re); NV.versao=row.atualizado_em; nvTempoReal(); return row.dados.s||null; }
+  /* v10.6.59: NUNCA mais troca o aparelho pela cópia antiga (hs_estado, de até 6 h ou dias atrás) — trazia romaneios e reentregas velhos
+     por cima. Abre o que está no aparelho; a sincronização (hs_sync) e a conferência de integridade trazem o resto, sempre o atual. */
+  if(row&&row.dados){ NV.versao=row.atualizado_em; nvTempoReal(); try{ NUV.desde=''; }catch(e){} return await _stInit(); }
   nvTempoReal(); return null; // banco vazio: começa do zero (ou do que vier por importação)
 };
 Store.salvar=async function(obj){ if(this.modo!=='nuvem') return _stSalvar(obj);
@@ -4476,7 +4478,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.58', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.59', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8766,8 +8768,8 @@ function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   let L=[]; try{ L=opPorRom(); }catch(e){} const tn=L.reduce((s,x)=>s+x.tn,0), fn=L.reduce((s,x)=>s+x.fn,0), ok=tn-fn, pct=tn?Math.round(100*ok/tn):0;
   const dnT=Math.min(ok,L.reduce((s,x)=>s+(x.dn||0),0)), pdV=tn?100*dnT/tn:0, pdT=pctDv(pdV); /* v10.6.36: fatia em divergência no anel do total · v10.6.43: % com casas decimais */
   const porB=new Map(); for(const x of L){ const a=porB.get(x.base)||{tn:0,fn:0,dn:0}; a.tn+=x.tn; a.fn+=x.fn; a.dn+=(x.dn||0); porB.set(x.base,a); }
-  const g=$('#ct-geral'); if(g) g.innerHTML=tn?`<div class="ct-big"><div class="ct-anel${dnT?' ct-temdv':''}" style="--p:${pct};--d:${dnT?Math.max(1,pdV).toFixed(2):0}"${dnT?` tabindex="0" title="${pdT}% em divergência (${dnT} nota(s))"`:''}><b><span class="ct-p">${pct}%</span>${dnT?`<span class="ct-pd">${pdT}%<small>em divergência</small></span>`:''}</b></div><div><h2 style="margin:0 0 4px">${fmtN(ok)} de ${fmtN(tn)} nota(s) conferida(s)</h2><p class="sub" style="margin:0 0 10px">${fmtN(fn)} faltando${dnT?` · <b style="color:var(--ag)">${fmtN(dnT)} em divergência (${pdT}%)</b>`:''} · ${fmtN(L.length)} romaneio(s) de hoje</p>
-     <div class="ct-origs">${[...porB].map(([b,a])=>{ const p=a.tn?Math.round(100*(a.tn-a.fn)/a.tn):0; const dn=Math.min(a.dn||0,a.tn-a.fn), pd=a.tn?100*dn/a.tn:0, pv=a.tn?100*(a.tn-a.fn-dn)/a.tn:0; return `<div class="ct-o"><b style="color:${opCorBase(b)}">${esc(b)}</b> <span class="sub">${fmtN(a.tn-a.fn)}/${fmtN(a.tn)} · ${p}%${dn?` · <b style="color:var(--ag)">${fmtN(dn)} div.</b>`:''}</span><div class="bar" style="display:flex"><i style="width:${pv}%;background:${opCorBase(b)}"></i><i style="width:${pd}%;background:repeating-linear-gradient(135deg,var(--ag) 0 5px,#8a3b00 5px 8px)"></i></div></div>`; }).join('')}</div></div></div>`
+  const g=$('#ct-geral'); if(g) g.innerHTML=tn?`<div class="ct-big"><div class="ct-anel${dnT?' ct-temdv':''}" style="--p:${pct};--d:${dnT?Math.max(1,pdV).toFixed(2):0}"${dnT?` tabindex="0" title="${pdT}% em divergência (${dnT} nota(s))"`:''}><b><span class="ct-p">${pctConf(tn?100*ok/tn:0)}%</span>${dnT?`<span class="ct-pd">${pdT}%<small>em divergência</small></span>`:''}</b></div><div><h2 style="margin:0 0 4px">${fmtN(ok)} de ${fmtN(tn)} nota(s) conferida(s)</h2><p class="sub" style="margin:0 0 10px">${fmtN(fn)} faltando${dnT?` · <b style="color:var(--ag)">${fmtN(dnT)} em divergência (${pdT}%)</b>`:''} · ${fmtN(L.length)} romaneio(s) de hoje</p>
+     <div class="ct-origs">${[...porB].map(([b,a])=>{ const p=a.tn?Math.round(100*(a.tn-a.fn)/a.tn):0; const dn=Math.min(a.dn||0,a.tn-a.fn), pd=a.tn?100*dn/a.tn:0, pv=a.tn?100*(a.tn-a.fn-dn)/a.tn:0; return `<div class="ct-o"><b style="color:${opCorBase(b)}">${esc(b)}</b> <span class="sub">${fmtN(a.tn-a.fn)}/${fmtN(a.tn)} · ${pctConf(a.tn?100*(a.tn-a.fn)/a.tn:0)}%${dn?` · <b style="color:var(--ag)">${fmtN(dn)} div.</b>`:''}</span><div class="bar" style="display:flex"><i style="width:${pv}%;background:${opCorBase(b)}"></i><i style="width:${pd}%;background:repeating-linear-gradient(135deg,var(--ag) 0 5px,#8a3b00 5px 8px)"></i></div></div>`; }).join('')}</div></div></div>`
     :'<div class="vazio-lista">Nenhum romaneio de hoje carregado. Coloque os PDFs na aba Romaneios.</div>';
   const q=$('#qt-ct'); if(q){ q.textContent=pct+'%'; q.hidden=!tn; }
   /* v10.2.6 · a conta é de todo mundo: botão para repuxar e aviso de bipe que não subiu */
@@ -9159,6 +9161,8 @@ function opCorBase(b){ const k=String(b||'?').toUpperCase(); if(OP_COR_BASE[k]) 
 /* divergências registradas naquele dia (sem avarias antigas e sem as desbipadas) */
 function opDvDoDiaSo(dia){ const m={nf:new Set(),ped:new Set()}; for(const d of dvSo()){ if(String(d.d||'').slice(0,10)!==dia) continue; if(d.st==='resolvida') continue; /* v10.6.42: resolvida sai do laranja */ try{ if(dvDesbipada(d,dia)) continue; }catch(e){} if(d.nf) m.nf.add(z(d.nf)); if(d.ped) m.ped.add(z(d.ped)); } return m; }
 /* v10.6.43: % de divergência nunca vira "0%" quando existe — 0,26% / 0,0013% (2 algarismos significativos) */
+/* v10.6.59: conferência com casas decimais (2 de 416 = 0,48%, não 0%); nunca mostra 100 com nota faltando */
+function pctConf(v){ v=+v||0; if(v<=0) return '0'; if(v>=100) return '100'; if(v>=99) return (Math.floor(v*10)/10).toString().replace('.',','); return pctDv(v); }
 function pctDv(v){ v=+v||0; if(v<=0) return '0'; if(v>=10) return String(Math.round(v)); if(v>=1) return (Math.round(v*10)/10).toString().replace('.',','); return Number(v.toPrecision(2)).toString().replace('.',','); }
 function opPorRomHtml(){ const L=opPorRom(); if(!L.length) return ''; const g=new Map(); for(const x of L){ const k=opRotOrigem(x,L); if(!g.has(k)) g.set(k,[]); g.get(k).push(x); }
   const barra=(feito,tot,dn)=>{ dn=Math.min(+dn||0,feito); const pc=tot?Math.round(100*feito/tot):100; const pd=tot?100*dn/tot:0, pv=tot?100*(feito-dn)/tot:100;
@@ -12977,6 +12981,27 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
   setTimeout(()=>forcar('abriu'),2500);
   let escondidoEm=0; document.addEventListener('visibilitychange',()=>{ if(document.hidden){ escondidoEm=Date.now(); return; } if(escondidoEm&&Date.now()-escondidoEm>20000) forcar('voltou'); });
   window.hsForcarAtualizacao=forcar; })();
+
+/* ================= v10.6.59 · ATUALIZAÇÃO NÃO DEVOLVE MAIS DADO VELHO (causa das reentregas "sem motivo" voltando) =================
+   atuDevolver (v7.9.17) tirava foto das reentregas ANTES da versão nova sincronizar e, depois, recolocava toda linha
+   "NF+motivo" que não estivesse lá. Quando a correção chegava da nuvem (motivo preenchido), a linha velha (motivo
+   vazio) parecia "sumida" e voltava — e subia para todos. A cada versão nova. Agora a foto fica só guardada
+   (healthSearch.preAtualizacao) e nada é recolocado sozinho; a proteção é a trava do banco + junção pelo mais novo. */
+atuDevolver=function(){ return 0; };
+/* limpeza única: tira as cópias velhas que a devolução recolocou (só linha que repete o que outra mais completa já tem) */
+setTimeout(async()=>{ try{ if(LS.pronto) await LS.pronto; if(LS.getItem('healthSearch.re.semCopia.v1059')) return; const D=RE.ler(); let n=0;
+    const antes=JSON.stringify(D.dias||{});
+    for(const d of Object.keys(D.dias||{})){ const L=D.dias[d]||[]; const f=reSemCopiaVelha(L); if(f.length!==L.length){ n+=L.length-f.length; D.dias[d]=f; } }
+    if(n){ try{ LS.setItem('healthSearch.re.antesSemCopia.v1059',antes); }catch(e){} RE.gravar(); console.log('reentregas: cópias velhas tiradas (v10.6.59)',n); }
+    LS.setItem('healthSearch.re.semCopia.v1059','1'); }catch(e){ console.error(e); } },6000);
+/* ================= v10.6.59 · Círculo da conferência: tocar de novo volta (pedido do Tiago, 26/11) =================
+   No celular o toque deixava o círculo "preso" na porcentagem de divergência até tocar fora. Agora cada toque alterna
+   (e a escolha não se perde quando o círculo é redesenhado a cada bipe). */
+let CT_VERDV=false;
+(function(){ const st=document.createElement('style'); st.textContent='@media (hover:none){ .ct-temdv:focus .ct-pd,.ct-temdv:hover .ct-pd{display:none} .ct-temdv:focus .ct-p,.ct-temdv:hover .ct-p{display:inline} .ct-temdv.ver-dv .ct-pd{display:block!important} .ct-temdv.ver-dv .ct-p{display:none!important} }'; document.head.appendChild(st); })();
+function ctVerDvAplicar(){ for(const a of document.querySelectorAll('.ct-temdv')) a.classList.toggle('ver-dv',CT_VERDV); }
+document.addEventListener('click',e=>{ if(!matchMedia('(hover:none)').matches) return; const a=e.target.closest&&e.target.closest('.ct-temdv'); if(!a) return; CT_VERDV=!CT_VERDV; ctVerDvAplicar(); if(!CT_VERDV) a.blur(); });
+setTimeout(()=>{ const g=document.getElementById('ct-geral'); if(g) new MutationObserver(()=>{ if(CT_VERDV) ctVerDvAplicar(); }).observe(g,{childList:true,subtree:true}); },1500);
 </script>
 
 </body>

@@ -1647,5 +1647,11 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         return [a,t1,b,c,tem()].join('|'); }
       finally{ n.reent=JSON.parse(r0); RE.d=JSON.parse(d0); RE.gravar(); S.reTirados=JSON.parse(t0); LS.setItem('healthSearch.reRecuperadas',m0||'{}'); } });
     ok(rr==='1|222|0|0|','reentregas: tirada de propósito não volta; sumida volta uma vez só, sem loop ('+rr+')'); }
+  { const ad=await p.evaluate(()=>{ const d0=JSON.stringify(RE.ler()), sn=ATU.snap; const dia='2026-11-21';
+      try{ const D=RE.ler(); D.dias[dia]=[{nf:'87',cli:'APEC',obs:'CLIENTE FECHADO',qtd:1}]; RE.gravar();
+        ATU.snap={re:{[dia]:[{nf:'87',cli:'APEC',obs:'',qtd:1}]},dv:[],fora:[],ag:[],cadMot:[],cadMotivos:[],opForaInfo:{}};
+        const q=atuDevolver(); return q+'|'+RE.ler().dias[dia].map(l=>l.obs||'(vazio)').join(',')+'|'+[pctConf(100*2/416),pctConf(0),pctConf(99.97),pctConf(100),pctConf(37.4)].join(' '); }
+      finally{ ATU.snap=sn; RE.d=JSON.parse(d0); RE.gravar(); } });
+    ok(ad==='0|CLIENTE FECHADO|0,48 0 99,9 100 37','atualização não recoloca linha velha (sem motivo) por cima da corrigida; porcentagem com decimais ('+ad+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

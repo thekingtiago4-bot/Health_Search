@@ -880,3 +880,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `hsForcarAtualizacao`: 2,5 s depois de abrir e ao voltar para o app (escondido > 20 s) consulta `version.json`; se maior, tela
   "Atualizando…", `opFila` + `nuvSinc` (até 6 s cada), limpa caches e `location.replace(?v=)`. Câmera ligada = espera.
   Trava contra laço: `healthSearch.forcouVersao` (mesma versão só 1×/10 min). `testes/atualizacao.js` cobre (atualiza 1× e não fica em laço).
+
+### v10.6.59 (26/11/2026) — ATUALIZAÇÃO DEVOLVIA DADO VELHO (reentregas "sem motivo" voltando a cada versão)
+- `atuDevolver` (v7.9.17) desligado: recolocava, depois da sincronização da versão nova, toda linha NF+motivo da foto tirada ANTES —
+  a linha velha (motivo vazio) voltava por cima da corrigida e subia para todos. A foto continua guardada (`healthSearch.preAtualizacao`).
+- Abertura: sem `copiaEm`/`nuvHash` o app trocava S e reentregas pela cópia antiga `hs_estado`; agora abre o local e deixa o hs_sync
+  (+ `integConferir`) trazer o atual. Limpeza única `reSemCopiaVelha` (v1059, cópia em `healthSearch.re.antesSemCopia.v1059`).
+- `pctConf`: conferência com decimais (2/416 = 0,48%), nunca 100 com falta. Círculo: toque alterna (celular), estado `CT_VERDV`.
