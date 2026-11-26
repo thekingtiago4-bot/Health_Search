@@ -4478,7 +4478,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.61', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.62', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -13042,6 +13042,38 @@ async function nuvReconstruir(aviso){ try{ if(!opOnline()||!window.__storeInitFe
     return n; }catch(e){ console.error('reconstruir',e); return 0; } }
 { const _ns=nuvSinc; let primeira=true; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); if(primeira&&!NUV.erro&&NUV.ult){ primeira=false; setTimeout(()=>{ try{ nuvReconstruir(); }catch(e){} },2500); } return r; }; }
 setInterval(()=>{ try{ nuvReconstruir(); }catch(e){} },300000);
+/* ================= v10.6.62 · FIM DO "SALVANDO" EM LOOP ENTRE APARELHOS ATUALIZADOS =================
+   Diagnóstico no banco (hs_auditoria, 26/11 07:28–08:07): os aparelhos do Tiago e da Noli regravaram s:nex 348×,
+   s:cadMot 312×, nxh:/nxp: 150–310× cada e s:gsSnap 198× — cabo de guerra, não perda.
+   1) Ordem canônica: o que sobe e o que se compara vai SEMPRE na mesma ordem (chaves de objeto em ordem, listas de
+      cadastro pela chave do item, histórico do NexBip por dia|romaneio|nota). Mesmo conteúdo = mesmo texto = nada a salvar.
+   2) Foto do Painel de Gestão só regrava quando os números mudam (antes regravava só porque a hora mudou).
+   3) reLimparVelhas desligada: um aparelho apagava "reentregas detectadas" que o outro devolvia (a tela já só mostra
+      as dos romaneios carregados). */
+function hsCanon(v){ if(Array.isArray(v)) return v.map(hsCanon); if(v&&typeof v==='object'){ const o={}; for(const k of Object.keys(v).sort()) o[k]=hsCanon(v[k]); return o; } return v; }
+const hsNxSig=e=>String((e&&e.d)||'')+'|'+String((e&&e.rom)||'')+'|'+String((e&&e.nf)||'')+'|'+String((e&&e.num)||'');
+function hsCanonChave(chave,valor){ try{
+    if(/^nx[hp]:/.test(chave)&&valor&&typeof valor==='object'){ const o={}; for(const k of Object.keys(valor).sort()){ const a=valor[k]; o[k]=Array.isArray(a)?hsCanon(a).sort((x,y)=>hsNxSig(x).localeCompare(hsNxSig(y))):hsCanon(a); } return o; }
+    const c=String(chave).slice(2);
+    if(String(chave).startsWith('s:')&&LISTAS_SEGURAS.includes(c)&&Array.isArray(valor)) return hsCanon(valor).sort((a,b)=>String(listaChave(c,a)).localeCompare(String(listaChave(c,b))));
+    if(chave==='s:nex'||chave==='s:gsSnap'||chave==='s:listaTirados'||chave==='s:reTirados') return hsCanon(valor);
+  }catch(e){} return valor; }
+{ const _nl=nuvLocal; window.__nuvLocalAntesCanon=_nl; nuvLocal=function(){ const m=_nl.apply(this,arguments); try{ for(const [k,o] of m){ if(/^nx[hp]:/.test(k)||k==='s:nex'||k==='s:gsSnap'||k==='s:listaTirados'||k==='s:reTirados'||(k.startsWith('s:')&&LISTAS_SEGURAS.includes(k.slice(2)))) m.set(k,Object.assign({},o,{valor:hsCanonChave(k,o.valor)})); } }catch(e){} return m; }; }
+/* comparação por CONTEÚDO: a marca (hash) ignora a ordem dos campos — o Postgres reordena campos de objeto à sua maneira,
+   e cada aparelho monta os objetos numa ordem; antes isso parecia "mudou" e regravava. Na 1ª rodada as marcas antigas
+   guardadas são traduzidas para a forma nova (só onde o aparelho estava igual à nuvem), para não parecer que tudo mudou. */
+const nuvHashVelho=nuvHash;
+nuvHash=function(v){ return nuvHashVelho(hsCanon(v)); };
+const nuvLocalCru=()=>window.__nuvLocalAntesCanon();
+{ const _ns=nuvSinc; let traduzido=false; nuvSinc=async function(){ if(!traduzido&&window.__storeInitFeito){ traduzido=true; try{
+        const cru=nuvLocalCru(), can=nuvLocal(); let n=0;
+        for(const [k,o] of cru){ const h=NUV.h[k]; if(!h||h==='x') continue; if(h===nuvHashVelho(o.valor)){ const c=can.get(k); NUV.h[k]=nuvHash(c?c.valor:o.valor); n++; } }
+        if(n) try{ nuvGuardar(); }catch(e){} }catch(e){ console.error('traduzir marcas',e); } }
+    return _ns.apply(this,arguments); }; }
+/* 2) foto do Painel: só grava se os números mudaram */
+{ const _fg=gsFotoGravar; gsFotoGravar=function(){ try{ const f=gsFotoMontar(); if(f&&S.gsSnap&&S.gsSnap[f.dia]){ const tira=x=>{ const {ts,quem,...r}=x||{}; return JSON.stringify(hsCanon(r)); }; if(tira(f)===tira(S.gsSnap[f.dia])) return S.gsSnap[f.dia]; } }catch(e){} return _fg.apply(this,arguments); }; }
+/* 3) limpeza automática de "reentregas detectadas" desligada */
+reLimparVelhas=function(){ return 0; };
 </script>
 
 </body>

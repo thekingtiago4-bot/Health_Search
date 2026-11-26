@@ -903,3 +903,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Caso real: divergências sumiram de um aparelho, mas a nuvem tinha as 86 (nenhuma apagada). `nuvReconstruir`: depois da 1ª
   sincronização e a cada 5 min, lista na nuvem `dv:`/`re:`/`s:` não apagados; o que falta aqui é baixado (sem depender de `NUV.h`).
   Pula divergência em `NUV.apagar` e dia de reentrega todo tirado (reTirados). Simulação: aparelho zerado volta inteiro, 2ª passada = 0.
+
+### v10.6.62 (26/11/2026) — fim do "salvando" em loop entre aparelhos atualizados
+- Provado no banco (hs_auditoria 07:28–08:07): aparelhos Tiago × Noli regravando s:nex 348×, s:cadMot 312×, nxh:/nxp: 150–310×,
+  s:gsSnap 198× — cabo de guerra por ORDEM (cada aparelho monta objeto/lista numa ordem; o Postgres reordena campos de jsonb).
+- `nuvHash` = hash de `hsCanon(v)` (campos em ordem); marcas antigas traduzidas na 1ª rodada só onde o aparelho estava igual.
+  `nuvLocal` canônico para nxh/nxp (lista por dia|rom|nf|num), listas seguras (pela `listaChave`), s:nex, s:gsSnap, tirados.
+- `gsFotoGravar` só grava se os números mudaram; `reLimparVelhas` desligada (apagava detectadas que o outro aparelho devolvia).

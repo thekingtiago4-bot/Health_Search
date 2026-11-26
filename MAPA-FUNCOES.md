@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 26/11/2026 07:56 · versão 10.6.61
+Gerado em 26/11/2026 08:22 · versão 10.6.62
 
 
 ## ab
@@ -544,6 +544,8 @@ Gerado em 26/11/2026 07:56 · versão 10.6.61
 
 ## hs
 - `hsAparelho` — linha 8108
+- `hsCanon` — linha 13053
+- `hsCanonChave` — linha 13055
 - `hsCineHtml` — linha 10852
 - `hsMemo1` — linha 1469
 - `hsMesclarRom` — linha 2741

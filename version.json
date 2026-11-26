@@ -1,1 +1,1 @@
-{"versao":"10.6.61","data":"2026-11-26","novidades":"Aparelho que perdeu divergencias, reentregas ou cadastros se reconstroi sozinho pela nuvem (ao abrir e a cada 5 min)."}
+{"versao":"10.6.62","data":"2026-11-26","novidades":"Fim do salvando em loop entre aparelhos: comparacao pelo conteudo (nao pela ordem), foto do painel so grava quando muda, limpeza automatica de reentregas detectadas desligada."}
