@@ -3060,7 +3060,7 @@ function reSub(t){ $$('[data-re-sub]').forEach(b=>b.setAttribute('aria-pressed',
   $('#re-dia').addEventListener('change',e=>{ RE.ler().atual=e.target.value; RE.gravar(); reTela(); reStatus(''); });
   $('#re-novo').addEventListener('click',()=>{ const v=prompt('Data do novo dia (dd/mm/aaaa):',reDataBR(reHoje())); if(!v) return; const m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(!m){ toast('Data inválida.'); return; }
     const iso=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); const D=RE.ler(); D.dias[iso]=D.dias[iso]||[]; D.atual=iso; RE.gravar(); reTela(); $('#re-bip').focus(); });
-  $('#re-apagar-dia').addEventListener('click',()=>{ if(!nvAdmin()){ toast('Só o administrador pode apagar dias de reentrega.'); return; } const D=RE.ler(); if(!confirm('Apagar o dia '+reDataBR(D.atual)+' com '+reDia().length+' nota(s)?')) return; (D.apagados=D.apagados||[]).push(D.atual); delete D.dias[D.atual]; D.atual=Object.keys(D.dias).sort().pop()||null; reDia(); RE.gravar(); reTela(); });
+  $('#re-apagar-dia').addEventListener('click',()=>{ if(!nvAdmin()){ toast('Só o administrador pode apagar dias de reentrega.'); return; } const D=RE.ler(); if(!confirm('Apagar o dia '+reDataBR(D.atual)+' com '+reDia().length+' nota(s)?')) return; try{ for(const l of (D.dias[D.atual]||[])) reTirar(l,D.atual); }catch(er){} (D.apagados=D.apagados||[]).push(D.atual); delete D.dias[D.atual]; D.atual=Object.keys(D.dias).sort().pop()||null; reDia(); RE.gravar(); reTela(); });
   $('#re-imprimir').addEventListener('click',reImprimir);
   $('#re-csv').addEventListener('click',reCsv);
   $('#re-cfg').addEventListener('click',()=>{ /* v9.19.15 · api-key via modal */
@@ -3092,13 +3092,13 @@ document.addEventListener('click',async e=>{
   const ag=e.target.closest('[data-agendar]'); if(ag){ irPara('agenda'); setTipo('nf'); $('#ag-valor').value=ag.dataset.agendar; $('#ag-obs').value=ag.dataset.obs||''; $('#ag-data').focus(); return; }
   const vd=e.target.closest('[data-ver-dup]'); if(vd){ verDup=!verDup; renderDuplicatas(); return; }
   const ab=e.target.closest('[data-abrir]'); if(ab){ const id=ab.dataset.abrir; abertos.has(id)?abertos.delete(id):abertos.add(id); renderRomaneios(); return; }
-  const rm=e.target.closest('[data-remover]'); if(rm){ const r=S.romaneios.find(x=>x.id===rm.dataset.remover); if(r && await confirmar(`Remover o romaneio ${r.numero}?`,`As ${r.rows.length} notas dele deixam de aparecer na busca. Os agendamentos continuam salvos.`,'Remover')){ S.romaneios=S.romaneios.filter(x=>x.id!==r.id); abertos.delete(r.id); salvar(); renderTudo(); toast(`Romaneio ${r.numero} removido.`); } return; }
+  const rm=e.target.closest('[data-remover]'); if(rm){ const r=S.romaneios.find(x=>x.id===rm.dataset.remover); if(r && await confirmar(`Remover o romaneio ${r.numero}?`,`As ${r.rows.length} notas dele deixam de aparecer na busca. Os agendamentos continuam salvos.`,'Remover')){ try{ (NUV.apagar=NUV.apagar||new Set()).add('rom:'+r.id); }catch(er){} S.romaneios=S.romaneios.filter(x=>x.id!==r.id); abertos.delete(r.id); salvar(); renderTudo(); toast(`Romaneio ${r.numero} removido.`); } return; }
   const dh=e.target.closest('[data-del-hist]'); if(dh){ S.historico=(S.historico||[]).filter(h=>h.id!==dh.dataset.delHist); salvar(); renderHistorico(); renderResumo(); return; }
   const rf=e.target.closest('[data-refazer]'); if(rf){ const h=(S.historico||[]).find(x=>x.id===rf.dataset.refazer); if(h){ irPara('buscar'); executar(h.q,h.tipo==='auto'?undefined:h.tipo); } return; }
   const da=e.target.closest('[data-del-ag]'); if(da){ try{ listaTirar('agendamentos',[da.dataset.delAg]); }catch(er){} S.agendamentos=S.agendamentos.filter(a=>a.id!==da.dataset.delAg); salvar(); renderTudo(); toast('Agendamento excluído.'); return; }
 });
 document.addEventListener('input',e=>{ const f=e.target.closest('[data-filtro]'); if(!f) return; const t=N(f.value); const tb=f.parentElement.querySelector('tbody'); for(const tr of tb.rows) tr.hidden = t && !t.split(' ').every(p=>tr.dataset.busca.includes(p)); });
-$('#bt-reset').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrador pode remover romaneios.'); return; } if(!S.romaneios.length){ toast('Não há romaneios carregados.'); return; } if(await confirmar('Remover todos os romaneios?',`Vou tirar os ${S.romaneios.length} romaneios e as ${todasLinhas().length} notas da busca, para começar o próximo dia limpo. Os agendamentos continuam salvos.`,'Remover todos')){ S.romaneios=[]; S.pacoteInfo=null; S.romLimpoEm=new Date().toISOString(); abertos.clear(); salvar(); renderTudo(); toast('Romaneios removidos. Pronto para o próximo dia.'); } };
+$('#bt-reset').onclick=async()=>{ if(!nvAdmin()){ toast('Só o administrador pode remover romaneios.'); return; } if(!S.romaneios.length){ toast('Não há romaneios carregados.'); return; } if(await confirmar('Remover todos os romaneios?',`Vou tirar os ${S.romaneios.length} romaneios e as ${todasLinhas().length} notas da busca, para começar o próximo dia limpo. Os agendamentos continuam salvos.`,'Remover todos')){ try{ for(const r0 of S.romaneios) (NUV.apagar=NUV.apagar||new Set()).add('rom:'+r0.id); }catch(er){} S.romaneios=[]; S.pacoteInfo=null; S.romLimpoEm=new Date().toISOString(); abertos.clear(); salvar(); renderTudo(); toast('Romaneios removidos. Pronto para o próximo dia.'); } };
 $('#bt-csv').onclick=exportarCSV;
 $('#bt-zap').onclick=gerarPacote;
 $('#hist-filtro').addEventListener('input',renderHistorico);
@@ -4408,7 +4408,7 @@ async function corTirarEraDv(){ const L=corEraDv(); if(!L.length){ toast('Não a
   catch(e){ toast('Não consegui baixar a planilha, não vou apagar nada.'); return; }
   const D=RE.ler(); const porDia={}; for(const x of L){ (porDia[x.d]=porDia[x.d]||[]).push(x.i); }
   let n=0; for(const d of Object.keys(porDia)){ const idx=porDia[d].sort((a,b)=>b-a);
-    for(const i of idx){ if(D.dias[d]&&D.dias[d][i]){ D.dias[d].splice(i,1); n++; } }
+    for(const i of idx){ if(D.dias[d]&&D.dias[d][i]){ try{ reTirar(D.dias[d][i],d); }catch(er){} D.dias[d].splice(i,1); n++; } }
     if(D.dias[d]&&!D.dias[d].length) delete D.dias[d]; }
   RE.gravar(); salvar(); try{ nuvSinc(); }catch(e){}
   try{ renderTudo(); }catch(e){} try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} try{ gestorRender(); }catch(e){}
@@ -4478,7 +4478,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.59', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.60', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7031,7 +7031,7 @@ async function nuvSinc(){ if(NUV.rodando||!opOnline()) { nuvStatus(); return; } 
     if(nvAdmin()&&NUV.aal==null){ try{ const {data:al}=await NV.cli.auth.mfa.getAuthenticatorAssuranceLevel(); NUV.aal=al&&al.currentLevel||''; }catch(e){ NUV.aal=''; } }
     const admOk=nvAdmin()&&(!HS_2ETAPAS||NUV.aal==='aal2'); const soAdm=k=>(k==='s:geo'&&!NUV.publicarGeo)||(!admOk&&NUV_ADMIN.has(k))||(!nvAdmin()&&NUV_SO_ADMIN.has(k)); /* v10.6.04: cargo só o admin sobe (o banco recusa dos outros) */ /* v9.2.0: mapa só sobe pelo 📤 Publicar mapa */
     if(nvAdmin()&&!admOk&&[...agora.keys()].some(k=>NUV_ADMIN.has(k)&&NUV.h[k]!==nuvHash(agora.get(k).valor))) NUV.avisoAal='Suas alterações em regiões/Correção estão guardadas neste aparelho, mas só vão para o banco depois que você entrar com a verificação em 2 etapas (saia e entre de novo).'; for(const [k,o] of agora){ if(soAdm(k)) continue; const h=nuvHash(o.valor); if(NUV.h[k]!==h) sobe.push({chave:k,tipo:o.tipo,valor:o.valor,apagado:false,atualizado_por:eu,_h:h}); }
-    for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)&&(!k.startsWith('dv:')||(NUV.apagar&&NUV.apagar.has(k)))) sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
+    for(const k of Object.keys(NUV.h)) if(!agora.has(k)&&NUV.h[k]!=='x'&&/^(dv|rom|xml|rel):/.test(k)&&NUV.sessao.has(k)&&(NUV.apagar&&NUV.apagar.has(k))) /* v10.6.60: só apaga na nuvem o que foi removido NO BOTÃO (antes: qualquer romaneio que saísse do aparelho era apagado de todos) */ sobe.push({chave:k,tipo:k.split(':')[0],valor:null,apagado:true,atualizado_por:eu,_h:'x'});
     if(NUV.temAp) for(const r of sobe) r.ap=nuvApTab();
     let recusados=[]; for(let i=0;i<sobe.length;i+=50){ const lote=sobe.slice(i,i+50); const {error:e2}=await NV.cli.from('hs_sync').upsert(lote.map(({_h,...r})=>r));
       if(!e2){ for(const r of lote) NUV.h[r.chave]=r._h; continue; }
@@ -13002,6 +13002,28 @@ let CT_VERDV=false;
 function ctVerDvAplicar(){ for(const a of document.querySelectorAll('.ct-temdv')) a.classList.toggle('ver-dv',CT_VERDV); }
 document.addEventListener('click',e=>{ if(!matchMedia('(hover:none)').matches) return; const a=e.target.closest&&e.target.closest('.ct-temdv'); if(!a) return; CT_VERDV=!CT_VERDV; ctVerDvAplicar(); if(!CT_VERDV) a.blur(); });
 setTimeout(()=>{ const g=document.getElementById('ct-geral'); if(g) new MutationObserver(()=>{ if(CT_VERDV) ctVerDvAplicar(); }).observe(g,{childList:true,subtree:true}); },1500);
+/* ================= v10.6.60 · BLINDAGEM: nada grava antes de os dados do aparelho carregarem =================
+   Achado da varredura (26/11): várias rotinas rodam 2–4 s depois de abrir e chamam salvar(). Se o banco do aparelho
+   ainda não tinha terminado de carregar (celular com muitos dados, ou logo depois de uma atualização), o salvar
+   gravava o estado VAZIO por cima do guardado — e a sincronização levava adiante. Agora:
+   · Store.salvar antes do carregamento terminar NÃO grava: anota e grava depois, já com os dados certos;
+   · a sincronização espera o carregamento;
+   · a limpeza de "reentregas detectadas" só roda com romaneios carregados e depois da 1ª sincronização. */
+let HS_SALVAR_PEND=false;
+{ const _sv=Store.salvar; Store.salvar=function(obj){ if(!window.__storeInitFeito){ HS_SALVAR_PEND=true; return Promise.resolve(); } return _sv.apply(this,arguments); }; }
+(function(){ const t=setInterval(()=>{ if(!window.__storeInitFeito) return; clearInterval(t); if(HS_SALVAR_PEND){ HS_SALVAR_PEND=false; setTimeout(()=>{ try{ salvar(); }catch(e){} },300); } },200); })();
+{ const _ns=nuvSinc; nuvSinc=async function(){ if(!window.__storeInitFeito){ for(let i=0;i<300&&!window.__storeInitFeito;i++) await new Promise(r=>setTimeout(r,200)); if(!window.__storeInitFeito) return; } return _ns.apply(this,arguments); }; }
+{ const _rl=reLimparVelhas; reLimparVelhas=function(){ try{ if(!window.__storeInitFeito) return 0; if(Store.modo==='nuvem'&&!NUV.primeiraOk) return 0; if(!(S.romaneios||[]).length) return 0; }catch(e){ return 0; } return _rl.apply(this,arguments); }; }
+/* ================= v10.6.60 · Romaneio de HOJE que está na nuvem e falta no aparelho: volta sozinho =================
+   Depois da 1ª sincronização e a cada 2 min: busca os romaneios (rom:) não apagados da nuvem; os de hoje que não estão
+   no aparelho entram. Não mexe nos de outros dias (esses ficam no Banco de romaneios). */
+async function romConferirHoje(){ try{ if(!opOnline()||!window.__storeInitFeito) return 0; const hoje=hojeISO(); const tem=new Set((S.romaneios||[]).map(r=>r&&r.id));
+    const {data,error}=await NV.cli.from('hs_sync').select('chave,valor,apagado').like('chave','rom:%').eq('apagado',false); if(error||!data) return 0; let n=0;
+    for(const r of data){ const v=r.valor; if(!v||!v.id||tem.has(v.id)) continue; const d=opDiaRom(v); if(d!==hoje) continue; NUV.aplicando=true; try{ nuvAplicar(r.chave,v,false); NUV.h[r.chave]=nuvHash(v); n++; }finally{ NUV.aplicando=false; } }
+    if(n){ try{ nuvGuardar(); salvar(); renderTudo(); }catch(e){} toast(`✔ ${n} romaneio(s) de hoje que faltavam neste aparelho voltaram da nuvem.`); }
+    return n; }catch(e){ return 0; } }
+{ const _ns=nuvSinc; let primeira=true; nuvSinc=async function(){ const r=await _ns.apply(this,arguments); if(primeira&&!NUV.erro&&NUV.ult){ primeira=false; setTimeout(()=>{ try{ romConferirHoje(); }catch(e){} },1500); } return r; }; }
+setInterval(()=>{ try{ romConferirHoje(); }catch(e){} },120000);
 </script>
 
 </body>

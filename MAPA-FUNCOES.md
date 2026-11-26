@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 26/11/2026 07:26 · versão 10.6.59
+Gerado em 26/11/2026 07:39 · versão 10.6.60
 
 
 ## ab
@@ -1087,6 +1087,7 @@ Gerado em 26/11/2026 07:26 · versão 10.6.59
 ## ro
 - `roboChecar` — linha 8383
 - `roboSqlChecar` — linha 10378
+- `romConferirHoje` — linha 13020
 - `rotDia` — linha 3144
 - `rotulo` — linha 1777
 - `rowsOf` — linha 1486

@@ -887,3 +887,14 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Abertura: sem `copiaEm`/`nuvHash` o app trocava S e reentregas pela cópia antiga `hs_estado`; agora abre o local e deixa o hs_sync
   (+ `integConferir`) trazer o atual. Limpeza única `reSemCopiaVelha` (v1059, cópia em `healthSearch.re.antesSemCopia.v1059`).
 - `pctConf`: conferência com decimais (2/416 = 0,48%), nunca 100 com falta. Círculo: toque alterna (celular), estado `CT_VERDV`.
+
+### v10.6.60 (26/11/2026) — BLINDAGEM (varredura completa)
+- **Causa do "tudo sumiu"**: `NUV.sessao` recebe toda chave local após cada sincronização; romaneio que saía do aparelho (virada do
+  dia, troca de PDF, carga incompleta) virava `apagado:true` na nuvem = sumia de todos (backup 25/11: 101 de 107 rom: apagados).
+  Agora só sobe exclusão de `dv|rom|xml|rel` que estiver em `NUV.apagar` (botão Remover / Remover todos / apagar divergência).
+- `romConferirHoje`: romaneio de hoje que está na nuvem e falta no aparelho volta (1ª sincronização + 2 min).
+- Nada grava antes de `__storeInitFeito` (`Store.salvar` anota e grava depois; `nuvSinc` espera); `reLimparVelhas` só com
+  romaneios carregados e após a 1ª sincronização.
+- Banco: `hs_re_nunca_some` (linha de reentrega só sai se estiver em s:reTirados; dia não pode ser apagado); `hs_rom_banco_guardar`
+  (cópia em hs_versoes antes de apagar do Banco de romaneios). "Era divergência" e "apagar o dia" agora gravam `reTirar`.
+- Migração `2026-11-26-004`: devolve os rom: apagados hoje a partir de hs_versoes.
