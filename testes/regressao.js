@@ -196,7 +196,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       return {bip:!!document.getElementById('dv-bip')&&!!document.getElementById('dv-bip').offsetParent,
               sem:[rpSemMot('NENHUM'),rpSemMot('(SEM MOTORISTA)'),rpSemMot('ALEXANDRE')].join(',')}; });
     ok(v.bip,'divergências: a caixa de bipar a nota não está visível');
-    ok(v.sem==='true,true,false','ranking: NENHUM / SEM MOTORISTA deveriam ficar fora e um nome de verdade dentro ('+v.sem+')'); }
+    ok(v.sem==='false,true,false','ranking: SEM MOTORISTA é pendência; NENHUM é resposta válida (v10.6.52, fica fora do ranking) e nome de verdade conta ('+v.sem+')'); }
   /* 9.23.1: Editar abre o formulário (ele vive dentro de "Ou preencher à mão") e traz o total da nota */
   { const e2=await p.evaluate(()=>{ S.divergencias=[{id:'d1',n:1,d:hojeISO(),ped:'',nf:'909958',tipo:'Falta de volume',qtd:1,tot:31,cli:'',obs:'faltavam 1 volume(s)',st:'aberta',por:'t',em:new Date().toISOString(),hist:[]}];
       renderTudo(); irPara('divergencias');
@@ -1631,5 +1631,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(sel==='true|true','sem internet: selo mostra bipes guardados e some quando sobem ('+sel+')'); }
   { const cg=await p.evaluate(()=>{ const c0=JSON.stringify(S.cargos||{}); try{ S.cargos=Object.assign({},S.cargos,{x1:'usuario'}); return [Object.keys(CARGOS).join(','),cargoDe('x1','usuario'),cargoDe('x2','usuario'),cargoDe('x3','admin')].join('|'); } finally{ S.cargos=JSON.parse(c0); } });
     ok(cg==='conferente,lider,supervisor,admin|conferente|conferente|admin','cargos: sem "Usuário"; quem não tem cargo é Conferente ('+cg+')'); }
+  { const mp=await p.evaluate(async()=>{ const h=hojeISO(), rs=S.romaneios, bs=OP.bipes, dia=OP.dia;
+      try{ OP.dia=h; S.romaneios=[{id:'mp1',numero:'CAJ 0237686',base:'CAJ',arquivo:'x '+h.split('-').reverse().join('-')+'.pdf',rows:[{nf:'448493',ped:'745830',vol:'1',dest:'A'},{nf:'448497',ped:'745830',vol:'1',dest:'B'},{nf:'500',ped:'900',vol:'1',dest:'C'}]}];
+        OP.bipes=[{local_id:'b1',dia:h,nf:'448493',ped:'745830',vol:1,tot:1,status:'ok'},{local_id:'b2',dia:h,nf:'',ped:'900',vol:1,tot:1,status:'ok'}]; renderTudo(); await new Promise(r=>setTimeout(r,0));
+        OP._semFiltro=true; const pend=opPendentes().map(it=>it.nf).sort().join(','); OP._semFiltro=false;
+        return pend+'|'+rpSemMot('NENHUM')+'|'+rpMot({l:{mot:'nenhum'}}); }
+      finally{ S.romaneios=rs; OP.bipes=bs; OP.dia=dia; renderTudo(); } });
+    ok(mp==='448497|false|NENHUM','conferência: bipe de uma NF não confere outra NF do mesmo pedido; etiqueta só com pedido continua valendo; motorista NENHUM fica NENHUM ('+mp+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

@@ -840,3 +840,10 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Celular (≤ 860 px): `.rail.mb-aberto .nav` vira grade de 4 colunas (ícone + nome curto `RIC_CURTO` + selo), grupos pelo
   `data-grupo` do `.ng2`; `railAjustar` não compacta no celular (rola).
 - Cargos: `CARGOS` = conferente, lider, supervisor, admin (nessa ordem); `cargoDe` devolve conferente para "usuario"/sem cargo.
+
+### v10.6.52 (26/11/2026) — NF "bipada" sem bipe e motorista NENHUM
+- `opBipsDe` (wrapper): bipe com NF só vale para aquela NF; só com pedido continua pelo pedido (mesma regra de `opNotaBate`/✕).
+  Caso real: CAJ 0237686, NF 448497 em "Bipadas" pelo bipe de outra NF do pedido 745830.
+- `opDesbipar` (wrapper): divergência resolvida + `conferida` de outro dia (que o filtro de pendentes respeita) agora é cancelável:
+  `conferida=false`, `desbip`, histórico. Não reabre a divergência.
+- `RP_SEM_MOT` sem NENHUM/NENHUMA: fica "NENHUM", não vira pendência na Correção; continua fora do ranking de motoristas.

@@ -4476,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.51', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.52', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6935,7 +6935,7 @@ function rpMarcar(id,k,itens){ $$('#'+id+' .rp-h').forEach((e,i)=>{ if(itens[i])
   const cid=rpAgrupa(sel,'cid').slice(0,10); rpBarras($('#rp-cid'),cid.map(([n,o])=>({n,v:o.n})),v=>v+(v>1?' notas':' nota'),'var(--no)'); $$('#rp-cid .rp-h').forEach((e,i)=>e.querySelector('.vl').textContent=`${cid[i][1].n} · ${rpPct(cid[i][1].n,tot)}`); rpMarcar('rp-cid','cid',cid);
   const mt=rpAgrupa(sel,'motivo').slice(0,10); rpBarras($('#rp-mot'),mt.map(([n,o])=>({n,v:o.n})),v=>v+'','var(--amar)'); $$('#rp-mot .rp-h').forEach((e,i)=>e.querySelector('.vl').textContent=`${mt[i][1].n} · ${rpPct(mt[i][1].n,tot)}`); rpMarcar('rp-mot','motivo',mt);
   const moTudo=rpAgrupa(sel,'mot'); const semMot=moTudo.filter(([n])=>rpSemMot(n)).reduce((t,[,o])=>t+o.n,0);
-  const mo=moTudo.filter(([n])=>!rpSemMot(n)).slice(0,12);
+  const mo=moTudo.filter(([n])=>!rpSemMot(n)&&!/^NENHUMA?$/.test(String(n||'').trim().toUpperCase())).slice(0,12);
   try{ const dica=document.querySelector('#rp-mtr')&&document.querySelector('#rp-mtr').closest('.rp-card').querySelector('.rp-dica');
     if(dica) dica.innerHTML=semMot?`motorista digitado na observação (MOTIVO - MOTORISTA) · <b style="color:#E8590C">${semMot} reentrega(s) sem motorista</b> — acerte em Correção`:'motorista digitado na observação (MOTIVO - MOTORISTA)'; }catch(e){} rpBarras($('#rp-mtr'),mo.map(([n,o])=>({n,v:o.n})),v=>v+''); $$('#rp-mtr .rp-h').forEach((e,i)=>{ const o=mo[i][1]; const top=rpAgrupa(o.itens,'motivo').slice(0,2).map(([m,q])=>m.slice(0,28)+' ('+q.n+')').join(', '); e.querySelector('.vl').textContent=`${o.n} · ${top}`; e.title=mo[i][0]+' — '+top; }); rpMarcar('rp-mtr','mot',mo);
   const cl=rpAgrupa(sel,'cli'); const byN=cl.slice(0,10), byV=cl.slice().sort((a,b)=>b[1].v-a[1].v).slice(0,10); rpMarcar('rp-cli-n','cli',byN); rpMarcar('rp-cli-v','cli',byV);
@@ -12843,6 +12843,29 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('#m
 { const novo={conferente:'Conferente',lider:'Líder',supervisor:'Supervisor(a)',admin:'Administrador'};
   for(const k of Object.keys(CARGOS)) delete CARGOS[k]; Object.assign(CARGOS,novo); }
 { const _cd=cargoDe; cargoDe=function(){ const c=_cd.apply(this,arguments); return (c==='usuario'||!CARGOS[c])?'conferente':c; }; }
+/* ================= v10.6.52 · Conferência: bipe de uma NF não vale para OUTRA NF do mesmo pedido =================
+   Caso real (CAJ 0237686): NF 448497 aparecia em "Bipadas" sem bipe nenhum dela — o bipe era de outra NF com o mesmo
+   pedido — e o ✕ dizia "não tem bipe para cancelar". Agora: bipe que traz o número da NF vale só para aquela NF;
+   bipe só com pedido (etiqueta sem NF) continua valendo pelo pedido. É a mesma regra que o ✕ sempre usou. */
+{ const _bd=opBipsDe; opBipsDe=function(ix,ped,nf){ const l=_bd.apply(this,arguments); if(!nf) return l; return l.filter(b=>{ const bn=opK(b&&b.nf||''); return !bn||bn===nf; }); }; }
+/* ✕ de cancelar: a divergência RESOLVIDA e CONFERIDA de outro dia também segura a nota em "Bipadas" — o ✕ não achava */
+{ const _ds=opDesbipar; opDesbipar=async function(x,redesenha){ try{ if(!x||cfAtivo()) return _ds.apply(this,arguments);
+      const dia=OP.dia||hojeISO(), bate=opNotaBate(x); const nf=opK(x.nf||''), ped=opK(x.ped||'');
+      const temBip=(OP.bipes||[]).some(b=>bate(b)&&b.status!=='fora');
+      const temMao=(()=>{ try{ const a=gsAjLer(dia)[gsAjK(x.nf,x.ped)]; return !!(a&&a.m!=='fora'); }catch(e){ return false; } })();
+      const temDv=dvSo().some(d=>dvDaNota(d,x)&&(d.st!=='resolvida'||(d.res&&String(d.res.d||'').slice(0,10)===dia)));
+      const antigas=dvSo().filter(d=>dvDaNota(d,x)&&d.st==='resolvida'&&d.conferida&&!dvDesbipada(d,dia));
+      if(temBip||temMao||temDv||!antigas.length) return _ds.apply(this,arguments);
+      const ok=await simNao('Cancelar conferência',`Tem certeza que deseja cancelar essa conferência?<br><b>NF ${esc(nf||'—')}</b>${ped?' · pedido '+esc(ped):''}<br><small class="sub">Ela estava conferida pela divergência ${antigas.map(dvNum).join(', ')} (de outro dia). A nota volta para <b>Faltando</b>; a divergência continua resolvida no histórico.</small>`);
+      if(!ok) return false; const eu=(typeof opEu==='function'?opEu():''), ag=new Date().toISOString();
+      for(const d of antigas){ d.conferida=false; d.desbip={dia,em:ag,por:eu}; (d.hist=d.hist||[]).push({em:ag,por:eu,t:'Conferência da nota cancelada no dia '+dia.split('-').reverse().join('/')+' (a nota voltou para Faltando).'}); }
+      salvar(); try{ nuvJa(); }catch(e){ try{ nuvSinc(); }catch(x2){} }
+      try{ dvRender(); }catch(e){} try{ opRender(); }catch(e){} try{ ctMontar&&ctMontar(); }catch(e){} try{ gsFotoAgendar(); }catch(e){} try{ if(redesenha) redesenha(); }catch(e){}
+      toast(`✔ Conferência cancelada: a NF ${nf||ped} voltou para Faltando.`); return true;
+    }catch(e){ console.error(e); return _ds.apply(this,arguments); } }; }
+/* ================= v10.6.52 · Reentrega com motorista "NENHUM" fica "NENHUM" (pedido do Tiago, 26/11) =================
+   Antes "NENHUM" virava "(SEM MOTORISTA)" e voltava como pendência na Correção. Agora é resposta válida. */
+for(const k of ['NENHUM','NENHUMA']){ const i=RP_SEM_MOT.indexOf(k); if(i>=0) RP_SEM_MOT.splice(i,1); }
 </script>
 
 </body>
