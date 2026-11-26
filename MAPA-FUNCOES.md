@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 26/11/2026 07:09 · versão 10.6.57
+Gerado em 26/11/2026 07:14 · versão 10.6.58
 
 
 ## ab
@@ -416,6 +416,7 @@ Gerado em 26/11/2026 07:09 · versão 10.6.57
 - `foraOrigemSug` — linha 7553
 - `foraRegistrar` — linha 7560
 - `foraRender` — linha 7594
+- `forcar` — linha 12959
 - `fotoSegura` — linha 10030
 
 ## fr

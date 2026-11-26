@@ -26,7 +26,15 @@ const srv=http.createServer((q,r)=>{ let u=decodeURIComponent(q.url.split('?')[0
     catch(e){ falhas.push('o botão "Buscar atualização" não recarregou com versão nova disponível'); }
     if(!/[?&]v=/.test(pg.url())) falhas.push('o recarregamento não furou o cache (faltou o ?v= no endereço): '+pg.url());
   }
-  await pg.close(); await b.close(); srv.close();
+  await pg.close();
+  { /* v10.6.58: abriu com versão nova = atualiza sozinho, uma vez só (sem laço se o servidor ainda mandar a velha) */
+    const pf=await b.newPage(); let cargas=0; pf.on('load',()=>cargas++);
+    await pf.goto(`http://127.0.0.1:${P}/${ARQ}`,{waitUntil:'domcontentloaded'});
+    try{ await pf.waitForFunction(()=>/[?&]v=/.test(location.href),null,{timeout:25000}); }catch(e){ falhas.push('ao abrir com versão nova, o app não se atualizou sozinho '+await pf.evaluate(()=>JSON.stringify({g:localStorage.getItem('healthSearch.forcouVersao'),ov:!!document.getElementById('hs-forca-att'),f:typeof hsForcarAtualizacao,att:!!document.getElementById('app-att'),u:location.href}))); }
+    await pf.waitForTimeout(15000);
+    if(cargas>2) falhas.push('o app ficou recarregando em laço ('+cargas+' cargas)');
+    await pf.close(); }
+  await b.close(); srv.close();
   if(falhas.length){ console.error('FALHOU ('+v+'):\n- '+falhas.join('\n- ')); process.exit(1); }
   console.log('OK: a faixa aparece e o botão "Buscar atualização" força a versão nova (app '+v+')');
 })();

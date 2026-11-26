@@ -4476,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.57', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.58', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12948,6 +12948,35 @@ async function cfBaixarTudo(bt){ if(!opOnline()||!navigator.onLine){ toast('Sem 
       g.insertAdjacentHTML('beforeend',`<button class="cf-tile cf-largo" type="button" data-cf-baixar="1"><span class="cf-ic"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></span><span><b>Baixar tudo</b><small>Atualizar tudo da nuvem</small></span></button>`); }catch(e){} return r; }; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-cf-baixar]'); if(!b||b.disabled) return; e.preventDefault(); cfBaixarTudo(b); });
 (function(){ const st=document.createElement('style'); st.textContent='#t-cfinicio .cf-tile.cf-largo{grid-column:1/-1;min-height:0;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px}#t-cfinicio .cf-tile.cf-largo[disabled]{opacity:.7;cursor:wait}'; document.head.appendChild(st); })();
+/* ================= v10.6.58 · Abriu o app e tem versão nova: atualiza na hora, sozinho (pedido do Tiago, 26/11) =================
+   Ao abrir (e ao voltar para o app no celular), se o version.json tem versão maior: mostra "Atualizando…", salva o que
+   está pendente (a faixa já faz nuvSinc antes) e recarrega na versão nova. Câmera ligada = espera. Trava contra laço:
+   a mesma versão só é forçada uma vez a cada 10 min; se o servidor ainda entregar a cópia velha, fica a faixa. */
+(function(){ const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname); if(!web) return;
+  const CH='healthSearch.forcouVersao';
+  const cmp=(a,b)=>{ a=String(a).split('.').map(Number); b=String(b).split('.').map(Number); for(let i=0;i<Math.max(a.length,b.length);i++){ const d=(a[i]||0)-(b[i]||0); if(d) return d; } return 0; };
+  let forcando=false;
+  async function forcar(motivo){ if(forcando) return; try{
+      const cam=document.querySelector('#op-cam video'); if(cam&&cam.srcObject&&!cam.paused) return;
+      const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const j=await r.json();
+      if(!j.versao||cmp(j.versao,HS_VERSAO)<=0) return;
+      let f={}; try{ f=JSON.parse(localStorage.getItem(CH)||'{}')||{}; }catch(e){}
+      if(f.v===j.versao&&Date.now()-(+f.em||0)<10*60e3) return; /* já tentou essa: não fica recarregando */
+      try{ localStorage.setItem(CH,JSON.stringify({v:j.versao,em:Date.now()})); }catch(e){}
+      forcando=true;
+      const ov=document.createElement('div'); ov.id='hs-forca-att'; ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,22,25,.92);color:#E2F0F0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:inherit';
+      ov.innerHTML=`<div><div style="font-size:2.4rem;margin-bottom:8px">✨</div><div style="font-size:1.3rem;font-weight:700">Atualizando para a versão ${esc(j.versao)}…</div><div style="opacity:.8;margin-top:6px">Salvando o que está no aparelho antes. Seus dados ficam salvos.</div></div>`;
+      document.body.appendChild(ov);
+      try{ await Promise.race([ (async()=>{ try{ if(typeof opFila==='function') await opFila(); }catch(e){} })(), new Promise(r=>setTimeout(r,6000)) ]); }catch(e){}
+      try{ await Promise.race([ (async()=>{ try{ if(typeof opOnline==='function'&&opOnline()) await nuvSinc(); }catch(e){} })(), new Promise(r=>setTimeout(r,6000)) ]); }catch(e){}
+      try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k); }catch(e){}
+      try{ const rg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration(); if(rg) rg.update().catch(()=>{}); }catch(e){}
+      const u=new URL(location.href); u.searchParams.set('v',Date.now().toString(36)); location.replace(u.toString());
+      setTimeout(()=>{ /* se em 25 s não recarregou, devolve o app */ forcando=false; try{ ov.remove(); }catch(e){} },25000);
+    }catch(e){ forcando=false; } }
+  setTimeout(()=>forcar('abriu'),2500);
+  let escondidoEm=0; document.addEventListener('visibilitychange',()=>{ if(document.hidden){ escondidoEm=Date.now(); return; } if(escondidoEm&&Date.now()-escondidoEm>20000) forcar('voltou'); });
+  window.hsForcarAtualizacao=forcar; })();
 </script>
 
 </body>

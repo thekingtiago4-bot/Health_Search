@@ -875,3 +875,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   `nuvPuxarTudo`, sem a confirmação) e `opPuxarDia(true)`. Quadrado largo `.cf-largo` na `#t-cfinicio`.
 - Conferente: `data-cfperm` (travas de só consulta, sempre) separado de `data-cf` (layout de cartões, só ≤ 860 px, `cfCel`).
   No PC: tela inicial `conftotal`, barra de ícones com as 4 telas dele; Baixar tudo fica no menu do ☁.
+
+### v10.6.58 (26/11/2026) — atualização forçada ao abrir
+- `hsForcarAtualizacao`: 2,5 s depois de abrir e ao voltar para o app (escondido > 20 s) consulta `version.json`; se maior, tela
+  "Atualizando…", `opFila` + `nuvSinc` (até 6 s cada), limpa caches e `location.replace(?v=)`. Câmera ligada = espera.
+  Trava contra laço: `healthSearch.forcouVersao` (mesma versão só 1×/10 min). `testes/atualizacao.js` cobre (atualiza 1× e não fica em laço).
