@@ -1638,5 +1638,14 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         return pend+'|'+rpSemMot('NENHUM')+'|'+rpMot({l:{mot:'nenhum'}}); }
       finally{ S.romaneios=rs; OP.bipes=bs; OP.dia=dia; renderTudo(); } });
     ok(mp==='448497|false|NENHUM','conferência: bipe de uma NF não confere outra NF do mesmo pedido; etiqueta só com pedido continua valendo; motorista NENHUM fica NENHUM ('+mp+')'); }
+  { const rr=await p.evaluate(()=>{ const n=nexS(), r0=JSON.stringify(n.reent), d0=JSON.stringify(RE.ler()), t0=JSON.stringify(S.reTirados||{}), m0=LS.getItem('healthSearch.reRecuperadas'); const dia='2026-11-20';
+      try{ LS.setItem('healthSearch.reRecuperadas','{}'); n.reent['111']={d:dia,status:'confirmada',motivo:'CLIENTE FECHADO'}; n.reent['222']={d:dia,status:'confirmada',motivo:'AVARIA'};
+        S.reTirados=Object.assign({},S.reTirados,{[dia+'#111|CLIENTE FECHADO']:new Date().toISOString()});
+        const D=RE.ler(); D.dias[dia]=[]; RE.gravar();
+        const a=reRecuperarConfirmadas(); const tem=()=>RE.ler().dias[dia].map(l=>z(l.nf)).sort().join(',');
+        const t1=tem(); RE.ler().dias[dia]=[]; RE.gravar(); const b=reRecuperarConfirmadas(); const c=reRecuperarConfirmadas();
+        return [a,t1,b,c,tem()].join('|'); }
+      finally{ n.reent=JSON.parse(r0); RE.d=JSON.parse(d0); RE.gravar(); S.reTirados=JSON.parse(t0); LS.setItem('healthSearch.reRecuperadas',m0||'{}'); } });
+    ok(rr==='1|222|0|0|','reentregas: tirada de propósito não volta; sumida volta uma vez só, sem loop ('+rr+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

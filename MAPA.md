@@ -847,3 +847,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `opDesbipar` (wrapper): divergência resolvida + `conferida` de outro dia (que o filtro de pendentes respeita) agora é cancelável:
   `conferida=false`, `desbip`, histórico. Não reabre a divergência.
 - `RP_SEM_MOT` sem NENHUM/NENHUMA: fica "NENHUM", não vira pendência na Correção; continua fora do ranking de motoristas.
+
+### v10.6.53 (26/11/2026) — "49 reentregas recolocadas" em loop + salvando sem fim
+- `reRecuperarConfirmadas` (v6.4.5, roda a cada `nexVarrer`) recolocava reentregas confirmadas que foram tiradas de propósito;
+  a trava `reTirados` tirava de novo → loop de gravação/aviso. Reescrita: pula dia apagado (`D.apagados`), NF com tombstone
+  (`reTiradaNf`, qualquer obs) e só recoloca cada `nf|dia` UMA vez por aparelho (`healthSearch.reRecuperadas`).

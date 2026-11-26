@@ -4476,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.52', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.53', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12866,6 +12866,26 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('#m
 /* ================= v10.6.52 · Reentrega com motorista "NENHUM" fica "NENHUM" (pedido do Tiago, 26/11) =================
    Antes "NENHUM" virava "(SEM MOTORISTA)" e voltava como pendência na Correção. Agora é resposta válida. */
 for(const k of ['NENHUM','NENHUMA']){ const i=RP_SEM_MOT.indexOf(k); if(i>=0) RP_SEM_MOT.splice(i,1); }
+/* ================= v10.6.53 · "49 reentregas recolocadas" sem parar + salvando infinitamente =================
+   reRecuperarConfirmadas (v6.4.5) recolocava toda reentrega "confirmada" do NexBip que não estivesse na lista — inclusive
+   as que você TIROU de propósito (✕ / "Não é reentrega" / dia apagado). A trava das exclusões tirava de novo, ela
+   recolocava de novo… a cada varredura: salvando e avisando sem fim. Agora: respeita as exclusões e cada uma é
+   recolocada no máximo UMA vez por aparelho. */
+const RE_RECUP='healthSearch.reRecuperadas';
+function reTiradaNf(nf,dia){ const T=S.reTirados; if(!T) return false; const n=z(nf); if(!n) return false;
+  for(const k of Object.keys(T)){ if(k.startsWith(dia+'#'+n+'|')||k.startsWith(n+'|')) return true; } return false; }
+reRecuperarConfirmadas=function(){ const n=nexS(), D=RE.ler(); let v=0; let M={}; try{ M=JSON.parse(LS.getItem(RE_RECUP)||'{}')||{}; }catch(e){}
+  const ap=new Set(D.apagados||[]); let mudouM=false;
+  for(const [k,r] of Object.entries(n.reent)){ if(r.status!=='confirmada'||!r.d) continue; const nf=String(k).startsWith('P')?'':k; const ls=D.dias[r.d]||[];
+    if(ls.some(l=>(nf&&z(l.nf)===nf)||(r.ped&&z(l.ped)===z(r.ped)))) continue;
+    const mk=k+'|'+r.d; if(M[mk]||ap.has(r.d)||(nf&&reTiradaNf(nf,r.d))) continue;
+    let row=null; try{ const B=rbLocalLer(); for(const reg of Object.values(B[r.d]||{})){ row=(reg.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(r.ped&&z(x.ped)===z(r.ped))); if(row) break; } }catch(e){}
+    for(const rr of S.romaneios||[]){ if(row) break; row=(rr.rows||[]).find(x=>(nf&&z(x.nf)===nf)||(r.ped&&z(x.ped)===z(r.ped))); }
+    const nfF=nf||(row&&row.nf)||''; if(nfF&&reTiradaNf(nfF,r.d)){ M[mk]=Date.now(); mudouM=true; continue; }
+    M[mk]=Date.now(); mudouM=true;
+    if(nexParaReentrega({nf:nfF,ped:r.ped||(row&&row.ped)||'',dest:row&&row.dest,cid:row&&row.cid,uf:row&&row.uf,vol:row&&row.vol,peso:row&&row.peso,valor:row&&row.valor,motivo:r.motivo||''},r.d,'automatica')) v++; }
+  if(mudouM) try{ LS.setItem(RE_RECUP,JSON.stringify(M)); }catch(e){}
+  if(v){ toast(`${v} reentrega(s) confirmada(s) que tinham sumido foram recolocadas em Reentregas.`); try{ if(!$('#t-reentregas').hidden) reTela(); }catch(e){} } return v; };
 </script>
 
 </body>

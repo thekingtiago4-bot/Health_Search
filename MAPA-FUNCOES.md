@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 26/11/2026 05:49 · versão 10.6.52
+Gerado em 26/11/2026 06:15 · versão 10.6.53
 
 
 ## ab
@@ -1010,6 +1010,7 @@ Gerado em 26/11/2026 05:49 · versão 10.6.52
 - `reStatus` — linha 2852
 - `reSub` — linha 3033
 - `reTela` — linha 2853
+- `reTiradaNf` — linha 12875
 - `reTirado` — linha 11456
 - `reTirar` — linha 11458
 - `reValorDe` — linha 3827
