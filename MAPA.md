@@ -869,3 +869,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - Banco (`2026-11-26-002-so-versao-atual-grava.sql`): gatilho `hs_sync_so_versao_atual` (BEFORE INSERT/UPDATE em hs_sync) recusa
   gravação do app sem versão ou abaixo de `hs_versao_minima()` (10.6.56). Robô/SQL sem cabeçalho passa. Bipes não entram na trava.
   Para subir a mínima no futuro: nova migração com `hs_versao_minima()` trocada.
+
+### v10.6.57 (26/11/2026) — Baixar tudo do conferente; tela de cartões só no celular
+- `cfBaixarTudo`: sobe a fila de bipes e `nuvSinc`; se sobrar bipe ou der erro, NÃO baixa; senão traz hs_sync inteiro (como
+  `nuvPuxarTudo`, sem a confirmação) e `opPuxarDia(true)`. Quadrado largo `.cf-largo` na `#t-cfinicio`.
+- Conferente: `data-cfperm` (travas de só consulta, sempre) separado de `data-cf` (layout de cartões, só ≤ 860 px, `cfCel`).
+  No PC: tela inicial `conftotal`, barra de ícones com as 4 telas dele; Baixar tudo fica no menu do ☁.

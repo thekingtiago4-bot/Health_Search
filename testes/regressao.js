@@ -1621,11 +1621,11 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       try{ Store.modo='nuvem'; NV.user={id:'u-cf'}; NV.perfil={id:'u-cf',nome:'Carlos',papel:'usuario',ativo:true}; S.cargos=Object.assign({},S.cargos,{'u-cf':'conferente'}); cargoAplicar();
         irPara(cargoTelaInicial()); R.push(telaAtual()); irPara('correcao'); R.push(telaAtual()); irPara('conftotal'); R.push(telaAtual());
         R.push(await opMarcarMao({nf:'1',vol:'1'},'ok',true)); R.push(await opDesbipar({nf:'1'}));
-        R.push(document.documentElement.dataset.cf||''); R.push(!!document.querySelector('#t-conftotal .cf-trava'));
-        S.cargos['u-cf']='lider'; cargoAplicar(); R.push(document.documentElement.dataset.cf||'-'); }
+        R.push(document.documentElement.dataset.cf||''); R.push(!!document.querySelector('#t-conftotal .cf-trava')&&document.documentElement.dataset.cfperm==='1');
+        S.cargos['u-cf']='lider'; cargoAplicar(); R.push(document.documentElement.dataset.cfperm||'-'); }
       finally{ Store.modo=mo; NV.user=us; NV.perfil=pf; S.cargos=JSON.parse(cg); try{ cargoAplicar(); }catch(e){} irPara('operacao'); }
       return R.join('|'); });
-    ok(cf==='cfinicio|cfinicio|conftotal|false|false|1|true|-','conferente: tela própria, só 4 telas, conferência só consulta ('+cf+')'); }
+    ok(cf==='conftotal|conftotal|conftotal|false|false||true|-','conferente no PC: tela normal com só as 4 telas, conferência só consulta (cartões só no celular) ('+cf+')'); }
   { const sel=await p.evaluate(()=>{ const f0=LS.getItem(OP_FILA); try{ LS.setItem(OP_FILA,JSON.stringify([{local_id:'z1'},{local_id:'z2'}])); opFilaSelo(); const a=(document.getElementById('op-fila-selo')||{}).textContent||'';
         LS.setItem(OP_FILA,'[]'); opFilaSelo(); return /2/.test(a)+'|'+!document.getElementById('op-fila-selo'); } finally{ LS.setItem(OP_FILA,f0||'[]'); } });
     ok(sel==='true|true','sem internet: selo mostra bipes guardados e some quando sobem ('+sel+')'); }

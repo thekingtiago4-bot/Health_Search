@@ -4476,7 +4476,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.56', HS_DATA='26/11/2026';
+const HS_VERSAO='10.6.57', HS_DATA='26/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -12729,7 +12729,7 @@ const CF={tit:{cfinicio:'Health Search',operacao:'NexBip',conftotal:'Conferênci
 CARGO_TELAS.conferente=['cfinicio','operacao','conftotal','buscar','geo'];
 function cfAtivo(){ try{ return cargoLogado()&&cargoMeu()==='conferente'; }catch(e){ return false; } }
 { const _cp=cargoPodeVer; cargoPodeVer=function(tela,c){ c=c||cargoMeu(); if(c==='conferente') return CARGO_TELAS.conferente.includes(tela); return _cp.apply(this,arguments); }; }
-{ const _ct=cargoTelaInicial; cargoTelaInicial=function(){ return cfAtivo()?'cfinicio':_ct.apply(this,arguments); }; }
+{ const _ct=cargoTelaInicial; cargoTelaInicial=function(){ return cfAtivo()?(cfCel()?'cfinicio':'conftotal'):_ct.apply(this,arguments); }; }
 /* travas de verdade (não só esconder botão) */
 const cfRecusa=()=>{ toast('Só consulta: dar baixa ou desfazer é com o líder/supervisor.'); return Promise.resolve(false); };
 { const _f=opMarcarMao; opMarcarMao=function(){ return cfAtivo()?cfRecusa():_f.apply(this,arguments); }; }
@@ -12763,16 +12763,17 @@ html[data-cf="1"] #cf-topo{max-width:none}
 #t-cfinicio .cf-tile b{font-size:1.2rem;display:block}#t-cfinicio .cf-tile small{color:var(--mudo)}
 #t-cfinicio .cf-tile.pri{background:var(--aqua);border-color:var(--aqua);color:#062024}#t-cfinicio .cf-tile.pri small{color:#0b4a4a}#t-cfinicio .cf-tile.pri .cf-ic{background:rgba(6,32,36,.12)}
 #t-cfinicio .cf-pe{margin-top:22px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--mudo);font-size:.85rem}
-html[data-cf="1"] .cf-trava{display:flex;gap:10px;align-items:center;background:var(--sup2);border:1.5px dashed var(--linha);border-radius:12px;padding:10px 12px;font-size:.9rem;color:var(--tinta2);margin:0 0 12px}
+html[data-cfperm="1"] .cf-trava{display:flex;gap:10px;align-items:center;background:var(--sup2);border:1.5px dashed var(--linha);border-radius:12px;padding:10px 12px;font-size:.9rem;color:var(--tinta2);margin:0 0 12px}
 .cf-trava{display:none}
-html[data-cf="1"] .rl-mk,html[data-cf="1"] .rl-dv,html[data-cf="1"] .rl-des,html[data-cf="1"] [data-ctb],html[data-cf="1"] #ct-busca,
-html[data-cf="1"] #geo-pub-bar,html[data-cf="1"] #geo-bt-alim,html[data-cf="1"] #ged-abrir,html[data-cf="1"] #geo-diag,html[data-cf="1"] #geo-voltar,
-html[data-cf="1"] [data-op-desbipar],html[data-cf="1"] .op-desbipar{display:none!important}
-html[data-cf="1"] .sino,html[data-cf="1"] #sino,html[data-cf="1"] #nx-sino,html[data-cf="1"] #hs-salvar{display:none!important}`; document.head.appendChild(st); })();
+html[data-cfperm="1"] .rl-mk,html[data-cfperm="1"] .rl-dv,html[data-cfperm="1"] .rl-des,html[data-cfperm="1"] [data-ctb],html[data-cfperm="1"] #ct-busca,
+html[data-cfperm="1"] #geo-pub-bar,html[data-cfperm="1"] #geo-bt-alim,html[data-cfperm="1"] #ged-abrir,html[data-cfperm="1"] #geo-diag,html[data-cfperm="1"] #geo-voltar,
+html[data-cfperm="1"] [data-op-desbipar],html[data-cfperm="1"] .op-desbipar{display:none!important}
+html[data-cf="1"] .sino,html[data-cf="1"] #sino,html[data-cf="1"] #nx-sino,html[data-cf="1"] #hs-salvar{display:none!important}
+html[data-cfperm="1"] #hs-salvar{display:none!important}`; document.head.appendChild(st); })();
 function cfIco(tela){ const b=document.querySelector(`.nav button[data-tela="${tela}"] .ico`); return b?b.outerHTML:''; }
 function cfSelo(){ const n=(()=>{ try{ return opFilaLer().length; }catch(e){ return 0; } })(); const off=(typeof NV!=='undefined'&&NV.offline)||!navigator.onLine;
   if(n) return `<span class="cf-selo amar">⚠ ${fmtN(n)} guardado(s)</span>`; if(off) return '<span class="cf-selo amar">⚠ sem internet</span>'; return '<span class="cf-selo">● online · tudo enviado</span>'; }
-function cfTopo(){ if(!cfAtivo()) return; let el=document.getElementById('cf-topo'); const main=document.querySelector('main')||document.querySelector('.app > :not(.rail)');
+function cfTopo(){ if(!cfAtivo()||!cfCel()) return; let el=document.getElementById('cf-topo'); const main=document.querySelector('main')||document.querySelector('.app > :not(.rail)');
   if(!el){ el=document.createElement('header'); el.id='cf-topo'; (main||document.body).prepend(el);
     el.addEventListener('click',e=>{ if(e.target.closest('.cf-volta')) irPara('cfinicio'); }); }
   const t=(typeof telaAtual==='function'&&telaAtual())||'cfinicio', ini=t==='cfinicio'; const p=(NV&&NV.perfil)||{};
@@ -12796,15 +12797,21 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
   if(b.dataset.cfAtu){ const o=document.getElementById('app-ver-bt'); if(o) o.click(); return; }
   if(b.dataset.cfSair){ const o=document.getElementById('nv-sair'); if(o) o.click(); } });
 { const _ir=irPara; irPara=function(t){
+    if(t==='cfinicio'&&cfAtivo()&&!cfCel()) t='conftotal';
     if(t==='cfinicio'){ if(!document.getElementById('t-cfinicio')){ const ref=document.querySelector('.tela'); const s=document.createElement('section'); s.className='tela'; s.id='t-cfinicio'; s.hidden=true; if(ref) ref.parentNode.insertBefore(s,ref); else document.body.appendChild(s); }
       $$('.nav button').forEach(b=>b.removeAttribute('aria-current')); $$('.tela').forEach(s=>s.hidden=s.id!=='t-cfinicio'); try{ fecharSug(); }catch(er){} cfInicioDesenhar(); cfTopo(); window.scrollTo(0,0); return; }
     if(cfAtivo()&&!CARGO_TELAS.conferente.includes(t)) t='cfinicio';
     if(t==='cfinicio') return irPara('cfinicio');
-    const r=_ir.apply(this,[t]); try{ cfTopo(); cfTravas(); }catch(e){} return r; }; }
+    const r=_ir.apply(this,[t]); try{ if(cfCel()) cfTopo(); cfTravas(); }catch(e){} return r; }; }
 function cfTravas(){ if(!cfAtivo()) return;
   for(const [id,txt] of [['t-conftotal','<b>Só consulta.</b> Dar baixa à mão é com o líder/supervisor.'],['t-geo','<b>Só consulta.</b> Digite a cidade para ver região e base.']]){ const s=document.getElementById(id); if(!s||s.querySelector('.cf-trava')) continue;
     const h=s.querySelector('h1,h2'); const d=document.createElement('div'); d.className='cf-trava'; d.innerHTML='🔒 <span>'+txt+'</span>'; (h&&h.parentNode===s?h:s.firstElementChild||s).insertAdjacentElement('afterend',d); } }
-function cfAplicar(){ const on=cfAtivo(); const html=document.documentElement; if(on!==(html.dataset.cf==='1')){ if(on) html.dataset.cf='1'; else delete html.dataset.cf; }
+const CF_CEL=matchMedia('(max-width:860px)');
+function cfCel(){ return CF_CEL.matches; }
+function cfAplicar(){ const perm=cfAtivo(), on=perm&&cfCel(); const html=document.documentElement;
+  if(perm!==(html.dataset.cfperm==='1')){ if(perm) html.dataset.cfperm='1'; else delete html.dataset.cfperm; }
+  if(on!==(html.dataset.cf==='1')){ if(on) html.dataset.cf='1'; else delete html.dataset.cf; }
+  if(perm&&!on){ const t=document.getElementById('cf-topo'); if(t) t.remove(); try{ if(telaAtual()==='cfinicio') irPara('conftotal'); }catch(e){} cfTravas(); return; }
   if(!on){ const t=document.getElementById('cf-topo'); if(t) t.remove(); return; }
   cfTopo(); cfTravas(); const s=document.getElementById('t-cfinicio'); if(s&&!s.hidden) cfInicioDesenhar(); }
 { const _ca=cargoAplicar; cargoAplicar=function(){ const r=_ca.apply(this,arguments); try{ cfAplicar(); }catch(e){} return r; }; }
@@ -12918,6 +12925,29 @@ NUV.reEquiv=NUV.reEquiv||{};
         else { const h=Object.assign({},op.headers||{}); const k=Object.keys(h).find(x=>x.toLowerCase()==='x-client-info')||'X-Client-Info'; const v=h[k]||'supabase-js-web'; if(!/hs\//.test(v)) h[k]=v+marca; op.headers=h; } } }catch(e){}
     return _f.call(this,url,op); }; })();
 { const _t=nvTraduz; nvTraduz=function(m){ if(/APP_DESATUALIZADO/.test(String(m||''))) return 'Este aparelho está com o app desatualizado: toque em "Buscar atualização" para voltar a salvar na nuvem. Nada do que está aqui se perde.'; return _t.apply(this,arguments); }; }
+/* ================= v10.6.57 · Conferente: quadrado "Baixar tudo" na tela de início (pedido do Tiago, 26/11) =================
+   Seguro: primeiro SOBE o que está pendente (bipes + alterações); se não conseguir subir, não baixa nada.
+   Depois traz tudo da nuvem (mesma coisa do "Puxar tudo") e os bipes de todos (a porcentagem atualiza). */
+async function cfBaixarTudo(bt){ if(!opOnline()||!navigator.onLine){ toast('Sem internet agora: conecte e toque de novo.'); return; }
+  if(bt){ bt.disabled=true; bt.querySelector('small').textContent='Enviando o que está aqui…'; }
+  const fim=t=>{ if(bt){ bt.disabled=false; bt.querySelector('small').textContent=t||'Atualizar tudo da nuvem'; } };
+  try{ await opFila(); }catch(e){}
+  let pend=0; try{ pend=opFilaLer().length; }catch(e){}
+  if(pend){ toast(`⚠ ${pend} bipe(s) deste aparelho ainda não subiram — não baixei nada para não perder. Tente de novo em instantes.`); fim(); return; }
+  try{ await nuvSinc(); }catch(e){}
+  if(NUV.erro){ toast('⚠ Não consegui salvar o que está aqui na nuvem ('+nvTraduz(NUV.erro).slice(0,80)+') — não baixei nada.'); fim(); return; }
+  if(bt) bt.querySelector('small').textContent='Baixando da nuvem…';
+  let data=[]; try{ for(let pg=0;pg<50;pg++){ const {data:d1,error}=await NV.cli.from('hs_sync').select('chave,tipo,valor,apagado,atualizado_em').not('chave','like','bkp:%').order('atualizado_em').range(pg*1000,pg*1000+999); if(error) throw error; data=data.concat(d1||[]); if(!d1||d1.length<1000) break; } }
+  catch(e){ toast('Falhou ao baixar: '+nvTraduz(e.message||String(e))); fim(); return; }
+  NUV.aplicando=true; let q=0; try{ for(const r of data){ if(!r||!r.chave) continue; try{ if(r.apagado){ nuvAplicar(r.chave,null,true); NUV.h[r.chave]='x'; } else { nuvAplicar(r.chave,r.valor,false); NUV.h[r.chave]=nuvHash(r.valor); } }catch(e){} if(!NUV.desde||r.atualizado_em>NUV.desde) NUV.desde=r.atualizado_em; q++; } }finally{ NUV.aplicando=false; }
+  try{ nuvGuardar(); }catch(e){} try{ salvar(); }catch(e){}
+  try{ await opPuxarDia(true); }catch(e){}
+  try{ renderTudo(); }catch(e){} try{ cfInicioDesenhar(); }catch(e){}
+  toast(`✔ Tudo atualizado da nuvem (${fmtN(q)} itens).`); fim(); }
+{ const _d=cfInicioDesenhar; cfInicioDesenhar=function(){ const r=_d.apply(this,arguments); try{ const g=document.querySelector('#t-cfinicio .cf-grade'); if(g&&!g.querySelector('[data-cf-baixar]'))
+      g.insertAdjacentHTML('beforeend',`<button class="cf-tile cf-largo" type="button" data-cf-baixar="1"><span class="cf-ic"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></span><span><b>Baixar tudo</b><small>Atualizar tudo da nuvem</small></span></button>`); }catch(e){} return r; }; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-cf-baixar]'); if(!b||b.disabled) return; e.preventDefault(); cfBaixarTudo(b); });
+(function(){ const st=document.createElement('style'); st.textContent='#t-cfinicio .cf-tile.cf-largo{grid-column:1/-1;min-height:0;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px}#t-cfinicio .cf-tile.cf-largo[disabled]{opacity:.7;cursor:wait}'; document.head.appendChild(st); })();
 </script>
 
 </body>

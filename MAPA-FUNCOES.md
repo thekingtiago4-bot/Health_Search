@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 26/11/2026 06:42 · versão 10.6.56
+Gerado em 26/11/2026 07:09 · versão 10.6.57
 
 
 ## ab
@@ -153,15 +153,17 @@ Gerado em 26/11/2026 06:42 · versão 10.6.56
 - `celulasParaLinha` — linha 1845
 
 ## cf
-- `cfAplicar` — linha 12807
+- `cfAplicar` — linha 12811
 - `cfAtivo` — linha 12730
+- `cfBaixarTudo` — linha 12931
 - `cfBuscarDest` — linha 5798
+- `cfCel` — linha 12810
 - `cfDestXml` — linha 5796
-- `cfIco` — linha 12772
-- `cfInicioDesenhar` — linha 12782
-- `cfSelo` — linha 12773
-- `cfTopo` — linha 12775
-- `cfTravas` — linha 12804
+- `cfIco` — linha 12773
+- `cfInicioDesenhar` — linha 12783
+- `cfSelo` — linha 12774
+- `cfTopo` — linha 12776
+- `cfTravas` — linha 12806
 
 ## ch
 - `checar` — linha 4485
@@ -620,7 +622,7 @@ Gerado em 26/11/2026 06:42 · versão 10.6.56
 ## mb
 - `mbChecarPC` — linha 6320
 - `mbFaixa` — linha 6315
-- `mbGradeRotulos` — linha 12834
+- `mbGradeRotulos` — linha 12841
 - `mbInstalarAviso` — linha 6321
 
 ## me
@@ -1010,7 +1012,7 @@ Gerado em 26/11/2026 06:42 · versão 10.6.56
 - `reStatus` — linha 2852
 - `reSub` — linha 3033
 - `reTela` — linha 2853
-- `reTiradaNf` — linha 12875
+- `reTiradaNf` — linha 12882
 - `reTirado` — linha 11456
 - `reTirar` — linha 11458
 - `reValorDe` — linha 3827
