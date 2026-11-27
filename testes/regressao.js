@@ -1668,5 +1668,11 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
       finally{ Store.modo=mo; NV.user=us; NV.perfil=pf; S.cargos=JSON.parse(cg); try{ cargoAplicar(); }catch(e){} irPara('operacao'); }
       return R.join('|'); });
     ok(nx==='true|false|-|conftotal|lider|NexConf','NexConf: tela simples, baixa manual liberada (sem trava), só as 4 telas; Supervisor vira Líder ('+nx+')'); }
+  { const dup=await p.evaluate(async()=>{ const h=hojeISO(), rs=S.romaneios, bs=OP.bipes, d0=OP.dia; const arq=n=>'Romaneio '+n+' '+h.split('-').reverse().slice(0,2).join('-')+'.pdf';
+      try{ OP.dia=h; S.romaneios=[{id:'r1',numero:'0238001',base:'CAJ',arquivo:arq('A'),rows:[{nf:'755017',ped:'748656',vol:'1',dest:'GH FARMA'}]},{id:'r2',numero:'0238056',base:'CAJ',arquivo:arq('B'),rows:[{nf:'755017',ped:'748656',vol:'1',dest:'GH FARMA'},{nf:'9',ped:'',vol:'1',dest:'X'}]}];
+        OP.bipes=[]; renderTudo(); await new Promise(r=>setTimeout(r,0)); opRomLista('r2'); const m=[...document.querySelectorAll('.fundo .modal')].pop(); const tx=m.textContent; m.closest('.fundo').remove();
+        return [/Bipadas \(0\)/.test(tx),/Conta em outro romaneio \(1\)/.test(tx),/em CAJ 0238001/.test(tx)].join(','); }
+      finally{ S.romaneios=rs; OP.bipes=bs; OP.dia=d0; renderTudo(); } });
+    ok(dup==='true,true,true','romaneio: nota repetida em outro romaneio sem bipe não aparece como Bipada ('+dup+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

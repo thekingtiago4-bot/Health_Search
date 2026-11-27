@@ -926,3 +926,8 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   `data-cfperm`, opMarcarMao/opDesbipar/opApagarLote recusam) = só conferente. NexConf dá baixa manual onde sempre foi.
 - `cargoDe`: S.cargos "supervisor" → lider. `CF_CEL` = largura ≤ 860 ou toque até 1400 (tablet deitado).
 - `mbChecarPC` só avisa "versão para computador" quando a página é mais larga que a própria tela (antes pegava tablet deitado).
+
+### v10.6.66 (27/11/2026) — nota "bipada" que conta em outro romaneio
+- `opRomLista`: nota fora de Faltando, sem bipe (`opBipsDe`), sem marcação (`gsAj`) e sem divergência, que está em OUTRO romaneio
+  de hoje (`opNotaK`), vai para o grupo "📎 Conta em outro romaneio" (com o romaneio) — antes ficava em Bipadas e o ✕ não tirava.
+  Caso real: GH FARMA NF 755017 no CAJ 0238056.
