@@ -1674,5 +1674,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         return [/Bipadas \(0\)/.test(tx),/Conta em outro romaneio \(1\)/.test(tx),/em CAJ 0238001/.test(tx)].join(','); }
       finally{ S.romaneios=rs; OP.bipes=bs; OP.dia=d0; renderTudo(); } });
     ok(dup==='true,true,true','romaneio: nota repetida em outro romaneio sem bipe não aparece como Bipada ('+dup+')'); }
+  { const vb=await p.evaluate(async()=>{ const h=hojeISO(), rs=S.romaneios, bs=OP.bipes, d0=OP.dia, dv0=JSON.stringify(S.divergencias||[]); const arq='Romaneio V '+h.split('-').reverse().slice(0,2).join('-')+'.pdf';
+      try{ OP.dia=h; S.romaneios=[{id:'v1',numero:'0239000',base:'CAJ',arquivo:arq,rows:[{nf:'5001',ped:'1',vol:'1',dest:'A',valor:'1.234,56'},{nf:'5002',ped:'2',vol:'1',dest:'B',valor:''}]}];
+        OP.bipes=[]; S.divergencias=[{id:'dvX',nf:'5002',ped:'2',st:'aberta',d:'2026-11-20T10:00:00Z',qtd:1}]; renderTudo(); await new Promise(r=>setTimeout(r,0));
+        const f=gsFotoMontar(); const L=opPorRom(); const tn=L.reduce((a,x)=>a+x.tn,0), fn=L.reduce((a,x)=>a+x.fn,0);
+        return [valCurto({nf:'5001',valor:'1.234,56'}).replace(/\s/g,' '), f.tn+'/'+f.fn, tn+'/'+fn, f.dn].join('|'); }
+      finally{ S.romaneios=rs; OP.bipes=bs; OP.dia=d0; S.divergencias=JSON.parse(dv0); renderTudo(); } });
+    ok(vb==='R$ 1.234,56|2/1|2/1|0','valor do romaneio aparece sem XML; Painel e Conferência dão a mesma conta (divergência antiga conta como conferida) ('+vb+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

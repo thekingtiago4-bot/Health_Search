@@ -939,3 +939,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 ### v10.6.68 (27/11/2026) — Feriados ocupam a tela
 - Computador: `#fer-dias` em linha (flex), cada dia com `flex-grow` = ceil(feriados/7) (`ferLargura`) e a lista em sub-colunas
   (`columns:165px`). Celular sem mudança.
+
+### v10.6.69 (27/11/2026) — Painel = Conferência total; valor da nota em toda busca
+- `gsContar`: nota com divergência aberta de qualquer dia (ou resolvida+conferida, não desbipada) conta como conferida — mesma
+  regra do filtro de `opPendentes`; não entra no "em divergência" (só hoje). Antes: Painel 99% × Conferência 100%.
+- `valNota` cai para o valor do romaneio quando não há XML; `valCurto`. Valor no resultado único do Buscar, coluna no lote,
+  busca da Conferência total, janela do romaneio (`lin`) e busca do Resolver.

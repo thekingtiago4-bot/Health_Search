@@ -2435,6 +2435,7 @@ function detalhesLinha(h){ const r=h.row, ro=h.rom;
     <div><dt>Romaneio</dt><dd>${esc(ro.numero||'?')}<span class="base">${esc(ro.base||'?')}</span></dd></div>
     <div><dt>Pedido</dt><dd>${r.ped?esc(r.ped)+(r.pedCortado?'<span class="corte"> (cortado)</span>':''):'<span class="falta">sem pedido</span>'}</dd></div>
     <div><dt>NF</dt><dd>${esc(r.nf)}</dd></div>
+    <div><dt>Valor</dt><dd>${valTxt(r)}</dd></div>
     <div><dt>Volumetria</dt><dd>${ehZero(r)?'0 <span class="chip-zero" title="'+ZERO_TIT+'">0 volume, fora da soma</span>':(r.vol!==''&&r.vol!=null?esc(r.vol)+' <span class="falta">vol</span>':'<span class="falta">—</span>')}</dd></div>
     <div class="largo"><dt>Remetente</dt><dd class="rem">${esc(r.rem)}</dd></div>
   </dl>
@@ -2444,6 +2445,9 @@ function faixaAg(a){ if(!a) return ''; return `<div class="faixa-ag">${quad('ag'
 /* v9.0.3: valor da nota vindo dos XMLs (NF-e → vNF; Softlog → valor produtos) */
 function valNota(row){ const k=opK(row&&row.nf||''); if(!k) return null; const x=S.opXml&&S.opXml[k]; if(x&&x.valor) return +x.valor; const R=S.rdXml||{}; for(const d of Object.keys(R).sort().reverse()){ const n=R[d]&&R[d][k]; if(n&&typeof n==='object'&&n.vprod) return +n.vprod; } return null; }
 const fmtR=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+/* v10.6.69: sem XML, vale o valor que veio no romaneio (antes ficava "—") */
+{ const _vn=valNota; valNota=function(row){ const v=_vn(row); if(v!=null) return v; try{ const t=String((row&&row.valor)||'').trim(); if(!t) return null; const n=+(/,/.test(t)?t.replace(/\./g,'').replace(',','.'):t); return n>0?n:null; }catch(e){ return null; } }; }
+function valCurto(row){ const v=valNota(row); return v==null?'':fmtR(v); }
 function valTxt(row){ const v=valNota(row); return v==null?'<span class="corte" title="Sem XML desta nota">—</span>':fmtR(v); }
 function valTotTxt(hits){ let t=0,n=0,f=0; const vist=new Set(); for(const h of hits){ const k=opK(h.row.nf||''); if(vist.has(k)) continue; vist.add(k); const v=valNota(h.row); if(v==null) f++; else { t+=v; n++; } } return n?`<span>Valor <b>${fmtR(t)}</b>${f?` <small style="opacity:.7">(${f} sem XML)</small>`:''}</span>`:''; }
 function valRodape(hits,ped){ let t=0,f=0; const vist=new Set(); for(const h of hits){ const k=opK(h.row.nf||''); if(vist.has(k)) continue; vist.add(k); const v=valNota(h.row); if(v==null) f++; else t+=v; }
@@ -4478,7 +4482,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.68', HS_DATA='27/11/2026';
+const HS_VERSAO='10.6.69', HS_DATA='27/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8816,7 +8820,7 @@ function ctBuscaLista(){ const el=$('#ct-res'); if(!el) return; const q=N(CTB.q|
     if(CTB.res.some(it=>opNotaK(it.x)===k)) continue; if(bip.length<15) bip.push({r,x}); }
   const dvDe=x=>{ try{ const d=dvAcha(opK(x.ped),opK(x.nf)); return d&&d.st!=='resolvida'?d:null; }catch(e){ return null; } };
   const linha=(it,i)=>{ const x=it.x, d=dvDe(x), tot=volNum(x.vol)||1;
-    return `<div class="ct-r"><div><b>NF ${esc(opK(x.nf)||'—')}</b> <small class="sub">ped. ${esc(opK(x.ped)||'—')} · ${fmtN(tot)} vol. · ${esc((it.r&&it.r.numero)||'')}</small><br><small class="sub">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</small></div>`+
+    return `<div class="ct-r"><div><b>NF ${esc(opK(x.nf)||'—')}</b> <small class="sub">ped. ${esc(opK(x.ped)||'—')} · ${fmtN(tot)} vol.${valCurto(x)?' · <b>'+valCurto(x)+'</b>':''} · ${esc((it.r&&it.r.numero)||'')}</small><br><small class="sub">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}</small></div>`+
       (i==null?`<span class="${d?'ct-dv':'ct-ok'}">${d?'⚠ divergência '+esc(dvNum(d)):'✔ conferida'}</span>`
              :`<span class="ct-bts"><button class="btn mini" type="button" data-ctb="${i}" data-m="ok" style="background:#16a34a;color:#fff;border-color:#16a34a">✔ Dar baixa</button><button class="btn mini" type="button" data-ctb="${i}" data-m="dv" style="background:#f97316;color:#fff;border-color:#f97316">⚠ Divergência</button></span>`)+`</div>`; };
   el.innerHTML=(CTB.res.length?`<p class="sub" style="margin:8px 0 4px">Faltando (${CTB.res.length})</p>`+CTB.res.map((it,i)=>linha(it,i)).join(''):'')
@@ -9229,7 +9233,7 @@ async function opMarcarMao(x,modo,semDialogo){ const dv=modo==='dv'; const tot=M
 function opRomLista(id){ const r=(S.romaneios||[]).find(x=>x.id===id); if(!r) return; OP._semFiltro=true; let pend; try{ pend=opPendentes().filter(it=>it.r.id===id); }finally{ OP._semFiltro=false; }
   const falta=new Set(pend.map(it=>it.x)); const bs=OP.bipes.filter(b=>b.status!=='fora');
   const temDv=x=>{ try{ const d=dvAcha(opK(x.ped),opK(x.nf)); return d&&d.st!=='resolvida'?d:null; }catch(e){ return null; } };
-  const lin=(x,extra,mk,des)=>{ const d=temDv(x); const lar=d&&mk==null;
+  const lin=(x,extra,mk,des)=>{ const d=temDv(x); const lar=d&&mk==null; { const vc=valCurto(x); if(vc) extra=(extra?extra+' · ':'')+vc; }
     return `<div style="padding:6px 0;border-bottom:1px solid var(--linha)${lar?';box-shadow:inset 3px 0 0 #E8590C;padding-left:8px':''}"><div style="display:flex;align-items:flex-start;gap:6px">${mk!=null?`<span style="display:flex;gap:4px;flex-shrink:0;margin-top:1px"><button type="button" class="btn mini rl-mk" data-rl-mk="${mk}" style="background:#16a34a;color:#fff;border-color:#16a34a;padding:2px 6px;font-size:.75em">✔</button><button type="button" class="btn mini rl-dv" data-rl-dv="${mk}" style="background:#f97316;color:#fff;border-color:#f97316;padding:2px 6px;font-size:.75em">⚠</button></span>`:''}${des!=null?`<span style="display:flex;gap:4px;flex-shrink:0;margin-top:1px"><button type="button" class="btn mini rl-des" data-rl-des="${des}" title="Cancelar a conferência desta nota (volta para Faltando)" aria-label="Cancelar a conferência" style="background:#dc2626;color:#fff;border-color:#dc2626;padding:2px 7px;font-size:.75em">✕</button></span>`:''}<div style="flex:1;min-width:0"><b${lar?' style="color:#E8590C"':''}>NF ${esc(opK(x.nf)||'—')}</b>${x.ped?` <small class="sub">ped. ${esc(opK(x.ped))}</small>`:''} <small style="float:right">${extra}</small><br><small class="sub">${esc(x.dest||'')}${x.cid?' · '+esc(x.cid):''}${lar?` · <b style="color:#E8590C">⚠ divergência ${esc(dvNum(d))}${d.qtd?' · faltam '+d.qtd:''}</b>`:''}</small></div></div></div>`; };
   const rows=(r.rows||[]).filter(x=>(opK(x.ped)||opK(x.nf))&&volNum(x.vol)!==0);
   /* v10.6.27: nota tirada da conta (Simulação / Retiradas) não foi bipada — tem grupo próprio, sem ✕ */
@@ -9323,7 +9327,7 @@ function oresAbrir(lid){ const b=OP.bipes.find(x=>String(x.id||x.local_id)===Str
   const busca=f.querySelector('#ores-busca'), resEl=f.querySelector('#ores-busca-res');
   busca.oninput=()=>{ const q=etqNz(busca.value); if(!q||q.length<2){ resEl.innerHTML=''; return; }
     const achados=todasLinhas().filter(({row})=>[row.ped,row.nf,row.cli,row.dest,row.cid,row.cidade].some(v=>v&&etqNz(String(v)).includes(q))).slice(0,20);
-    resEl.innerHTML=achados.map((a,i)=>`<div class="card" data-ores-pick2="${i}" style="padding:6px 8px;margin-bottom:4px;cursor:pointer;border:1.5px solid var(--linha)">${esc(a.row.ped||a.row.nf||'?')} · ${esc(a.row.cli||a.row.dest||'')} ${a.row.cid||a.row.cidade?'· '+esc(a.row.cid||a.row.cidade):''}</div>`).join('');
+    resEl.innerHTML=achados.map((a,i)=>`<div class="card" data-ores-pick2="${i}" style="padding:6px 8px;margin-bottom:4px;cursor:pointer;border:1.5px solid var(--linha)">${esc(a.row.ped||a.row.nf||'?')} · ${esc(a.row.cli||a.row.dest||'')} ${a.row.cid||a.row.cidade?'· '+esc(a.row.cid||a.row.cidade):''}${valCurto(a.row)?' · <b>'+valCurto(a.row)+'</b>':''}</div>`).join('');
     resEl.querySelectorAll('[data-ores-pick2]').forEach(el=>el.onclick=()=>marcar(el,{row:achados[+el.dataset.oresPick2].row})); };
   f.querySelector('[data-ores-fechar]').onclick=()=>f.remove();
   f.addEventListener('keydown',e=>{ if(e.key==='Escape') f.remove(); });
@@ -9715,6 +9719,9 @@ function gsContar(roms,lidosDe,dvm,aj,foraAntes){ aj=aj||{}; const foraV=new Set
       /* nota tirada da conta (Simulação / fora da operação): não entra no total, nem hoje nem no histórico */
       if((mao&&mao.m==='fora')||foraV.has(ajk)){ foraAgora.push(ajk); continue; }
       const espV=esp||1; let lidos=Math.max(0,lidosDe(ped,nf)), temDv=gsTemDv(dvm,ped,nf);
+      /* v10.6.69: mesma regra da Conferência total — nota com divergência ainda aberta (de qualquer dia) conta como conferida;
+         não entra no "em divergência" (que é só de hoje). Antes o Painel dava 99% e a Conferência 100%. */
+      if(!temDv&&lidos<=0){ try{ const _d=OP.dia||hojeISO(); if(dvSo().some(d=>dvDaNota(d,x)&&(d.st!=='resolvida'||d.conferida)&&!dvDesbipada(d,_d))) lidos=espV; }catch(e){} }
       if(mao){ if(mao.m==='dv') temDv=true; else if(mao.m==='ok'&&lidos<=0) lidos=espV; }
       rtn++; rtv+=espV;
       /* regra do Tiago: um bipe confere a NOTA INTEIRA. Só quando a conferência é caixa a caixa
@@ -13105,6 +13112,12 @@ function ferLargura(){ const box=document.getElementById('fer-dias'); if(!box||!
   for(const a of box.querySelectorAll('.fer-dia')){ const n=a.querySelectorAll('li').length; const g=String(Math.max(1,Math.ceil(n/7))); if(a.style.flexGrow!==g) a.style.flexGrow=g; } }
 setTimeout(()=>{ const box=document.getElementById('fer-dias'); if(box){ new MutationObserver(ferLargura).observe(box,{childList:true,subtree:true}); ferLargura(); } },1000);
 addEventListener('resize',()=>{ try{ ferLargura(); }catch(e){} });
+
+/* v10.6.69: conferência em lote da aba Buscar ganha a coluna Valor */
+{ const _m=mostrar; mostrar=function(res){ const r=_m.apply(this,arguments); try{ if(res&&res.tipo==='lote'){ const box=document.getElementById('resultado'); const tb=box&&box.querySelector('table'); if(tb&&!tb.dataset.val){ tb.dataset.val='1';
+        const th=tb.querySelector('thead tr'); if(th) th.insertAdjacentHTML('beforeend','<th class="vol">Valor</th>');
+        for(const tr of tb.querySelectorAll('tbody tr')){ const ro=(S.romaneios||[]).find(x=>x.id===tr.dataset.rom); const row=ro&&ro.rows&&ro.rows[+tr.dataset.i];
+          if(row) tr.insertAdjacentHTML('beforeend',`<td class="vol val">${valTxt(row)}</td>`); else { const c=tr.querySelector('td[colspan]'); if(c) c.colSpan=(+c.colSpan||1)+1; } } } } }catch(e){} return r; }; }
 </script>
 
 </body>
