@@ -931,3 +931,7 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `opRomLista`: nota fora de Faltando, sem bipe (`opBipsDe`), sem marcação (`gsAj`) e sem divergência, que está em OUTRO romaneio
   de hoje (`opNotaK`), vai para o grupo "📎 Conta em outro romaneio" (com o romaneio) — antes ficava em Bipadas e o ✕ não tirava.
   Caso real: GH FARMA NF 755017 no CAJ 0238056.
+
+### v10.6.67 (27/11/2026) — Via Minas: 07:30 virava 07:03
+- O campo de hora dispara `change` no meio da digitação (07 + 3 = 07:03 já é válido); o app gravava e redesenhava, perdendo o
+  último dígito. `vmPrevGravar` agora só no `focusout`/Enter; `renderViaMinas` espera enquanto o campo está em foco.

@@ -4478,7 +4478,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.66', HS_DATA='27/11/2026';
+const HS_VERSAO='10.6.67', HS_DATA='27/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -7890,7 +7890,12 @@ function vmPrevCid(c){ const hs=c.fora.map(x=>(S.vmPrev||{})[x.rom.id]).filter(B
     l.querySelectorAll('.vm-cid[data-vm]').forEach(bt=>{ const c=m.get(bt.dataset.vm); const h=c&&vmPrevCid(c); if(h) bt.querySelector('.n').innerHTML=`${fmtN(c.cont.notas)} nota(s)<br><b style="color:var(--ag)">⏱ ${esc(h)}</b>`; });
     const h3=$('#vm-falta h3'); if(h3&&!h3.querySelector('[data-vm-wpp]')) h3.insertAdjacentHTML('beforeend','<button type="button" class="btn mini" data-vm-wpp="1" title="Copiar a lista para mandar no WhatsApp">📋 WhatsApp</button>'); const bw=h3&&h3.querySelector('[data-vm-wpp]'); if(bw) bw.style.display=falta.length?"":"none"; }
   }catch(e){ console.error(e); } }; }
-document.addEventListener('change',e=>{ const t=e.target; if(!t.dataset||t.dataset.vmPrev==null) return; S.vmPrev=S.vmPrev||{}; if(t.value) S.vmPrev[t.dataset.vmPrev]=t.value; else delete S.vmPrev[t.dataset.vmPrev]; salvar(); renderViaMinas(); toast(t.value?'Previsão de chegada: '+t.value+'.':'Previsão apagada.'); });
+/* v10.6.67: o campo de hora disparava "change" no meio da digitação (07 + 3 = 07:03 já é hora válida), gravava e redesenhava
+   a tela — o último dígito se perdia. Agora grava só quando termina: ao sair do campo ou com Enter. */
+function vmPrevGravar(t){ if(!t||!t.dataset||t.dataset.vmPrev==null) return; const v=t.value||''; S.vmPrev=S.vmPrev||{}; const antes=S.vmPrev[t.dataset.vmPrev]||'';
+  if(v===antes) return; if(v) S.vmPrev[t.dataset.vmPrev]=v; else delete S.vmPrev[t.dataset.vmPrev]; salvar(); renderViaMinas(); toast(v?'Previsão de chegada: '+v+'.':'Previsão apagada.'); }
+document.addEventListener('focusout',e=>{ const t=e.target; if(t&&t.dataset&&t.dataset.vmPrev!=null) vmPrevGravar(t); });
+document.addEventListener('keydown',e=>{ const t=e.target; if(e.key==='Enter'&&t&&t.dataset&&t.dataset.vmPrev!=null){ e.preventDefault(); t.blur(); } });
 document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-vm-wpp]'); if(!b) return; const falta=vmFaltaCids(); if(!falta.length) return;
   const L=[`*Via Minas · falta chegar (${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR').slice(0,5)})*`,''];
   const g=new Map(); for(const c of falta) for(const x of c.fora){ const b=x.rom.base||'?'; if(!g.has(b)) g.set(b,{hs:new Set(),cids:new Map()}); const e=g.get(b); const h=(S.vmPrev||{})[x.rom.id]; if(h) e.hs.add(h); e.cids.set(c.nome,(e.cids.get(c.nome)||0)+contar(x.linhas.map(z=>z.row)).notas); }
@@ -13085,6 +13090,8 @@ const nuvLocalCru=()=>window.__nuvLocalAntesCanon();
 { const _fg=gsFotoGravar; gsFotoGravar=function(){ try{ const f=gsFotoMontar(); if(f&&S.gsSnap&&S.gsSnap[f.dia]){ const tira=x=>{ const {ts,quem,...r}=x||{}; return JSON.stringify(hsCanon(r)); }; if(tira(f)===tira(S.gsSnap[f.dia])) return S.gsSnap[f.dia]; } }catch(e){} return _fg.apply(this,arguments); }; }
 /* 3) limpeza automática de "reentregas detectadas" desligada */
 reLimparVelhas=function(){ return 0; };
+/* v10.6.67: enquanto alguém digita a hora "chega às", o Via Minas não é redesenhado (sincronização/atualização esperam) */
+{ const _rv=renderViaMinas; let pend=false; renderViaMinas=function(){ const a=document.activeElement; if(a&&a.dataset&&a.dataset.vmPrev!=null){ if(!pend){ pend=true; a.addEventListener('blur',()=>{ pend=false; setTimeout(()=>{ try{ renderViaMinas(); }catch(e){} },0); },{once:true}); } return; } return _rv.apply(this,arguments); }; }
 </script>
 
 </body>
