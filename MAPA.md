@@ -920,3 +920,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
   Agora nunca recria. Banco (`2026-11-27-001`): `hs_ck_nunca_volta` — realização do motorista nunca volta para trás, motorista só
   some se estiver em s:ckApagados, lista não pode ser apagada; recuperação pela data mais recente de cada motorista em hs_versoes.
 - Ícone da Conferência na barra usa `pctConf` (igual ao círculo).
+
+### v10.6.65 (27/11/2026) — cargo NexConf; Supervisor vira Líder; tela simples no tablet
+- `CARGOS` = conferente, nexconf, lider, admin. `cfAtivo` (tela de cartões) = conferente ou nexconf; `cfTravado` (só consulta:
+  `data-cfperm`, opMarcarMao/opDesbipar/opApagarLote recusam) = só conferente. NexConf dá baixa manual onde sempre foi.
+- `cargoDe`: S.cargos "supervisor" → lider. `CF_CEL` = largura ≤ 860 ou toque até 1400 (tablet deitado).
+- `mbChecarPC` só avisa "versão para computador" quando a página é mais larga que a própria tela (antes pegava tablet deitado).

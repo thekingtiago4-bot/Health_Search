@@ -770,7 +770,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
     ok(cg.cfVe&&!cg.cfNao&&!cg.cfRe,'cargo: o Conferente vê Conferência total e não vê Usuários nem Reentregas');
     ok(cg.supVe&&!cg.supNao,'cargo: o Supervisor vê tudo menos o que é só do Admin');
     ok(cg.ldVe,'cargo: o Líder vê os romaneios');
-    ok(cg.cargos==='conferente,lider,supervisor,admin','cargo: Conferente, Líder, Supervisor e Admin, sem "Usuário" (v10.6.51) ('+cg.cargos+')'); }
+    ok(cg.cargos==='conferente,nexconf,lider,admin','cargo: Conferente, NexConf, Líder e Admin (v10.6.65) ('+cg.cargos+')'); }
   { const mu=await p.evaluate(async()=>{ const w=ms=>new Promise(x=>setTimeout(x,ms));
       muralAbrir(); await w(350); murArrumar();
       const g=document.querySelector('#mural .mural-g');
@@ -1630,7 +1630,7 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         LS.setItem(OP_FILA,'[]'); opFilaSelo(); return /2/.test(a)+'|'+!document.getElementById('op-fila-selo'); } finally{ LS.setItem(OP_FILA,f0||'[]'); } });
     ok(sel==='true|true','sem internet: selo mostra bipes guardados e some quando sobem ('+sel+')'); }
   { const cg=await p.evaluate(()=>{ const c0=JSON.stringify(S.cargos||{}); try{ S.cargos=Object.assign({},S.cargos,{x1:'usuario'}); return [Object.keys(CARGOS).join(','),cargoDe('x1','usuario'),cargoDe('x2','usuario'),cargoDe('x3','admin')].join('|'); } finally{ S.cargos=JSON.parse(c0); } });
-    ok(cg==='conferente,lider,supervisor,admin|conferente|conferente|admin','cargos: sem "Usuário"; quem não tem cargo é Conferente ('+cg+')'); }
+    ok(cg==='conferente,nexconf,lider,admin|conferente|conferente|admin','cargos: sem "Usuário"; quem não tem cargo é Conferente ('+cg+')'); }
   { const mp=await p.evaluate(async()=>{ const h=hojeISO(), rs=S.romaneios, bs=OP.bipes, dia=OP.dia;
       try{ OP.dia=h; S.romaneios=[{id:'mp1',numero:'CAJ 0237686',base:'CAJ',arquivo:'x '+h.split('-').reverse().join('-')+'.pdf',rows:[{nf:'448493',ped:'745830',vol:'1',dest:'A'},{nf:'448497',ped:'745830',vol:'1',dest:'B'},{nf:'500',ped:'900',vol:'1',dest:'C'}]}];
         OP.bipes=[{local_id:'b1',dia:h,nf:'448493',ped:'745830',vol:1,tot:1,status:'ok'},{local_id:'b2',dia:h,nf:'',ped:'900',vol:1,tot:1,status:'ok'}]; renderTudo(); await new Promise(r=>setTimeout(r,0));
@@ -1660,5 +1660,13 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         SIM.on=true; SIM.cf=true; SIM._fc=null; const {a,d}=simCalc(); return a.notas+'>'+d.notas+'|'+(SIM._fica||[]).map(x=>x.row.nf).sort().join(','); }
       finally{ S.romaneios=rs; S.clientesReq=cr; Object.assign(SIM,JSON.parse(sim)); SIM._fc=null; } });
     ok(ms==='3>2|10,12','simulação: agendado na MESA fica na conta; agendado em outro romaneio sai ('+ms+')'); }
+  { const nx=await p.evaluate(async()=>{ const mo=Store.modo, us=NV.user, pf=NV.perfil, cg=JSON.stringify(S.cargos||{}); const R=[]; let marcou=false; const mm=opMarcarMao;
+      try{ Store.modo='nuvem'; NV.user={id:'u-nx'}; NV.perfil={id:'u-nx',nome:'Ana',papel:'usuario',ativo:true};
+        S.cargos=Object.assign({},S.cargos,{'u-nx':'nexconf','u-sp':'supervisor'}); cargoAplicar();
+        R.push(cfAtivo(),cfTravado(),document.documentElement.dataset.cfperm||'-'); irPara('correcao'); R.push(telaAtual());
+        R.push(cargoDe('u-sp','usuario'), CARGOS[cargoDe('u-nx','usuario')]); }
+      finally{ Store.modo=mo; NV.user=us; NV.perfil=pf; S.cargos=JSON.parse(cg); try{ cargoAplicar(); }catch(e){} irPara('operacao'); }
+      return R.join('|'); });
+    ok(nx==='true|false|-|conftotal|lider|NexConf','NexConf: tela simples, baixa manual liberada (sem trava), só as 4 telas; Supervisor vira Líder ('+nx+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

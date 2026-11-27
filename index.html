@@ -4478,7 +4478,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.64', HS_DATA='27/11/2026';
+const HS_VERSAO='10.6.65', HS_DATA='27/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -6321,7 +6321,7 @@ function mbFaixa(id,html){ if(document.getElementById(id)) return; const d=docum
 .mb-faixa b{display:block;font-size:16px}.mb-faixa .txt{flex:1;min-width:200px}.mb-faixa button{all:unset;cursor:pointer;background:#5fd3c4;color:#05282b;font-weight:700;border-radius:10px;padding:10px 14px}.mb-faixa button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
 #mb-pc{top:calc(10px + env(safe-area-inset-top,0px));bottom:auto;background:#b45309;font-size:28px}#mb-pc b{font-size:34px}#mb-pc button{font-size:28px;padding:18px 24px}`; document.head.appendChild(st); })();
 /* celular aberto em "versão para computador": a tela fica minúscula; avisa como desligar */
-function mbChecarPC(){ if(mbCelular()&&innerWidth>=900){ const f=mbFaixa('mb-pc',`<div class="txt"><b>Desligue a "Versão para computador"</b>No Chrome, toque em <b>⋮</b> (canto de cima) e <b>desmarque "Site para computador"</b>. O Health Search já se ajusta ao celular.</div><button type="button">Entendi</button>`); if(f) f.querySelector('button').onclick=()=>f.remove(); } else { const f=$('#mb-pc'); if(f) f.remove(); } }
+function mbChecarPC(){ /* v10.6.65: tablet deitado não é "versão para computador" — só avisa quando a página é bem mais larga que a própria tela (celular em modo computador) */ if(mbCelular()&&innerWidth>=900&&innerWidth>Math.max(screen.width,screen.height)+40){ const f=mbFaixa('mb-pc',`<div class="txt"><b>Desligue a "Versão para computador"</b>No Chrome, toque em <b>⋮</b> (canto de cima) e <b>desmarque "Site para computador"</b>. O Health Search já se ajusta ao celular.</div><button type="button">Entendi</button>`); if(f) f.querySelector('button').onclick=()=>f.remove(); } else { const f=$('#mb-pc'); if(f) f.remove(); } }
 function mbInstalarAviso(){ if(mbInstalado()||!mbCelular()) return; if(document.getElementById('perm-sheet')){ clearTimeout(mbInstalarAviso.t); mbInstalarAviso.t=setTimeout(mbInstalarAviso,3000); return; } let n=''; try{ n=LS.getItem('healthSearch.instAviso')||''; }catch(e){} if(n&&Date.now()-(+n)<3*864e5) return;
   const f=mbFaixa('mb-inst',`<div class="txt"><b>📲 Instalar o Health Search</b>${PWA_PEDIDO?'Fica com ícone na tela inicial, abre em tela cheia e guarda a permissão da câmera.':mbIOS()?'No Safari, toque em <b>Compartilhar</b> (□↑) e depois em <b>Adicionar à Tela de Início</b>.':'No Chrome, toque em <b>⋮</b> e depois em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.'}</div>${PWA_PEDIDO?'<button type="button" data-i="ok">Instalar</button>':''}<button type="button" class="sec" data-i="x">Agora não</button>`);
   if(!f) return; f.onclick=async e=>{ const b=e.target.closest('[data-i]'); if(!b) return; if(b.dataset.i==='ok'&&PWA_PEDIDO){ PWA_PEDIDO.prompt(); try{ await PWA_PEDIDO.userChoice; }catch(er){} PWA_PEDIDO=null; } else { try{ LS.setItem('healthSearch.instAviso',String(Date.now())); }catch(er){} } f.remove(); }; }
@@ -12734,14 +12734,16 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&RIC.aberto) ricFec
    A trava não é só visual: opMarcarMao/opDesbipar/opApagarLote recusam para o conferente. */
 const CF={tit:{cfinicio:'Health Search',operacao:'NexBip',conftotal:'Conferência',buscar:'Buscar',geo:'Geolocalização'}};
 CARGO_TELAS.conferente=['cfinicio','operacao','conftotal','buscar','geo'];
-function cfAtivo(){ try{ return cargoLogado()&&cargoMeu()==='conferente'; }catch(e){ return false; } }
-{ const _cp=cargoPodeVer; cargoPodeVer=function(tela,c){ c=c||cargoMeu(); if(c==='conferente') return CARGO_TELAS.conferente.includes(tela); return _cp.apply(this,arguments); }; }
+/* v10.6.65: tela simples (cartões) = Conferente e NexConf; trava de só consulta = só Conferente (NexConf dá baixa manual) */
+function cfAtivo(){ try{ return cargoLogado()&&['conferente','nexconf'].includes(cargoMeu()); }catch(e){ return false; } }
+function cfTravado(){ try{ return cargoLogado()&&cargoMeu()==='conferente'; }catch(e){ return false; } }
+{ const _cp=cargoPodeVer; cargoPodeVer=function(tela,c){ c=c||cargoMeu(); if(c==='conferente'||c==='nexconf') return CARGO_TELAS.conferente.includes(tela); return _cp.apply(this,arguments); }; }
 { const _ct=cargoTelaInicial; cargoTelaInicial=function(){ return cfAtivo()?(cfCel()?'cfinicio':'conftotal'):_ct.apply(this,arguments); }; }
 /* travas de verdade (não só esconder botão) */
 const cfRecusa=()=>{ toast('Só consulta: dar baixa ou desfazer é com o líder/supervisor.'); return Promise.resolve(false); };
-{ const _f=opMarcarMao; opMarcarMao=function(){ return cfAtivo()?cfRecusa():_f.apply(this,arguments); }; }
-{ const _f=opDesbipar; opDesbipar=function(){ return cfAtivo()?cfRecusa():_f.apply(this,arguments); }; }
-{ const _f=opApagarLote; opApagarLote=function(){ return cfAtivo()?cfRecusa():_f.apply(this,arguments); }; }
+{ const _f=opMarcarMao; opMarcarMao=function(){ return cfTravado()?cfRecusa():_f.apply(this,arguments); }; }
+{ const _f=opDesbipar; opDesbipar=function(){ return cfTravado()?cfRecusa():_f.apply(this,arguments); }; }
+{ const _f=opApagarLote; opApagarLote=function(){ return cfTravado()?cfRecusa():_f.apply(this,arguments); }; }
 (function(){ const st=document.createElement('style'); st.textContent=`
 html[data-cf="1"] .rail,html[data-cf="1"] #ric-pop{display:none!important}
 html[data-cf="1"] .app{grid-template-columns:1fr!important;display:block!important}
@@ -12784,7 +12786,7 @@ function cfTopo(){ if(!cfAtivo()||!cfCel()) return; let el=document.getElementBy
   if(!el){ el=document.createElement('header'); el.id='cf-topo'; (main||document.body).prepend(el);
     el.addEventListener('click',e=>{ if(e.target.closest('.cf-volta')) irPara('cfinicio'); }); }
   const t=(typeof telaAtual==='function'&&telaAtual())||'cfinicio', ini=t==='cfinicio'; const p=(NV&&NV.perfil)||{};
-  const h=ini?`<div class="cf-logo">H</div><div class="cf-nome"><b>Health Search</b><small>${esc((p.nome||'').split(' ')[0])} · Conferente</small></div>${cfSelo()}`
+  const h=ini?`<div class="cf-logo">H</div><div class="cf-nome"><b>Health Search</b><small>${esc((p.nome||'').split(' ')[0])} · ${esc(CARGOS[cargoMeu()]||'Conferente')}</small></div>${cfSelo()}`
              :`<button class="cf-volta" type="button" aria-label="Voltar para o início">‹</button><div class="cf-nome"><b>${esc(CF.tit[t]||'')}</b></div>${cfSelo()}`;
   if(el.dataset.h!==h){ el.innerHTML=h; el.dataset.h=h; } }
 function cfInicioDesenhar(){ const sec=document.getElementById('t-cfinicio'); if(!sec) return; const p=(NV&&NV.perfil)||{}; const nome=(p.nome||'').split(' ')[0];
@@ -12797,7 +12799,7 @@ function cfInicioDesenhar(){ const sec=document.getElementById('t-cfinicio'); if
    :`<div class="cf-card"><div class="cf-l"><span>Conferência de hoje</span></div><div class="sub" style="margin-top:6px">Nenhum romaneio do dia carregado ainda.</div></div>`;
   const tile=(t,cl,tit,sub)=>`<button class="cf-tile${cl}" type="button" data-cf-ir="${t}"><span class="cf-ic">${cfIco(t)}</span><span><b>${tit}</b><small>${sub}</small></span></button>`;
   sec.innerHTML=`<div class="cf-ola">${ola}${nome?', '+esc(nome):''}</div><div class="cf-dia">${esc(dia.charAt(0).toUpperCase()+dia.slice(1))}${f&&f.roms?' · '+fmtN(f.roms)+' romaneio(s)':''}</div>${card}
-   <div class="cf-grade">${tile('operacao',' pri','NexBip','Bipar volumes')}${tile('conftotal','','Conferência','Ver o que falta')}${tile('buscar','','Buscar','NF, pedido, cliente')}${tile('geo','','Geolocalização','Região e base')}</div>
+   <div class="cf-grade">${tile('operacao',' pri','NexBip','Bipar volumes')}${tile('conftotal','','Conferência',cfTravado()?'Ver o que falta':'Ver e dar baixa')}${tile('buscar','','Buscar','NF, pedido, cliente')}${tile('geo','','Geolocalização','Região e base')}</div>
    <div class="cf-pe">Versão ${esc(HS_VERSAO)} · <button class="btn mini" type="button" data-cf-atu="1">Buscar atualização</button><button class="btn mini" type="button" data-cf-sair="1">Sair</button></div>`; }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-cf-ir],[data-cf-atu],[data-cf-sair]'); if(!b) return;
   if(b.dataset.cfIr) return irPara(b.dataset.cfIr);
@@ -12810,15 +12812,15 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
     if(cfAtivo()&&!CARGO_TELAS.conferente.includes(t)) t='cfinicio';
     if(t==='cfinicio') return irPara('cfinicio');
     const r=_ir.apply(this,[t]); try{ if(cfCel()) cfTopo(); cfTravas(); }catch(e){} return r; }; }
-function cfTravas(){ if(!cfAtivo()) return;
+function cfTravas(){ if(!cfTravado()) return;
   for(const [id,txt] of [['t-conftotal','<b>Só consulta.</b> Dar baixa à mão é com o líder/supervisor.'],['t-geo','<b>Só consulta.</b> Digite a cidade para ver região e base.']]){ const s=document.getElementById(id); if(!s||s.querySelector('.cf-trava')) continue;
     const h=s.querySelector('h1,h2'); const d=document.createElement('div'); d.className='cf-trava'; d.innerHTML='🔒 <span>'+txt+'</span>'; (h&&h.parentNode===s?h:s.firstElementChild||s).insertAdjacentElement('afterend',d); } }
-const CF_CEL=matchMedia('(max-width:860px)');
+const CF_CEL=matchMedia('(max-width:860px), (pointer:coarse) and (max-width:1400px)'); /* v10.6.65: celular e tablet (toque), até deitado */
 function cfCel(){ return CF_CEL.matches; }
-function cfAplicar(){ const perm=cfAtivo(), on=perm&&cfCel(); const html=document.documentElement;
+function cfAplicar(){ const perm=cfTravado(), on=cfAtivo()&&cfCel(); const html=document.documentElement;
   if(perm!==(html.dataset.cfperm==='1')){ if(perm) html.dataset.cfperm='1'; else delete html.dataset.cfperm; }
   if(on!==(html.dataset.cf==='1')){ if(on) html.dataset.cf='1'; else delete html.dataset.cf; }
-  if(perm&&!on){ const t=document.getElementById('cf-topo'); if(t) t.remove(); try{ if(telaAtual()==='cfinicio') irPara('conftotal'); }catch(e){} cfTravas(); return; }
+  if(cfAtivo()&&!on){ const t=document.getElementById('cf-topo'); if(t) t.remove(); try{ if(telaAtual()==='cfinicio') irPara('conftotal'); }catch(e){} cfTravas(); return; }
   if(!on){ const t=document.getElementById('cf-topo'); if(t) t.remove(); return; }
   cfTopo(); cfTravas(); const s=document.getElementById('t-cfinicio'); if(s&&!s.hidden) cfInicioDesenhar(); }
 { const _ca=cargoAplicar; cargoAplicar=function(){ const r=_ca.apply(this,arguments); try{ cfAplicar(); }catch(e){} return r; }; }
@@ -12854,16 +12856,16 @@ document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('#m
 /* ================= v10.6.51 · Cargos: sai o "Usuário" (pedido do Tiago, 26/11) =================
    Ordem: Conferente → Líder → Supervisor (Líder e Supervisor com os mesmos acessos), Administrador acima de todos.
    Quem não tinha cargo, ou tinha "Usuário", passa a ser Conferente (tela simples, conferência só consulta). */
-{ const novo={conferente:'Conferente',lider:'Líder',supervisor:'Supervisor(a)',admin:'Administrador'};
+{ const novo={conferente:'Conferente',nexconf:'NexConf',lider:'Líder',admin:'Administrador'};
   for(const k of Object.keys(CARGOS)) delete CARGOS[k]; Object.assign(CARGOS,novo); }
-{ const _cd=cargoDe; cargoDe=function(){ const c=_cd.apply(this,arguments); return (c==='usuario'||!CARGOS[c])?'conferente':c; }; }
+{ const _cd=cargoDe; cargoDe=function(id,papel){ if(papel!=='admin'&&(S.cargos||{})[id]==='supervisor') return 'lider'; const c=_cd.apply(this,arguments); if(c==='supervisor') return 'lider'; /* v10.6.65: Supervisor virou Líder */ return (c==='usuario'||!CARGOS[c])?'conferente':c; }; }
 /* ================= v10.6.52 · Conferência: bipe de uma NF não vale para OUTRA NF do mesmo pedido =================
    Caso real (CAJ 0237686): NF 448497 aparecia em "Bipadas" sem bipe nenhum dela — o bipe era de outra NF com o mesmo
    pedido — e o ✕ dizia "não tem bipe para cancelar". Agora: bipe que traz o número da NF vale só para aquela NF;
    bipe só com pedido (etiqueta sem NF) continua valendo pelo pedido. É a mesma regra que o ✕ sempre usou. */
 { const _bd=opBipsDe; opBipsDe=function(ix,ped,nf){ const l=_bd.apply(this,arguments); if(!nf) return l; return l.filter(b=>{ const bn=opK(b&&b.nf||''); return !bn||bn===nf; }); }; }
 /* ✕ de cancelar: a divergência RESOLVIDA e CONFERIDA de outro dia também segura a nota em "Bipadas" — o ✕ não achava */
-{ const _ds=opDesbipar; opDesbipar=async function(x,redesenha){ try{ if(!x||cfAtivo()) return _ds.apply(this,arguments);
+{ const _ds=opDesbipar; opDesbipar=async function(x,redesenha){ try{ if(!x||cfTravado()) return _ds.apply(this,arguments);
       const dia=OP.dia||hojeISO(), bate=opNotaBate(x); const nf=opK(x.nf||''), ped=opK(x.ped||'');
       const temBip=(OP.bipes||[]).some(b=>bate(b)&&b.status!=='fora');
       const temMao=(()=>{ try{ const a=gsAjLer(dia)[gsAjK(x.nf,x.ped)]; return !!(a&&a.m!=='fora'); }catch(e){ return false; } })();

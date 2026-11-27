@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 27/11/2026 05:23 · versão 10.6.64
+Gerado em 27/11/2026 05:39 · versão 10.6.65
 
 
 ## ab
@@ -153,17 +153,18 @@ Gerado em 27/11/2026 05:23 · versão 10.6.64
 - `celulasParaLinha` — linha 1845
 
 ## cf
-- `cfAplicar` — linha 12818
-- `cfAtivo` — linha 12737
-- `cfBaixarTudo` — linha 12938
+- `cfAplicar` — linha 12820
+- `cfAtivo` — linha 12738
+- `cfBaixarTudo` — linha 12940
 - `cfBuscarDest` — linha 5802
-- `cfCel` — linha 12817
+- `cfCel` — linha 12819
 - `cfDestXml` — linha 5800
-- `cfIco` — linha 12780
-- `cfInicioDesenhar` — linha 12790
-- `cfSelo` — linha 12781
-- `cfTopo` — linha 12783
-- `cfTravas` — linha 12813
+- `cfIco` — linha 12782
+- `cfInicioDesenhar` — linha 12792
+- `cfSelo` — linha 12783
+- `cfTopo` — linha 12785
+- `cfTravado` — linha 12739
+- `cfTravas` — linha 12815
 
 ## ch
 - `checar` — linha 4487
@@ -255,7 +256,7 @@ Gerado em 27/11/2026 05:23 · versão 10.6.64
 - `ctLista` — linha 8840
 - `ctMontar` — linha 8764
 - `ctPoligonos` — linha 4472
-- `ctVerDvAplicar` — linha 13005
+- `ctVerDvAplicar` — linha 13007
 
 ## de
 - `decode` — linha 1442
@@ -417,7 +418,7 @@ Gerado em 27/11/2026 05:23 · versão 10.6.64
 - `foraOrigemSug` — linha 7557
 - `foraRegistrar` — linha 7564
 - `foraRender` — linha 7598
-- `forcar` — linha 12966
+- `forcar` — linha 12968
 - `fotoSegura` — linha 10037
 
 ## fr
@@ -544,8 +545,8 @@ Gerado em 27/11/2026 05:23 · versão 10.6.64
 
 ## hs
 - `hsAparelho` — linha 8110
-- `hsCanon` — linha 13056
-- `hsCanonChave` — linha 13058
+- `hsCanon` — linha 13058
+- `hsCanonChave` — linha 13060
 - `hsCineHtml` — linha 10855
 - `hsMemo1` — linha 1469
 - `hsMesclarRom` — linha 2741
@@ -624,9 +625,8 @@ Gerado em 27/11/2026 05:23 · versão 10.6.64
 - `matchOne` — linha 1419
 
 ## mb
-- `mbChecarPC` — linha 6324
 - `mbFaixa` — linha 6319
-- `mbGradeRotulos` — linha 12848
+- `mbGradeRotulos` — linha 12850
 - `mbInstalarAviso` — linha 6325
 
 ## me
@@ -731,7 +731,7 @@ Gerado em 27/11/2026 05:23 · versão 10.6.64
 - `nuvPing` — linha 7003
 - `nuvPuxarTudo` — linha 8059
 - `nuvReconciliar` — linha 6986
-- `nuvReconstruir` — linha 13035
+- `nuvReconstruir` — linha 13037
 - `nuvRestaurarBkp` — linha 8124
 - `nuvSinc` — linha 7016
 - `nuvSoDias` — linha 7076
@@ -1018,7 +1018,7 @@ Gerado em 27/11/2026 05:23 · versão 10.6.64
 - `reStatus` — linha 2852
 - `reSub` — linha 3033
 - `reTela` — linha 2853
-- `reTiradaNf` — linha 12889
+- `reTiradaNf` — linha 12891
 - `reTirado` — linha 11463
 - `reTirar` — linha 11465
 - `reValorDe` — linha 3827
@@ -1090,7 +1090,7 @@ Gerado em 27/11/2026 05:23 · versão 10.6.64
 ## ro
 - `roboChecar` — linha 8385
 - `roboSqlChecar` — linha 10381
-- `romConferirHoje` — linha 13023
+- `romConferirHoje` — linha 13025
 - `rotDia` — linha 3144
 - `rotulo` — linha 1777
 - `rowsOf` — linha 1486
