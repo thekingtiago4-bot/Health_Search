@@ -914,3 +914,9 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 ### v10.6.63 (27/11/2026) — agendado na MESA fica na conta
 - Simulação "Agendamentos": `simEhMesa(rom)` (base/número/arquivo com MESA) — nota de cliente agendado no romaneio MESA não sai da
   conta nem entra em "Tirados por Agendamentos" (MESA = agendados que saem naquele dia).
+
+### v10.6.64 (27/11/2026) — Checklist voltou às datas de fábrica
+- `ckS/ckTudo` recriavam `CK_SEED` (datas de outubro) quando `S.checklist` ainda não tinha carregado; a lista velha subia por cima.
+  Agora nunca recria. Banco (`2026-11-27-001`): `hs_ck_nunca_volta` — realização do motorista nunca volta para trás, motorista só
+  some se estiver em s:ckApagados, lista não pode ser apagada; recuperação pela data mais recente de cada motorista em hs_versoes.
+- Ícone da Conferência na barra usa `pctConf` (igual ao círculo).

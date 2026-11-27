@@ -4478,7 +4478,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.63', HS_DATA='27/11/2026';
+const HS_VERSAO='10.6.64', HS_DATA='27/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -8407,8 +8407,9 @@ function ckApagado(mot){ const k=rpNz(String(mot||'')); return !!k&&ckApagados()
 /* v10.5.9: a linha apagada e marcada pelo ID. Assim ela nao volta da nuvem (mesmo id),
    e uma linha IRMA do mesmo motorista (outro id) continua aparecendo — antes sumiam as duas. */
 function ckApagadaId(id){ return !!id&&ckApagados().some(x=>x&&x.id===id); }
-function ckS(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); ckDedup(); return S.checklist.filter(r=>!ckApagadaId(r&&r.id)); }
-function ckTudo(){ if(!Array.isArray(S.checklist)) S.checklist=CK_SEED.map(ckSeedRow); return S.checklist; }
+/* v10.6.64: a lista de fábrica (CK_SEED) NUNCA mais é recriada sozinha — recriar antes de carregar gravou datas velhas por cima da nuvem */
+function ckS(){ if(!Array.isArray(S.checklist)) return []; ckDedup(); return S.checklist.filter(r=>!ckApagadaId(r&&r.id)); }
+function ckTudo(){ if(!Array.isArray(S.checklist)){ if(!window.__storeInitFeito) return []; S.checklist=[]; } return S.checklist; }
 /* v10.5.9: mesma pessoa em duas linhas (cada aparelho criou a sua) vira uma linha so.
    Deterministico: vence o id menor, e os campos vazios dele sao preenchidos pelas outras. */
 function ckChaveMot(mot){ try{ return rpNz(motCanon(mot)); }catch(e){ return rpNz(mot); } }
@@ -8773,7 +8774,7 @@ function ctMontar(){ const sec=$('#t-conftotal'); if(!sec) return;
   const g=$('#ct-geral'); if(g) g.innerHTML=tn?`<div class="ct-big"><div class="ct-anel${dnT?' ct-temdv':''}" style="--p:${pct};--d:${dnT?Math.max(1,pdV).toFixed(2):0}"${dnT?` tabindex="0" title="${pdT}% em divergência (${dnT} nota(s))"`:''}><b><span class="ct-p">${pctConf(tn?100*ok/tn:0)}%</span>${dnT?`<span class="ct-pd">${pdT}%<small>em divergência</small></span>`:''}</b></div><div><h2 style="margin:0 0 4px">${fmtN(ok)} de ${fmtN(tn)} nota(s) conferida(s)</h2><p class="sub" style="margin:0 0 10px">${fmtN(fn)} faltando${dnT?` · <b style="color:var(--ag)">${fmtN(dnT)} em divergência (${pdT}%)</b>`:''} · ${fmtN(L.length)} romaneio(s) de hoje</p>
      <div class="ct-origs">${[...porB].map(([b,a])=>{ const p=a.tn?Math.round(100*(a.tn-a.fn)/a.tn):0; const dn=Math.min(a.dn||0,a.tn-a.fn), pd=a.tn?100*dn/a.tn:0, pv=a.tn?100*(a.tn-a.fn-dn)/a.tn:0; return `<div class="ct-o"><b style="color:${opCorBase(b)}">${esc(b)}</b> <span class="sub">${fmtN(a.tn-a.fn)}/${fmtN(a.tn)} · ${pctConf(a.tn?100*(a.tn-a.fn)/a.tn:0)}%${dn?` · <b style="color:var(--ag)">${fmtN(dn)} div.</b>`:''}</span><div class="bar" style="display:flex"><i style="width:${pv}%;background:${opCorBase(b)}"></i><i style="width:${pd}%;background:repeating-linear-gradient(135deg,var(--ag) 0 5px,#8a3b00 5px 8px)"></i></div></div>`; }).join('')}</div></div></div>`
     :'<div class="vazio-lista">Nenhum romaneio de hoje carregado. Coloque os PDFs na aba Romaneios.</div>';
-  const q=$('#qt-ct'); if(q){ q.textContent=pct+'%'; q.hidden=!tn; }
+  const q=$('#qt-ct'); if(q){ q.textContent=pctConf(tn?100*ok/tn:0)+'%'; q.hidden=!tn; }
   /* v10.2.6 · a conta é de todo mundo: botão para repuxar e aviso de bipe que não subiu */
   try{ if(g&&tn){ const fila=opFilaLer().filter(b=>b.dia===OP.dia).length;
     g.insertAdjacentHTML('beforeend',`<div class="ct-juntar"><button class="btn mini" type="button" data-op-puxar="1" title="Traz os bipes das outras pessoas agora">🔄 Atualizar a conta</button>${fila?`<span class="ct-fila">⚠ <b>${fmtN(fila)}</b> bipe(s) deste aparelho ainda não subiram${opOnline()?'':' (sem internet)'}</span><button class="btn mini pri" type="button" data-op-enviar="1">⬆ Enviar agora</button>`:'<span class="sub">a conta soma os bipes de todas as pessoas</span>'}${(typeof opRuinsLer==='function'&&opRuinsLer().length)?`<button class="btn mini" type="button" data-op-ruins="1" title="Ver o motivo e tentar de novo">⚠ ${fmtN(opRuinsLer().length)} bipe(s) com dado recusado · ver e tentar de novo</button>`:''}${(typeof OP_ULT_ERRO==='string'&&OP_ULT_ERRO&&fila)?`<span class="ct-fila sub">última tentativa: ${esc(nvTraduz(OP_ULT_ERRO).slice(0,80))} — tento de novo sozinho</span>`:''}</div>`); } }catch(e){}
