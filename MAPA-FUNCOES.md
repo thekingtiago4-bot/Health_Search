@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 27/11/2026 05:53 · versão 10.6.67
+Gerado em 27/11/2026 07:15 · versão 10.6.68
 
 
 ## ab
@@ -396,6 +396,7 @@ Gerado em 27/11/2026 05:53 · versão 10.6.67
 - `fecharIntro` — linha 3120
 - `fecharSug` — linha 2613
 - `ferCidadesTodas` — linha 3190
+- `ferLargura` — linha 13104
 - `ferMapaCidades` — linha 4589
 - `feriadosCidade` — linha 3227
 - `feriadosDoDia` — linha 3217

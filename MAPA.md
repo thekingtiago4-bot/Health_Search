@@ -935,3 +935,7 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 ### v10.6.67 (27/11/2026) — Via Minas: 07:30 virava 07:03
 - O campo de hora dispara `change` no meio da digitação (07 + 3 = 07:03 já é válido); o app gravava e redesenhava, perdendo o
   último dígito. `vmPrevGravar` agora só no `focusout`/Enter; `renderViaMinas` espera enquanto o campo está em foco.
+
+### v10.6.68 (27/11/2026) — Feriados ocupam a tela
+- Computador: `#fer-dias` em linha (flex), cada dia com `flex-grow` = ceil(feriados/7) (`ferLargura`) e a lista em sub-colunas
+  (`columns:165px`). Celular sem mudança.

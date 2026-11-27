@@ -4478,7 +4478,7 @@ const HS_SO_CLICADAS=true; /* só cidades colocadas pelo admin; nada automático
     const p=geoCoords().get(+c); if(!p) return r; for(const x of ctPoligonos(tipo||'regiao')) if(geoLista(x.id)&&ctDentro(p,x.pol)) return {ids:[x.id],fonte:'lista',contorno:true}; return r; }; }
 
 /* ================= APLICATIVO: versão, atualização automática e instalação ================= */
-const HS_VERSAO='10.6.67', HS_DATA='27/11/2026';
+const HS_VERSAO='10.6.68', HS_DATA='27/11/2026';
 (function(){ const box=document.querySelector('.autoria'); if(box) box.insertAdjacentHTML('afterbegin',`<div class="app-ver"><span class="app-ver-num">Versão <b>${HS_VERSAO}</b></span><span class="app-ver-data">${HS_DATA}</span><button type="button" id="app-ver-bt" class="btn mini">Buscar atualização</button></div>`);
   document.body.insertAdjacentHTML('beforeend','<div id="app-att" hidden role="status"><span></span><button class="btn pri mini" type="button" id="app-att-ok">Atualizar agora</button></div>');
   const web=/^https?:$/.test(location.protocol)&&!/claude\.ai|claudeusercontent/.test(location.hostname);
@@ -13092,6 +13092,19 @@ const nuvLocalCru=()=>window.__nuvLocalAntesCanon();
 reLimparVelhas=function(){ return 0; };
 /* v10.6.67: enquanto alguém digita a hora "chega às", o Via Minas não é redesenhado (sincronização/atualização esperam) */
 { const _rv=renderViaMinas; let pend=false; renderViaMinas=function(){ const a=document.activeElement; if(a&&a.dataset&&a.dataset.vmPrev!=null){ if(!pend){ pend=true; a.addEventListener('blur',()=>{ pend=false; setTimeout(()=>{ try{ renderViaMinas(); }catch(e){} },0); },{once:true}); } return; } return _rv.apply(this,arguments); }; }
+/* ================= v10.6.68 · Feriados: os dias ocupam a tela toda (pedido do Tiago, 27/11) =================
+   Antes: colunas estreitas e iguais, sobrando espaço à direita, e o dia com muitas cidades virava uma coluna enorme.
+   Agora (computador): cada dia fica tão largo quanto precisa (proporcional ao nº de feriados) e a lista se divide em
+   sub-colunas — cabe tudo na tela para tirar print. No celular nada muda. */
+(function(){ const st=document.createElement('style'); st.textContent=`@media (min-width:861px){
+  #fer-dias{display:flex!important;gap:12px;align-items:stretch;flex-wrap:nowrap}
+  #fer-dias .fer-dia{flex:1 1 0;min-width:190px}
+  #fer-dias .fer-dia ul{display:block!important;columns:165px;column-gap:14px}
+  #fer-dias .fer-dia li{break-inside:avoid;margin-bottom:8px} }`; document.head.appendChild(st); })();
+function ferLargura(){ const box=document.getElementById('fer-dias'); if(!box||!matchMedia('(min-width:861px)').matches) return;
+  for(const a of box.querySelectorAll('.fer-dia')){ const n=a.querySelectorAll('li').length; const g=String(Math.max(1,Math.ceil(n/7))); if(a.style.flexGrow!==g) a.style.flexGrow=g; } }
+setTimeout(()=>{ const box=document.getElementById('fer-dias'); if(box){ new MutationObserver(ferLargura).observe(box,{childList:true,subtree:true}); ferLargura(); } },1000);
+addEventListener('resize',()=>{ try{ ferLargura(); }catch(e){} });
 </script>
 
 </body>
