@@ -910,3 +910,7 @@ Pedido do Tiago, com o "pode" dele: apagar **só os motivos e as reentregas que 
 - `nuvHash` = hash de `hsCanon(v)` (campos em ordem); marcas antigas traduzidas na 1ª rodada só onde o aparelho estava igual.
   `nuvLocal` canônico para nxh/nxp (lista por dia|rom|nf|num), listas seguras (pela `listaChave`), s:nex, s:gsSnap, tirados.
 - `gsFotoGravar` só grava se os números mudaram; `reLimparVelhas` desligada (apagava detectadas que o outro aparelho devolvia).
+
+### v10.6.63 (27/11/2026) — agendado na MESA fica na conta
+- Simulação "Agendamentos": `simEhMesa(rom)` (base/número/arquivo com MESA) — nota de cliente agendado no romaneio MESA não sai da
+  conta nem entra em "Tirados por Agendamentos" (MESA = agendados que saem naquele dia).

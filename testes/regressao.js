@@ -1653,5 +1653,12 @@ const URL='file://'+path.resolve(__dirname,'../index.html');
         const q=atuDevolver(); return q+'|'+RE.ler().dias[dia].map(l=>l.obs||'(vazio)').join(',')+'|'+[pctConf(100*2/416),pctConf(0),pctConf(99.97),pctConf(100),pctConf(37.4)].join(' '); }
       finally{ ATU.snap=sn; RE.d=JSON.parse(d0); RE.gravar(); } });
     ok(ad==='0|CLIENTE FECHADO|0,48 0 99,9 100 37','atualização não recoloca linha velha (sem motivo) por cima da corrigida; porcentagem com decimais ('+ad+')'); }
+  { const ms=await p.evaluate(()=>{ const rs=S.romaneios, cr=S.clientesReq, sim=JSON.stringify(SIM);
+      try{ S.clientesReq=[{id:'cm1',nome:'HDL LOGISTICA HOSPITALAR LTDA.',cids:[],fixo:true}];
+        S.romaneios=[{id:'m1',numero:'0018018',base:'MESA',arquivo:'Romaneio - MESA 27-11.pdf',rows:[{nf:'10',dest:'HDL LOGISTICA HOSPITALAR LTDA.',cid:'CRAVINHOS',vol:'5'}]},
+                     {id:'c1',numero:'0237896',base:'CAJ',arquivo:'Romaneio III - CAJ 27-11.pdf',rows:[{nf:'11',dest:'HDL LOGISTICA HOSPITALAR LTDA.',cid:'CRAVINHOS',vol:'3'},{nf:'12',dest:'OUTRO',cid:'X',vol:'1'}]}];
+        SIM.on=true; SIM.cf=true; SIM._fc=null; const {a,d}=simCalc(); return a.notas+'>'+d.notas+'|'+(SIM._fica||[]).map(x=>x.row.nf).sort().join(','); }
+      finally{ S.romaneios=rs; S.clientesReq=cr; Object.assign(SIM,JSON.parse(sim)); SIM._fc=null; } });
+    ok(ms==='3>2|10,12','simulação: agendado na MESA fica na conta; agendado em outro romaneio sai ('+ms+')'); }
   ok(!p._er.length,'erros na página: '+p._er.join(' | ')); await p.close();
   console.log(falhas.length?'FALHOU:\n- '+falhas.join('\n- '):'OK: todos os testes passaram'); await b.close(); process.exit(falhas.length?1:0); })();

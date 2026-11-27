@@ -1,7 +1,7 @@
 # Índice de funções — gerado automaticamente
 
 Não edite à mão. Rode `sh ferramentas/mapa.sh` depois de mexer no código.
-Gerado em 26/11/2026 08:22 · versão 10.6.62
+Gerado em 27/11/2026 04:06 · versão 10.6.63
 
 
 ## ab
@@ -13,7 +13,7 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 ## ac
 - `acharCidade` — linha 1601
 - `acharFolha` — linha 1677
-- `acoesDoCartao` — linha 11098
+- `acoesDoCartao` — linha 11100
 
 ## ad
 - `addTemplate` — linha 1412
@@ -21,24 +21,24 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 ## ag
 - `agDaLinha` — linha 2413
 - `agDoValor` — linha 2416
-- `agFora` — linha 5916
-- `agMesa` — linha 5920
-- `agNaoVai` — linha 5921
-- `agfRender` — linha 5947
+- `agFora` — linha 5918
+- `agMesa` — linha 5922
+- `agNaoVai` — linha 5923
+- `agfRender` — linha 5949
 
 ## aj
-- `ajTela` — linha 10585
-- `ajudaAbrir` — linha 9377
-- `ajudaBotoes` — linha 9380
+- `ajTela` — linha 10587
+- `ajudaAbrir` — linha 9379
+- `ajudaBotoes` — linha 9382
 - `ajustarCantos` — linha 2198
 
 ## an
 - `anosJanela` — linha 3148
 
 ## ap
-- `apConferir` — linha 9054
-- `apId` — linha 9052
-- `apRegistrar` — linha 9053
+- `apConferir` — linha 9056
+- `apId` — linha 9054
+- `apRegistrar` — linha 9055
 - `aplicarPacote` — linha 2763
 - `aplicarRegraBase` — linha 3690
 - `aplicarRegraTodos` — linha 3699
@@ -51,30 +51,30 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `assemble` — linha 1490
 
 ## at
-- `atalhoDoEvento` — linha 11666
-- `atalhosCard` — linha 11674
-- `atalhosGravar` — linha 11665
-- `atalhosLer` — linha 11664
-- `atuDevolver` — linha 9258
-- `atuFoto` — linha 9254
+- `atalhoDoEvento` — linha 11668
+- `atalhosCard` — linha 11676
+- `atalhosGravar` — linha 11667
+- `atalhosLer` — linha 11666
+- `atuDevolver` — linha 9260
+- `atuFoto` — linha 9256
 - `atualizarAgora` — linha 4491
 - `atualizarBotoesAdmin` — linha 4153
 - `atualizarFeriados` — linha 3195
 - `atualizarResumo` — linha 2152
 
 ## au
-- `audAbrir` — linha 7415
-- `audDesc` — linha 7420
-- `audDif` — linha 7427
-- `audFiltrada` — linha 7431
-- `audPodeRestaurar` — linha 7426
-- `audRender` — linha 7432
+- `audAbrir` — linha 7417
+- `audDesc` — linha 7422
+- `audDif` — linha 7429
+- `audFiltrada` — linha 7433
+- `audPodeRestaurar` — linha 7428
+- `audRender` — linha 7434
 
 ## av
-- `avS` — linha 10133
+- `avS` — linha 10135
 - `avisoDiario` — linha 3293
-- `avisoGravar` — linha 11604
-- `avisoLer` — linha 11603
+- `avisoGravar` — linha 11606
+- `avisoLer` — linha 11605
 
 ## ba
 - `baixar` — linha 2739
@@ -84,67 +84,67 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `bkMontar` — linha 4626
 - `bkRestaurarCompleto` — linha 4633
 - `bkResumo` — linha 4628
-- `bkSoAdmin` — linha 10259
-- `bkTela` — linha 10445
+- `bkSoAdmin` — linha 10261
+- `bkTela` — linha 10447
 - `bkUltimo` — linha 4646
-- `bkfBackupFisico` — linha 8226
-- `bknBaixar` — linha 7124
-- `bknRestaurar` — linha 7141
-- `bknTabela` — linha 7123
+- `bkfBackupFisico` — linha 8228
+- `bknBaixar` — linha 7126
+- `bknRestaurar` — linha 7143
+- `bknTabela` — linha 7125
 
 ## bl
-- `blqApagarAparelho` — linha 8249
-- `blqChecar` — linha 8257
-- `blqChecarSessao` — linha 8264
+- `blqApagarAparelho` — linha 8251
+- `blqChecar` — linha 8259
+- `blqChecarSessao` — linha 8266
 
 ## bo
 - `borrar` — linha 1671
 
 ## bu
 - `buscaCampo` — linha 2506
-- `buscaHist` — linha 10669
+- `buscaHist` — linha 10671
 - `buscaNum` — linha 2417
-- `buscaResumo` — linha 10657
+- `buscaResumo` — linha 10659
 - `buscaTxt` — linha 2418
 - `buscarJSON` — linha 3188
 
 ## bx
-- `bxBipes` — linha 9344
-- `bxCidade` — linha 9356
-- `bxExtras` — linha 9345
-- `bxHist` — linha 9366
-- `bxHistRender` — linha 9367
-- `bxOutroDia` — linha 9354
+- `bxBipes` — linha 9346
+- `bxCidade` — linha 9358
+- `bxExtras` — linha 9347
+- `bxHist` — linha 9368
+- `bxHistRender` — linha 9369
+- `bxOutroDia` — linha 9356
 
 ## ca
-- `cadApelidos` — linha 7753
-- `cadBaseSet` — linha 7765
-- `cadBases` — linha 7762
-- `cadBasesNome` — linha 7764
-- `cadCarimbar` — linha 12425
-- `cadDatalists` — linha 7770
-- `cadFaltam` — linha 7496
-- `cadFoto` — linha 12424
-- `cadInit` — linha 7746
-- `cadMotivosHtml` — linha 7827
-- `cadMudou` — linha 7834
-- `cadNotasLevadas` — linha 7785
-- `cadRastDe` — linha 7767
-- `cadRastNome` — linha 7769
-- `cadRender` — linha 7804
-- `cadSemDuplicado` — linha 12426
-- `cadTipo` — linha 7766
-- `cadUsados` — linha 7745
-- `camLiberar` — linha 6658
+- `cadApelidos` — linha 7755
+- `cadBaseSet` — linha 7767
+- `cadBases` — linha 7764
+- `cadBasesNome` — linha 7766
+- `cadCarimbar` — linha 12427
+- `cadDatalists` — linha 7772
+- `cadFaltam` — linha 7498
+- `cadFoto` — linha 12426
+- `cadInit` — linha 7748
+- `cadMotivosHtml` — linha 7829
+- `cadMudou` — linha 7836
+- `cadNotasLevadas` — linha 7787
+- `cadRastDe` — linha 7769
+- `cadRastNome` — linha 7771
+- `cadRender` — linha 7806
+- `cadSemDuplicado` — linha 12428
+- `cadTipo` — linha 7768
+- `cadUsados` — linha 7747
+- `camLiberar` — linha 6660
 - `cardDoRomaneio` — linha 2230
 - `cardHTML` — linha 2132
-- `cargoAplicar` — linha 9460
-- `cargoDe` — linha 9442
-- `cargoLogado` — linha 9459
-- `cargoMapa` — linha 9441
-- `cargoMeu` — linha 9449
-- `cargoPodeVer` — linha 9451
-- `cargoTelaInicial` — linha 9458
+- `cargoAplicar` — linha 9462
+- `cargoDe` — linha 9444
+- `cargoLogado` — linha 9461
+- `cargoMapa` — linha 9443
+- `cargoMeu` — linha 9451
+- `cargoPodeVer` — linha 9453
+- `cargoTelaInicial` — linha 9460
 - `cartao` — linha 2459
 
 ## ce
@@ -153,28 +153,28 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `celulasParaLinha` — linha 1845
 
 ## cf
-- `cfAplicar` — linha 12815
-- `cfAtivo` — linha 12734
-- `cfBaixarTudo` — linha 12935
-- `cfBuscarDest` — linha 5800
-- `cfCel` — linha 12814
-- `cfDestXml` — linha 5798
-- `cfIco` — linha 12777
-- `cfInicioDesenhar` — linha 12787
-- `cfSelo` — linha 12778
-- `cfTopo` — linha 12780
-- `cfTravas` — linha 12810
+- `cfAplicar` — linha 12817
+- `cfAtivo` — linha 12736
+- `cfBaixarTudo` — linha 12937
+- `cfBuscarDest` — linha 5802
+- `cfCel` — linha 12816
+- `cfDestXml` — linha 5800
+- `cfIco` — linha 12779
+- `cfInicioDesenhar` — linha 12789
+- `cfSelo` — linha 12780
+- `cfTopo` — linha 12782
+- `cfTravas` — linha 12812
 
 ## ch
 - `checar` — linha 4487
 - `chipFer` — linha 3247
 - `chipsBase` — linha 3720
-- `chvAbrir` — linha 5215
-- `chvConfirmar` — linha 5263
-- `chvDigitar` — linha 5254
-- `chvDigitos` — linha 5213
-- `chvLerCamera` — linha 5219
-- `chvRoms` — linha 5214
+- `chvAbrir` — linha 5217
+- `chvConfirmar` — linha 5265
+- `chvDigitar` — linha 5256
+- `chvDigitos` — linha 5215
+- `chvLerCamera` — linha 5221
+- `chvRoms` — linha 5216
 
 ## ci
 - `cidInteira` — linha 2228
@@ -185,49 +185,49 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `cinzaDe` — linha 1663
 
 ## ck
-- `ckApagadaId` — linha 8407
-- `ckApagado` — linha 8404
-- `ckApagados` — linha 8403
-- `ckBaixar` — linha 8532
-- `ckChaveMot` — linha 8412
-- `ckDedup` — linha 8413
-- `ckDesativado` — linha 8448
-- `ckEnviar` — linha 8536
-- `ckEscolher` — linha 8520
-- `ckExcluir` — linha 8434
-- `ckImagem` — linha 8474
-- `ckLista` — linha 8449
-- `ckRRect` — linha 8472
-- `ckRast` — linha 8447
-- `ckRender` — linha 8542
-- `ckS` — linha 8408
-- `ckSalvar` — linha 8430
-- `ckSeedRow` — linha 8402
-- `ckSincronizar` — linha 8454
-- `ckStatus` — linha 8460
-- `ckTexto` — linha 8463
-- `ckTudo` — linha 8409
-- `ckVenc` — linha 8444
+- `ckApagadaId` — linha 8409
+- `ckApagado` — linha 8406
+- `ckApagados` — linha 8405
+- `ckBaixar` — linha 8534
+- `ckChaveMot` — linha 8414
+- `ckDedup` — linha 8415
+- `ckDesativado` — linha 8450
+- `ckEnviar` — linha 8538
+- `ckEscolher` — linha 8522
+- `ckExcluir` — linha 8436
+- `ckImagem` — linha 8476
+- `ckLista` — linha 8451
+- `ckRRect` — linha 8474
+- `ckRast` — linha 8449
+- `ckRender` — linha 8544
+- `ckS` — linha 8410
+- `ckSalvar` — linha 8432
+- `ckSeedRow` — linha 8404
+- `ckSincronizar` — linha 8456
+- `ckStatus` — linha 8462
+- `ckTexto` — linha 8465
+- `ckTudo` — linha 8411
+- `ckVenc` — linha 8446
 
 ## cl
 - `clarear` — linha 1710
-- `cliAcha` — linha 5811
-- `cliHoje` — linha 5813
-- `cliRender` — linha 5882
-- `cliResumo` — linha 5812
-- `cliS` — linha 5796
+- `cliAcha` — linha 5813
+- `cliHoje` — linha 5815
+- `cliRender` — linha 5884
+- `cliResumo` — linha 5814
+- `cliS` — linha 5798
 
 ## cm
-- `cmCarimbar` — linha 12541
-- `cmFoto` — linha 12540
-- `cmJuntarAlias` — linha 12548
-- `cmJuntarAtend` — linha 12552
+- `cmCarimbar` — linha 12543
+- `cmFoto` — linha 12542
+- `cmJuntarAlias` — linha 12550
+- `cmJuntarAtend` — linha 12554
 
 ## co
 - `components` — linha 1374
 - `computar` — linha 2509
-- `confDiasReg` — linha 8280
-- `confRelTela` — linha 10466
+- `confDiasReg` — linha 8282
+- `confRelTela` — linha 10468
 - `conferir` — linha 1996
 - `confirmar` — linha 2733
 - `contar` — linha 2346
@@ -242,20 +242,20 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `corpoHTML` — linha 2124
 
 ## cp
-- `cpfFmt` — linha 7742
+- `cpfFmt` — linha 7744
 
 ## cr
-- `cremerAchar` — linha 6835
+- `cremerAchar` — linha 6837
 - `cropBits` — linha 1400
 
 ## ct
-- `ctBuscaLista` — linha 8801
-- `ctBuscaRender` — linha 8791
+- `ctBuscaLista` — linha 8803
+- `ctBuscaRender` — linha 8793
 - `ctDentro` — linha 4475
-- `ctLista` — linha 8837
-- `ctMontar` — linha 8761
+- `ctLista` — linha 8839
+- `ctMontar` — linha 8763
 - `ctPoligonos` — linha 4472
-- `ctVerDvAplicar` — linha 13002
+- `ctVerDvAplicar` — linha 13004
 
 ## de
 - `decode` — linha 1442
@@ -264,7 +264,7 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `descarregar` — linha 1215
 - `desenharGeo` — linha 3592
 - `desenharGeoAgora` — linha 3593
-- `desfazerOferecer` — linha 10199
+- `desfazerOferecer` — linha 10201
 - `detalhesLinha` — linha 2433
 - `deuCerto` — linha 1209
 - `deuErrado` — linha 1212
@@ -275,62 +275,62 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `digitos` — linha 1584
 
 ## du
-- `duBaixa` — linha 10050
-- `duBancoDia` — linha 10101
-- `duCard` — linha 10055
-- `duCfg` — linha 10046
-- `duColunas` — linha 10085
-- `duDiaHora` — linha 10049
-- `duHora` — linha 10048
-- `duLinha` — linha 10054
-- `duMudarDia` — linha 10114
-- `duOrdenar` — linha 10052
-- `duPend` — linha 10051
-- `duQuando` — linha 10047
+- `duBaixa` — linha 10052
+- `duBancoDia` — linha 10103
+- `duCard` — linha 10057
+- `duCfg` — linha 10048
+- `duColunas` — linha 10087
+- `duDiaHora` — linha 10051
+- `duHora` — linha 10050
+- `duLinha` — linha 10056
+- `duMudarDia` — linha 10116
+- `duOrdenar` — linha 10054
+- `duPend` — linha 10053
+- `duQuando` — linha 10049
 - `dupPorRomaneio` — linha 2377
 
 ## dv
-- `dvAcha` — linha 6069
-- `dvAvisarDono` — linha 9746
-- `dvAvisoVisto` — linha 9753
-- `dvAvisosVistos` — linha 9752
-- `dvBadge` — linha 6077
-- `dvBaixaPeloBipe` — linha 9756
-- `dvBipar` — linha 6209
-- `dvBotaoBaixa` — linha 9763
-- `dvCaixas` — linha 5438
-- `dvCancelar` — linha 11712
-- `dvChegou` — linha 12269
-- `dvCidade` — linha 6064
-- `dvDaNota` — linha 12218
-- `dvDesbipada` — linha 12220
-- `dvDesfazChegadas` — linha 12231
-- `dvDiaLocal` — linha 12230
-- `dvJanelaFalta` — linha 6178
-- `dvLeitura` — linha 6166
-- `dvMeusAvisos` — linha 9754
-- `dvNoBanco` — linha 6174
-- `dvPerguntarChegou` — linha 12276
-- `dvPodeCancelar` — linha 11709
-- `dvRegistrar` — linha 10143
-- `dvRender` — linha 6154
-- `dvRenderLista` — linha 6158
-- `dvS` — linha 6060
-- `dvSo` — linha 10041
-- `dvVarrer` — linha 6072
-- `dvavBarra` — linha 10153
-- `dvavDaNota` — linha 10168
-- `dvavFoto` — linha 10202
-- `dvavVoltar` — linha 10203
-- `dvrConta` — linha 11964
-- `dvrDias` — linha 11946
-- `dvrHTML` — linha 12049
-- `dvrJanela` — linha 12103
-- `dvrLinha` — linha 11959
-- `dvrLista` — linha 11955
-- `dvrPDF` — linha 12099
-- `dvrPeriodo` — linha 11948
-- `dvrXLSX` — linha 11977
+- `dvAcha` — linha 6071
+- `dvAvisarDono` — linha 9748
+- `dvAvisoVisto` — linha 9755
+- `dvAvisosVistos` — linha 9754
+- `dvBadge` — linha 6079
+- `dvBaixaPeloBipe` — linha 9758
+- `dvBipar` — linha 6211
+- `dvBotaoBaixa` — linha 9765
+- `dvCaixas` — linha 5440
+- `dvCancelar` — linha 11714
+- `dvChegou` — linha 12271
+- `dvCidade` — linha 6066
+- `dvDaNota` — linha 12220
+- `dvDesbipada` — linha 12222
+- `dvDesfazChegadas` — linha 12233
+- `dvDiaLocal` — linha 12232
+- `dvJanelaFalta` — linha 6180
+- `dvLeitura` — linha 6168
+- `dvMeusAvisos` — linha 9756
+- `dvNoBanco` — linha 6176
+- `dvPerguntarChegou` — linha 12278
+- `dvPodeCancelar` — linha 11711
+- `dvRegistrar` — linha 10145
+- `dvRender` — linha 6156
+- `dvRenderLista` — linha 6160
+- `dvS` — linha 6062
+- `dvSo` — linha 10043
+- `dvVarrer` — linha 6074
+- `dvavBarra` — linha 10155
+- `dvavDaNota` — linha 10170
+- `dvavFoto` — linha 10204
+- `dvavVoltar` — linha 10205
+- `dvrConta` — linha 11966
+- `dvrDias` — linha 11948
+- `dvrHTML` — linha 12051
+- `dvrJanela` — linha 12105
+- `dvrLinha` — linha 11961
+- `dvrLista` — linha 11957
+- `dvrPDF` — linha 12101
+- `dvrPeriodo` — linha 11950
+- `dvrXLSX` — linha 11979
 
 ## ed
 - `edAbrir` — linha 4298
@@ -349,36 +349,36 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `endireitar` — linha 1702
 - `ensinar` — linha 2678
 - `entregar` — linha 2088
-- `enviarNoZap` — linha 11181
+- `enviarNoZap` — linha 11183
 
 ## es
 - `escalar` — linha 1708
 - `escolherSug` — linha 2616
-- `espChip` — linha 10947
-- `espCor` — linha 10946
-- `espEquipe` — linha 10973
-- `espIDB` — linha 10939
-- `espLim` — linha 10938
-- `espMedir` — linha 10940
-- `espPainel` — linha 10951
-- `espReportar` — linha 10968
+- `espChip` — linha 10949
+- `espCor` — linha 10948
+- `espEquipe` — linha 10975
+- `espIDB` — linha 10941
+- `espLim` — linha 10940
+- `espMedir` — linha 10942
+- `espPainel` — linha 10953
+- `espReportar` — linha 10970
 
 ## et
-- `etqAchouAlgo` — linha 8879
-- `etqCandidatos` — linha 11881
-- `etqEscolher` — linha 11899
-- `etqHLSufixos` — linha 8875
-- `etqInterpretar` — linha 6771
-- `etqLancarFora` — linha 11895
-- `etqLinhas` — linha 6769
-- `etqNfTopoDir` — linha 8868
-- `etqPorCliente` — linha 8293
-- `etqQuadro` — linha 8853
-- `etqRecAmarelo` — linha 8850
-- `etqTokens` — linha 11880
+- `etqAchouAlgo` — linha 8881
+- `etqCandidatos` — linha 11883
+- `etqEscolher` — linha 11901
+- `etqHLSufixos` — linha 8877
+- `etqInterpretar` — linha 6773
+- `etqLancarFora` — linha 11897
+- `etqLinhas` — linha 6771
+- `etqNfTopoDir` — linha 8870
+- `etqPorCliente` — linha 8295
+- `etqQuadro` — linha 8855
+- `etqRecAmarelo` — linha 8852
+- `etqTokens` — linha 11882
 
 ## ev
-- `evaEtqSug` — linha 9275
+- `evaEtqSug` — linha 9277
 
 ## ex
 - `executar` — linha 2527
@@ -400,25 +400,25 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `feriadosDoDia` — linha 3217
 
 ## fm
-- `fmMotivosHtml` — linha 7529
-- `fmMotivosRender` — linha 7535
-- `fmMotivosSalvar` — linha 7536
+- `fmMotivosHtml` — linha 7531
+- `fmMotivosRender` — linha 7537
+- `fmMotivosSalvar` — linha 7538
 
 ## fn
 - `fnv` — linha 1364
 
 ## fo
-- `foraAlertas` — linha 7630
-- `foraDialogo` — linha 7565
-- `foraFiltrada` — linha 7606
-- `foraLista` — linha 7595
-- `foraMesaHoje` — linha 7558
-- `foraMot` — linha 7528
-- `foraOrigemSug` — linha 7555
-- `foraRegistrar` — linha 7562
-- `foraRender` — linha 7596
-- `forcar` — linha 12963
-- `fotoSegura` — linha 10034
+- `foraAlertas` — linha 7632
+- `foraDialogo` — linha 7567
+- `foraFiltrada` — linha 7608
+- `foraLista` — linha 7597
+- `foraMesaHoje` — linha 7560
+- `foraMot` — linha 7530
+- `foraOrigemSug` — linha 7557
+- `foraRegistrar` — linha 7564
+- `foraRender` — linha 7598
+- `forcar` — linha 12965
+- `fotoSegura` — linha 10036
 
 ## fr
 - `fromB64` — linha 1363
@@ -430,14 +430,14 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `geoCasar` — linha 3409
 - `geoClass` — linha 3382
 - `geoCodLinha` — linha 3400
-- `geoConferir` — linha 10318
+- `geoConferir` — linha 10320
 - `geoCoords` — linha 3344
 - `geoDesenharRuas` — linha 3574
-- `geoDiagnostico` — linha 10344
-- `geoEnsAnotar` — linha 12512
-- `geoEnsAplicar` — linha 12521
-- `geoEnsCapturar` — linha 12515
-- `geoEnsFoto` — linha 12511
+- `geoDiagnostico` — linha 10346
+- `geoEnsAnotar` — linha 12514
+- `geoEnsAplicar` — linha 12523
+- `geoEnsCapturar` — linha 12517
+- `geoEnsFoto` — linha 12513
 - `geoEnsinar` — linha 3520
 - `geoEscolher` — linha 3545
 - `geoIdViaMinas` — linha 3399
@@ -451,85 +451,85 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `geoMudou` — linha 3372
 - `geoOriginais` — linha 3346
 - `geoParaConferir` — linha 3512
-- `geoPendente` — linha 10272
-- `geoPerdeu` — linha 10311
+- `geoPendente` — linha 10274
+- `geoPerdeu` — linha 10313
 - `geoPerto` — linha 3631
 - `geoPontosMapa` — linha 3563
-- `geoPorLista` — linha 10310
+- `geoPorLista` — linha 10312
 - `geoPrevia` — linha 3467
-- `geoProv` — linha 10333
-- `geoPubBarra` — linha 10293
-- `geoPubLer` — linha 10271
-- `geoPublicar` — linha 10279
-- `geoRecuperar` — linha 7730
+- `geoProv` — linha 10335
+- `geoPubBarra` — linha 10295
+- `geoPubLer` — linha 10273
+- `geoPublicar` — linha 10281
+- `geoRecuperar` — linha 7732
 - `geoSalvarPrev` — linha 3499
 - `geoSegmentos` — linha 3427
 - `geoSlug` — linha 3466
 - `geoSugerir` — linha 3550
 - `geoTile` — linha 3566
 - `geoTituloDeArquivo` — linha 3465
-- `geoVoltarPublicado` — linha 10336
+- `geoVoltarPublicado` — linha 10338
 - `geoXY` — linha 3561
 - `geoZoom` — linha 3632
 - `gerarPacote` — linha 2779
-- `gestorBarras` — linha 9552
-- `gestorDados2` — linha 11345
-- `gestorRender` — linha 9553
+- `gestorBarras` — linha 9554
+- `gestorDados2` — linha 11347
+- `gestorRender` — linha 9555
 
 ## gi
 - `girar` — linha 1748
 
 ## gr
-- `gravFaixa` — linha 9788
+- `gravFaixa` — linha 9790
 - `gravarLote` — linha 1238
 - `grayParaCanvas` — linha 1665
 - `gridDist` — linha 1414
 - `groupComps` — linha 1382
 
 ## gs
-- `gsAjK` — linha 9841
-- `gsAjLer` — linha 9840
-- `gsAjMarcar` — linha 9842
-- `gsBarras2` — linha 9721
-- `gsBipes` — linha 9548
-- `gsBipesAntigos` — linha 9731
-- `gsBipesDia` — linha 9893
-- `gsCartao` — linha 9586
-- `gsCompletarDeFotos` — linha 12572
-- `gsContaMapa` — linha 11341
-- `gsContar` — linha 9692
-- `gsDia` — linha 9544
-- `gsDiaNome` — linha 9547
-- `gsDias` — linha 9541
-- `gsDvDoDia` — linha 9689
-- `gsEnxugarBipes` — linha 9736
-- `gsFecharDia` — linha 9863
-- `gsFiltros` — linha 11364
-- `gsFotoAgendar` — linha 9583
-- `gsFotoDeDiaPassado` — linha 9901
-- `gsFotoGravar` — linha 9579
-- `gsFotoLer` — linha 9584
-- `gsFotoMontar` — linha 9565
-- `gsFotoNuvemDias` — linha 9954
-- `gsFotoNuvemGravar` — linha 9944
-- `gsFotoNuvemLer` — linha 9951
-- `gsGarantirFoto` — linha 9918
-- `gsMensal` — linha 11369
-- `gsNotasUnicas` — linha 11336
-- `gsOrigemBox` — linha 9977
-- `gsPdfEscolher` — linha 9614
-- `gsPdfProjetor` — linha 9637
-- `gsPerDias` — linha 11332
-- `gsPerNome` — linha 11330
-- `gsPorHora` — linha 9633
-- `gsPorPessoa` — linha 9631
-- `gsRemontarTudo` — linha 9924
-- `gsRomsDia` — linha 9882
-- `gsSnapFaxina` — linha 9988
-- `gsSnapUniao` — linha 12566
-- `gsSoma` — linha 11344
-- `gsTab` — linha 9636
-- `gsTabDv` — linha 9599
+- `gsAjK` — linha 9843
+- `gsAjLer` — linha 9842
+- `gsAjMarcar` — linha 9844
+- `gsBarras2` — linha 9723
+- `gsBipes` — linha 9550
+- `gsBipesAntigos` — linha 9733
+- `gsBipesDia` — linha 9895
+- `gsCartao` — linha 9588
+- `gsCompletarDeFotos` — linha 12574
+- `gsContaMapa` — linha 11343
+- `gsContar` — linha 9694
+- `gsDia` — linha 9546
+- `gsDiaNome` — linha 9549
+- `gsDias` — linha 9543
+- `gsDvDoDia` — linha 9691
+- `gsEnxugarBipes` — linha 9738
+- `gsFecharDia` — linha 9865
+- `gsFiltros` — linha 11366
+- `gsFotoAgendar` — linha 9585
+- `gsFotoDeDiaPassado` — linha 9903
+- `gsFotoGravar` — linha 9581
+- `gsFotoLer` — linha 9586
+- `gsFotoMontar` — linha 9567
+- `gsFotoNuvemDias` — linha 9956
+- `gsFotoNuvemGravar` — linha 9946
+- `gsFotoNuvemLer` — linha 9953
+- `gsGarantirFoto` — linha 9920
+- `gsMensal` — linha 11371
+- `gsNotasUnicas` — linha 11338
+- `gsOrigemBox` — linha 9979
+- `gsPdfEscolher` — linha 9616
+- `gsPdfProjetor` — linha 9639
+- `gsPerDias` — linha 11334
+- `gsPerNome` — linha 11332
+- `gsPorHora` — linha 9635
+- `gsPorPessoa` — linha 9633
+- `gsRemontarTudo` — linha 9926
+- `gsRomsDia` — linha 9884
+- `gsSnapFaxina` — linha 9990
+- `gsSnapUniao` — linha 12568
+- `gsSoma` — linha 11346
+- `gsTab` — linha 9638
+- `gsTabDv` — linha 9601
 
 ## gu
 - `guardarMunicipais` — linha 3193
@@ -540,18 +540,18 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 
 ## ho
 - `homografia` — linha 1697
-- `hora` — linha 5097
+- `hora` — linha 5099
 
 ## hs
-- `hsAparelho` — linha 8108
-- `hsCanon` — linha 13053
-- `hsCanonChave` — linha 13055
-- `hsCineHtml` — linha 10852
+- `hsAparelho` — linha 8110
+- `hsCanon` — linha 13055
+- `hsCanonChave` — linha 13057
+- `hsCineHtml` — linha 10854
 - `hsMemo1` — linha 1469
 - `hsMesclarRom` — linha 2741
-- `hsSalvarAgora` — linha 8171
-- `hsSplash` — linha 5982
-- `hsXmlDaNota` — linha 12446
+- `hsSalvarAgora` — linha 8173
+- `hsSplash` — linha 5984
+- `hsXmlDaNota` — linha 12448
 
 ## ib
 - `ibge` — linha 3156
@@ -565,8 +565,8 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `iniciar` — linha 1264
 - `iniciarTela` — linha 2241
 - `inkMask` — linha 1367
-- `integConferir` — linha 8083
-- `integFalta` — linha 8073
+- `integConferir` — linha 8085
+- `integFalta` — linha 8075
 
 ## ir
 - `irPara` — linha 2730
@@ -596,18 +596,18 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `ligar` — linha 1224
 - `limparNome` — linha 3406
 - `limparTxt` — linha 1589
-- `linhaAgendada` — linha 5915
+- `linhaAgendada` — linha 5917
 - `linhaSug` — linha 2599
-- `linhaTempo` — linha 10225
+- `linhaTempo` — linha 10227
 - `linhasDe` — linha 1789
 - `linhasPlanilha` — linha 2018
-- `linhasQueFaltavam` — linha 11106
-- `listaChave` — linha 12327
-- `listaJuntar` — linha 12329
-- `listaTirado` — linha 12328
-- `listaTirar` — linha 12325
-- `listasConferir` — linha 12622
-- `listasProteger` — linha 12333
+- `linhasQueFaltavam` — linha 11108
+- `listaChave` — linha 12329
+- `listaJuntar` — linha 12331
+- `listaTirado` — linha 12330
+- `listaTirar` — linha 12327
+- `listasConferir` — linha 12624
+- `listasProteger` — linha 12335
 
 ## lo
 - `loadDict` — linha 1407
@@ -615,7 +615,7 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 ## ma
 - `makeGlyph` — linha 1394
 - `malha` — linha 4241
-- `manHTML` — linha 7341
+- `manHTML` — linha 7343
 - `mapaCheia` — linha 4281
 - `mapaCorCidade` — linha 4247
 - `marcar` — linha 2594
@@ -624,14 +624,14 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `matchOne` — linha 1419
 
 ## mb
-- `mbChecarPC` — linha 6322
-- `mbFaixa` — linha 6317
-- `mbGradeRotulos` — linha 12845
-- `mbInstalarAviso` — linha 6323
+- `mbChecarPC` — linha 6324
+- `mbFaixa` — linha 6319
+- `mbGradeRotulos` — linha 12847
+- `mbInstalarAviso` — linha 6325
 
 ## me
-- `mensalAbrir` — linha 8380
-- `mensalHTML` — linha 8357
+- `mensalAbrir` — linha 8382
+- `mensalHTML` — linha 8359
 - `metaHTML` — linha 2102
 
 ## mi
@@ -643,21 +643,21 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `montarPagina` — linha 1813
 - `mostrar` — linha 2461
 - `mostrarBusca` — linha 2522
-- `motCanon` — linha 7754
+- `motCanon` — linha 7756
 - `moverSug` — linha 2614
 
 ## mu
-- `muAplicar` — linha 6020
-- `muGravar` — linha 5995
-- `muLer` — linha 5994
-- `muNum` — linha 7697
-- `muSalvarDoDom` — linha 6030
-- `murArrumar` — linha 9483
-- `murPodeBackup` — linha 9482
-- `murTitulo` — linha 9481
-- `muralAbrir` — linha 4861
-- `muralDados` — linha 4854
-- `muralFechar` — linha 4873
+- `muAplicar` — linha 6022
+- `muGravar` — linha 5997
+- `muLer` — linha 5996
+- `muNum` — linha 7699
+- `muSalvarDoDom` — linha 6032
+- `murArrumar` — linha 9485
+- `murPodeBackup` — linha 9484
+- `murTitulo` — linha 9483
+- `muralAbrir` — linha 4863
+- `muralDados` — linha 4856
+- `muralFechar` — linha 4875
 
 ## na
 - `nacionaisCalculados` — linha 3150
@@ -677,7 +677,7 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `nexForaDaRegra` — linha 3805
 - `nexIsoDe` — linha 3771
 - `nexJogar` — linha 3928
-- `nexJuntarReent` — linha 9067
+- `nexJuntarReent` — linha 9069
 - `nexLimparReent` — linha 3846
 - `nexLog` — linha 3770
 - `nexNum` — linha 3757
@@ -686,58 +686,58 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `nexProxUtil` — linha 3774
 - `nexReentDoRom` — linha 3838
 - `nexRetirar` — linha 3812
-- `nexReverificar` — linha 8044
+- `nexReverificar` — linha 8046
 - `nexS` — linha 3761
-- `nexSemearBanco` — linha 8039
-- `nexSemearDe` — linha 8037
+- `nexSemearBanco` — linha 8041
+- `nexSemearDe` — linha 8039
 - `nexSetTag` — linha 3767
 - `nexSuspeitas` — linha 3962
 - `nexVarrer` — linha 3785
 
 ## nf
-- `nfDoXml` — linha 7447
+- `nfDoXml` — linha 7449
 
 ## nn
 - `nn` — linha 1415
 
 ## no
 - `nomeArquivo` — linha 2082
-- `notifMostrar` — linha 11617
-- `notifPedir` — linha 11627
-- `notifPode` — linha 11616
-- `notifVarrer` — linha 11621
+- `notifMostrar` — linha 11619
+- `notifPedir` — linha 11629
+- `notifPode` — linha 11618
+- `notifVarrer` — linha 11623
 - `novoCard` — linha 2159
 
 ## nu
 - `numBR` — linha 1575
 - `numTxt` — linha 1586
 - `numerosTxt` — linha 2019
-- `nuvAgendar` — linha 7048
-- `nuvAoVivo` — linha 7109
-- `nuvApTab` — linha 7000
-- `nuvAplicar` — linha 6990
-- `nuvBackupNuvem` — linha 8110
-- `nuvBackups` — linha 8121
-- `nuvBase` — linha 8106
-- `nuvBaseMarca` — linha 8107
-- `nuvBases` — linha 8105
-- `nuvBkpLimpar` — linha 8116
-- `nuvGuardar` — linha 6986
-- `nuvHash` — linha 6985
-- `nuvJa` — linha 9831
-- `nuvJuntar` — linha 6995
-- `nuvLocal` — linha 6988
-- `nuvMesclar` — linha 7096
-- `nuvPing` — linha 7001
-- `nuvPuxarTudo` — linha 8057
-- `nuvReconciliar` — linha 6984
-- `nuvReconstruir` — linha 13032
-- `nuvRestaurarBkp` — linha 8122
-- `nuvSinc` — linha 7014
-- `nuvSoDias` — linha 7074
-- `nuvStatus` — linha 7005
-- `nuvSujo` — linha 9812
-- `nuvTelaBackups` — linha 8128
+- `nuvAgendar` — linha 7050
+- `nuvAoVivo` — linha 7111
+- `nuvApTab` — linha 7002
+- `nuvAplicar` — linha 6992
+- `nuvBackupNuvem` — linha 8112
+- `nuvBackups` — linha 8123
+- `nuvBase` — linha 8108
+- `nuvBaseMarca` — linha 8109
+- `nuvBases` — linha 8107
+- `nuvBkpLimpar` — linha 8118
+- `nuvGuardar` — linha 6988
+- `nuvHash` — linha 6987
+- `nuvJa` — linha 9833
+- `nuvJuntar` — linha 6997
+- `nuvLocal` — linha 6990
+- `nuvMesclar` — linha 7098
+- `nuvPing` — linha 7003
+- `nuvPuxarTudo` — linha 8059
+- `nuvReconciliar` — linha 6986
+- `nuvReconstruir` — linha 13034
+- `nuvRestaurarBkp` — linha 8124
+- `nuvSinc` — linha 7016
+- `nuvSoDias` — linha 7076
+- `nuvStatus` — linha 7007
+- `nuvSujo` — linha 9814
+- `nuvTelaBackups` — linha 8130
 
 ## nv
 - `nvAplicarRE` — linha 4082
@@ -747,155 +747,155 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `nvCopias` — linha 4657
 - `nvEditar` — linha 4181
 - `nvEmailDoLogin` — linha 4056
-- `nvEntrarPacote` — linha 5746
+- `nvEntrarPacote` — linha 5748
 - `nvFechar` — linha 4063
 - `nvLib` — linha 4061
 - `nvLogin` — linha 4074
-- `nvMfa` — linha 7389
+- `nvMfa` — linha 7391
 - `nvNovaSenha` — linha 4170
 - `nvOffline` — linha 4086
 - `nvPerfil` — linha 4080
 - `nvSelo` — linha 4151
 - `nvTela` — linha 4062
 - `nvTempoReal` — linha 4147
-- `nvTrocaPrimeiroAcesso` — linha 10548
+- `nvTrocaPrimeiroAcesso` — linha 10550
 - `nvUI` — linha 4164
 - `nvValidar` — linha 4180
 
 ## nx
-- `nxIdx` — linha 11219
-- `nxUniao` — linha 11234
-- `nxUniaoLista` — linha 11227
+- `nxIdx` — linha 11221
+- `nxUniao` — linha 11236
+- `nxUniaoLista` — linha 11229
 - `nxopAchar` — linha 4689
 - `nxopCarregar` — linha 4675
 - `nxopRender` — linha 4678
 
 ## of
-- `offChecar` — linha 8269
+- `offChecar` — linha 8271
 
 ## on
 - `ondeTxt` — linha 2365
 
 ## op
-- `opAbrirDia` — linha 5637
-- `opAcharDados` — linha 9126
-- `opAltaVol` — linha 9133
-- `opAoVivo` — linha 5645
-- `opApagar` — linha 5658
-- `opApagarLote` — linha 12236
-- `opBadge` — linha 5717
-- `opBipIx` — linha 5686
-- `opBipeHora` — linha 8905
-- `opBipsDe` — linha 5691
-- `opCSV` — linha 5739
-- `opCamAbrir` — linha 5339
-- `opCamErro` — linha 5200
-- `opCamFechar` — linha 5395
-- `opCamPausa` — linha 5188
-- `opCamSemCodigo` — linha 6857
-- `opCamTratar` — linha 6843
-- `opConfCompletar` — linha 5589
-- `opConfFalta` — linha 5597
-- `opConfFechar` — linha 5485
-- `opConfLimpar` — linha 5483
-- `opConfMarcar` — linha 5559
-- `opConfPedir` — linha 5525
-- `opConfQuantos` — linha 5564
-- `opConfTodos` — linha 5549
-- `opConferirOutro` — linha 5101
-- `opContagem` — linha 5126
-- `opConteudo` — linha 5158
-- `opCorBase` — linha 9160
-- `opCorrigirDias` — linha 8906
-- `opCtHtml` — linha 5168
-- `opCtTexto` — linha 5164
-- `opDesbipar` — linha 12246
-- `opDesfazer` — linha 9417
-- `opDetector` — linha 5299
-- `opDiaAviso` — linha 8827
-- `opDiaIso` — linha 8707
-- `opDiaRom` — linha 6673
-- `opDupLinha` — linha 5098
-- `opDupTitulo` — linha 5094
-- `opDvChegaram` — linha 5513
-- `opDvDoDiaSo` — linha 9162
-- `opDvPainel` — linha 5492
-- `opDvPend` — linha 5491
-- `opDvQuantos` — linha 5500
-- `opEhPallet` — linha 5087
-- `opEntrar` — linha 5681
-- `opEnviar` — linha 5626
-- `opErroDeDado` — linha 8704
-- `opErroDuplicado` — linha 8706
-- `opFaltaAnt` — linha 5710
-- `opFicha` — linha 7904
-- `opFila` — linha 5630
-- `opFilaSelo` — linha 12639
-- `opForaAtualizar` — linha 6731
-- `opForaEditar` — linha 7930
-- `opForaFiltro` — linha 5701
-- `opForaGuardar` — linha 7920
-- `opForaPatch` — linha 7918
-- `opForaReler` — linha 7942
-- `opForaRelido` — linha 7944
-- `opFrame` — linha 6804
-- `opIndice` — linha 5024
-- `opInfoFora` — linha 6716
-- `opInterpretar` — linha 5030
-- `opJaBipado` — linha 5088
-- `opLer` — linha 5038
-- `opLerEtiqueta` — linha 6811
-- `opLidosBips` — linha 5117
-- `opLinhaBanco` — linha 8690
-- `opListaMax` — linha 5738
-- `opLocalGravar` — linha 5624
-- `opLocalLer` — linha 5623
-- `opMarcarMao` — linha 9204
-- `opMostrar` — linha 5177
-- `opMsgTrocar` — linha 5293
-- `opNomeMot` — linha 9156
-- `opNotaBate` — linha 12216
-- `opOcr` — linha 6805
-- `opOutraCaixa` — linha 9134
-- `opPendentes` — linha 5702
-- `opPorRom` — linha 9143
-- `opPorRomHtml` — linha 9167
-- `opPuxarDia` — linha 8653
-- `opQuantosMao` — linha 9190
-- `opRegFaltas` — linha 5711
-- `opRelDia` — linha 6674
-- `opRender` — linha 5718
-- `opRenderLista` — linha 5724
-- `opRomChips` — linha 9181
-- `opRomLista` — linha 9221
-- `opRomsDoDia` — linha 6675
-- `opRotOrigem` — linha 9157
-- `opRuinsDevolver` — linha 8731
-- `opRuinsGravar` — linha 8699
-- `opRuinsLer` — linha 8698
-- `opSemChave` — linha 8013
-- `opSemRomaneios` — linha 8780
-- `opSinc` — linha 5634
-- `opSom` — linha 5173
-- `opSubNum` — linha 6829
-- `opSubirLote` — linha 8720
-- `opValor` — linha 5154
-- `opVisiveis` — linha 5697
-- `opVolFaixa` — linha 5425
-- `opVoltarHoje` — linha 8826
-- `opXmlImportar` — linha 5144
-- `opXmlInfo` — linha 5151
-- `opXmlLer` — linha 5133
+- `opAbrirDia` — linha 5639
+- `opAcharDados` — linha 9128
+- `opAltaVol` — linha 9135
+- `opAoVivo` — linha 5647
+- `opApagar` — linha 5660
+- `opApagarLote` — linha 12238
+- `opBadge` — linha 5719
+- `opBipIx` — linha 5688
+- `opBipeHora` — linha 8907
+- `opBipsDe` — linha 5693
+- `opCSV` — linha 5741
+- `opCamAbrir` — linha 5341
+- `opCamErro` — linha 5202
+- `opCamFechar` — linha 5397
+- `opCamPausa` — linha 5190
+- `opCamSemCodigo` — linha 6859
+- `opCamTratar` — linha 6845
+- `opConfCompletar` — linha 5591
+- `opConfFalta` — linha 5599
+- `opConfFechar` — linha 5487
+- `opConfLimpar` — linha 5485
+- `opConfMarcar` — linha 5561
+- `opConfPedir` — linha 5527
+- `opConfQuantos` — linha 5566
+- `opConfTodos` — linha 5551
+- `opConferirOutro` — linha 5103
+- `opContagem` — linha 5128
+- `opConteudo` — linha 5160
+- `opCorBase` — linha 9162
+- `opCorrigirDias` — linha 8908
+- `opCtHtml` — linha 5170
+- `opCtTexto` — linha 5166
+- `opDesbipar` — linha 12248
+- `opDesfazer` — linha 9419
+- `opDetector` — linha 5301
+- `opDiaAviso` — linha 8829
+- `opDiaIso` — linha 8709
+- `opDiaRom` — linha 6675
+- `opDupLinha` — linha 5100
+- `opDupTitulo` — linha 5096
+- `opDvChegaram` — linha 5515
+- `opDvDoDiaSo` — linha 9164
+- `opDvPainel` — linha 5494
+- `opDvPend` — linha 5493
+- `opDvQuantos` — linha 5502
+- `opEhPallet` — linha 5089
+- `opEntrar` — linha 5683
+- `opEnviar` — linha 5628
+- `opErroDeDado` — linha 8706
+- `opErroDuplicado` — linha 8708
+- `opFaltaAnt` — linha 5712
+- `opFicha` — linha 7906
+- `opFila` — linha 5632
+- `opFilaSelo` — linha 12641
+- `opForaAtualizar` — linha 6733
+- `opForaEditar` — linha 7932
+- `opForaFiltro` — linha 5703
+- `opForaGuardar` — linha 7922
+- `opForaPatch` — linha 7920
+- `opForaReler` — linha 7944
+- `opForaRelido` — linha 7946
+- `opFrame` — linha 6806
+- `opIndice` — linha 5026
+- `opInfoFora` — linha 6718
+- `opInterpretar` — linha 5032
+- `opJaBipado` — linha 5090
+- `opLer` — linha 5040
+- `opLerEtiqueta` — linha 6813
+- `opLidosBips` — linha 5119
+- `opLinhaBanco` — linha 8692
+- `opListaMax` — linha 5740
+- `opLocalGravar` — linha 5626
+- `opLocalLer` — linha 5625
+- `opMarcarMao` — linha 9206
+- `opMostrar` — linha 5179
+- `opMsgTrocar` — linha 5295
+- `opNomeMot` — linha 9158
+- `opNotaBate` — linha 12218
+- `opOcr` — linha 6807
+- `opOutraCaixa` — linha 9136
+- `opPendentes` — linha 5704
+- `opPorRom` — linha 9145
+- `opPorRomHtml` — linha 9169
+- `opPuxarDia` — linha 8655
+- `opQuantosMao` — linha 9192
+- `opRegFaltas` — linha 5713
+- `opRelDia` — linha 6676
+- `opRender` — linha 5720
+- `opRenderLista` — linha 5726
+- `opRomChips` — linha 9183
+- `opRomLista` — linha 9223
+- `opRomsDoDia` — linha 6677
+- `opRotOrigem` — linha 9159
+- `opRuinsDevolver` — linha 8733
+- `opRuinsGravar` — linha 8701
+- `opRuinsLer` — linha 8700
+- `opSemChave` — linha 8015
+- `opSemRomaneios` — linha 8782
+- `opSinc` — linha 5636
+- `opSom` — linha 5175
+- `opSubNum` — linha 6831
+- `opSubirLote` — linha 8722
+- `opValor` — linha 5156
+- `opVisiveis` — linha 5699
+- `opVolFaixa` — linha 5427
+- `opVoltarHoje` — linha 8828
+- `opXmlImportar` — linha 5146
+- `opXmlInfo` — linha 5153
+- `opXmlLer` — linha 5135
 
 ## or
-- `oresAbrir` — linha 9295
-- `oresApagar` — linha 5671
-- `oresDesfazer` — linha 9331
-- `oresGrupo` — linha 5663
-- `oresResolver` — linha 9329
-- `oresResolvidosRender` — linha 9335
-- `oresUmDigito` — linha 9274
-- `oresVincular` — linha 9318
+- `oresAbrir` — linha 9297
+- `oresApagar` — linha 5673
+- `oresDesfazer` — linha 9333
+- `oresGrupo` — linha 5665
+- `oresResolver` — linha 9331
+- `oresResolvidosRender` — linha 9337
+- `oresUmDigito` — linha 9276
+- `oresVincular` — linha 9320
 
 ## ot
 - `otsu` — linha 1669
@@ -910,17 +910,17 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `pascoa` — linha 3149
 
 ## pc
-- `pctConf` — linha 9165
-- `pctDv` — linha 9166
+- `pctConf` — linha 9167
+- `pctDv` — linha 9168
 
 ## pe
 - `peel` — linha 1424
-- `pendFaixa` — linha 9816
-- `perfilAcesso` — linha 9509
-- `perfilAplicar` — linha 9510
-- `permEstado` — linha 6288
-- `permPedirCamera` — linha 6289
-- `permVerificar` — linha 6290
+- `pendFaixa` — linha 9818
+- `perfilAcesso` — linha 9511
+- `perfilAplicar` — linha 9512
+- `permEstado` — linha 6290
+- `permPedirCamera` — linha 6291
+- `permVerificar` — linha 6292
 - `pesquisar` — linha 2422
 
 ## pl
@@ -939,110 +939,110 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `quadBom` — linha 1694
 
 ## rb
-- `rbAlimentar` — linha 6411
-- `rbApagarDia` — linha 6443
-- `rbCarregarMes` — linha 6423
-- `rbDataDoNome` — linha 6398
-- `rbGuardar` — linha 6338
-- `rbLocalGravar` — linha 6336
-- `rbLocalLer` — linha 6335
-- `rbMover` — linha 6458
-- `rbMoverPergunta` — linha 6454
-- `rbNotas` — linha 6436
-- `rbProcurar` — linha 6473
-- `rbQualData` — linha 6404
-- `rbReavaliar` — linha 6348
-- `rbRegistrarHist` — linha 6343
-- `rbRender` — linha 6430
-- `rbVirada` — linha 7964
-- `rbZerarTudo` — linha 6595
+- `rbAlimentar` — linha 6413
+- `rbApagarDia` — linha 6445
+- `rbCarregarMes` — linha 6425
+- `rbDataDoNome` — linha 6400
+- `rbGuardar` — linha 6340
+- `rbLocalGravar` — linha 6338
+- `rbLocalLer` — linha 6337
+- `rbMover` — linha 6460
+- `rbMoverPergunta` — linha 6456
+- `rbNotas` — linha 6438
+- `rbProcurar` — linha 6475
+- `rbQualData` — linha 6406
+- `rbReavaliar` — linha 6350
+- `rbRegistrarHist` — linha 6345
+- `rbRender` — linha 6432
+- `rbVirada` — linha 7966
+- `rbZerarTudo` — linha 6597
 
 ## rd
-- `rdDiaDoNome` — linha 8351
-- `rdLerPlanilha` — linha 8334
-- `rdLerXml` — linha 8342
-- `rdTexto` — linha 8332
+- `rdDiaDoNome` — linha 8353
+- `rdLerPlanilha` — linha 8336
+- `rdLerXml` — linha 8344
+- `rdTexto` — linha 8334
 
 ## re
 - `reApi` — linha 2874
-- `reAtiva` — linha 5787
-- `reAvisarPopup` — linha 6559
+- `reAtiva` — linha 5789
+- `reAvisarPopup` — linha 6561
 - `reBackup` — linha 2941
 - `reBase` — linha 2851
 - `reBaseIds` — linha 2848
 - `reBaseSel` — linha 2849
 - `reBuscarChave` — linha 2888
-- `reCarimbar` — linha 12468
-- `reCarimbo` — linha 9079
-- `reCarimboTxt` — linha 9080
-- `reConsertarDias` — linha 6633
-- `reContida` — linha 12486
+- `reCarimbar` — linha 12470
+- `reCarimbo` — linha 9081
+- `reCarimboTxt` — linha 9082
+- `reConsertarDias` — linha 6635
+- `reContida` — linha 12488
 - `reCsv` — linha 2933
-- `reDesfazMesa` — linha 6547
+- `reDesfazMesa` — linha 6549
 - `reDia` — linha 2847
-- `reDiag` — linha 6509
-- `reDiagRender` — linha 6641
-- `reDiagTexto` — linha 6550
-- `reDupPerguntar` — linha 9095
-- `reDupVarrer` — linha 9093
-- `reEhDivergencia` — linha 11326
-- `reEhReimport` — linha 6534
-- `reFeitoDeNex` — linha 9072
-- `reFoto` — linha 12466
-- `reFundir` — linha 12477
-- `reHistNota` — linha 6505
+- `reDiag` — linha 6511
+- `reDiagRender` — linha 6643
+- `reDiagTexto` — linha 6552
+- `reDupPerguntar` — linha 9097
+- `reDupVarrer` — linha 9095
+- `reEhDivergencia` — linha 11328
+- `reEhReimport` — linha 6536
+- `reFeitoDeNex` — linha 9074
+- `reFoto` — linha 12468
+- `reFundir` — linha 12479
+- `reHistNota` — linha 6507
 - `reImprimir` — linha 2922
-- `reIrHoje` — linha 8055
-- `reJaLancada` — linha 9109
-- `reJuntarDia` — linha 12492
+- `reIrHoje` — linha 8057
+- `reJaLancada` — linha 9111
+- `reJuntarDia` — linha 12494
 - `reLancar` — linha 2903
-- `reLancarDetectadas` — linha 6634
-- `reLimparHoje` — linha 6576
-- `reLimparVelhas` — linha 6592
-- `reMesmoRomaneio` — linha 6531
-- `reMotivosRender` — linha 7831
-- `reNoDia` — linha 5789
-- `rePopGravar` — linha 12589
-- `rePopLer` — linha 12588
-- `reRapida` — linha 10208
-- `reRapidaLancar` — linha 10217
-- `reRecuperarConfirmadas` — linha 6616
-- `reRegistrar` — linha 12467
-- `reRegistrarForcado` — linha 12474
-- `reRegraMesa` — linha 5923
+- `reLancarDetectadas` — linha 6636
+- `reLimparHoje` — linha 6578
+- `reLimparVelhas` — linha 6594
+- `reMesmoRomaneio` — linha 6533
+- `reMotivosRender` — linha 7833
+- `reNoDia` — linha 5791
+- `rePopGravar` — linha 12591
+- `rePopLer` — linha 12590
+- `reRapida` — linha 10210
+- `reRapidaLancar` — linha 10219
+- `reRecuperarConfirmadas` — linha 6618
+- `reRegistrar` — linha 12469
+- `reRegistrarForcado` — linha 12476
+- `reRegraMesa` — linha 5925
 - `reRender` — linha 2534
 - `reRestaurar` — linha 2948
-- `reRevisarMesa` — linha 6526
+- `reRevisarMesa` — linha 6528
 - `reSel` — linha 2919
-- `reSemCopiaVelha` — linha 12487
+- `reSemCopiaVelha` — linha 12489
 - `reStatus` — linha 2852
 - `reSub` — linha 3033
 - `reTela` — linha 2853
-- `reTiradaNf` — linha 12886
-- `reTirado` — linha 11460
-- `reTirar` — linha 11462
+- `reTiradaNf` — linha 12888
+- `reTirado` — linha 11462
+- `reTirar` — linha 11464
 - `reValorDe` — linha 3827
-- `reValoresCompletar` — linha 12438
-- `reVarrerPed` — linha 5771
-- `reVarrerTirados` — linha 11463
+- `reValoresCompletar` — linha 12440
+- `reVarrerPed` — linha 5773
+- `reVarrerTirados` — linha 11465
 - `reabrir` — linha 1222
 - `recorte` — linha 1874
-- `redAbrir` — linha 7474
-- `redAdicionar` — linha 7455
-- `redCriar` — linha 7484
-- `redPelaChave` — linha 7453
-- `redRender` — linha 7459
-- `redSalvar` — linha 7475
+- `redAbrir` — linha 7476
+- `redAdicionar` — linha 7457
+- `redCriar` — linha 7486
+- `redPelaChave` — linha 7455
+- `redRender` — linha 7461
+- `redSalvar` — linha 7477
 - `reduzir` — linha 1666
 - `regDaLinha` — linha 3225
 - `regiaoVMSemNotas` — linha 3719
 - `registrarCidades` — linha 3171
 - `registrarHist` — linha 2537
-- `relEnriquecer` — linha 6695
-- `relImportar` — linha 6705
-- `relLer` — linha 6688
-- `relSeparar` — linha 6709
-- `relTela` — linha 10461
+- `relEnriquecer` — linha 6697
+- `relImportar` — linha 6707
+- `relLer` — linha 6690
+- `relSeparar` — linha 6711
+- `relTela` — linha 10463
 - `relatorioCarga` — linha 2386
 - `reler` — linha 1885
 - `renderAgenda` — linha 2709
@@ -1076,89 +1076,90 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `resumoFontes` — linha 2100
 
 ## ri
-- `ricAbrir` — linha 12710
-- `ricBotoes` — linha 12688
-- `ricDevolver` — linha 12717
-- `ricFechar` — linha 12720
-- `ricMontar` — linha 12690
-- `ricPopDesenhar` — linha 12707
-- `ricVisivel` — linha 12689
+- `ricAbrir` — linha 12712
+- `ricBotoes` — linha 12690
+- `ricDevolver` — linha 12719
+- `ricFechar` — linha 12722
+- `ricMontar` — linha 12692
+- `ricPopDesenhar` — linha 12709
+- `ricVisivel` — linha 12691
 
 ## rm
-- `rmXmlStatus` — linha 8916
+- `rmXmlStatus` — linha 8918
 
 ## ro
-- `roboChecar` — linha 8383
-- `roboSqlChecar` — linha 10378
-- `romConferirHoje` — linha 13020
+- `roboChecar` — linha 8385
+- `roboSqlChecar` — linha 10380
+- `romConferirHoje` — linha 13022
 - `rotDia` — linha 3144
 - `rotulo` — linha 1777
 - `rowsOf` — linha 1486
 
 ## rp
-- `rpAgrupa` — linha 6923
+- `rpAgrupa` — linha 6925
 - `rpBarras` — linha 2972
-- `rpCardsNovos` — linha 6927
+- `rpCardsNovos` — linha 6929
 - `rpCli` — linha 2967
 - `rpDet` — linha 3008
-- `rpMarcar` — linha 6935
-- `rpMot` — linha 6919
-- `rpMotIdx` — linha 6911
+- `rpMarcar` — linha 6937
+- `rpMot` — linha 6921
+- `rpMotIdx` — linha 6913
 - `rpNz` — linha 2963
-- `rpObsPartes` — linha 6916
+- `rpObsPartes` — linha 6918
 - `rpPdf` — linha 3015
 - `rpRegNome` — linha 2970
 - `rpRegOpts` — linha 3013
 - `rpRegiao` — linha 2969
 - `rpRender` — linha 2974
-- `rpSemMot` — linha 7776
+- `rpSemMot` — linha 7778
 - `rpTipo` — linha 2964
 - `rpTodas` — linha 2971
 
 ## rx
-- `rxAbrir` — linha 6949
-- `rxCSV` — linha 6963
-- `rxFiltrada` — linha 6953
-- `rxMini` — linha 6954
-- `rxPer` — linha 6950
-- `rxRender` — linha 6955
-- `rxVal` — linha 6952
+- `rxAbrir` — linha 6951
+- `rxCSV` — linha 6965
+- `rxFiltrada` — linha 6955
+- `rxMini` — linha 6956
+- `rxPer` — linha 6952
+- `rxRender` — linha 6957
+- `rxVal` — linha 6954
 
 ## sa
 - `salvarAg` — linha 2701
 
 ## se
 - `segment` — linha 1401
-- `semBkFalta` — linha 10990
-- `semBkFeito` — linha 10988
-- `semBkMarcar` — linha 10989
+- `semBkFalta` — linha 10992
+- `semBkFeito` — linha 10990
+- `semBkMarcar` — linha 10991
 - `semPedido` — linha 2420
-- `semRegiaoHoje` — linha 4891
-- `semSegunda` — linha 10987
-- `semanalAbrir` — linha 7656
-- `semanalHTML` — linha 7636
+- `semRegiaoHoje` — linha 4893
+- `semSegunda` — linha 10989
+- `semanalAbrir` — linha 7658
+- `semanalHTML` — linha 7638
 - `senhaFraca` — linha 4095
 - `setTipo` — linha 2700
 
 ## sf
-- `sfAbrir` — linha 7980
-- `sfChaveInfo` — linha 7982
-- `sfColar` — linha 7983
+- `sfAbrir` — linha 7982
+- `sfChaveInfo` — linha 7984
+- `sfColar` — linha 7985
 
 ## si
-- `simAplicaRemoto` — linha 11031
-- `simAvisos` — linha 11037
-- `simCadResumo` — linha 4843
-- `simCadastrado` — linha 4830
-- `simCalc` — linha 4831
-- `simCidLista` — linha 4839
+- `simAplicaRemoto` — linha 11033
+- `simAvisos` — linha 11039
+- `simCadResumo` — linha 4845
+- `simCadastrado` — linha 4832
+- `simCalc` — linha 4833
+- `simCidLista` — linha 4841
 - `simCidSel` — linha 4829
+- `simEhMesa` — linha 4831
 - `simFora` — linha 4828
-- `simGrava` — linha 11029
-- `simNao` — linha 12222
-- `simRegistrar` — linha 4899
-- `simRender` — linha 4835
-- `simTexto` — linha 4911
+- `simGrava` — linha 11031
+- `simNao` — linha 12224
+- `simRegistrar` — linha 4901
+- `simRender` — linha 4837
+- `simTexto` — linha 4913
 - `simVale` — linha 4827
 
 ## st
@@ -1174,7 +1175,7 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 
 ## te
 - `telaTravada` — linha 1260
-- `textoDaOcorrencia` — linha 11162
+- `textoDaOcorrencia` — linha 11164
 
 ## to
 - `toB64` — linha 1362
@@ -1182,13 +1183,13 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `totaisTxt` — linha 2350
 
 ## tu
-- `turnoFechar` — linha 9413
-- `turnoResumo` — linha 9405
+- `turnoFechar` — linha 9415
+- `turnoResumo` — linha 9407
 
 ## tx
 - `txtAplicar` — linha 4809
 - `txtFix` — linha 4808
-- `txtOnde` — linha 6566
+- `txtOnde` — linha 6568
 - `txtQuebrados` — linha 4810
 
 ## un
@@ -1196,15 +1197,15 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `unpackBits` — linha 1360
 
 ## us
-- `usoAviso` — linha 8220
-- `usoLer` — linha 8219
+- `usoAviso` — linha 8222
+- `usoLer` — linha 8221
 
 ## v6
 - `v61AplicarMulti` — linha 4767
 - `v61Criar` — linha 4757
 - `v61EscolherBase` — linha 4748
 - `v61Estrutura` — linha 4730
-- `v61Molde` — linha 4888
+- `v61Molde` — linha 4890
 - `v61Rebase` — linha 4803
 - `v61SoRegioes` — linha 4746
 
@@ -1223,46 +1224,46 @@ Gerado em 26/11/2026 08:22 · versão 10.6.62
 - `vizinhos` — linha 1731
 
 ## vm
-- `vmFaltaAlinha` — linha 7879
-- `vmFaltaCids` — linha 7882
+- `vmFaltaAlinha` — linha 7881
+- `vmFaltaCids` — linha 7884
 - `vmMarcar` — linha 4707
-- `vmPrevCid` — linha 7883
+- `vmPrevCid` — linha 7885
 - `vmTransf` — linha 4708
 
 ## vo
-- `volEscrever` — linha 5439
-- `volGradeHtml` — linha 5433
-- `volLista` — linha 5465
-- `volListaM` — linha 5437
+- `volEscrever` — linha 5441
+- `volGradeHtml` — linha 5435
+- `volLista` — linha 5467
+- `volListaM` — linha 5439
 
 ## vs
-- `vsnBaseGravar` — linha 8145
-- `vsnBaseLer` — linha 8144
-- `vsnDiaria` — linha 8179
-- `vsnGravar` — linha 8165
-- `vsnItens` — linha 8163
-- `vsnRestaurar` — linha 8193
-- `vsnTela` — linha 8183
+- `vsnBaseGravar` — linha 8147
+- `vsnBaseLer` — linha 8146
+- `vsnDiaria` — linha 8181
+- `vsnGravar` — linha 8167
+- `vsnItens` — linha 8165
+- `vsnRestaurar` — linha 8195
+- `vsnTela` — linha 8185
 
 ## xc
-- `xcBaixar` — linha 9037
-- `xcConsertar` — linha 8929
-- `xcLatin1` — linha 9036
-- `xcLer` — linha 8935
-- `xcLinhas` — linha 8942
-- `xcXml` — linha 8946
+- `xcBaixar` — linha 9039
+- `xcConsertar` — linha 8931
+- `xcLatin1` — linha 9038
+- `xcLer` — linha 8937
+- `xcLinhas` — linha 8944
+- `xcXml` — linha 8948
 
 ## xl
 - `xlStatus` — linha 2096
 
 ## xm
-- `xmlArqLer` — linha 10914
-- `xmlArquivar` — linha 10917
-- `xmlResumo` — linha 9040
+- `xmlArqLer` — linha 10916
+- `xmlArquivar` — linha 10919
+- `xmlResumo` — linha 9042
 
 ## za
-- `zapConfig` — linha 10534
-- `zapEscolher` — linha 10530
+- `zapConfig` — linha 10536
+- `zapEscolher` — linha 10532
 
 ## zi
 - `zip` — linha 2023
